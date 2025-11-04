@@ -387,9 +387,21 @@ namespace DS4WinWPF.DS4Forms
                     {
                         try
                         {
-                            notifyIcon.ShowNotification(TrayIconViewModel.ballonTitle,
-                            e.Data, !e.Warning ? H.NotifyIcon.Core.NotificationIcon.Info :
-                            H.NotifyIcon.Core.NotificationIcon.Warning);
+                            bool isProfileNotification = e.Data.Contains("を使用しています") || e.Data.Contains("is using Profile") || 
+                                                       e.Data.Contains("using Profile") || e.Data.Contains("using temp Profile");
+                            
+                            if (isProfileNotification)
+                            {
+                                // プロファイル通知の連続表示改善
+                                ShowProfileChangeNotification(e.Data, e.Warning);
+                            }
+                            else
+                            {
+                                // 通常の通知
+                                string title = TrayIconViewModel.ballonTitle;
+                                notifyIcon.ShowNotification(title, e.Data, !e.Warning ? H.NotifyIcon.Core.NotificationIcon.Info :
+                                H.NotifyIcon.Core.NotificationIcon.Warning);
+                            }
                         }
                         catch (System.InvalidOperationException)
                         {
@@ -400,6 +412,21 @@ namespace DS4WinWPF.DS4Forms
             }));
         }
 
+        // プロファイル変更通知専用メソッド - カスタム通知ウィンドウを使用
+        private void ShowProfileChangeNotification(string message, bool isWarning)
+        {
+            try
+            {
+                // ログ出力と同じメッセージをカスタム通知ウィンドウで表示
+                ProfileNotificationWindow.ShowNotification(message);
+            }
+            catch { /* プロファイル通知失敗は無視 */ }
+        }
+
+
+
+
+
         private void SetupEvents()
         {
             App root = Application.Current as App;
@@ -409,6 +436,7 @@ namespace DS4WinWPF.DS4Forms
             //root.rootHubtest.RunningChanged += ControlServiceChanged;
             conLvViewModel.ControllerCol.CollectionChanged += ControllerCol_CollectionChanged;
             AppLogger.TrayIconLog += ShowNotification;
+
             AppLogger.GuiLog += UpdateLastStatusMessage;
             logvm.LogItems.CollectionChanged += LogItems_CollectionChanged;
             App.rootHub.Debug += UpdateLastStatusMessage;
@@ -677,8 +705,8 @@ Suspend support not enabled.", true);
         {
             if (!IsActive && (Global.Notifications == 2))
             {
-                notifyIcon.ShowNotification(TrayIconViewModel.ballonTitle,
-                    message, H.NotifyIcon.Core.NotificationIcon.Info);
+                // 通常のトレイ通知を使用（ShowNotificationで連続通知が改善される）
+                AppLogger.LogToTray(message);
             }
         }
 
