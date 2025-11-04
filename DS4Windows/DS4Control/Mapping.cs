@@ -3447,6 +3447,15 @@ namespace DS4Windows
             Mouse tp, DS4StateFieldMapping fieldMapping, DS4StateFieldMapping outputfieldMapping, SyntheticState deviceState, ref double tempMouseDeltaX, ref double tempMouseDeltaY,
             ref AbsMouseOutput absMouseOut, ControlService ctrl)
         {
+            // Check if this control press would trigger a Special Action
+            // If so, suppress the normal mapping to prevent conflict
+            if (CheckForSpecialActionSuppression(device, dcs.control, cState, eState, tp, fieldMapping))
+            {
+                // Special Action would be triggered - reset the control to default and return without processing
+                ResetToDefaultValue(dcs.control, MappedState, outputfieldMapping);
+                return;
+            }
+
             //DS4ControlSettings dcs = tempSettingsList[settingIndex];
 
             uint actionAlias = 0;
@@ -6016,6 +6025,115 @@ namespace DS4Windows
             }
 
             return result;
+        }
+
+        // Check if a Special Action is currently triggered (extracted from MapCustomAction logic)
+        // Returns true if the Special Action trigger conditions are met
+        private static bool IsSpecialActionTriggered(SpecialAction action, int device, DS4State cState, 
+            DS4StateExposed eState, Mouse tp, DS4StateFieldMapping fieldMapping)
+        {
+            if (action == null || action.typeID == SpecialAction.ActionTypeId.None) return false;
+
+            bool triggeractivated = true;
+            
+            // Handle delayed actions (same logic as MapCustomAction)
+            if (action.delayTime > 0.0)
+            {
+                triggeractivated = false;
+                bool subtriggeractivated = true;
+                
+                for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
+                {
+                    DS4Controls dc = action.trigger[i];
+                    if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
+                    {
+                        subtriggeractivated = false;
+                        break;
+                    }
+                }
+                
+                if (subtriggeractivated)
+                {
+                    DateTime now = DateTime.UtcNow;
+                    if (nowAction[device] >= oldnowAction[device] + TimeSpan.FromSeconds(action.delayTime))
+                        triggeractivated = true;
+                }
+            }
+            else
+            {
+                // Standard trigger check (same logic as MapCustomAction)
+                for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
+                {
+                    DS4Controls dc = action.trigger[i];
+                    if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
+                    {
+                        triggeractivated = false;
+                        break;
+                    }
+                }
+
+                // Handle press/release macros (same logic as MapCustomAction)
+                if (action.typeID == SpecialAction.ActionTypeId.Macro && action.pressRelease && action.firstTouch)
+                    triggeractivated = !triggeractivated;
+            }
+
+            // Handle unload triggers for Key type actions (same logic as MapCustomAction)
+            if (action.typeID == SpecialAction.ActionTypeId.Key && action.uTrigger.Count > 0)
+            {
+                bool utriggeractivated = true;
+                for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
+                {
+                    DS4Controls dc = action.uTrigger[i];
+                    if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
+                    {
+                        utriggeractivated = false;
+                        break;
+                    }
+                }
+                if (action.pressRelease) utriggeractivated = !utriggeractivated;
+                
+                // Key actions are triggered when unload triggers are not active
+                triggeractivated = triggeractivated && !utriggeractivated;
+            }
+
+            return triggeractivated;
+        }
+
+        // Check if the current button press would trigger any Special Action
+        // Returns true if a Special Action would be triggered, indicating normal mapping should be suppressed
+        private static bool CheckForSpecialActionSuppression(int device, DS4Controls control,
+            DS4State cState, DS4StateExposed eState, Mouse tp, DS4StateFieldMapping fieldMap)
+        {
+            List<string> profileActions = getProfileActions(device);
+            
+            for (int actionIndex = 0, profileListLen = profileActions.Count; actionIndex < profileListLen; actionIndex++)
+            {
+                string actionname = profileActions[actionIndex];
+                SpecialAction action = GetProfileAction(device, actionname);
+                
+                if (action == null || action.trigger == null) continue;
+                
+                // Check if this control is part of the Special Action trigger
+                bool controlInTrigger = false;
+                for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
+                {
+                    if (action.trigger[i] == control)
+                    {
+                        controlInTrigger = true;
+                        break;
+                    }
+                }
+                
+                if (!controlInTrigger) continue;
+                
+                // Use the extracted trigger logic from MapCustomAction
+                if (IsSpecialActionTriggered(action, device, cState, eState, tp, fieldMap))
+                {
+                    return true; // Special Action would be triggered - suppress normal mapping
+                }
+            }
+            
+            return false; // No Special Action triggered - allow normal mapping
         }
 
         private static bool getBoolSpecialActionMapping(int device, DS4Controls control,

@@ -59,3 +59,11 @@ Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/s
   *Disabling 'Enable output data' in the controller profile settings might help with latency issues, but will disable lightbar and rumble support.*
 - Disable **PlayStation Configuration Support** and
 **Xbox Configuration Support** options in Steam
+
+## Modifications in This Fork (v3.11.0 by gwin7ok)
+
+### Special Action Button Suppression Fix
+
+When a Special Action is triggered, if the last pressed button has another function assigned to it, the system now prevents that separate function from being executed alongside the Special Action.
+
+This modification prevents unwanted duplicate inputs when using multi-button Special Actions.
