@@ -33,31 +33,40 @@ jobs:
         echo "SHORT_VERSION=${VERSION%-*}" >> $GITHUB_ENV
       shell: bash
       
-    - name: Create GitHub Release
+    - name: Create or Update GitHub Release
       id: create_release
-      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: DS4Windows ${{ github.ref_name }} - Custom Notification & Profile Accuracy Fix
-        body: |
-          ## DS4Windows ${{ github.ref_name }}
-          
-           ### Changes
-          - Added custom notification window system for profile changes
-          - Improved notification positioning to avoid Windows Action Center conflicts
-          - Fixed profile name accuracy in controller connection notifications
-          - Disabled Windows Action Center notifications for profile changes
-          - Enhanced notification system to work independently of application focus
-          
-          ### Requirements
-          - Windows 10 or newer
-          - .NET 8.0 Desktop Runtime
-          - Visual C++ 2015-2022 Redistributable
-          - ViGEmBus driver
-        draft: false
-        prerelease: false
+      run: |
+        # Check if release already exists
+        if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
+          echo "Release already exists, deleting it first"
+          gh release delete ${{ github.ref_name }} --yes --cleanup-tag
+          # Wait a moment for cleanup
+          sleep 2
+        fi
+        
+        # Create new release
+        gh release create ${{ github.ref_name }} \
+          --title "DS4Windows ${{ github.ref_name }} - Custom Notification & Profile Accuracy Fix" \
+          --notes "## DS4Windows ${{ github.ref_name }}
+        
+        ### Changes
+        - Added custom notification window system for profile changes
+        - Improved notification positioning to avoid Windows Action Center conflicts
+        - Fixed profile name accuracy in controller connection notifications
+        - Disabled Windows Action Center notifications for profile changes
+        - Enhanced notification system to work independently of application focus
+        
+        ### Requirements
+        - Windows 10 or newer
+        - .NET 8.0 Desktop Runtime
+        - Visual C++ 2015-2022 Redistributable
+        - ViGEmBus driver
+        
+        Based on DS4Windows v3.10.0 with gwin7ok modifications."
+        
+        echo "upload_url=https://uploads.github.com/repos/${{ github.repository }}/releases/$(gh api repos/${{ github.repository }}/releases/tags/${{ github.ref_name }} --jq '.id')/assets" >> $GITHUB_OUTPUT
         
     - name: Restore dependencies
       run: dotnet restore
