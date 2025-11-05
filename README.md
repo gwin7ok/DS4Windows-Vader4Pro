@@ -60,9 +60,27 @@ Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/s
 - Disable **PlayStation Configuration Support** and
 **Xbox Configuration Support** options in Steam
 
-## Modifications in This Fork (v3.11.0 by gwin7ok)
+## Modifications in This Fork (gwin7ok)
 
-### Special Action Button Suppression Fix
+### v3.11.1 - Custom Notification System & Profile Accuracy Fix
+
+#### Custom Notification Window System
+- **Independent Notification Display**: Profile changes now use a custom notification window instead of Windows Action Center
+- **Optimal Positioning**: Notifications appear at the top-right corner of the screen to avoid conflicts with Windows Action Center
+- **Focus-Independent Operation**: Notifications display correctly regardless of whether DS4Windows has focus
+- **System Sound Integration**: Custom notifications include system beep sounds for better user awareness
+
+#### Profile Notification Accuracy
+- **Accurate Profile Names**: Controller connection notifications now display the actual active profile name
+- **Temporary Profile Support**: Correctly shows temporary/auto-profile names when in use
+- **Global Variable Integration**: Uses `Global.useTempProfile` and `Global.tempprofilename` for precise profile tracking
+
+#### Windows Integration Improvements
+- **Action Center Bypass**: Disabled Windows Action Center notifications for profile changes to prevent notification conflicts
+- **Custom Window Positioning**: Right-top positioning system prevents overlap with other system notifications
+- **Enhanced User Experience**: Streamlined notification system provides clearer feedback without system interference
+
+### v3.11.0 - Special Action Button Suppression Fix
 
 When a Special Action is triggered, if the last pressed button has another function assigned to it, the system now prevents that separate function from being executed alongside the Special Action.
 
