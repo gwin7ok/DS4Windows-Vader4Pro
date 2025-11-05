@@ -33,11 +33,28 @@ jobs:
         echo "SHORT_VERSION=${VERSION%-*}" >> $GITHUB_ENV
       shell: bash
       
-    - name: Create GitHub Release
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build X64
+      run: dotnet publish .\DS4Windows\DS4WinWPF.csproj -c Release  /p:platform=x64 /p:AssemblyVersion=${{ env.SHORT_VERSION }} /p:FileVersion=${{ env.SHORT_VERSION }} /p:Version=${{ env.VERSION }} -o .\bin\x64\Release\output
+      
+    - name: Post-Build script X64
+      run: python .\utils\post-build.py .\bin\x64\Release\output . ${{env.VERSION}}
+      
+    - name: Build X86
+      run: dotnet publish .\DS4Windows\DS4WinWPF.csproj -c Release  /p:platform=x86 /p:AssemblyVersion=${{ env.SHORT_VERSION }} /p:FileVersion=${{ env.SHORT_VERSION }} /p:Version=${{ env.VERSION }} -o .\bin\x86\Release\output
+      
+    - name: Post-Build script X86
+      run: python .\utils\post-build.py .\bin\x86\Release\output . ${{env.VERSION}}
+      
+    - name: Create GitHub Release with Assets
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release create ${{ github.ref_name }} \
+          .\bin\x64\Release\DS4Windows_${{env.VERSION}}_x64.zip \
+          .\bin\x86\Release\DS4Windows_${{env.VERSION}}_x86.zip \
           --title "DS4Windows ${{ github.ref_name }} - Custom Notification & Profile Accuracy Fix" \
           --notes "## DS4Windows ${{ github.ref_name }}
           
@@ -55,25 +72,4 @@ jobs:
           - ViGEmBus driver
           
           Based on DS4Windows v3.10.0 with gwin7ok modifications."
-        
-    - name: Restore dependencies
-      run: dotnet restore
       
-    - name: Build X64
-      run: dotnet publish .\DS4Windows\DS4WinWPF.csproj -c Release  /p:platform=x64 /p:AssemblyVersion=${{ env.SHORT_VERSION }} /p:FileVersion=${{ env.SHORT_VERSION }} /p:Version=${{ env.VERSION }} -o .\bin\x64\Release\output
-      
-    - name: Post-Build script X64
-      run: python .\utils\post-build.py .\bin\x64\Release\output . ${{env.VERSION}}
-      
-    - name: Build X86
-      run: dotnet publish .\DS4Windows\DS4WinWPF.csproj -c Release  /p:platform=x86 /p:AssemblyVersion=${{ env.SHORT_VERSION }} /p:FileVersion=${{ env.SHORT_VERSION }} /p:Version=${{ env.VERSION }} -o .\bin\x86\Release\output
-      
-    - name: Post-Build script X86
-      run: python .\utils\post-build.py .\bin\x86\Release\output . ${{env.VERSION}}
-      
-    - name: Upload Release Assets
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release upload ${{ github.ref_name }} .\bin\x64\Release\DS4Windows_${{env.VERSION}}_x64.zip
-        gh release upload ${{ github.ref_name }} .\bin\x86\Release\DS4Windows_${{env.VERSION}}_x86.zip
