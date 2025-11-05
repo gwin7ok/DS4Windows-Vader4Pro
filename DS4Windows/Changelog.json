@@ -1,9 +1,35 @@
 {
-  "latest_version": "3.3.3",
-  "latest_version_number_info": {"majorPart": 3, "minorPart": 3, "buildPart": 3},
-  "updated_at": "2023-12-31T07:01:07+0000",
+  "latest_version": "3.11.1",
+  "latest_version_number_info": {"majorPart": 3, "minorPart": 11, "buildPart": 1},
+  "updated_at": "2025-01-05T00:00:00+0000",
   "changelog": {
     "versions": [
+    {
+      "version_str": "3.11.1",
+      "version_number_info": {"majorPart": 3, "minorPart": 11, "buildPart": 1},
+      "base_header": "Version 3.11.1",
+      "release_date": "2025-01-05T00:00:00+0000",
+      "locales": [
+        {
+          "code": "en",
+          "header": "Version 3.11.1",
+          "log_text": ["* Added custom notification window system for profile changes",
+            "* Improved notification positioning to avoid Windows Action Center conflicts",
+            "* Fixed profile name accuracy in controller connection notifications",
+            "* Disabled Windows Action Center notifications for profile changes",
+            "* Enhanced notification system to work independently of application focus"]
+        },
+        {
+          "code": "ja",
+          "header": "Version 3.11.1",
+          "log_text": ["* プロファイル変更時のカスタム通知ウィンドウシステムを追加",
+            "* Windowsアクションセンターとの競合を避けるため通知位置を改善",
+            "* コントローラー接続時の通知でプロファイル名の精度を修正",
+            "* プロファイル変更時のWindowsアクションセンター通知を無効化",
+            "* アプリケーションフォーカスに依存しない通知システムに強化"]
+        }
+      ]
+    },
     {
       "version_str": "3.3.3",
       "version_number_info": {"majorPart": 3, "minorPart": 3, "buildPart": 3},
