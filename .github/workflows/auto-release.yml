@@ -34,15 +34,12 @@ jobs:
       shell: bash
       
     - name: Create GitHub Release
-      id: create_release
-      uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: DS4Windows ${{ github.ref_name }} - Custom Notification & Profile Accuracy Fix
-        body: |
-          ## DS4Windows ${{ github.ref_name }}
+      run: |
+        gh release create ${{ github.ref_name }} \
+          --title "DS4Windows ${{ github.ref_name }} - Custom Notification & Profile Accuracy Fix" \
+          --notes "## DS4Windows ${{ github.ref_name }}
           
           ### Changes
           - Added custom notification window system for profile changes
@@ -51,16 +48,13 @@ jobs:
           - Disabled Windows Action Center notifications for profile changes
           - Enhanced notification system to work independently of application focus
           
-         
-          ### Requirements  
+          ### Requirements
           - Windows 10 or newer
           - .NET 8.0 Desktop Runtime
           - Visual C++ 2015-2022 Redistributable
           - ViGEmBus driver
           
-          Based on DS4Windows v3.10.0 with gwin7ok modifications.
-        draft: false
-        prerelease: false
+          Based on DS4Windows v3.10.0 with gwin7ok modifications."
         
     - name: Restore dependencies
       run: dotnet restore
@@ -77,22 +71,9 @@ jobs:
     - name: Post-Build script X86
       run: python .\utils\post-build.py .\bin\x86\Release\output . ${{env.VERSION}}
       
-    - name: Upload X64 Release Asset
-      uses: actions/upload-release-asset@v1
+    - name: Upload Release Assets
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .\bin\x64\Release\DS4Windows_${{env.VERSION}}_x64.zip
-        asset_name: DS4Windows_${{env.VERSION}}_x64.zip
-        asset_content_type: application/zip
-        
-    - name: Upload X86 Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .\bin\x86\Release\DS4Windows_${{env.VERSION}}_x86.zip
-        asset_name: DS4Windows_${{env.VERSION}}_x86.zip
-        asset_content_type: application/zip
+      run: |
+        gh release upload ${{ github.ref_name }} .\bin\x64\Release\DS4Windows_${{env.VERSION}}_x64.zip
+        gh release upload ${{ github.ref_name }} .\bin\x86\Release\DS4Windows_${{env.VERSION}}_x86.zip
