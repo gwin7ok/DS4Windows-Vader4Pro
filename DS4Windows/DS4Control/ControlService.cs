@@ -2657,9 +2657,12 @@ namespace DS4Windows
                     // Only send Log message when device is considered a primary device
                     if (device.PrimaryDevice)
                     {
+                        // 実際に使用されているプロファイル名を取得
+                        string actualProfile = Global.useTempProfile[ind] ? Global.tempprofilename[ind] : ProfilePath[ind];
+                        
                         if (File.Exists(Path.Combine(appdatapath, "Profiles", $"{ProfilePath[ind]}.xml")))
                         {
-                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (ind + 1).ToString(), ProfilePath[ind], $"{device.Battery}");
+                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (ind + 1).ToString(), actualProfile, $"{device.Battery}");
                             LogDebug(prolog);
                             AppLogger.LogToTray(prolog);
                         }
