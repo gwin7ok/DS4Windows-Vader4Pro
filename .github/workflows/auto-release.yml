@@ -44,23 +44,18 @@ jobs:
         body: |
           ## DS4Windows ${{ github.ref_name }}
           
-          ### Changes
+           ### Changes
           - Added custom notification window system for profile changes
           - Improved notification positioning to avoid Windows Action Center conflicts
           - Fixed profile name accuracy in controller connection notifications
           - Disabled Windows Action Center notifications for profile changes
           - Enhanced notification system to work independently of application focus
           
-          ### Downloads
-          Files will be uploaded automatically after build completes.
-          
           ### Requirements
           - Windows 10 or newer
           - .NET 8.0 Desktop Runtime
           - Visual C++ 2015-2022 Redistributable
           - ViGEmBus driver
-          
-          Based on DS4Windows v3.10.0 with gwin7ok modifications.
         draft: false
         prerelease: false
         
