@@ -72,13 +72,6 @@ Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/s
 
 #### Profile Notification Accuracy
 - **Accurate Profile Names**: Controller connection notifications now display the actual active profile name
-- **Temporary Profile Support**: Correctly shows temporary/auto-profile names when in use
-- **Global Variable Integration**: Uses `Global.useTempProfile` and `Global.tempprofilename` for precise profile tracking
-
-#### Windows Integration Improvements
-- **Action Center Bypass**: Disabled Windows Action Center notifications for profile changes to prevent notification conflicts
-- **Custom Window Positioning**: Right-top positioning system prevents overlap with other system notifications
-- **Enhanced User Experience**: Streamlined notification system provides clearer feedback without system interference
 
 ### v3.11.0 - Special Action Button Suppression Fix
 
