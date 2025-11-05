@@ -40,17 +40,18 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref_name }}
-        release_name: DS4Windows ${{ github.ref_name }} - Special Action Fix
+        release_name: DS4Windows ${{ github.ref_name }} - Custom Notification & Profile Accuracy Fix
         body: |
           ## DS4Windows ${{ github.ref_name }}
           
           ### Changes
-          - Fixed Special Action button suppression issue
-          - When a Special Action is triggered, prevents separate functions assigned to the last pressed button from executing alongside the Special Action
+          - Added custom notification window system for profile changes
+          - Improved notification positioning to avoid Windows Action Center conflicts
+          - Fixed profile name accuracy in controller connection notifications
+          - Disabled Windows Action Center notifications for profile changes
+          - Enhanced notification system to work independently of application focus
           
-          ### Downloads
-          Files will be uploaded automatically after build completes.
-          
+         
           ### Requirements  
           - Windows 10 or newer
           - .NET 8.0 Desktop Runtime
