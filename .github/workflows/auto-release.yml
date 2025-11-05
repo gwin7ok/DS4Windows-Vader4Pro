@@ -64,7 +64,7 @@ jobs:
         - Visual C++ 2015-2022 Redistributable
         - ViGEmBus driver
         
-        Based on DS4Windows v3.10.0 with gwin7ok modifications."
+        Based on DS4Windows v3.10.0 with AhmedAmrNabil modifications."
         
         echo "upload_url=https://uploads.github.com/repos/${{ github.repository }}/releases/$(gh api repos/${{ github.repository }}/releases/tags/${{ github.ref_name }} --jq '.id')/assets" >> $GITHUB_OUTPUT
         
