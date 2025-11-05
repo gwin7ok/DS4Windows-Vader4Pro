@@ -39,17 +39,20 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Check if release already exists
-        if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
-          echo "Release already exists, deleting it first"
+        $ErrorActionPreference = "SilentlyContinue"
+        $releaseExists = gh release view ${{ github.ref_name }} 2>$null
+        $ErrorActionPreference = "Stop"
+        
+        if ($LASTEXITCODE -eq 0) {
+          Write-Output "Release already exists, deleting it first"
           gh release delete ${{ github.ref_name }} --yes --cleanup-tag
           # Wait a moment for cleanup to complete
           Start-Sleep -Seconds 5
-        fi
+        }
         
         # Create new release
-        gh release create ${{ github.ref_name }} \
-          --title "DS4Windows ${{ github.ref_name }} - Custom Notification & Profile Accuracy Fix" \
-          --notes "## DS4Windows ${{ github.ref_name }}
+        $releaseNotes = @"
+        ## DS4Windows ${{ github.ref_name }}
         
         ### Changes
         - Added custom notification window system for profile changes
@@ -64,7 +67,10 @@ jobs:
         - Visual C++ 2015-2022 Redistributable
         - ViGEmBus driver
         
-        Based on DS4Windows v3.10.0 with AhmedAmrNabil modifications."
+        Based on DS4Windows v3.10.0 with AhmedAmrNabil modifications.
+        "@
+        
+        gh release create ${{ github.ref_name }} --title "DS4Windows ${{ github.ref_name }} - Custom Notification & Profile Accuracy Fix" --notes $releaseNotes
         
     - name: Restore dependencies
       run: dotnet restore
