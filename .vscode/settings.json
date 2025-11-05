@@ -1,6 +1,6 @@
 {
     "dotnet.defaultSolution": "./DS4WindowsWPF.sln",
-    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": false,
     "dotnet.enableXamlTools": true,
     "dotnet.server.useOmnisharp": true,
     "csharp.semanticHighlighting.enabled": true,
@@ -12,19 +12,33 @@
     "csharp.inlayHints.enableInlayHints": true,
     "csharp.inlayHints.enableInlayHintsForImplicitVariableTypes": true,
     "csharp.inlayHints.enableInlayHintsForImplicitObjectCreation": true,
-    "omnisharp.enableRoslynAnalyzers": true,
+    "omnisharp.enableRoslynAnalyzers": false,
     "omnisharp.enableEditorConfigSupport": true,
     "omnisharp.enableAsyncCompletion": true,
     "omnisharp.path": "latest",
     "omnisharp.useGlobalMono": "never",
     "omnisharp.waitForDebugger": false,
-    "omnisharp.loggingLevel": "information",
+    "omnisharp.loggingLevel": "error",
     "omnisharp.maxProjectResults": 250,
     "omnisharp.projectLoadTimeout": 60,
     "omnisharp.enableMsBuildLoadProjectsOnDemand": false,
     "csharp.suppressDotnetInstallWarning": true,
+    "csharp.maxProjectFileCountForDiagnosticAnalysis": 1000,
+    "csharp.showOmnisharpLogOnError": false,
+    "csharp.suppressDotnetRestoreNotification": true,
+    "problems.showCurrentInStatus": false,
+    "problems.sortOrder": "severity",
+    "problems.decorations.enabled": false,
+    "csharp.format.enable": false,
+    "csharp.codeLens.enableReferencesCodeLens": false,
     "files.exclude": {
         "**/bin": true,
-        "**/obj": false
+        "**/obj": true,
+        "**/.vs": true
+    },
+    "search.exclude": {
+        "**/bin": true,
+        "**/obj": true,
+        "**/.vs": true
     }
 }

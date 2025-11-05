@@ -2,7 +2,8 @@
     "MSBuild": {
         "EnablePackageAutoRestore": true,
         "LoadProjectsOnDemand": false,
-        "UseLegacySdkResolver": false
+        "UseLegacySdkResolver": false,
+        "SkipMetadataForDocuments": true
     },
     "FormattingOptions": {
         "EnableEditorConfigSupport": true
@@ -10,7 +11,8 @@
     "RoslynExtensionsOptions": {
         "EnableAnalyzersSupport": false,
         "EnableImportCompletion": true,
-        "EnableAsyncCompletion": false
+        "EnableAsyncCompletion": false,
+        "EnableDecompilationSupport": false
     },
     "Sdk": {
         "IncludePrereleases": true

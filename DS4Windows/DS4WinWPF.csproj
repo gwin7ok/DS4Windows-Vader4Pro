@@ -27,6 +27,10 @@
 		<PackageProjectUrl>https://schmaldeo.github.io/DS4WindowsDocs</PackageProjectUrl>
 		<PackageLicenseUrl>https://www.gnu.org/licenses/gpl-3.0.txt</PackageLicenseUrl>
 		<RepositoryUrl>https://github.com/schmaldeo/DS4Windows</RepositoryUrl>
+		<!-- Suppress WPF-related false positive errors -->
+		<NoWarn>$(NoWarn);CS0103;CS1061;CS0246;CS0234</NoWarn>
+		<WarningsAsErrors />
+		<WarningsNotAsErrors>CS0103;CS1061;CS0246;CS0234</WarningsNotAsErrors>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

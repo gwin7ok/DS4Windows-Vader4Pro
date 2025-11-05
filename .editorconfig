@@ -1,0 +1,31 @@
+root = true
+
+[*.cs]
+charset = utf-8
+end_of_line = crlf
+indent_style = space
+indent_size = 4
+insert_final_newline = false
+trim_trailing_whitespace = true
+
+# C# code style rules
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+
+# Suppress specific C# compiler errors that are false positives for WPF
+# CS0103: The name 'X' does not exist in the current context (for XAML elements)
+dotnet_diagnostic.CS0103.severity = none
+
+# Suppress other common WPF-related false positives
+dotnet_diagnostic.CS0234.severity = suggestion  # namespace does not exist
+dotnet_diagnostic.CS0246.severity = suggestion  # type not found
+
+[*.xaml]
+charset = utf-8
+end_of_line = crlf
+indent_style = space
+indent_size = 2
+insert_final_newline = false
+trim_trailing_whitespace = true

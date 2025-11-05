@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- Suppress WPF XAML-related false positive errors -->
+    <NoWarn>$(NoWarn);CS0103;CS1061;CS0246;CS0234</NoWarn>
+    <WarningsAsErrors />
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>
