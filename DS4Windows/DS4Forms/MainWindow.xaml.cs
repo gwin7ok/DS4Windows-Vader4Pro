@@ -380,8 +380,8 @@ namespace DS4WinWPF.DS4Forms
             Dispatcher.BeginInvoke((Action)(() =>
             {
 
-                if (!IsActive && (Global.Notifications == 2 ||
-                    (Global.Notifications == 1 && e.Warning)))
+                if (Global.Notifications == 2 ||
+                    (Global.Notifications == 1 && e.Warning))
                 {
                     if (notifyIcon.IsCreated)
                     {
@@ -392,12 +392,12 @@ namespace DS4WinWPF.DS4Forms
                             
                             if (isProfileNotification)
                             {
-                                // プロファイル通知の連続表示改善
+                                // プロファイル通知：カスタムウィンドウのみを表示
                                 ShowProfileChangeNotification(e.Data, e.Warning);
                             }
                             else
                             {
-                                // 通常の通知
+                                // 通常の通知：アクションセンター経由で表示
                                 string title = TrayIconViewModel.ballonTitle;
                                 notifyIcon.ShowNotification(title, e.Data, !e.Warning ? H.NotifyIcon.Core.NotificationIcon.Info :
                                 H.NotifyIcon.Core.NotificationIcon.Warning);
@@ -703,7 +703,7 @@ Suspend support not enabled.", true);
 
         private void ShowHotkeyNotification(string message)
         {
-            if (!IsActive && (Global.Notifications == 2))
+            if (Global.Notifications == 2)
             {
                 // 通常のトレイ通知を使用（ShowNotificationで連続通知が改善される）
                 AppLogger.LogToTray(message);

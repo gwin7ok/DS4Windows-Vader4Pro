@@ -16,6 +16,7 @@ namespace DS4WinWPF.DS4Forms
         [DllImport("user32.dll")]
         private static extern bool MessageBeep(uint uType);
         
+        // Windows API for system sound
         private const uint MB_ICONINFORMATION = 0x00000040;
 
         public ProfileNotificationWindow()
@@ -26,21 +27,18 @@ namespace DS4WinWPF.DS4Forms
 
         private void ProfileNotificationWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 画面右下に配置
-            PositionWindow();
+            // 位置設定はShowNotificationで行うため、ここでは何もしない
         }
 
-        private void PositionWindow()
+        public void PositionWindow()
         {
             var workingArea = SystemParameters.WorkArea;
             
             lock (lockObject)
             {
-                // 既存の通知ウィンドウの数に基づいて位置を計算
-                int notificationIndex = activeNotifications.Count;
-                
+                // すべての通知を同じ位置（右上）に重ねて表示
                 this.Left = workingArea.Right - this.Width - 20;
-                this.Top = workingArea.Bottom - (this.Height + 10) * (notificationIndex + 1) - 20;
+                this.Top = workingArea.Top + 20;
             }
         }
 
@@ -54,6 +52,8 @@ namespace DS4WinWPF.DS4Forms
                 lock (lockObject)
                 {
                     activeNotifications.Add(notification);
+                    // リストに追加後に位置を再設定
+                    notification.PositionWindow();
                 }
                 
                 notification.Show();
@@ -87,13 +87,8 @@ namespace DS4WinWPF.DS4Forms
                     {
                         activeNotifications.Remove(this);
                         
-                        // 残りの通知ウィンドウの位置を再調整
-                        for (int i = 0; i < activeNotifications.Count; i++)
-                        {
-                            var workingArea = SystemParameters.WorkArea;
-                            activeNotifications[i].Left = workingArea.Right - activeNotifications[i].Width - 20;
-                            activeNotifications[i].Top = workingArea.Bottom - (activeNotifications[i].Height + 10) * (i + 1) - 20;
-                        }
+                        // すべての通知は同じ位置に重なっているため、位置調整は不要
+                        // 残った通知は既に正しい位置にある
                     }
                     
                     this.Close();
