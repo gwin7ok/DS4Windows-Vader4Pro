@@ -43,22 +43,6 @@ namespace DS4Windows
                     TrayIconLog(null, new DebugEventArgs(data, warning));
             }
         }
-
-        // プロファイル変更専用の通知イベント（連続通知改善のため）
-        public static event EventHandler<DebugEventArgs> ProfileChangeNotification;
-
-        public static void LogProfileChangeToTray(string data)
-        {
-            if (ProfileChangeNotification != null)
-            {
-                ProfileChangeNotification(null, new DebugEventArgs(data, false));
-            }
-            else
-            {
-                // フォールバック: 通常の通知システムを使用
-                LogToTray(data, false);
-            }
-        }
     }
 }
 
