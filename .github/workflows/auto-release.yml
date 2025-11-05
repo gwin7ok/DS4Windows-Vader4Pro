@@ -42,8 +42,8 @@ jobs:
         if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
           echo "Release already exists, deleting it first"
           gh release delete ${{ github.ref_name }} --yes --cleanup-tag
-          # Wait a moment for cleanup
-          sleep 2
+          # Wait a moment for cleanup to complete
+          Start-Sleep -Seconds 5
         fi
         
         # Create new release
@@ -66,8 +66,6 @@ jobs:
         
         Based on DS4Windows v3.10.0 with AhmedAmrNabil modifications."
         
-        echo "upload_url=https://uploads.github.com/repos/${{ github.repository }}/releases/$(gh api repos/${{ github.repository }}/releases/tags/${{ github.ref_name }} --jq '.id')/assets" >> $GITHUB_OUTPUT
-        
     - name: Restore dependencies
       run: dotnet restore
       
@@ -83,23 +81,33 @@ jobs:
     - name: Post-Build script X86
       run: python .\utils\post-build.py .\bin\x86\Release\output . ${{env.VERSION}}
       
-    - name: Upload X64 Release Asset
-      uses: actions/upload-release-asset@v1
+    - name: Publish release Build X64
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .\bin\x64\Release\DS4Windows_${{env.VERSION}}_x64.zip
-        asset_name: DS4Windows_${{env.VERSION}}_x64.zip
-        asset_content_type: application/zip
+      run: |
+        $assetPath = ".\bin\x64\Release\DS4Windows_${{ env.VERSION }}_x64.zip"
+        $assetName = "DS4Windows_${{ env.VERSION }}_x64.zip"
         
-    - name: Upload X86 Release Asset
-      uses: actions/upload-release-asset@v1
+        if (Test-Path $assetPath) {
+          Write-Output "Uploading X64 build: $assetName"
+          gh release upload ${{ github.ref_name }} $assetPath --clobber
+        } else {
+          Write-Error "X64 build file not found: $assetPath"
+          exit 1
+        }
+        
+    - name: Publish release Build X86  
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: .\bin\x86\Release\DS4Windows_${{env.VERSION}}_x86.zip
-        asset_name: DS4Windows_${{env.VERSION}}_x86.zip
-        asset_content_type: application/zip
+      run: |
+        $assetPath = ".\bin\x86\Release\DS4Windows_${{ env.VERSION }}_x86.zip"
+        $assetName = "DS4Windows_${{ env.VERSION }}_x86.zip"
+        
+        if (Test-Path $assetPath) {
+          Write-Output "Uploading X86 build: $assetName"
+          gh release upload ${{ github.ref_name }} $assetPath --clobber
+        } else {
+          Write-Error "X86 build file not found: $assetPath"
+          exit 1
+        }
       
