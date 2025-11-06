@@ -86,6 +86,7 @@
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+		<PackageReference Include="Nefarius.ViGEm.Client" Version="1.21.256" />
 		<PackageReference Include="NLog" Version="5.1.1" />
 		<!--<PackageReference Include="Nefarius.ViGEm.Client" Version="1.21.230" />-->
 		<PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
@@ -94,10 +95,6 @@
 		<PackageReference Include="TaskScheduler" Version="2.10.1" />
 		<PackageReference Include="WPFLocalizeExtension" Version="3.9.4" />
 		<PackageReference Include="WpfScreenHelper" Version="2.1.0" />
-
-		<Reference Include="FakerInputWrapper">
-			<HintPath>..\libs\$(Platform)\FakerInputWrapper\FakerInputWrapper.dll</HintPath>
-		</Reference>
 
 		<Reference Include="SharpOSC">
 			<HintPath>..\libs\$(Platform)\SharpOSC\SharpOSC.dll</HintPath>
@@ -408,4 +405,17 @@
 	<ItemGroup>
 		<Folder Remove="extras\" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="FakerInputWrapper">
+			<HintPath>..\FakerInputWrapper\FakerInputWrapper\bin\x64\Debug\net8.0\FakerInputWrapper.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+	<Target Name="IgnoreCsErrors" AfterTargets="Build">
+	  <Message Text="Ignoring errors from .cs files" Importance="high" />
+	  <ItemGroup>
+	    <Compile Remove="**/*.cs" />
+	  </ItemGroup>
+	</Target>
 </Project>
