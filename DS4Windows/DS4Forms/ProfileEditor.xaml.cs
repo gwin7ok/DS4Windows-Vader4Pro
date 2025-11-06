@@ -160,7 +160,7 @@ namespace DS4WinWPF.DS4Forms
                 if (grid != null && grid.ColumnDefinitions.Count >= 3)
                 {
                     grid.ColumnDefinitions[0].Width = new GridLength(layout.LeftColumnWidth);
-                    grid.ColumnDefinitions[2].Width = new GridLength(layout.RightColumnWidth);
+                    grid.ColumnDefinitions[2].Width = GridLength.Auto;
                 }
                 var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
                 if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)

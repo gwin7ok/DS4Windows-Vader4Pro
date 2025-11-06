@@ -24,9 +24,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="480" MinWidth="300" />
+            <ColumnDefinition Width="Auto" MinWidth="300" />
             <ColumnDefinition Width="6" /> <!-- Splitter -->
-            <ColumnDefinition Width="*" MinWidth="300" />
+            <ColumnDefinition Width="Auto" MinWidth="300" />
         </Grid.ColumnDefinitions>
         <!-- 上部ボタン類 -->
         <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,4,0,10">
@@ -45,7 +45,7 @@
             </Button>
         </StackPanel>
     <!-- 左側領域 -->
-    <TabControl x:Name="sidebarTabControl" Width="Auto" Grid.Row="1" Grid.Column="0" SelectionChanged="SidebarTabControl_SelectionChanged">
+    <TabControl x:Name="sidebarTabControl" Grid.Row="1" Grid.Column="0" SelectionChanged="SidebarTabControl_SelectionChanged">
             <TabItem Header="{lex:Loc Controls}">
                 <Grid Width="470">
                     <Grid.Background>
@@ -265,7 +265,7 @@
     <!-- 仕切り線（ドラッグ可能） -->
     <GridSplitter Grid.Row="1" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" ShowsPreview="True" />
     <!-- 右側領域 -->
-    <TabControl x:Name="profileSettingsTabCon" Grid.Row="1" Grid.Column="2" Margin="10,0,0,0" Padding="6">
+    <TabControl x:Name="profileSettingsTabCon" Width="Auto" Grid.Row="1" Grid.Column="2" Margin="10,0,0,0" Padding="6">
             <TabControl.Resources>
                 <Thickness x:Key="spaceMargin" Bottom="8" />
             </TabControl.Resources>
