@@ -1654,7 +1654,15 @@ Suspend support not enabled.", true);
 
         private void MainDS4Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (WindowState != WindowState.Minimized && preserveSize && !IsInitialShow)
+            // プロフィール編集画面が開いている場合はKeepsizeで制御
+            if (WindowState != WindowState.Minimized && editor != null && editor.Keepsize && !IsInitialShow)
+            {
+                var result = WindowPlacementHelper.GetPlacement(this);
+                Global.FormWidth = result.Right - result.Left;
+                Global.FormHeight = result.Bottom - result.Top;
+            }
+            // 編集画面が開いていない場合は常に保存
+            else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
             {
                 var result = WindowPlacementHelper.GetPlacement(this);
                 Global.FormWidth = result.Right - result.Left;
@@ -1664,9 +1672,20 @@ Suspend support not enabled.", true);
 
         private void MainDS4Window_LocationChanged(object sender, EventArgs e)
         {
-            var result = WindowPlacementHelper.GetPlacement(this);
-            Global.FormLocationX = result.Left;
-            Global.FormLocationY = result.Top;
+            // プロフィール編集画面が開いている場合はKeepsizeで制御
+            if (WindowState != WindowState.Minimized && editor != null && editor.Keepsize && !IsInitialShow)
+            {
+                var result = WindowPlacementHelper.GetPlacement(this);
+                Global.FormLocationX = result.Left;
+                Global.FormLocationY = result.Top;
+            }
+            // 編集画面が開いていない場合は常に保存
+            else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
+            {
+                var result = WindowPlacementHelper.GetPlacement(this);
+                Global.FormLocationX = result.Left;
+                Global.FormLocationY = result.Top;
+            }
         }
 
         private void NotifyIcon_TrayMiddleMouseDown(object sender, RoutedEventArgs e)
@@ -1695,7 +1714,7 @@ Suspend support not enabled.", true);
             profDockPanel.Children.Remove(editor);
             profOptsToolbar.Visibility = Visibility.Visible;
             profilesListBox.Visibility = Visibility.Visible;
-            preserveSize = true;
+            // preserveSizeの操作は不要
             if (!editor.Keepsize)
             {
                 this.Width = oldSize.Width;
@@ -1705,7 +1724,6 @@ Suspend support not enabled.", true);
             {
                 oldSize = new Size(Width, Height);
             }
-
             editor = null;
             mainTabCon.SelectedIndex = 0;
             mainWinVM.FullTabsEnabled = true;
@@ -1725,7 +1743,7 @@ Suspend support not enabled.", true);
                 profilesListBox.Visibility = Visibility.Collapsed;
                 mainWinVM.FullTabsEnabled = false;
 
-                preserveSize = false;
+                // preserveSizeは常にtrue
                 oldSize.Width = Width;
                 oldSize.Height = Height;
                 if (this.Width < DEFAULT_PROFILE_EDITOR_WIDTH)

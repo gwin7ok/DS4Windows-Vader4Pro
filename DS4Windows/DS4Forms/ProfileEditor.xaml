@@ -36,13 +36,11 @@
             <Button x:Name="cancelBtn" Content="{lex:Loc Cancel}" Margin="10,0,0,0" Click="CancelBtn_Click" />
             <Button x:Name="applyBtn" Content="{lex:Loc Apply}" Margin="10,0,0,0" Click="ApplyBtn_Click" IsEnabled="False" />
             <Button x:Name="presetBtn" Content="Select Preset" Margin="10,0,0,0" Click="PresetBtn_Click" />
-            <Button x:Name="keepSizeBtn" Margin="10,0,0,0" Click="KeepSizeBtn_Click">
+            <CheckBox x:Name="keepSizeCheckBox" Margin="10,0,0,0" IsChecked="{Binding Keepsize, Mode=TwoWay}" Click="KeepSizeCheckBox_Click">
                 <StackPanel Orientation="Horizontal" Margin="0">
-                    <Image x:Name="sizeImage" Source="{Binding Source={StaticResource resourcesPaths}, Path=SizePNG}" Width="20" Height="20"/>
-                    <TextBlock x:Name="sizeMsg" Text="Keep this window size after closing" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="sizeMsg" Text="ウィンドウサイズを閉じた後も保持" Margin="4,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
-
-            </Button>
+            </CheckBox>
         </StackPanel>
     <!-- 左側領域 -->
     <TabControl x:Name="sidebarTabControl" Grid.Row="1" Grid.Column="0" SelectionChanged="SidebarTabControl_SelectionChanged">

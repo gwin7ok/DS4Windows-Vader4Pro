@@ -1180,13 +1180,9 @@ namespace DS4WinWPF.DS4Forms
             return result;
         }
 
-        private void KeepSizeBtn_Click(object sender, RoutedEventArgs e)
+        private void KeepSizeCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            SaveSplitterAndColumnWidths();
-            keepsize = true;
-            ImageSourceConverter c = new ImageSourceConverter();
-            sizeImage.Source =
-                c.ConvertFromString($"{Global.ASSEMBLY_RESOURCE_PREFIX}component/Resources/checked.png") as ImageSource;
+            keepsize = keepSizeCheckBox.IsChecked == true;
         }
 
         public void Close()
