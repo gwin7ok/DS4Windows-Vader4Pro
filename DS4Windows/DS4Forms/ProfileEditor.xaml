@@ -45,7 +45,7 @@
             </Button>
         </StackPanel>
     <!-- 左側領域 -->
-    <TabControl x:Name="sidebarTabControl" Width="480" Grid.Row="1" Grid.Column="0" SelectionChanged="SidebarTabControl_SelectionChanged">
+    <TabControl x:Name="sidebarTabControl" Width="Auto" Grid.Row="1" Grid.Column="0" SelectionChanged="SidebarTabControl_SelectionChanged">
             <TabItem Header="{lex:Loc Controls}">
                 <Grid Width="470">
                     <Grid.Background>
@@ -223,8 +223,8 @@
                 </Grid>
             </TabItem>
             <TabItem x:Name="specialActionsTab" Header="Special Actions">
-                <DockPanel x:Name="specialActionDockPanel">
-                    <Grid x:Name="baseSpeActPanel">
+                <DockPanel x:Name="specialActionDockPanel" HorizontalAlignment="Stretch" Width="Auto">
+                    <Grid x:Name="baseSpeActPanel" HorizontalAlignment="Stretch" Width="Auto">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
@@ -236,7 +236,7 @@
                             <Button Content="{lex:Loc ExportSpecialActions}" Margin="5 0 0 0" Click="ExportSpecialActions_OnClick"/>
                         </StackPanel>
 
-                        <ListView x:Name="specialActionsLV" ItemsSource="{Binding ActionCol}" SelectedIndex="{Binding SpecialActionIndex}" SelectedItem="{Binding CurrentSpecialActionItem,Mode=OneWayToSource}" Margin="0,0,0,0" Grid.Row="1">
+                        <ListView x:Name="specialActionsLV" ItemsSource="{Binding ActionCol}" SelectedIndex="{Binding SpecialActionIndex}" SelectedItem="{Binding CurrentSpecialActionItem,Mode=OneWayToSource}" Margin="0,0,0,0" Grid.Row="1" HorizontalAlignment="Stretch" Width="Auto">
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn Header="{lex:Loc Name}" Width="150">
@@ -250,7 +250,7 @@
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
                                     <GridViewColumn Header="{lex:Loc Trigger}" DisplayMemberBinding="{Binding Controls}" Width="100" />
-                                    <GridViewColumn Header="{lex:Loc Action}" DisplayMemberBinding="{Binding TypeName}" Width="200" />
+                                    <GridViewColumn Header="{lex:Loc Action}" DisplayMemberBinding="{Binding TypeName}" Width="Auto" />
                                 </GridView>
                             </ListView.View>
                         </ListView>
