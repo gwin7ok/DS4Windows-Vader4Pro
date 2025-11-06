@@ -62,7 +62,12 @@ Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/s
 
 ## Modifications in This Fork (gwin7ok)
 
-### v3.11.2 - Special Actions Stability & Initialization Improvements
+### v3.11.2 - Special Actions Profile Switching Bug Fix
+
+#### Critical Bug Fix
+- **Fixed Profile Switching Failure**: Resolved an issue where Special Actions for profile switching would fail to work if the action was not positioned at the end of the actions.xml file after DS4Windows startup
+
+### v3.11.1 - Custom Notification System & Profile Accuracy Fix
 
 #### Custom Notification Window System
 - **Independent Notification Display**: Profile changes now use a custom notification window instead of Windows Action Center
