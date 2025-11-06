@@ -48,9 +48,22 @@ jobs:
             gh release delete ${{ github.ref_name }} --yes --cleanup-tag
             Start-Sleep -Seconds 5
           }
-          # タグメッセージを取得してリリースノートに使用（git showで取得）
-          $tagMessage = git show ${{ github.ref_name }} --format=%B -s
-          gh release create ${{ github.ref_name }} --title "DS4Windows ${{ github.ref_name }}" --notes "$tagMessage"
+          # リリースノートを直接記述
+          $releaseNotes = @"
+## DS4Windows v3.11.2
+
+### Changes
+- Resolved an issue where Special Actions for profile switching would fail to work if the action was not positioned at the end of the actions.xml file after DS4Windows startup
+
+### Requirements
+- Windows 10 or newer
+- .NET 8.0 Desktop Runtime
+- Visual C++ 2015-2022 Redistributable
+- ViGEmBus driver
+
+Based on DS4Windows v3.10.0 with AhmedAmrNabil modifications.
+"@
+          gh release create ${{ github.ref_name }} --title "DS4Windows ${{ github.ref_name }} - Special Actions Profile Switching Bug Fix" --notes $releaseNotes
 
       - name: Restore dependencies
         run: dotnet restore
