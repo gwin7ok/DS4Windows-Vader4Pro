@@ -225,14 +225,18 @@
             <TabItem x:Name="specialActionsTab" Header="Special Actions">
                 <DockPanel x:Name="specialActionDockPanel">
                     <Grid x:Name="baseSpeActPanel">
-                        <UniformGrid Rows="1" Columns="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Grid.Row="0" VerticalAlignment="Top">
                             <Button x:Name="newActionBtn" Content="{lex:Loc NewAction}" Margin="0,0,5,0" Click="NewActionBtn_Click" />
                             <Button x:Name="editActionBtn" Content="{lex:Loc EditAction}" IsEnabled="{Binding ItemSelected}" Margin="5,0" Click="EditActionBtn_Click" />
                             <Button x:Name="removeActionBtn" Content="{lex:Loc RemoveAction}" IsEnabled="{Binding ItemSelected}" Margin="5,0,0,0" Click="RemoveActionBtn_Click" />
                             <Button Content="{lex:Loc ExportSpecialActions}" Margin="5 0 0 0" Click="ExportSpecialActions_OnClick"/>
-                        </UniformGrid>
+                        </StackPanel>
 
-                        <ListView x:Name="specialActionsLV" ItemsSource="{Binding ActionCol}" SelectedIndex="{Binding SpecialActionIndex}" SelectedItem="{Binding CurrentSpecialActionItem,Mode=OneWayToSource}" Margin="0,10,0,0">
+                        <ListView x:Name="specialActionsLV" ItemsSource="{Binding ActionCol}" SelectedIndex="{Binding SpecialActionIndex}" SelectedItem="{Binding CurrentSpecialActionItem,Mode=OneWayToSource}" Margin="0,0,0,0" Grid.Row="1">
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn Header="{lex:Loc Name}" Width="150">
