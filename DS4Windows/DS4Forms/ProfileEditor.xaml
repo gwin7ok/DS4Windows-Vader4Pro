@@ -18,8 +18,18 @@
         <local:ControlIndexCheck x:Key="controlIndexCheck" />
         <local:ResourcePaths x:Key="resourcesPaths" />
     </UserControl.Resources>
-    <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,4,0,10">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="480" MinWidth="300" />
+            <ColumnDefinition Width="6" /> <!-- Splitter -->
+            <ColumnDefinition Width="*" MinWidth="300" />
+        </Grid.ColumnDefinitions>
+        <!-- 上部ボタン類 -->
+        <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,4,0,10">
             <TextBlock Text="{lex:BLoc Profile, StringFormat='{}{0}:'}" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <TextBox x:Name="profileNameTxt" Text="" Width="160" VerticalContentAlignment="Center" />
             <Button x:Name="saveBtn" Content="{lex:Loc SaveProfile}" Margin="10,0,0,0" Click="SaveBtn_Click" />
@@ -34,7 +44,8 @@
 
             </Button>
         </StackPanel>
-        <TabControl x:Name="sidebarTabControl" Width="480" DockPanel.Dock="Left" SelectionChanged="SidebarTabControl_SelectionChanged">
+    <!-- 左側領域 -->
+    <TabControl x:Name="sidebarTabControl" Width="480" Grid.Row="1" Grid.Column="0" SelectionChanged="SidebarTabControl_SelectionChanged">
             <TabItem Header="{lex:Loc Controls}">
                 <Grid Width="470">
                     <Grid.Background>
@@ -213,15 +224,15 @@
             </TabItem>
             <TabItem x:Name="specialActionsTab" Header="Special Actions">
                 <DockPanel x:Name="specialActionDockPanel">
-                    <DockPanel x:Name="baseSpeActPanel" DockPanel.Dock="Top">
-                        <UniformGrid Rows="1" Columns="4" DockPanel.Dock="Top">
+                    <Grid x:Name="baseSpeActPanel">
+                        <UniformGrid Rows="1" Columns="4">
                             <Button x:Name="newActionBtn" Content="{lex:Loc NewAction}" Margin="0,0,5,0" Click="NewActionBtn_Click" />
                             <Button x:Name="editActionBtn" Content="{lex:Loc EditAction}" IsEnabled="{Binding ItemSelected}" Margin="5,0" Click="EditActionBtn_Click" />
                             <Button x:Name="removeActionBtn" Content="{lex:Loc RemoveAction}" IsEnabled="{Binding ItemSelected}" Margin="5,0,0,0" Click="RemoveActionBtn_Click" />
                             <Button Content="{lex:Loc ExportSpecialActions}" Margin="5 0 0 0" Click="ExportSpecialActions_OnClick"/>
                         </UniformGrid>
 
-                        <ListView x:Name="specialActionsLV" ItemsSource="{Binding ActionCol}" SelectedIndex="{Binding SpecialActionIndex}" SelectedItem="{Binding CurrentSpecialActionItem,Mode=OneWayToSource}" DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                        <ListView x:Name="specialActionsLV" ItemsSource="{Binding ActionCol}" SelectedIndex="{Binding SpecialActionIndex}" SelectedItem="{Binding CurrentSpecialActionItem,Mode=OneWayToSource}" Margin="0,10,0,0">
                             <ListView.View>
                                 <GridView>
                                     <GridViewColumn Header="{lex:Loc Name}" Width="150">
@@ -239,7 +250,7 @@
                                 </GridView>
                             </ListView.View>
                         </ListView>
-                    </DockPanel>
+                    </Grid>
                 </DockPanel>
             </TabItem>
             <TabItem x:Name="contReadingsTab" Header="Controller Readings" IsEnabled="False">
@@ -247,7 +258,10 @@
             </TabItem>
         </TabControl>
 
-        <TabControl x:Name="profileSettingsTabCon" DockPanel.Dock="Right" Margin="10,0,0,0" Padding="6">
+    <!-- 仕切り線（ドラッグ可能） -->
+    <GridSplitter Grid.Row="1" Grid.Column="1" Width="6" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" ShowsPreview="True" />
+    <!-- 右側領域 -->
+    <TabControl x:Name="profileSettingsTabCon" Grid.Row="1" Grid.Column="2" Margin="10,0,0,0" Padding="6">
             <TabControl.Resources>
                 <Thickness x:Key="spaceMargin" Bottom="8" />
             </TabControl.Resources>
@@ -2274,5 +2288,5 @@
 
             </TabItem>
         </TabControl>
-    </DockPanel>
+    </Grid>
 </UserControl>
