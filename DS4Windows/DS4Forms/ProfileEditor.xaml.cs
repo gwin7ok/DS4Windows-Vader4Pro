@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -107,7 +108,72 @@ namespace DS4WinWPF.DS4Forms
             inputTimer = new NonFormTimer(100);
             inputTimer.Elapsed += InputDS4;
             SetupEvents();
+
+            // --- 追加: 保存されたSplitter位置と列幅の復元 ---
+            RestoreSplitterAndColumnWidths();
         }
+        // --- 追加: Splitter位置とSpecial Actions列幅の保存・復元 ---
+        private const string LayoutSettingsFile = "ProfileEditorLayout.json";
+
+        private class ProfileEditorLayout
+        {
+            public double LeftColumnWidth { get; set; }
+            public double RightColumnWidth { get; set; }
+            public double NameColumnWidth { get; set; }
+            public double TriggerColumnWidth { get; set; }
+            public double ActionColumnWidth { get; set; }
+        }
+
+        private void SaveSplitterAndColumnWidths()
+        {
+            var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
+            if (grid == null || grid.ColumnDefinitions.Count < 3) return;
+
+            double leftWidth = grid.ColumnDefinitions[0].Width.Value;
+            double rightWidth = grid.ColumnDefinitions[2].Width.Value;
+
+            // Special Actions ListViewのGridViewColumn幅取得
+            var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
+            if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
+            {
+                var layout = new ProfileEditorLayout
+                {
+                    LeftColumnWidth = leftWidth,
+                    RightColumnWidth = rightWidth,
+                    NameColumnWidth = gridView.Columns[0].Width,
+                    TriggerColumnWidth = gridView.Columns[1].Width,
+                    ActionColumnWidth = gridView.Columns[2].Width
+                };
+                string json = JsonConvert.SerializeObject(layout, Formatting.Indented);
+                File.WriteAllText(LayoutSettingsFile, json);
+            }
+        }
+
+        private void RestoreSplitterAndColumnWidths()
+        {
+            if (!File.Exists(LayoutSettingsFile)) return;
+            try
+            {
+                string json = File.ReadAllText(LayoutSettingsFile);
+                var layout = JsonConvert.DeserializeObject<ProfileEditorLayout>(json);
+                var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
+                if (grid != null && grid.ColumnDefinitions.Count >= 3)
+                {
+                    grid.ColumnDefinitions[0].Width = new GridLength(layout.LeftColumnWidth);
+                    grid.ColumnDefinitions[2].Width = new GridLength(layout.RightColumnWidth);
+                }
+                var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
+                if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
+                {
+                    gridView.Columns[0].Width = layout.NameColumnWidth;
+                    gridView.Columns[1].Width = layout.TriggerColumnWidth;
+                    gridView.Columns[2].Width = layout.ActionColumnWidth;
+                }
+            }
+            catch { }
+        }
+
+        // ...既存のコード...
 
         private void PopulateGyroActionsTriggersMenu()
         {
@@ -1116,6 +1182,7 @@ namespace DS4WinWPF.DS4Forms
 
         private void KeepSizeBtn_Click(object sender, RoutedEventArgs e)
         {
+            SaveSplitterAndColumnWidths();
             keepsize = true;
             ImageSourceConverter c = new ImageSourceConverter();
             sizeImage.Source =

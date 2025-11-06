@@ -86,6 +86,8 @@
 		  <PrivateAssets>all</PrivateAssets>
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+		<PackageReference Include="Nefarius.ViGEm.Client" Version="1.21.256" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 		<PackageReference Include="NLog" Version="5.1.1" />
 		<!--<PackageReference Include="Nefarius.ViGEm.Client" Version="1.21.230" />-->
 		<PackageReference Include="Ookii.Dialogs.Wpf" Version="5.0.1" />
@@ -96,11 +98,11 @@
 		<PackageReference Include="WpfScreenHelper" Version="2.1.0" />
 
 		<Reference Include="FakerInputWrapper">
-			<HintPath>..\libs\$(Platform)\FakerInputWrapper\FakerInputWrapper.dll</HintPath>
+			<HintPath>G:\Cursor_Folder\DS4Windows-Vader4Pro\DS4Windows\libs\x64\FakerInputWrapper\FakerInputWrapper.dll</HintPath>
 		</Reference>
 
 		<Reference Include="SharpOSC">
-			<HintPath>..\libs\$(Platform)\SharpOSC\SharpOSC.dll</HintPath>
+			<HintPath>G:\Cursor_Folder\DS4Windows-Vader4Pro\DS4Windows\libs\x64\SharpOSC\SharpOSC.dll</HintPath>
 		</Reference>
 
 		<Reference Include="Nefarius.ViGEm.Client">
