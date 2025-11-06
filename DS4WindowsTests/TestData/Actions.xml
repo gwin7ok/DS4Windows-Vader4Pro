@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Test Actions Configuration for actionDone array regression tests -->
+
+<Actions>
+  <Action Name="TestAction_01_BatteryCheck">
+    <Trigger>L1/R2</Trigger>
+    <Type>BatteryCheck</Type>
+    <Details>|True|True|255|0|0|0|255|0</Details>
+  </Action>
+  <Action Name="TestAction_02_DisconnectBT">
+    <Trigger>PS/Down</Trigger>
+    <Type>DisconnectBT</Type>
+    <Details />
+  </Action>
+  <Action Name="TestAction_03_ProfileSwitch">
+    <Trigger>L2/PS</Trigger>
+    <Type>Profile</Type>
+    <Details>TestProfile</Details>
+  </Action>
+  <Action Name="TestAction_04_Macro">
+    <Trigger>PS/R2</Trigger>
+    <Type>Macro</Type>
+    <Details>162/160/36/36/160/162</Details>
+    <Extras>RunOnRelease</Extras>
+  </Action>
+  <Action Name="TestAction_05_Key">
+    <Trigger>L2/Up</Trigger>
+    <Type>Key</Type>
+    <Details>27</Details>
+  </Action>
+  <Action Name="TestAction_06_MultiAction">
+    <Trigger>PS</Trigger>
+    <Type>MultiAction</Type>
+    <Details>272/400/400/400/400/400/284/350/284/500/272,,</Details>
+  </Action>
+  <Action Name="TestAction_07_Program">
+    <Trigger>L1/L3</Trigger>
+    <Type>Program</Type>
+    <Details>C:\Windows\System32\notepad.exe</Details>
+    <Delay>0</Delay>
+  </Action>
+  <Action Name="TestAction_08_SpecialAtEnd">
+    <Trigger>R3/PS</Trigger>
+    <Type>Profile</Type>
+    <Details>EndProfile</Details>
+  </Action>
+</Actions>

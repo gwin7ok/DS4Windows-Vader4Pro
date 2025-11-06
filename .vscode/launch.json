@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug DS4Windows (x64)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-release-x64",
+            "program": "${workspaceFolder}/DS4Windows/bin/x64/Release/net8.0-windows/DS4Windows.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/DS4Windows/bin/x64/Release/net8.0-windows",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Launch DS4Windows (GitHub Actions Build x64)",
+            "type": "coreclr", 
+            "request": "launch",
+            "preLaunchTask": "build-release-like-github-x64",
+            "program": "${workspaceFolder}/bin/x64/Release/DS4Windows/DS4Windows.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/bin/x64/Release/DS4Windows",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Launch DS4Windows (GitHub Actions Build x86)",
+            "type": "coreclr",
+            "request": "launch", 
+            "preLaunchTask": "build-release-like-github-x86",
+            "program": "${workspaceFolder}/bin/x86/Release/DS4Windows/DS4Windows.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/bin/x86/Release/DS4Windows",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        }
+    ]
+}

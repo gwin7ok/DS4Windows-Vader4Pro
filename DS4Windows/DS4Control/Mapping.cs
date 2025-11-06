@@ -731,6 +731,10 @@ namespace DS4Windows
         public static DS4Color[] lastColor = new DS4Color[Global.MAX_DS4_CONTROLLER_COUNT];
         public static List<ActionState> actionDone = new List<ActionState>();
         public static SpecialAction[] untriggeraction = new SpecialAction[Global.MAX_DS4_CONTROLLER_COUNT];
+        
+        // ★新規追加: actionDone初期化状態管理
+        public static volatile bool actionDoneInitialized = false;
+        public static readonly object actionDoneLock = new object();
         public static DateTime[] nowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
         public static DateTime[] oldnowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
         public static int[] untriggerindex = new int[Global.MAX_DS4_CONTROLLER_COUNT] { -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -3959,14 +3963,157 @@ namespace DS4Windows
             return shift ? false : GetDS4CSetting(device, dc).actionType == DS4ControlSettings.ActionType.Default;
         }
 
+        /// <summary>
+        /// ★新規追加: actionDone配列を適切なサイズで初期化
+        /// Special Actions実行前に必ず呼び出す必要がある
+        /// </summary>
+        public static void InitializeActionDoneList()
+        {
+            lock (actionDoneLock)
+            {
+                if (actionDoneInitialized)
+                {
+                    return; // 既に初期化済み
+                }
+
+                try
+                {
+                    var actions = GetActions();
+                    int totalActionCount = actions.Count;
+                    
+                    // actionDoneリストをクリアして適切なサイズで初期化
+                    actionDone.Clear();
+                    
+                    for (int i = 0; i < totalActionCount; i++)
+                    {
+                        actionDone.Add(new ActionState());
+                    }
+                    
+                    actionDoneInitialized = true;
+                    
+                    AppLogger.LogToGui($"ActionDone list initialized with {totalActionCount} entries", false);
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogToGui($"Failed to initialize actionDone list: {ex.Message}", true);
+                    actionDoneInitialized = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// アクションリスト初期化完了待機メソッド
+        /// 
+        /// 動作フロー：
+        /// 1. 完了チェック：10msごとに初期化完了を確認
+        /// 2. 完了確認時：スペシャルアクション実行のためループを抜ける  
+        /// 3. 500msタイムアウト時：強制初期化を実行して先頭へループ
+        /// 4. 最大3回リトライ後：スペシャルアクション実行せず安全終了
+        /// </summary>
+        private static async Task<bool> EnsureActionDoneInitialized()
+        {
+            const int maxRetries = 3;        // 最大3回リトライループ
+            const int maxWaitTimeMs = 500;   // 各回最大500ms待機
+            const int checkIntervalMs = 10;  // 10msごとに完了チェック
+
+            for (int retry = 0; retry < maxRetries; retry++)
+            {
+                // ★Step A: 完了チェック（ループ先頭での確認）
+                if (actionDoneInitialized)
+                {
+                    if (retry > 0)
+                        AppLogger.LogToGui($"ActionDone initialization confirmed on retry {retry}", false);
+                    return true; // ★完了確認→スペシャルアクション実行へ
+                }
+
+                if (retry == 0)
+                {
+                    AppLogger.LogToGui("Waiting for ActionDone list initialization to complete...", false);
+                }
+                else
+                {
+                    AppLogger.LogToGui($"ActionDone initialization retry {retry}/{maxRetries}...", false);
+                }
+
+                // ★Step B: 10msごとの完了チェック（最大1秒間）
+                int elapsedMs = 0;
+                while (elapsedMs < maxWaitTimeMs)
+                {
+                    lock (actionDoneLock)
+                    {
+                        if (actionDoneInitialized)
+                        {
+                            AppLogger.LogToGui($"ActionDone initialization completed after {elapsedMs}ms wait (retry {retry})", false);
+                            return true; // ★完了確認→スペシャルアクション実行へ
+                        }
+                    }
+
+                    await Task.Delay(checkIntervalMs); // 10ms待機
+                    elapsedMs += checkIntervalMs;
+                }
+
+                // ★Step C: 500msタイムアウト→強制初期化実行
+                AppLogger.LogToGui($"ActionDone initialization timeout ({maxWaitTimeMs}ms). Attempting forced initialization (retry {retry + 1}/{maxRetries})...", false);
+                
+                try
+                {
+                    InitializeActionDoneList(); // 強制初期化実行
+                    
+                    if (actionDoneInitialized)
+                    {
+                        AppLogger.LogToGui($"Forced ActionDone initialization succeeded (retry {retry + 1})", false);
+                        // ★Step D: 先頭へループ（次の回で再度完了チェック）
+                    }
+                    else
+                    {
+                        AppLogger.LogToGui($"Forced ActionDone initialization failed (retry {retry + 1})", false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogToGui($"Failed to force ActionDone initialization (retry {retry + 1}): {ex.Message}", true);
+                }
+            }
+
+            // ★Step E: 3回リトライ完了→スペシャルアクション実行せず安全終了
+            AppLogger.LogToGui($"ActionDone initialization failed after {maxRetries} retries. Special Actions will be skipped for safety.", true);
+            return false;
+        }
+
         private static async void MapCustomAction(int device, DS4State cState, DS4State MappedState,
             DS4StateExposed eState, Mouse tp, ControlService ctrl, DS4StateFieldMapping fieldMapping, DS4StateFieldMapping outputfieldMapping)
         {
             /* TODO: This method is slow sauce. Find ways to speed up action execution */
+            
+            // ★ユーザー提案の完璧な実装: 
+            // - 10msごとの完了チェック
+            // - 完了確認時はスペシャルアクション実行でループ抜ける
+            // - 500msタイムアウト時は強制初期化して先頭ループ
+            // - 3回リトライ後はスペシャルアクション実行せず終了
+            bool initializationSucceeded = await EnsureActionDoneInitialized();
+            
+            if (!initializationSucceeded)
+            {
+                // 3回リトライ失敗→スペシャルアクション実行せずに終了
+                AppLogger.LogToGui("ActionDone initialization failed after all retries. Skipping Special Actions for safety.", true);
+                return;
+            }
+            
+            // 初期化完了→スペシャルアクション実行開始
+            
             try
             {
                 int actionDoneCount = actionDone.Count;
                 int totalActionCount = GetActions().Count;
+                
+                // ★新規追加: サイズチェック（安全確認）
+                if (actionDoneCount != totalActionCount)
+                {
+                    // 想定外の状態：ログ出力して処理をスキップ
+                    AppLogger.LogToGui($"ActionDone list size mismatch. Expected: {totalActionCount}, Actual: {actionDoneCount}", false);
+                    return;
+                }
+                
                 DS4StateFieldMapping previousFieldMapping = null;
                 List<string> profileActions = getProfileActions(device);
                 //foreach (string actionname in profileActions)
@@ -3980,15 +4127,12 @@ namespace DS4Windows
                     SpecialAction action = GetProfileAction(device, actionname);
                     int index = GetProfileActionIndexOf(device, actionname);
 
-                    if (actionDoneCount < index + 1)
+                    // ★削除: 動的拡張処理を除去（事前初期化により不要）
+                    // 安全チェックのみ実行
+                    if (index < 0 || index >= actionDoneCount)
                     {
-                        actionDone.Add(new ActionState());
-                        actionDoneCount++;
-                    }
-                    else if (actionDoneCount > totalActionCount)
-                    {
-                        actionDone.RemoveAt(actionDoneCount - 1);
-                        actionDoneCount--;
+                        AppLogger.LogToGui($"Invalid action index for '{actionname}': {index}. ActionDone count: {actionDoneCount}", false);
+                        continue;
                     }
 
                     if (action == null)

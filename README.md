@@ -62,7 +62,7 @@ Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/s
 
 ## Modifications in This Fork (gwin7ok)
 
-### v3.11.1 - Custom Notification System & Profile Accuracy Fix
+### v3.11.2 - Special Actions Stability & Initialization Improvements
 
 #### Custom Notification Window System
 - **Independent Notification Display**: Profile changes now use a custom notification window instead of Windows Action Center

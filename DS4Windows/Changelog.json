@@ -1,9 +1,37 @@
 {
-  "latest_version": "3.11.1",
-  "latest_version_number_info": {"majorPart": 3, "minorPart": 11, "buildPart": 1},
-  "updated_at": "2025-01-05T00:00:00+0000",
+  "latest_version": "3.11.2",
+  "latest_version_number_info": {"majorPart": 3, "minorPart": 11, "buildPart": 2},
+  "updated_at": "2025-11-06T00:00:00+0000",
   "changelog": {
     "versions": [
+    {
+      "version_str": "3.11.2",
+      "version_number_info": {"majorPart": 3, "minorPart": 11, "buildPart": 2},
+      "base_header": "Version 3.11.2",
+      "release_date": "2025-11-06T00:00:00+0000",
+      "locales": [
+        {
+          "code": "en", 
+          "header": "Version 3.11.2",
+          "log_text": [
+            "* Fixed Special Action profile switching failure when action is not at the end of actions.xml file after DS4Windows startup"
+          ],
+          "editor": "gwin7ok",
+          "editors_note": ["Fixed Special Action profile switching bug"],
+          "updated_at": "2025-11-06T00:00:00+0000"
+        },
+        {
+          "code": "ja",
+          "header": "Version 3.11.2", 
+          "log_text": [
+            "* DS4Windows起動後、actions.xmlの最後ではない場所に登録されているスペシャルアクションでプロフィール切り替えを行った場合、機能停止する不具合を修正"
+          ],
+          "editor": "gwin7ok", 
+          "editors_note": ["スペシャルアクションによるプロファイル切り替え不具合の修正"],
+          "updated_at": "2025-11-06T00:00:00+0000"
+        }
+      ]
+    },
     {
       "version_str": "3.11.1",
       "version_number_info": {"majorPart": 3, "minorPart": 11, "buildPart": 1},

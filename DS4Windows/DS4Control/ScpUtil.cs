@@ -2715,22 +2715,19 @@ namespace DS4Windows
             m_Config.SaveActionNew(name, controls, mode, details, edit, delayTime, extras);
             //m_Config.SaveAction(name, controls, mode, details, edit, extras);
             //m_Config.SaveActions();
-            Mapping.actionDone.Clear();
-            Mapping.actionDone.Add(new Mapping.ActionState());
+            Mapping.InitializeActionDoneList();
         }
 
         public static void SaveActions()
         {
             m_Config.SaveActions();
-            Mapping.actionDone.Clear();
-            Mapping.actionDone.Add(new Mapping.ActionState());
+            Mapping.InitializeActionDoneList();
         }
 
         public static void RemoveAction(string name)
         {
             m_Config.RemoveAction(name);
-            Mapping.actionDone.Clear();
-            Mapping.actionDone.Add(new Mapping.ActionState());
+            Mapping.InitializeActionDoneList();
         }
 
         public static bool LoadActions() => m_Config.LoadActions();
@@ -8779,6 +8776,13 @@ namespace DS4Windows
             {
                 actions.Add(new SpecialAction("Disconnect Controller", "PS/Options", "DisconnectBT", "0"));
                 loaded = SaveActions();
+                
+                // ★新規追加: デフォルトアクション用のactionDone初期化
+                if (loaded)
+                {
+                    Mapping.InitializeActionDoneList();
+                }
+                
                 return loaded;
             }
 
@@ -8798,6 +8802,12 @@ namespace DS4Windows
             {
                 AppLogger.LogToGui($"Actions.xml could not be read. Invalid XML syntax. {e.InnerException.Message}", false);
                 loaded = false;
+            }
+
+            // ★新規追加: XMLからの読み込み完了後にactionDone初期化
+            if (loaded)
+            {
+                Mapping.InitializeActionDoneList();
             }
 
             return loaded;
