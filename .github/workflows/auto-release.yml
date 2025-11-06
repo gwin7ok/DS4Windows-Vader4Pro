@@ -48,8 +48,8 @@ jobs:
             gh release delete ${{ github.ref_name }} --yes --cleanup-tag
             Start-Sleep -Seconds 5
           }
-          # タグメッセージを取得してリリースノートに使用
-          $tagMessage = git tag -l --format='%(contents)' ${{ github.ref_name }}
+          # タグメッセージを取得してリリースノートに使用（git showで取得）
+          $tagMessage = git show ${{ github.ref_name }} --format=%B -s
           gh release create ${{ github.ref_name }} --title "DS4Windows ${{ github.ref_name }}" --notes "$tagMessage"
 
       - name: Restore dependencies
