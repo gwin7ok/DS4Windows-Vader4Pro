@@ -112,17 +112,7 @@ namespace DS4WinWPF.DS4Forms
             // --- 追加: 保存されたSplitter位置と列幅の復元 ---
             RestoreSplitterAndColumnWidths();
         }
-        // --- 追加: Splitter位置とSpecial Actions列幅の保存・復元 ---
-        private const string LayoutSettingsFile = "ProfileEditorLayout.json";
-
-        private class ProfileEditorLayout
-        {
-            public double LeftColumnWidth { get; set; }
-            public double RightColumnWidth { get; set; }
-            public double NameColumnWidth { get; set; }
-            public double TriggerColumnWidth { get; set; }
-            public double ActionColumnWidth { get; set; }
-        }
+        // Splitter位置とSpecial Actions列幅の保存・復元はGlobal経由で統一
 
         private void SaveSplitterAndColumnWidths()
         {
@@ -136,41 +126,31 @@ namespace DS4WinWPF.DS4Forms
             var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
             if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
             {
-                var layout = new ProfileEditorLayout
-                {
-                    LeftColumnWidth = leftWidth,
-                    RightColumnWidth = rightWidth,
-                    NameColumnWidth = gridView.Columns[0].Width,
-                    TriggerColumnWidth = gridView.Columns[1].Width,
-                    ActionColumnWidth = gridView.Columns[2].Width
-                };
-                string json = JsonConvert.SerializeObject(layout, Formatting.Indented);
-                File.WriteAllText(LayoutSettingsFile, json);
+                // Global経由で保存
+                Global.ProfileEditorLeftWidth = (int)leftWidth;
+                Global.ProfileEditorRightWidth = (int)rightWidth;
+                Global.SpecialActionNameColWidth = (int)gridView.Columns[0].Width;
+                Global.SpecialActionTriggerColWidth = (int)gridView.Columns[1].Width;
+                Global.SpecialActionDetailColWidth = (int)gridView.Columns[2].Width;
+                // 必要なら他の列も追加
             }
         }
 
         private void RestoreSplitterAndColumnWidths()
         {
-            if (!File.Exists(LayoutSettingsFile)) return;
-            try
+            var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
+            if (grid != null && grid.ColumnDefinitions.Count >= 3)
             {
-                string json = File.ReadAllText(LayoutSettingsFile);
-                var layout = JsonConvert.DeserializeObject<ProfileEditorLayout>(json);
-                var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
-                if (grid != null && grid.ColumnDefinitions.Count >= 3)
-                {
-                    grid.ColumnDefinitions[0].Width = new GridLength(layout.LeftColumnWidth);
-                    grid.ColumnDefinitions[2].Width = GridLength.Auto;
-                }
-                var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
-                if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
-                {
-                    gridView.Columns[0].Width = layout.NameColumnWidth;
-                    gridView.Columns[1].Width = layout.TriggerColumnWidth;
-                    gridView.Columns[2].Width = layout.ActionColumnWidth;
-                }
+                grid.ColumnDefinitions[0].Width = new GridLength(Global.ProfileEditorLeftWidth);
+                grid.ColumnDefinitions[2].Width = new GridLength(Global.ProfileEditorRightWidth);
             }
-            catch { }
+            var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
+            if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
+            {
+                gridView.Columns[0].Width = Global.SpecialActionNameColWidth;
+                gridView.Columns[1].Width = Global.SpecialActionTriggerColWidth;
+                gridView.Columns[2].Width = Global.SpecialActionDetailColWidth;
+            }
         }
 
         // ...既存のコード...

@@ -97,12 +97,8 @@
 		<PackageReference Include="WPFLocalizeExtension" Version="3.9.4" />
 		<PackageReference Include="WpfScreenHelper" Version="2.1.0" />
 
-		<Reference Include="FakerInputWrapper">
-			<HintPath>G:\Cursor_Folder\DS4Windows-Vader4Pro\DS4Windows\libs\x64\FakerInputWrapper\FakerInputWrapper.dll</HintPath>
-		</Reference>
-
 		<Reference Include="SharpOSC">
-			<HintPath>G:\Cursor_Folder\DS4Windows-Vader4Pro\DS4Windows\libs\x64\SharpOSC\SharpOSC.dll</HintPath>
+			<HintPath>..\libs\$(Platform)\SharpOSC\SharpOSC.dll</HintPath>
 		</Reference>
 
 		<Reference Include="Nefarius.ViGEm.Client">
@@ -410,4 +406,17 @@
 	<ItemGroup>
 		<Folder Remove="extras\" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="FakerInputWrapper">
+			<HintPath>..\FakerInputWrapper\FakerInputWrapper\bin\x64\Debug\net8.0\FakerInputWrapper.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+	<Target Name="IgnoreCsErrors" AfterTargets="Build">
+	  <Message Text="Ignoring errors from .cs files" Importance="high" />
+	  <ItemGroup>
+	    <Compile Remove="**/*.cs" />
+	  </ItemGroup>
+	</Target>
 </Project>

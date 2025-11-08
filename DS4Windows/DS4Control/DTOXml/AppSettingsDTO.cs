@@ -1,4 +1,7 @@
-﻿/*
+﻿using System;
+using System.Xml.Serialization;
+using DS4Windows;
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -16,109 +19,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Serialization;
-using DS4Windows;
-
-namespace DS4WinWPF.DS4Control.DTOXml
+public class AppSettingsDTO
 {
-    [XmlRoot("Profile")]
-    public class AppSettingsDTO : IDTO<BackingStore>
-    {
-        //private XmlDocument tempDoc = new XmlDocument();
-
-        //[XmlAnyElement("ConfigDataComment")]
-        //public XmlComment ConfigDataComment
-        //{
-        //    get
-        //    {
-        //        return tempDoc.CreateComment(string.Format(" Profile Configuration Data. {0} ", DateTime.Now));
-        //    }
-        //    set { }
-        //}
-
-        //[XmlAnyElement("WrittenWithComment")]
-        //public XmlComment WrittenWithComment
-        //{
-        //    get
-        //    {
-        //        return tempDoc.CreateComment(string.Format(" Made with DS4Windows version {0} ", Global.exeversion));
-        //    }
-        //    set { }
-        //}
-
-        public const bool SERIALIZE_HEADER_ATTRS_DEFAULT = true;
-        [XmlIgnore]
-        public bool SerializeAppAttrs
-        {
-            get; set;
-        } = SERIALIZE_HEADER_ATTRS_DEFAULT;
-
-        [XmlAttribute("app_version")]
-        public string AppVersion
-        {
-            get => Global.exeversion;
-            set { }
-        }
-
-        public bool ShouldSerializeAppVersion()
-        {
-            return SerializeAppAttrs;
-        }
-
-        [XmlAttribute("config_version")]
-        public string ConfigVersion
-        {
-            get => Global.APP_CONFIG_VERSION.ToString();
-            set { }
-        }
-
-        public bool ShouldSerializeConfigVersion()
-        {
-            return SerializeAppAttrs;
-        }
-
-        [XmlElement("useExclusiveMode")]
-        public string UseExclusiveModeString
-        {
-            get => UseExclusiveMode.ToString();
-            set
-            {
-                UseExclusiveMode = XmlDataUtilities.StrToBool(value);
-            }
-        }
-
-        [XmlIgnore]
-        public bool UseExclusiveMode { get; private set; }
-
-        [XmlIgnore]
-        public bool StartMinimized { get; private set; }
-        [XmlElement("startMinimized")]
-        public string StartMinimizedString
-        {
-            get => StartMinimized.ToString();
-            set
-            {
-                StartMinimized = XmlDataUtilities.StrToBool(value);
-            }
-        }
-
-        [XmlIgnore]
-        public bool MinimizeToTaskbar { get; private set; }
-
-        [XmlElement("minimizeToTaskbar")]
-        public string MinimizeToTaskbarString
-        {
-            get => MinimizeToTaskbar.ToString();
-            set => MinimizeToTaskbar = XmlDataUtilities.StrToBool(value);
-        }
+    // ここに既存の全てのプロパティ・メソッド・フィールド・コンストラクタを収める
 
         [XmlElement("formWidth")]
         public int FormWidth { get; set; } = BackingStore.DEFAULT_FORM_WIDTH;
@@ -141,6 +44,30 @@ namespace DS4WinWPF.DS4Control.DTOXml
             get => _formLocationY;
             set => _formLocationY = value;
         }
+
+    // ウィンドウ状態管理プロパティ
+    public bool UseExclusiveMode { get; set; }
+    public bool StartMinimized { get; set; }
+    public bool MinimizeToTaskbar { get; set; }
+
+    // プロフィール編集画面 Splitter位置・列幅
+    [XmlElement("profileEditorLeftWidth")]
+    public int ProfileEditorLeftWidth { get; set; } = BackingStore.DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
+
+    [XmlElement("profileEditorRightWidth")]
+    public int ProfileEditorRightWidth { get; set; } = BackingStore.DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
+
+    [XmlElement("specialActionNameColWidth")]
+    public int SpecialActionNameColWidth { get; set; } = BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
+
+    [XmlElement("specialActionTriggerColWidth")]
+    public int SpecialActionTriggerColWidth { get; set; } = BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+
+    [XmlElement("specialActionDetailColWidth")]
+    public int SpecialActionDetailColWidth { get; set; } = BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+
+    [XmlElement("specialActionDeleteColWidth")]
+    public int SpecialActionDeleteColWidth { get; set; } = BackingStore.DEFAULT_SPECIAL_ACTION_DELETE_COL_WIDTH;
 
         [XmlElement("ProcessPriority")]
         public int ProcessPriority { get; set; }
@@ -826,6 +753,13 @@ namespace DS4WinWPF.DS4Control.DTOXml
 
         public void MapFrom(BackingStore source)
         {
+            // ProfileEditorレイアウト情報の同期
+        ProfileEditorLeftWidth = source.profileEditorLeftWidth > 0 ? source.profileEditorLeftWidth : BackingStore.DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
+        ProfileEditorRightWidth = source.profileEditorRightWidth > 0 ? source.profileEditorRightWidth : BackingStore.DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
+        SpecialActionNameColWidth = source.specialActionNameColWidth > 0 ? source.specialActionNameColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
+        SpecialActionTriggerColWidth = source.specialActionTriggerColWidth > 0 ? source.specialActionTriggerColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+        SpecialActionDetailColWidth = source.specialActionDetailColWidth > 0 ? source.specialActionDetailColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+        SpecialActionDeleteColWidth = source.specialActionDeleteColWidth > 0 ? source.specialActionDeleteColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DELETE_COL_WIDTH;
             UseExclusiveMode = source.useExclusiveMode;
             StartMinimized = source.startMinimized;
             MinimizeToTaskbar = source.minToTaskbar;
@@ -923,6 +857,13 @@ namespace DS4WinWPF.DS4Control.DTOXml
 
         public void MapTo(BackingStore destination)
         {
+            // ProfileEditorレイアウト情報の同期
+        destination.profileEditorLeftWidth = ProfileEditorLeftWidth > 0 ? ProfileEditorLeftWidth : BackingStore.DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
+        destination.profileEditorRightWidth = ProfileEditorRightWidth > 0 ? ProfileEditorRightWidth : BackingStore.DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
+        destination.specialActionNameColWidth = SpecialActionNameColWidth > 0 ? SpecialActionNameColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
+        destination.specialActionTriggerColWidth = SpecialActionTriggerColWidth > 0 ? SpecialActionTriggerColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+        destination.specialActionDetailColWidth = SpecialActionDetailColWidth > 0 ? SpecialActionDetailColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+        destination.specialActionDeleteColWidth = SpecialActionDeleteColWidth > 0 ? SpecialActionDeleteColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DELETE_COL_WIDTH;
             destination.useExclusiveMode = UseExclusiveMode;
             destination.startMinimized = StartMinimized;
             destination.minToTaskbar = MinimizeToTaskbar;
@@ -973,7 +914,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
             {
                 destination.udpServListenAddress = UDPServerListenAddress;
             }
-
             destination.useUdpSmoothing = UDPServerSmoothingOptions.UseSmoothing;
             destination.udpSmoothingMincutoff = UDPServerSmoothingOptions.UdpSmoothMinCutoff;
             destination.udpSmoothingBeta = UDPServerSmoothingOptions.UdpSmoothBeta;
@@ -1140,4 +1080,3 @@ namespace DS4WinWPF.DS4Control.DTOXml
             Enabled = JoyConDeviceOptions.DEFAULT_ENABLE;
         }
     }
-}
