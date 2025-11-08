@@ -114,6 +114,28 @@ namespace DS4WinWPF.DS4Forms
         }
         // Splitter位置とSpecial Actions列幅の保存・復元はGlobal経由で統一
 
+        // ウィンドウサイズ初期化ボタンのクリックイベント
+        private void WindowSizeResetBtn_Click(object sender, RoutedEventArgs e)
+        {
+            // 初期値にリセット（左右領域・列幅）
+            Global.ProfileEditorLeftWidth = BackingStore.DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
+            Global.ProfileEditorRightWidth = BackingStore.DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
+            Global.SpecialActionNameColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
+            Global.SpecialActionTriggerColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+            Global.SpecialActionDetailColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+
+            // ウィンドウ自体のサイズも初期値にリセット（ポジションは変更しない）
+            var win = Window.GetWindow(this);
+            if (win != null)
+            {
+                win.Width = 1000;
+                win.Height = 550;
+            }
+
+            // UIにも即時反映
+            RestoreSplitterAndColumnWidths();
+        }
+
         private void SaveSplitterAndColumnWidths()
         {
             var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
