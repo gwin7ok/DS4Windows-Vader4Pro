@@ -138,19 +138,41 @@ namespace DS4WinWPF.DS4Forms
 
         private void RestoreSplitterAndColumnWidths()
         {
-            var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
-            if (grid != null && grid.ColumnDefinitions.Count >= 3)
+            try
             {
-                grid.ColumnDefinitions[0].Width = new GridLength(Global.ProfileEditorLeftWidth);
-                grid.ColumnDefinitions[2].Width = new GridLength(Global.ProfileEditorRightWidth);
+                var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
+                if (grid != null && grid.ColumnDefinitions.Count >= 3)
+                {
+                    double left = Global.ProfileEditorLeftWidth;
+                    double right = Global.ProfileEditorRightWidth;
+                    if (IsValidWidth(left))
+                        grid.ColumnDefinitions[0].Width = new GridLength(left);
+                    if (IsValidWidth(right))
+                        grid.ColumnDefinitions[2].Width = new GridLength(right);
+                }
+                var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
+                if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
+                {
+                    double nameW = Global.SpecialActionNameColWidth;
+                    double trigW = Global.SpecialActionTriggerColWidth;
+                    double detailW = Global.SpecialActionDetailColWidth;
+                    if (IsValidWidth(nameW))
+                        gridView.Columns[0].Width = nameW;
+                    if (IsValidWidth(trigW))
+                        gridView.Columns[1].Width = trigW;
+                    if (IsValidWidth(detailW))
+                        gridView.Columns[2].Width = detailW;
+                }
             }
-            var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
-            if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
+            catch (Exception ex)
             {
-                gridView.Columns[0].Width = Global.SpecialActionNameColWidth;
-                gridView.Columns[1].Width = Global.SpecialActionTriggerColWidth;
-                gridView.Columns[2].Width = Global.SpecialActionDetailColWidth;
+                // ログ出力やデフォルト値復元など（必要なら）
             }
+        }
+
+        private bool IsValidWidth(double w)
+        {
+            return !double.IsNaN(w) && !double.IsInfinity(w) && w > 0.0 && w < 10000.0;
         }
 
         // ...既存のコード...
@@ -1167,12 +1189,18 @@ namespace DS4WinWPF.DS4Forms
 
         public void Close()
         {
-            if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
-            }
+        if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+        {
+            App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
+        }
 
-            Closed?.Invoke(this, EventArgs.Empty);
+        // 画面サイズ保持チェックが有効な場合のみレイアウト保存
+        if (keepsize)
+        {
+            SaveSplitterAndColumnWidths();
+        }
+
+        Closed?.Invoke(this, EventArgs.Empty);
         }
 
         private void ColorByBatteryPerCk_Click(object sender, RoutedEventArgs e)
@@ -1683,6 +1711,11 @@ namespace DS4WinWPF.DS4Forms
         }
         private void ProfileEditor_Closed(object sender, EventArgs e)
         {
+            // 画面サイズ保持チェックが有効な場合のみレイアウト保存
+            if (keepsize)
+            {
+                SaveSplitterAndColumnWidths();
+            }
             profileSettingsVM.UseControllerReadout = false;
             inputTimer.Stop();
             conReadingsUserCon.EnableControl(false);
