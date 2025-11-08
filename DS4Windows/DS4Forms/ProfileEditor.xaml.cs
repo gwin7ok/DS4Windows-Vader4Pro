@@ -125,11 +125,26 @@ namespace DS4WinWPF.DS4Forms
             Global.SpecialActionDetailColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
 
             // ウィンドウ自体のサイズも初期値にリセット（ポジションは変更しない）
+            Global.FormWidth = BackingStore.DEFAULT_FORM_WIDTH;
+            Global.FormHeight = BackingStore.DEFAULT_FORM_HEIGHT;
+
             var win = Window.GetWindow(this);
             if (win != null)
             {
-                win.Width = 1000;
-                win.Height = 550;
+                var source = System.Windows.PresentationSource.FromVisual(win);
+                if (source?.CompositionTarget != null)
+                {
+                    var m = source.CompositionTarget.TransformToDevice;
+                    double dpiX = m.M11;
+                    double dpiY = m.M22;
+                    win.Width = BackingStore.DEFAULT_FORM_WIDTH / dpiX;
+                    win.Height = BackingStore.DEFAULT_FORM_HEIGHT / dpiY;
+                }
+                else
+                {
+                    win.Width = BackingStore.DEFAULT_FORM_WIDTH;
+                    win.Height = BackingStore.DEFAULT_FORM_HEIGHT;
+                }
             }
 
             // UIにも即時反映

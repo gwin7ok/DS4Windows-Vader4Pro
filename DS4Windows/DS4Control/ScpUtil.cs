@@ -3416,11 +3416,11 @@ namespace DS4Windows
     public class BackingStore
     {
     // ProfileEditor layout fields (DTOと統合)
-    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = 480;
-    public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = 480;
-    public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = 150;
-    public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = 100;
-    public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = 200;
+    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = 720;
+    public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = 600;
+    public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = 310;
+    public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = 150;
+    public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = 220;
     // SpecialActionDeleteColWidth 定数削除
 
     public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
@@ -3841,11 +3841,11 @@ namespace DS4Windows
           new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER }, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER}, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER } };
         public Boolean useExclusiveMode = false; // Re-enable Ex Mode
 
-        public const int DEFAULT_FORM_WIDTH = 782;
-        public int formWidth = DEFAULT_FORM_WIDTH;
+    public const int DEFAULT_FORM_WIDTH = 1720;
+    public int formWidth = DEFAULT_FORM_WIDTH;
 
-        public const int DEFAULT_FORM_HEIGHT = 550;
-        public int formHeight = DEFAULT_FORM_HEIGHT;
+    public const int DEFAULT_FORM_HEIGHT = 1270;
+    public int formHeight = DEFAULT_FORM_HEIGHT;
         public int formLocationX = 0;
         public int formLocationY = 0;
         public Boolean startMinimized = false;
