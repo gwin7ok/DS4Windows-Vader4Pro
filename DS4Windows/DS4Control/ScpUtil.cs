@@ -3841,7 +3841,7 @@ namespace DS4Windows
           new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER }, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER}, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER } };
         public Boolean useExclusiveMode = false; // Re-enable Ex Mode
 
-    public const int DEFAULT_FORM_WIDTH = 1720;
+    public const int DEFAULT_FORM_WIDTH = 1700;
     public int formWidth = DEFAULT_FORM_WIDTH;
 
     public const int DEFAULT_FORM_HEIGHT = 1270;

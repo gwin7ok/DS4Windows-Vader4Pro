@@ -24,7 +24,7 @@ public class AppSettingsDTO
     // ここに既存の全てのプロパティ・メソッド・フィールド・コンストラクタを収める
 
         [XmlElement("formWidth")]
-        public int FormWidth { get; set; } = BackingStore.DEFAULT_FORM_WIDTH;
+    public int FormWidth { get; set; } = BackingStore.DEFAULT_FORM_WIDTH;
 
         [XmlElement("formHeight")]
         public int FormHeight { get; set; } = BackingStore.DEFAULT_FORM_HEIGHT;
