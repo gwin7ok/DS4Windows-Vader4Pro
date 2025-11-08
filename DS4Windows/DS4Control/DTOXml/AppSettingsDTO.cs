@@ -66,8 +66,6 @@ public class AppSettingsDTO
     [XmlElement("specialActionDetailColWidth")]
     public int SpecialActionDetailColWidth { get; set; } = BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
 
-    [XmlElement("specialActionDeleteColWidth")]
-    public int SpecialActionDeleteColWidth { get; set; } = BackingStore.DEFAULT_SPECIAL_ACTION_DELETE_COL_WIDTH;
 
         [XmlElement("ProcessPriority")]
         public int ProcessPriority { get; set; }
@@ -759,7 +757,6 @@ public class AppSettingsDTO
         SpecialActionNameColWidth = source.specialActionNameColWidth > 0 ? source.specialActionNameColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
         SpecialActionTriggerColWidth = source.specialActionTriggerColWidth > 0 ? source.specialActionTriggerColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
         SpecialActionDetailColWidth = source.specialActionDetailColWidth > 0 ? source.specialActionDetailColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
-        SpecialActionDeleteColWidth = source.specialActionDeleteColWidth > 0 ? source.specialActionDeleteColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DELETE_COL_WIDTH;
             UseExclusiveMode = source.useExclusiveMode;
             StartMinimized = source.startMinimized;
             MinimizeToTaskbar = source.minToTaskbar;
@@ -863,7 +860,6 @@ public class AppSettingsDTO
         destination.specialActionNameColWidth = SpecialActionNameColWidth > 0 ? SpecialActionNameColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
         destination.specialActionTriggerColWidth = SpecialActionTriggerColWidth > 0 ? SpecialActionTriggerColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
         destination.specialActionDetailColWidth = SpecialActionDetailColWidth > 0 ? SpecialActionDetailColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
-        destination.specialActionDeleteColWidth = SpecialActionDeleteColWidth > 0 ? SpecialActionDeleteColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DELETE_COL_WIDTH;
             destination.useExclusiveMode = UseExclusiveMode;
             destination.startMinimized = StartMinimized;
             destination.minToTaskbar = MinimizeToTaskbar;

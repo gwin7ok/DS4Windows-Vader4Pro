@@ -550,11 +550,7 @@ namespace DS4Windows
             set { m_Config.specialActionDetailColWidth = value; }
             get { return m_Config.specialActionDetailColWidth; }
         }
-        public static int SpecialActionDeleteColWidth
-        {
-            set { m_Config.specialActionDeleteColWidth = value; }
-            get { return m_Config.specialActionDeleteColWidth; }
-        }
+        // SpecialActionDeleteColWidth 削除
 
         public const int MAX_DS4_CONTROLLER_COUNT = 8;
         public const int TEST_PROFILE_ITEM_COUNT = MAX_DS4_CONTROLLER_COUNT + 1;
@@ -3426,14 +3422,14 @@ namespace DS4Windows
     public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = 150;
     public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = 100;
     public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = 200;
-    public const int DEFAULT_SPECIAL_ACTION_DELETE_COL_WIDTH = 60;
+    // SpecialActionDeleteColWidth 定数削除
 
     public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
     public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
     public int specialActionNameColWidth = DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
     public int specialActionTriggerColWidth = DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
     public int specialActionDetailColWidth = DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
-    public int specialActionDeleteColWidth = DEFAULT_SPECIAL_ACTION_DELETE_COL_WIDTH;
+    // SpecialActionDeleteColWidth フィールド削除
         public const double DEFAULT_UDP_SMOOTH_MINCUTOFF = 0.4;
         public const double DEFAULT_UDP_SMOOTH_BETA = 0.2;
         // Use 15 minutes for default Idle Disconnect when initially enabling the option
