@@ -1723,6 +1723,11 @@ Suspend support not enabled.", true);
             else
             {
                 oldSize = new Size(Width, Height);
+                var result = WindowPlacementHelper.GetPlacement(this);
+                Global.FormWidth = result.Right - result.Left;
+                Global.FormHeight = result.Bottom - result.Top;
+                Global.FormLocationX = result.Left;
+                Global.FormLocationY = result.Top;
             }
             editor = null;
             mainTabCon.SelectedIndex = 0;

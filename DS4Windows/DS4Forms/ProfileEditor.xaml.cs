@@ -1221,7 +1221,8 @@ namespace DS4WinWPF.DS4Forms
 
         private void KeepSizeCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            keepsize = keepSizeCheckBox.IsChecked == true;
+            var checkBox = sender as System.Windows.Controls.CheckBox;
+            keepsize = checkBox != null && checkBox.IsChecked == true;
         }
 
         public void Close()
