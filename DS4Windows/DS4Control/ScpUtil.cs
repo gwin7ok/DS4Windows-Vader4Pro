@@ -523,6 +523,8 @@ namespace DS4Windows
 
     public class Global
     {
+        // プロファイル切り替え時の無効アクション名エラーログ抑制用
+        public static HashSet<string> loggedInvalidActions = new HashSet<string>();
         // ProfileEditor layout properties (統合管理)
         public static int ProfileEditorLeftWidth
         {
@@ -2859,6 +2861,7 @@ namespace DS4Windows
         public static bool LoadProfile(int device, bool launchprogram, ControlService control,
             bool xinputChange = true, bool postLoad = true)
         {
+            Global.loggedInvalidActions.Clear();
             bool result = m_Config.LoadProfileNew(device, launchprogram, control, "", xinputChange, postLoad);
             //bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
             tempprofilename[device] = string.Empty;
@@ -2871,6 +2874,7 @@ namespace DS4Windows
         public static bool LoadTempProfile(int device, string name, bool launchprogram,
             ControlService control, bool xinputChange = true)
         {
+            Global.loggedInvalidActions.Clear();
             bool result = m_Config.LoadProfileNew(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
             //bool result = m_Config.LoadProfile(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
             if (result)
@@ -5275,6 +5279,8 @@ namespace DS4Windows
         public bool LoadProfileNew(int device, bool launchprogram, ControlService control,
             string propath = "", bool xinputChange = true, bool postLoad = true)
         {
+            // プロファイル切り替え時にエラーログ履歴をクリア
+            // Global.loggedInvalidActions.Clear(); // 外部からの切り替え時のみクリアする
             bool loaded = true;
 
             bool migratePerformed = false;
@@ -5373,8 +5379,19 @@ namespace DS4Windows
                 profileActionIndexDict[device].Clear();
                 foreach (string actionname in profileActions[device])
                 {
-                    profileActionDict[device][actionname] = Global.GetAction(actionname);
-                    profileActionIndexDict[device][actionname] = Global.GetActionIndexOf(actionname);
+                    var actionObj = Global.GetAction(actionname);
+                    int index = Global.GetActionIndexOf(actionname);
+                    profileActionDict[device][actionname] = actionObj;
+                    profileActionIndexDict[device][actionname] = index;
+                    // プロファイル読み込み時に、同じスペシャルアクション名につき1回だけエラーログを出力
+                    if (actionObj == null || actionObj.name == "null" || index < 0)
+                    {
+                        if (!Global.loggedInvalidActions.Contains(actionname))
+                        {
+                            AppLogger.LogToGui($"Invalid action index for '{actionname}': {index}. ActionDone count: {(Mapping.actionDone != null ? Mapping.actionDone.Count : 0)}", false);
+                            Global.loggedInvalidActions.Add(actionname);
+                        }
+                    }
                 }
 
                 // Only change xinput devices under certain conditions. Avoid
@@ -5504,7 +5521,8 @@ namespace DS4Windows
             return loaded;
         }
 
-        public bool LoadProfile(int device, bool launchprogram, ControlService control,
+    
+    public bool LoadProfile(int device, bool launchprogram, ControlService control,
             string propath = "", bool xinputChange = true, bool postLoad = true)
         {
             bool Loaded = true;
