@@ -10,9 +10,9 @@
                 "./DS4Windows/DS4WinWPF.csproj",
                 "-c", "Release",
                 "/p:platform=x64",
-                "/p:AssemblyVersion=3.11.2",
-                "/p:FileVersion=3.11.2",
-                "/p:Version=3.11.2",
+                "/p:AssemblyVersion=3.11.3",
+                "/p:FileVersion=3.11.3",
+                "/p:Version=3.11.3",
                 "-o", "./DS4Windows/bin/x64/Release/net8.0-windows"
             ],
             "group": "build"
@@ -25,7 +25,7 @@
                 "./utils/post-build.py",
                 "./DS4Windows/bin/x64/Release/net8.0-windows",
                 ".",
-                "3.11.2"
+                "3.11.3"
             ],
             "group": "build",
             "dependsOn": "publish-release-x64"

@@ -688,7 +688,7 @@ namespace DS4WinWPF
                 // fixes the culture in threads
                 CultureInfo.DefaultThreadCurrentCulture = ci;
                 CultureInfo.DefaultThreadCurrentUICulture = ci;
-                //DS4WinWPF.Properties.Resources.Culture = ci;
+                DS4WinWPF.Properties.Resources.Culture = ci;
                 Thread.CurrentThread.CurrentCulture = ci;
                 Thread.CurrentThread.CurrentUICulture = ci;
             }

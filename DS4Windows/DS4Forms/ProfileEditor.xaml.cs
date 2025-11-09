@@ -78,7 +78,15 @@ namespace DS4WinWPF.DS4Forms
 
         public ProfileEditor(int device)
         {
+
             InitializeComponent();
+
+            // SpecialActionsリスト表示前にカルチャを明示的に再設定
+            var lang = DS4Windows.Global.UseLang;
+            var ci = System.Globalization.CultureInfo.GetCultureInfo(lang);
+            DS4WinWPF.Properties.Resources.Culture = ci;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = ci;
+            System.Threading.Thread.CurrentThread.CurrentCulture = ci;
 
             deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;

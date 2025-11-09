@@ -111,7 +111,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     action = new SpecialAction(actionName, "", "null", "");
                 }
                 string displayName = GetActionDisplayName(action);
-                SpecialActionItem item = new SpecialActionItem(action, displayName, idx);
+                string typeName = isMissing ? $"({Properties.Resources.InvalidSpecialAction})" : displayName;
+                SpecialActionItem item = new SpecialActionItem(action, typeName, idx);
                 item.IsMissing = isMissing;
 
                 // プロファイルで有効なものはチェックON
