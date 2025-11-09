@@ -5383,7 +5383,7 @@ namespace DS4Windows
                     int index = Global.GetActionIndexOf(actionname);
                     profileActionDict[device][actionname] = actionObj;
                     profileActionIndexDict[device][actionname] = index;
-                    // プロファイル読み込み時に、同じスペシャルアクション名につき1回だけエラーログを出力
+                    // プロファイル読み込み時のみ、同じスペシャルアクション名につき1回だけエラーログを出力
                     if (actionObj == null || actionObj.name == "null" || index < 0)
                     {
                         if (!Global.loggedInvalidActions.Contains(actionname))
