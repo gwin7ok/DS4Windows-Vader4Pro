@@ -239,7 +239,10 @@
                         <ListView x:Name="specialActionsLV" ItemsSource="{Binding ActionCol}" SelectedIndex="{Binding SpecialActionIndex}" SelectedItem="{Binding CurrentSpecialActionItem,Mode=OneWayToSource}" Margin="0,0,0,0" Grid.Row="1" HorizontalAlignment="Stretch" Width="Auto">
                             <ListView.View>
                                 <GridView>
-                                    <GridViewColumn Header="{lex:Loc Name}" Width="150">
+                                    <GridViewColumn Width="150">
+                                        <GridViewColumn.Header>
+                                            <Button Content="{lex:Loc Name}" Click="SpecialActionsHeader_Click" Tag="Name" Padding="0" Margin="0" />
+                                        </GridViewColumn.Header>
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
@@ -252,8 +255,22 @@
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
-                                    <GridViewColumn Header="{lex:Loc Trigger}" DisplayMemberBinding="{Binding Controls}" Width="100" />
-                                    <GridViewColumn Header="{lex:Loc Action}" DisplayMemberBinding="{Binding TypeName}" Width="Auto" />
+                                    <GridViewColumn Width="100">
+                                        <GridViewColumn.Header>
+                                            <Button Content="{lex:Loc Trigger}" Click="SpecialActionsHeader_Click" Tag="Trigger" Padding="0" Margin="0" />
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.DisplayMemberBinding>
+                                            <Binding Path="Controls" />
+                                        </GridViewColumn.DisplayMemberBinding>
+                                    </GridViewColumn>
+                                    <GridViewColumn Width="Auto">
+                                        <GridViewColumn.Header>
+                                            <Button Content="{lex:Loc Action}" Click="SpecialActionsHeader_Click" Tag="Action" Padding="0" Margin="0" />
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.DisplayMemberBinding>
+                                            <Binding Path="TypeName" />
+                                        </GridViewColumn.DisplayMemberBinding>
+                                    </GridViewColumn>
                                 </GridView>
                             </ListView.View>
                         </ListView>

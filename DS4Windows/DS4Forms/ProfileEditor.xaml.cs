@@ -2031,6 +2031,29 @@ namespace DS4WinWPF.DS4Forms
                 dialogStream.Close();
             }
         }
+
+        // ソート状態保持
+        private Dictionary<string, bool> specialActionsSortAsc = new Dictionary<string, bool>
+        {
+            { "Name", true },
+            { "Trigger", true },
+            { "Action", true }
+        };
+
+        // 列ヘッダークリックイベント
+        private void SpecialActionsHeader_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string col)
+            {
+                // 昇順/降順トグル
+                specialActionsSortAsc[col] = !specialActionsSortAsc[col];
+                specialActionsVM.SortActions(col, specialActionsSortAsc[col]);
+                // ViewのSortDescriptionsをクリアしてViewModel順序を反映
+                var view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
+                view.SortDescriptions.Clear();
+                view.Refresh();
+            }
+        }
     }
 
     public class ResourcePaths
