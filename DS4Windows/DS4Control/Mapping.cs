@@ -127,14 +127,6 @@ namespace DS4Windows
             };
         }
 
-        // SpecialAction名ごとのエラーログ抑制用（1プロファイル切り替えごとに1回だけ）
-           private static HashSet<string> loggedInvalidActions = new HashSet<string>(); // SpecialAction名ごとのエラーログ抑制用（1プロファイル切り替えごとに1回だけ）
-
-        // プロファイル切り替え時に呼び出すことでエラーログ抑制をリセット
-        public static void ResetLoggedInvalidActions()
-        {
-              loggedInvalidActions.Clear(); // プロファイル切り替え時に呼び出すことでエラーログ抑制をリセット
-        }
 
         struct DS4Vector2
         {
