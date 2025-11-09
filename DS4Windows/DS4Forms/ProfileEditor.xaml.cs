@@ -33,6 +33,34 @@ namespace DS4WinWPF.DS4Forms
     /// </summary>
     public partial class ProfileEditor : UserControl
     {
+        // ...既存フィールド...
+
+        public string NameSortButtonContent => GetSortButtonContent("Name", currentSortColumn, currentSortAsc);
+        public string TriggerSortButtonContent => GetSortButtonContent("Trigger", currentSortColumn, currentSortAsc);
+        public string ActionSortButtonContent => GetSortButtonContent("Action", currentSortColumn, currentSortAsc);
+
+        private string GetSortButtonContent(string col, string currentCol, bool asc)
+        {
+            string baseName = col switch
+            {
+                "Name" => "名前", // lex:Loc Name
+                "Trigger" => "トリガー", // lex:Loc Trigger
+                "Action" => "アクション", // lex:Loc Action
+                _ => col
+            };
+            if (col == currentCol)
+                return baseName + (asc ? " ▲" : " ▼");
+            else
+                return baseName;
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged(string name)
+        {
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+        }
+        // ...既存コード...
+
         private class HoverImageInfo
         {
             public Point point;
@@ -573,13 +601,13 @@ namespace DS4WinWPF.DS4Forms
             };
 
             hoverLocations[leftTouchConBtn] = new HoverImageInfo()
-                { point = new Point(144, 44), size = new Size(140, 98) };
+            { point = new Point(144, 44), size = new Size(140, 98) };
             hoverLocations[multiTouchConBtn] = new HoverImageInfo()
-                { point = new Point(143, 42), size = new Size(158, 100) };
+            { point = new Point(143, 42), size = new Size(158, 100) };
             hoverLocations[rightTouchConBtn] = new HoverImageInfo()
-                { point = new Point(156, 47), size = new Size(146, 94) };
+            { point = new Point(156, 47), size = new Size(146, 94) };
             hoverLocations[topTouchConBtn] = new HoverImageInfo()
-                { point = new Point(155, 6), size = new Size(153, 114) };
+            { point = new Point(155, 6), size = new Size(153, 114) };
 
             hoverLocations[l3ConBtn] = new HoverImageInfo()
             {
@@ -1235,18 +1263,18 @@ namespace DS4WinWPF.DS4Forms
 
         public void Close()
         {
-        if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-        {
-            App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
-        }
+            if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            {
+                App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
+            }
 
-        // 画面サイズ保持チェックが有効な場合のみレイアウト保存
-        if (keepsize)
-        {
-            SaveSplitterAndColumnWidths();
-        }
+            // 画面サイズ保持チェックが有効な場合のみレイアウト保存
+            if (keepsize)
+            {
+                SaveSplitterAndColumnWidths();
+            }
 
-        Closed?.Invoke(this, EventArgs.Empty);
+            Closed?.Invoke(this, EventArgs.Empty);
         }
 
         private void ColorByBatteryPerCk_Click(object sender, RoutedEventArgs e)
@@ -1393,25 +1421,25 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-    private void UpdateDualSenseRumble(DS4Windows.InputDevices.DualSenseDevice dualsense)
+        private void UpdateDualSenseRumble(DS4Windows.InputDevices.DualSenseDevice dualsense)
         {
-                switch ((DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode)profileSettingsVM.DualSenseRumbleEmulationPerIndex)
-                {
-                    case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Disabled:
-                        dualsense.UseRumble = false;
-                        dualsense.UseAccurateRumble = false;
-                        break;
-                    case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Legacy:
-                        dualsense.UseRumble = true;
-                        dualsense.UseAccurateRumble = false;
-                        break;
-                    case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Accurate:
-                    default:
-                        dualsense.UseRumble = true;
-                        dualsense.UseAccurateRumble = true;
-                        break;
-                }
-                dualsense.HapticPowerLevel = (byte)profileSettingsVM.DualSenseHapticPowerLevelPerIndex;
+            switch ((DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode)profileSettingsVM.DualSenseRumbleEmulationPerIndex)
+            {
+                case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Disabled:
+                    dualsense.UseRumble = false;
+                    dualsense.UseAccurateRumble = false;
+                    break;
+                case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Legacy:
+                    dualsense.UseRumble = true;
+                    dualsense.UseAccurateRumble = false;
+                    break;
+                case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Accurate:
+                default:
+                    dualsense.UseRumble = true;
+                    dualsense.UseAccurateRumble = true;
+                    break;
+            }
+            dualsense.HapticPowerLevel = (byte)profileSettingsVM.DualSenseHapticPowerLevelPerIndex;
         }
 
         private void CustomEditorBtn_Click(object sender, RoutedEventArgs e)
@@ -1700,7 +1728,7 @@ namespace DS4WinWPF.DS4Forms
             if (activeWin && profileSettingsVM.UseControllerReadout)
             {
                 int index = -1;
-                switch(Program.rootHub.GetActiveInputControl(tempDeviceNum))
+                switch (Program.rootHub.GetActiveInputControl(tempDeviceNum))
                 {
                     case DS4Controls.None: break;
                     case DS4Controls.Cross: index = 0; break;
@@ -1861,7 +1889,7 @@ namespace DS4WinWPF.DS4Forms
             {
                 List<DS4Controls> controls =
                     profileSettingsVM.PresetMenuUtil.ModifySettingWithPreset(baseTag, subTag);
-                foreach(DS4Controls control in controls)
+                foreach (DS4Controls control in controls)
                 {
                     MappedControl mpControl = mappingListVM.ControlMap[control];
                     mpControl.UpdateMappingName();
@@ -1912,7 +1940,7 @@ namespace DS4WinWPF.DS4Forms
             window.ShowDialog();
             mpControl.UpdateMappingName();
             Global.CacheProfileCustomsFlags(profileSettingsVM.Device);
-		}
+        }
 
         private void GyroCalibration_Click(object sender, RoutedEventArgs e)
         {
@@ -2033,27 +2061,35 @@ namespace DS4WinWPF.DS4Forms
         }
 
         // ソート状態保持
-        private Dictionary<string, bool> specialActionsSortAsc = new Dictionary<string, bool>
-        {
-            { "Name", true },
-            { "Trigger", true },
-            { "Action", true }
-        };
+        private string currentSortColumn = "Name";
+        private bool currentSortAsc = true;
 
         // 列ヘッダークリックイベント
         private void SpecialActionsHeader_Click(object sender, RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Tag is string col)
             {
-                // 昇順/降順トグル
-                specialActionsSortAsc[col] = !specialActionsSortAsc[col];
-                specialActionsVM.SortActions(col, specialActionsSortAsc[col]);
-                // ViewのSortDescriptionsをクリアしてViewModel順序を反映
+                if (col != currentSortColumn)
+                {
+                    // 新しい列なら昇順で開始
+                    currentSortColumn = col;
+                    currentSortAsc = true;
+                }
+                else
+                {
+                    // 同じ列なら並び順を逆に
+                    currentSortAsc = !currentSortAsc;
+                }
+                specialActionsVM.SortActions(currentSortColumn, currentSortAsc);
                 var view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
                 view.SortDescriptions.Clear();
                 view.Refresh();
+                OnPropertyChanged(nameof(NameSortButtonContent));
+                OnPropertyChanged(nameof(TriggerSortButtonContent));
+                OnPropertyChanged(nameof(ActionSortButtonContent));
             }
         }
+        // ここでProfileEditorクラスの閉じ括弧
     }
 
     public class ResourcePaths

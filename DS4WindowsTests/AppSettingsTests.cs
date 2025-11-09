@@ -123,10 +123,10 @@ namespace DS4WindowsTests
         public void CheckSettingsRead()
         {
             // Test settings reading. Will fail if an XML exception is thrown
-            XmlSerializer serializer = new XmlSerializer(typeof(AppSettingsDTO));
+            XmlSerializer serializer = new XmlSerializer(typeof(ProfileDTO));
             using StringReader sr = new StringReader(appSettingsXml);
             BackingStore tempStore = new BackingStore();
-            AppSettingsDTO dto = serializer.Deserialize(sr) as AppSettingsDTO;
+            ProfileDTO dto = serializer.Deserialize(sr) as ProfileDTO;
             dto.MapTo(tempStore);
 
             // Check settings
@@ -138,18 +138,18 @@ namespace DS4WindowsTests
         public void CheckSettingsSave()
         {
             // Read the settings into BackingStore
-            XmlSerializer serializer = new XmlSerializer(typeof(AppSettingsDTO));
+            XmlSerializer serializer = new XmlSerializer(typeof(ProfileDTO));
             BackingStore tempStore = new BackingStore();
             using (StringReader sr = new StringReader(appSettingsXml))
             {
-                AppSettingsDTO dto = serializer.Deserialize(sr) as AppSettingsDTO;
+                ProfileDTO dto = serializer.Deserialize(sr) as ProfileDTO;
                 dto.MapTo(tempStore);
             }
 
             // Test writing BackingStore values back to an XML string.
             // Make sure generated XML is equal to the initial input XML string
             string testStr = string.Empty;
-            serializer = new XmlSerializer(typeof(AppSettingsDTO));
+            serializer = new XmlSerializer(typeof(ProfileDTO));
             using (Utf8StringWriter strWriter = new Utf8StringWriter())
             {
                 using XmlWriter xmlWriter = XmlWriter.Create(strWriter,
@@ -167,7 +167,7 @@ namespace DS4WindowsTests
                 xmlWriter.WriteWhitespace("\r\n");
 
                 // Write root element and children
-                AppSettingsDTO dto = new AppSettingsDTO();
+                ProfileDTO dto = new ProfileDTO();
                 dto.MapFrom(tempStore);
                 dto.SerializeAppAttrs = false;
                 // Omit xmlns:xsi and xmlns:xsd from output

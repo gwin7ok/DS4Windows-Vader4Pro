@@ -32,8 +32,25 @@ using static DS4Windows.Mouse;
 namespace DS4WinWPF.DS4Control.DTOXml
 {
     [XmlRoot("DS4Windows")]
-    public class ProfileDTO : IDTO<BackingStore>
-    {
+    public class ProfileDTO : IDTO<BackingStore> {
+        [XmlIgnore]
+        public DateTime LastChecked { get; private set; }
+
+        [XmlElement("LastChecked")]
+        public string LastCheckString
+        {
+            get => LastChecked.ToString("MM/dd/yyyy HH:mm:ss");
+            set
+            {
+                if (DateTime.TryParse(value, out DateTime temp))
+                {
+                    LastChecked = temp;
+                }
+            }
+        }
+
+        [XmlElement("CheckWhen")]
+        public int CheckWhen { get; set; } = BackingStore.DEFAULT_CHECK_WHEN;
         public const bool SERIALIZE_HEADER_ATTRS_DEFAULT = true;
         [XmlIgnore]
         public bool SerializeAppAttrs
