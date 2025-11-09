@@ -3417,8 +3417,27 @@ namespace DS4Windows
         }
     }
 
-    public class BackingStore
-    {
+    public class BackingStore{
+        /// <summary>
+        /// profileActions[device]の内容からprofileActionDict等を再構築する（LoadProfileNewの該当部分をpublic化）
+        /// </summary>
+        public void RebuildProfileActionDicts(int device)
+        {
+            profileActionCount[device] = profileActions[device]?.Count ?? 0;
+            profileActionDict[device].Clear();
+            profileActionIndexDict[device].Clear();
+            if (profileActions[device] != null)
+            {
+                foreach (string actionname in profileActions[device])
+                {
+                    var actionObj = Global.GetAction(actionname);
+                    int index = Global.GetActionIndexOf(actionname);
+                    profileActionDict[device][actionname] = actionObj;
+                    profileActionIndexDict[device][actionname] = index;
+                }
+            }
+        }
+    
     // ProfileEditor layout fields (DTOと統合)
     public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = 720;
     public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = 600;
@@ -4394,6 +4413,8 @@ namespace DS4Windows
 
         public bool SaveProfileNew(int device, string proName)
         {
+            // 保存前にprofileActionsから辞書を再構築
+            RebuildProfileActionDicts(device);
             bool saved = true;
             if (proName.EndsWith(Global.XML_EXTENSION))
             {
