@@ -13,10 +13,11 @@
              mc:Ignorable="d" 
              d:DesignHeight="550" d:DesignWidth="1000">
     <UserControl.Resources>
-        <xctk:InverseBoolConverter x:Key="InverseBoolConverter"/>
-        <localConvert:InvertBoolToVisibilityConverter x:Key="InvertBoolToVisibilityConverter" />
-        <local:ControlIndexCheck x:Key="controlIndexCheck" />
-        <local:ResourcePaths x:Key="resourcesPaths" />
+    <xctk:InverseBoolConverter x:Key="InverseBoolConverter"/>
+    <localConvert:InvertBoolToVisibilityConverter x:Key="InvertBoolToVisibilityConverter" />
+    <local:ControlIndexCheck x:Key="controlIndexCheck" />
+    <local:ResourcePaths x:Key="resourcesPaths" />
+    <localConvert:MissingToGrayConverter x:Key="MissingToGrayConverter" />
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -242,8 +243,11 @@
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <CheckBox IsChecked="{Binding Active}" Click="SpecialActionCheckBox_Click" />
-                                                    <TextBlock Text="{Binding ActionName}" Margin="4,0,0,0" />
+                                                    <CheckBox IsChecked="{Binding Active}"
+                                                              Click="SpecialActionCheckBox_Click" />
+                                                    <TextBlock Text="{Binding ActionName}"
+                                                               Margin="4,0,0,0"
+                                                               Foreground="{Binding IsMissing, Converter={StaticResource MissingToGrayConverter}}" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>

@@ -92,14 +92,30 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             actionCol.Clear();
 
+            // Actions.xmlに存在するスペシャルアクション名一覧
+            var xmlActionNames = Global.GetActions().Select(a => a.name).ToList();
+            // プロフィール設定ファイルに残っているスペシャルアクション名一覧
             List<string> pactions = Global.ProfileActions[deviceNum];
+
+            // 両方を統合し、重複除去して名前順でソート
+            var allActionNames = xmlActionNames.Union(pactions).Distinct().OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase).ToList();
+
             int idx = 0;
-            foreach (SpecialAction action in Global.GetActions())
+            foreach (var actionName in allActionNames)
             {
+                SpecialAction action = Global.GetActions().FirstOrDefault(a => a.name == actionName);
+                bool isMissing = action == null;
+                if (isMissing)
+                {
+                    // Actions.xmlに存在しない場合はダミーのSpecialActionを作成
+                    action = new SpecialAction(actionName, "", "null", "");
+                }
                 string displayName = GetActionDisplayName(action);
                 SpecialActionItem item = new SpecialActionItem(action, displayName, idx);
+                item.IsMissing = isMissing;
 
-                if (pactions.Contains(action.name))
+                // プロファイルで有効なものはチェックON
+                if (pactions.Contains(actionName))
                 {
                     item.Active = true;
                 }
@@ -111,6 +127,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 actionCol.Add(item);
                 idx++;
             }
+
         }
 
         public SpecialActionItem CreateActionItem(SpecialAction action)
@@ -188,7 +205,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
     public class SpecialActionItem
     {
-        private SpecialAction specialAction;
+    private SpecialAction specialAction;
+    public bool IsMissing { get; set; } // Actions.xmlに存在しない場合true
         private bool active;
         private string typeName;
         private int index = 0;
