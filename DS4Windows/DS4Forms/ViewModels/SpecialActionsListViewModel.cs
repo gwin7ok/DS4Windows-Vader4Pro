@@ -83,6 +83,11 @@ public class SpecialActionsListViewModel
         IEnumerable<SpecialActionItem> sorted = null;
         switch (column)
         {
+            case "Active":
+                // Put active (checked) items first when ascending==true
+                sorted = ascending ? actionCol.OrderByDescending(x => x.Active)
+                                   : actionCol.OrderBy(x => x.Active);
+                break;
             case "Name":
                 sorted = ascending ? actionCol.OrderBy(x => x.ActionName, StringComparer.CurrentCultureIgnoreCase)
                                    : actionCol.OrderByDescending(x => x.ActionName, StringComparer.CurrentCultureIgnoreCase);

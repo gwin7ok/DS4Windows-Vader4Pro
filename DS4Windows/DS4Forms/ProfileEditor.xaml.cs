@@ -36,14 +36,16 @@ namespace DS4WinWPF.DS4Forms
     {
         // ...既存フィールド...
 
-        public string NameSortButtonContent => GetSortButtonContent("Name", currentSortColumn, currentSortAsc);
-        public string TriggerSortButtonContent => GetSortButtonContent("Trigger", currentSortColumn, currentSortAsc);
-        public string ActionSortButtonContent => GetSortButtonContent("Action", currentSortColumn, currentSortAsc);
+    public string ActiveSortButtonContent => GetSortButtonContent("Active", currentSortColumn, currentSortAsc);
+    public string NameSortButtonContent => GetSortButtonContent("Name", currentSortColumn, currentSortAsc);
+    public string TriggerSortButtonContent => GetSortButtonContent("Trigger", currentSortColumn, currentSortAsc);
+    public string ActionSortButtonContent => GetSortButtonContent("Action", currentSortColumn, currentSortAsc);
 
         private string GetSortButtonContent(string col, string currentCol, bool asc)
         {
             string baseName = col switch
             {
+                "Active" => "有効",
                 "Name" => "名前", // lex:Loc Name
                 "Trigger" => "トリガー", // lex:Loc Trigger
                 "Action" => "アクション", // lex:Loc Action
@@ -150,6 +152,7 @@ namespace DS4WinWPF.DS4Forms
             App.logHolder.Logger.Debug($"[SortSpecialActionsList] Refresh 実行後の表示件数={view.Count}");
 
             // 既存のバインディング更新（残して互換性を保つ）
+            OnPropertyChanged(nameof(ActiveSortButtonContent));
             OnPropertyChanged(nameof(NameSortButtonContent));
             OnPropertyChanged(nameof(TriggerSortButtonContent));
             OnPropertyChanged(nameof(ActionSortButtonContent));
@@ -177,27 +180,29 @@ namespace DS4WinWPF.DS4Forms
                 // しても見つからないことが多く、ビジュアルツリー全体を走査するのは高コストで
                 // 無駄になる場合があります。代わりに下の DataTemplate + ContentControl.Loaded
                 // ハンドラによる1回限りの更新に任せる方針とします。
-                TextBlock nameTb = null, trigTb = null, actTb = null;
+                TextBlock activeTb = null, nameTb = null, trigTb = null, actTb = null;
                 // ヘッダーベース名を先に定義（フォールバックで使用するため）
+                string activeBase = "有効";
                 string nameBase = "名前";
                 string trigBase = "トリガー";
                 string actBase = "アクション";
                     // ヘッダーのテンプレート要素が見つからない場合のフォールバック:
                     // GridViewColumn.Header を直接置き換えて TextBlock を設定する。
-                    if (nameTb == null || trigTb == null || actTb == null)
+                    if (activeTb == null || nameTb == null || trigTb == null || actTb == null)
                     {
                         App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダー要素が見つからないため、GridViewColumn.Header を直接置換します");
                         try
                         {
-                            for (int i = 0; i < gridView.Columns.Count && i < 3; i++)
+                            for (int i = 0; i < gridView.Columns.Count && i < 4; i++)
                             {
                                 var col = gridView.Columns[i];
                                 // まず XAML に定義された DataTemplate を使って Header を設定する
                                 string templateKey = i switch
                                 {
-                                    0 => "NameHeaderTemplate",
-                                    1 => "TriggerHeaderTemplate",
-                                    2 => "ActionHeaderTemplate",
+                                    0 => "ActiveHeaderTemplate",
+                                    1 => "NameHeaderTemplate",
+                                    2 => "TriggerHeaderTemplate",
+                                    3 => "ActionHeaderTemplate",
                                     _ => null
                                 };
 
@@ -228,10 +233,18 @@ namespace DS4WinWPF.DS4Forms
                                         try
                                         {
                                             App.logHolder.Logger.Debug($"[SortSpecialActionsList] ContentControl.Loaded event for Column[{colIdx}] - searching named TextBlocks");
+                                            var namedActiveTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "ActiveHeaderTextBlock");
                                             var namedNameTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
                                             var namedTrigTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
                                             var namedActTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
 
+                                            if (namedActiveTb2 != null)
+                                            {
+                                                var newTxt = (columnName == "Active") ? activeBase + (asc ? " ▲" : " ▼") : activeBase;
+                                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named ActiveHeader old='{namedActiveTb2.Text}' new='{newTxt}'");
+                                                namedActiveTb2.Text = newTxt;
+                                                activeTb = namedActiveTb2;
+                                            }
                                             if (namedNameTb2 != null)
                                             {
                                                 var newTxt = (columnName == "Name") ? nameBase + (asc ? " ▲" : " ▼") : nameBase;
@@ -511,14 +524,15 @@ namespace DS4WinWPF.DS4Forms
 
             // Special Actions ListViewのGridViewColumn幅取得
             var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
-            if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
+            if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 4)
             {
                 // Global経由で保存
                 Global.ProfileEditorLeftWidth = (int)leftWidth;
                 Global.ProfileEditorRightWidth = (int)rightWidth;
-                Global.SpecialActionNameColWidth = (int)gridView.Columns[0].Width;
-                Global.SpecialActionTriggerColWidth = (int)gridView.Columns[1].Width;
-                Global.SpecialActionDetailColWidth = (int)gridView.Columns[2].Width;
+                // columns: 0=Active,1=Name,2=Trigger,3=Detail
+                Global.SpecialActionNameColWidth = (int)gridView.Columns[1].Width;
+                Global.SpecialActionTriggerColWidth = (int)gridView.Columns[2].Width;
+                Global.SpecialActionDetailColWidth = (int)gridView.Columns[3].Width;
                 // 必要なら他の列も追加
             }
         }
@@ -538,17 +552,18 @@ namespace DS4WinWPF.DS4Forms
                         grid.ColumnDefinitions[2].Width = new GridLength(right);
                 }
                 var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
-                if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 3)
+                if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 4)
                 {
                     double nameW = Global.SpecialActionNameColWidth;
                     double trigW = Global.SpecialActionTriggerColWidth;
                     double detailW = Global.SpecialActionDetailColWidth;
+                    // columns: 0=Active,1=Name,2=Trigger,3=Detail
                     if (IsValidWidth(nameW))
-                        gridView.Columns[0].Width = nameW;
+                        gridView.Columns[1].Width = nameW;
                     if (IsValidWidth(trigW))
-                        gridView.Columns[1].Width = trigW;
+                        gridView.Columns[2].Width = trigW;
                     if (IsValidWidth(detailW))
-                        gridView.Columns[2].Width = detailW;
+                        gridView.Columns[3].Width = detailW;
                 }
             }
             catch (Exception ex)

@@ -21,6 +21,14 @@
             <TextBlock x:Name="NameHeaderTextBlock" Text="{lex:Loc Name}" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Button>
     </DataTemplate>
+    <DataTemplate x:Key="ActiveHeaderTemplate">
+        <Button Click="SpecialActionsHeader_Click" Tag="Active"
+                Background="Transparent" BorderThickness="0"
+                HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                Width="{Binding RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}, Path=ActualWidth}">
+            <TextBlock x:Name="ActiveHeaderTextBlock" Text="有効" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Button>
+    </DataTemplate>
     <DataTemplate x:Key="TriggerHeaderTemplate">
         <Button Click="SpecialActionsHeader_Click" Tag="Trigger"
                 Background="Transparent" BorderThickness="0"
@@ -263,19 +271,24 @@
                         <ListView x:Name="specialActionsLV" ItemsSource="{Binding ActionCol}" SelectedIndex="{Binding SpecialActionIndex}" SelectedItem="{Binding CurrentSpecialActionItem,Mode=OneWayToSource}" Margin="0,0,0,0" Grid.Row="1" HorizontalAlignment="Stretch" Width="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                             <ListView.View>
                                 <GridView>
+                                    <!-- New leftmost column: separate checkbox for Active -->
+                                    <GridViewColumn Width="40">
+                                        <GridViewColumn.Header>
+                                            <ContentControl ContentTemplate="{StaticResource ActiveHeaderTemplate}" />
+                                        </GridViewColumn.Header>
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <CheckBox IsChecked="{Binding Active}" Click="SpecialActionCheckBox_Click" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
                                     <GridViewColumn Width="150">
                                         <GridViewColumn.Header>
                                             <ContentControl ContentTemplate="{StaticResource NameHeaderTemplate}" />
                                         </GridViewColumn.Header>
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <CheckBox IsChecked="{Binding Active}"
-                                                              Click="SpecialActionCheckBox_Click" />
-                                                    <TextBlock Text="{Binding ActionName}"
-                                                               Margin="4,0,0,0"
-                                                               Foreground="{Binding IsMissing, Converter={StaticResource MissingToGrayConverter}}" />
-                                                </StackPanel>
+                                                <TextBlock Text="{Binding ActionName}" Margin="4,0,0,0" Foreground="{Binding IsMissing, Converter={StaticResource MissingToGrayConverter}}" />
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
