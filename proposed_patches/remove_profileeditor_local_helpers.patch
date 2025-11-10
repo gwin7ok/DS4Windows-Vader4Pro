@@ -1,0 +1,60 @@
+*** Begin Patch
+*** Update File: DS4Windows/DS4Forms/ProfileEditor.xaml.cs
+@@
+-        // 名前で子要素を検索（FrameworkElement の Name と一致するものを返す）
+-        private static T FindVisualChildByName<T>(DependencyObject parent, string name) where T : FrameworkElement
+-        {
+-            if (parent == null) return null;
+-            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+-            {
+-                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+-                if (child is T fe && fe.Name == name) return fe;
+-                var result = FindVisualChildByName<T>(child, name);
+-                if (result != null) return result;
+-            }
+-            return null;
+-        }
+-
+-        // ビジュアルツリーから型名（フルネーム）で要素を列挙するヘルパー。
+-        // GridViewColumnHeader のようにビルド時に参照解決が難しい型向けの探索に使う。
+-        private static IEnumerable<DependencyObject> FindVisualChildrenByTypeName(DependencyObject depObj, string typeFullName)
+-        {
+-            if (depObj == null) yield break;
+-            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(depObj); i++)
+-            {
+-                var child = System.Windows.Media.VisualTreeHelper.GetChild(depObj, i);
+-                bool isMatch = false;
+-                try
+-                {
+-                    isMatch = (child?.GetType()?.FullName == typeFullName);
+-                }
+-                catch { isMatch = false; }
+-                if (isMatch)
+-                    yield return child;
+-                foreach (var childOfChild in FindVisualChildrenByTypeName(child, typeFullName))
+-                    yield return childOfChild;
+-            }
+-        }
+-
+-        // 指定した要素から上方向にたどって、型名（フルネーム）が一致する先祖を返す。
+-        private static DependencyObject FindAncestorByTypeName(DependencyObject child, string typeFullName)
+-        {
+-            var cur = child;
+-            while (cur != null)
+-            {
+-                try
+-                {
+-                    if (cur.GetType()?.FullName == typeFullName) return cur;
+-                }
+-                catch { }
+-                cur = System.Windows.Media.VisualTreeHelper.GetParent(cur);
+-            }
+-            return null;
+-        }
++        // NOTE: local visual-tree helpers were removed in favor of the shared
++        // UtilMethods.FindVisualChildren<T> and UtilMethods.FindVisualChild<childItem> helpers.
++        // The previous helper implementations (FindVisualChildByName, FindVisualChildrenByTypeName,
++        // FindAncestorByTypeName) were duplicates and have been removed to reduce maintenance
++        // burden and avoid divergence. Call sites were (or should be) migrated to use
++        // UtilMethods; if you see a missing helper use, revert and apply a targeted patch.
+*** End Patch

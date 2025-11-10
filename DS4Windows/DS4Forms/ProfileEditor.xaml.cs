@@ -179,7 +179,7 @@ namespace DS4WinWPF.DS4Forms
                 
                 try
                 {
-                    var headers = FindVisualChildrenByTypeName(lv, "System.Windows.Controls.Primitives.GridViewColumnHeader").ToArray();
+                    var headers = UtilMethods.FindVisualChildren<DependencyObject>(lv).Where(d => d.GetType()?.FullName == "System.Windows.Controls.Primitives.GridViewColumnHeader").ToArray();
                     App.logHolder.Logger.Debug($"[SortSpecialActionsList] ビジュアルツリーから GridViewColumnHeader を列挙しました count={headers.Length}");
 
                     foreach (var header in headers)
@@ -210,9 +210,9 @@ namespace DS4WinWPF.DS4Forms
                             App.logHolder.Logger.Debug($"[SortSpecialActionsList] GridViewColumnHeader 発見: colIndex={colIndex}, HeaderContentType={(headerContent != null ? headerContent.GetType().FullName : "null")}");
 
                             // header のビジュアルツリー配下で、DataTemplate 側に定義した名前の TextBlock を探す
-                            var foundName = FindVisualChildByName<TextBlock>(header, "NameHeaderTextBlock");
-                            var foundTrig = FindVisualChildByName<TextBlock>(header, "TriggerHeaderTextBlock");
-                            var foundAct = FindVisualChildByName<TextBlock>(header, "ActionHeaderTextBlock");
+                            var foundName = UtilMethods.FindVisualChildren<TextBlock>(header).FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
+                            var foundTrig = UtilMethods.FindVisualChildren<TextBlock>(header).FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
+                            var foundAct = UtilMethods.FindVisualChildren<TextBlock>(header).FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
 
                             if (foundName != null)
                             {
@@ -250,9 +250,9 @@ namespace DS4WinWPF.DS4Forms
                             try
                             {
                                 // Try to find named header TextBlocks anywhere in this control first (covers DataTemplate case)
-                                var namedNameTb = FindVisualChildByName<TextBlock>(this, "NameHeaderTextBlock");
-                                var namedTrigTb = FindVisualChildByName<TextBlock>(this, "TriggerHeaderTextBlock");
-                                var namedActTb = FindVisualChildByName<TextBlock>(this, "ActionHeaderTextBlock");
+                                var namedNameTb = UtilMethods.FindVisualChildren<TextBlock>(this).FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
+                                var namedTrigTb = UtilMethods.FindVisualChildren<TextBlock>(this).FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
+                                var namedActTb = UtilMethods.FindVisualChildren<TextBlock>(this).FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] Named header TextBlocks found: Name={(namedNameTb != null)}, Trigger={(namedTrigTb != null)}, Action={(namedActTb != null)}");
 
                                 if (namedNameTb != null || namedTrigTb != null || namedActTb != null)
@@ -289,8 +289,10 @@ namespace DS4WinWPF.DS4Forms
                                 }
                                 else
                                 {
-                                    var headerButtons = FindVisualChildrenByTypeName(lv, "System.Windows.Controls.Primitives.GridViewColumnHeader")
-                                        .SelectMany(h => FindVisualChildren<Button>(h)).ToArray();
+                                    var headerButtons = UtilMethods
+                                        .FindVisualChildren<DependencyObject>(lv)
+                                        .Where(d => d.GetType()?.FullName == "System.Windows.Controls.Primitives.GridViewColumnHeader")
+                                        .SelectMany(h => UtilMethods.FindVisualChildren<Button>(h)).ToArray();
                                     App.logHolder.Logger.Debug($"[SortSpecialActionsList] headerButtons count={headerButtons.Length}");
 
                                     foreach (var btn in headerButtons)
@@ -298,7 +300,21 @@ namespace DS4WinWPF.DS4Forms
                                         try
                                         {
                                             // どの列か判定するために、ボタンの先祖の GridViewColumnHeader を見つける
-                                            var headerAncestor = FindAncestorByTypeName(btn, "System.Windows.Controls.Primitives.GridViewColumnHeader");
+                                            DependencyObject headerAncestor = null;
+                                            var curAnc = btn as DependencyObject;
+                                            while (curAnc != null)
+                                            {
+                                                try
+                                                {
+                                                    if (curAnc.GetType()?.FullName == "System.Windows.Controls.Primitives.GridViewColumnHeader")
+                                                    {
+                                                        headerAncestor = curAnc;
+                                                        break;
+                                                    }
+                                                }
+                                                catch { }
+                                                curAnc = System.Windows.Media.VisualTreeHelper.GetParent(curAnc);
+                                            }
                                             int colIndex = -1;
                                             if (headerAncestor != null)
                                             {
@@ -336,16 +352,16 @@ namespace DS4WinWPF.DS4Forms
                                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] Button(Content string) colIndex={colIndex} old='{btn.Content}' new='{newTxt}'");
                                                 btn.Content = newTxt;
                                                 // 更新参照も取っておく
-                                                if (colIndex == 0) nameTb = FindVisualChildByName<TextBlock>(btn, "NameHeaderTextBlock") ?? (btn.Content is TextBlock tbb1 ? tbb1 : null);
-                                                if (colIndex == 1) trigTb = FindVisualChildByName<TextBlock>(btn, "TriggerHeaderTextBlock") ?? (btn.Content is TextBlock tbb2 ? tbb2 : null);
-                                                if (colIndex == 2) actTb = FindVisualChildByName<TextBlock>(btn, "ActionHeaderTextBlock") ?? (btn.Content is TextBlock tbb3 ? tbb3 : null);
+                                                if (colIndex == 0) nameTb = UtilMethods.FindVisualChildren<TextBlock>(btn).FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock") ?? (btn.Content is TextBlock tbb1 ? tbb1 : null);
+                                                if (colIndex == 1) trigTb = UtilMethods.FindVisualChildren<TextBlock>(btn).FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock") ?? (btn.Content is TextBlock tbb2 ? tbb2 : null);
+                                                if (colIndex == 2) actTb = UtilMethods.FindVisualChildren<TextBlock>(btn).FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock") ?? (btn.Content is TextBlock tbb3 ? tbb3 : null);
                                             }
                                             else
                                             {
                                                 // ContentTemplate や UIElement の場合は中の TextBlock を探して更新
-                                                var innerNameTb = FindVisualChildByName<TextBlock>(btn, "NameHeaderTextBlock");
-                                                var innerTrigTb = FindVisualChildByName<TextBlock>(btn, "TriggerHeaderTextBlock");
-                                                var innerActTb = FindVisualChildByName<TextBlock>(btn, "ActionHeaderTextBlock");
+                                                var innerNameTb = UtilMethods.FindVisualChildren<TextBlock>(btn).FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
+                                                var innerTrigTb = UtilMethods.FindVisualChildren<TextBlock>(btn).FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
+                                                var innerActTb = UtilMethods.FindVisualChildren<TextBlock>(btn).FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
                                                 if (innerNameTb != null || innerTrigTb != null || innerActTb != null)
                                                 {
                                                     if (innerNameTb != null)
@@ -435,9 +451,9 @@ namespace DS4WinWPF.DS4Forms
                                         try
                                         {
                                             App.logHolder.Logger.Debug($"[SortSpecialActionsList] ContentControl.Loaded event for Column[{colIdx}] - searching named TextBlocks");
-                                            var namedNameTb2 = FindVisualChildByName<TextBlock>(contentCtrl, "NameHeaderTextBlock");
-                                            var namedTrigTb2 = FindVisualChildByName<TextBlock>(contentCtrl, "TriggerHeaderTextBlock");
-                                            var namedActTb2 = FindVisualChildByName<TextBlock>(contentCtrl, "ActionHeaderTextBlock");
+                                            var namedNameTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
+                                            var namedTrigTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
+                                            var namedActTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
 
                                             if (namedNameTb2 != null)
                                             {
@@ -571,69 +587,14 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        // VisualTreeHelper を使って特定タイプの要素を列挙
-        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
-        {
-            if (depObj == null) yield break;
-            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(depObj); i++)
-            {
-                var child = System.Windows.Media.VisualTreeHelper.GetChild(depObj, i);
-                if (child is T t) yield return t;
-                foreach (var childOfChild in FindVisualChildren<T>(child))
-                    yield return childOfChild;
-            }
-        }
-
-        // 名前で子要素を検索（FrameworkElement の Name と一致するものを返す）
-        private static T FindVisualChildByName<T>(DependencyObject parent, string name) where T : FrameworkElement
-        {
-            if (parent == null) return null;
-            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
-                if (child is T fe && fe.Name == name) return fe;
-                var result = FindVisualChildByName<T>(child, name);
-                if (result != null) return result;
-            }
-            return null;
-        }
-
-        // ビジュアルツリーから型名（フルネーム）で要素を列挙するヘルパー。
-        // GridViewColumnHeader のようにビルド時に参照解決が難しい型向けの探索に使う。
-        private static IEnumerable<DependencyObject> FindVisualChildrenByTypeName(DependencyObject depObj, string typeFullName)
-        {
-            if (depObj == null) yield break;
-            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(depObj); i++)
-            {
-                var child = System.Windows.Media.VisualTreeHelper.GetChild(depObj, i);
-                bool isMatch = false;
-                try
-                {
-                    isMatch = (child?.GetType()?.FullName == typeFullName);
-                }
-                catch { isMatch = false; }
-                if (isMatch)
-                    yield return child;
-                foreach (var childOfChild in FindVisualChildrenByTypeName(child, typeFullName))
-                    yield return childOfChild;
-            }
-        }
-
-        // 指定した要素から上方向にたどって、型名（フルネーム）が一致する先祖を返す。
-        private static DependencyObject FindAncestorByTypeName(DependencyObject child, string typeFullName)
-        {
-            var cur = child;
-            while (cur != null)
-            {
-                try
-                {
-                    if (cur.GetType()?.FullName == typeFullName) return cur;
-                }
-                catch { }
-                cur = System.Windows.Media.VisualTreeHelper.GetParent(cur);
-            }
-            return null;
-        }
+        // NOTE: Local visual-tree helper methods were removed in favor of the shared
+        // `UtilMethods.FindVisualChildren<T>` and `UtilMethods.FindVisualChild<childItem>` helpers.
+        //
+        // The previous helper implementations (FindVisualChildByName, FindVisualChildrenByTypeName,
+        // FindAncestorByTypeName) were duplicates of functionality provided by the project's
+        // `UtilMethods` class. They have been removed to reduce maintenance burden and avoid
+        // divergence. If a call site needs specific behavior not covered by UtilMethods,
+        // add a narrowly-scoped helper or adapt the call site accordingly.
 
         public ProfileEditor(int device)
         {
