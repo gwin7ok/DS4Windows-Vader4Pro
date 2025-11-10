@@ -273,7 +273,7 @@
                             <ListView.View>
                                 <GridView>
                                     <!-- New leftmost column: separate checkbox for Active -->
-                                    <GridViewColumn Width="40">
+                                    <GridViewColumn>
                                         <GridViewColumn.Header>
                                             <ContentControl ContentTemplate="{StaticResource ActiveHeaderTemplate}" />
                                         </GridViewColumn.Header>

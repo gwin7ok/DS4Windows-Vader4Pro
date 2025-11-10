@@ -3444,6 +3444,8 @@ namespace DS4Windows
     public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = 310;
     public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = 150;
     public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = 220;
+    // Active 列はプロファイルに永続化しない列幅の初期値
+    public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = 32;
     // SpecialActionDeleteColWidth 定数削除
 
     public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;

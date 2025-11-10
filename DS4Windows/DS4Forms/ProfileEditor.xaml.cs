@@ -55,11 +55,11 @@ namespace DS4WinWPF.DS4Forms
 
             if (col == currentCol)
             {
-                // For Active, show only the arrow. For others, append a leading space then arrow.
+                // For Active, show only the arrow. For others, append arrow without leading space.
                 if (col == "Active")
                     return asc ? "▲" : "▼";
                 else
-                    return baseName + (asc ? " ▲" : " ▼");
+                    return baseName + (asc ? "▲" : "▼");
             }
             else
             {
@@ -85,6 +85,7 @@ namespace DS4WinWPF.DS4Forms
         private MappingListViewModel mappingListVM;
         private ProfileEntity currentProfile;
         private SpecialActionsListViewModel specialActionsVM;
+        // Active 列の初期幅は BackingStore の定数を使う（プロファイルに永続化しない）
     // フラグ: 初期ヘッダー更新を一度だけ行うためのガード
     private bool initialHeaderUpdated = false;
 
@@ -256,21 +257,21 @@ namespace DS4WinWPF.DS4Forms
                                             }
                                             if (namedNameTb2 != null)
                                             {
-                                                var newTxt = (columnName == "Name") ? nameBase + (asc ? " ▲" : " ▼") : nameBase;
+                                                var newTxt = (columnName == "Name") ? nameBase + (asc ? "▲" : "▼") : nameBase;
                                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named NameHeader old='{namedNameTb2.Text}' new='{newTxt}'");
                                                 namedNameTb2.Text = newTxt;
                                                 nameTb = namedNameTb2;
                                             }
                                             if (namedTrigTb2 != null)
                                             {
-                                                var newTxt = (columnName == "Trigger") ? trigBase + (asc ? " ▲" : " ▼") : trigBase;
+                                                var newTxt = (columnName == "Trigger") ? trigBase + (asc ? "▲" : "▼") : trigBase;
                                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named TriggerHeader old='{namedTrigTb2.Text}' new='{newTxt}'");
                                                 namedTrigTb2.Text = newTxt;
                                                 trigTb = namedTrigTb2;
                                             }
                                             if (namedActTb2 != null)
                                             {
-                                                var newTxt = (columnName == "Action") ? actBase + (asc ? " ▲" : " ▼") : actBase;
+                                                var newTxt = (columnName == "Action") ? actBase + (asc ? "▲" : "▼") : actBase;
                                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named ActionHeader old='{namedActTb2.Text}' new='{newTxt}'");
                                                 namedActTb2.Text = newTxt;
                                                 actTb = namedActTb2;
@@ -328,7 +329,7 @@ namespace DS4WinWPF.DS4Forms
                             if (nameTb != null)
                             {
                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] NameHeader 変更前='{nameTb.Text}'");
-                                var newText = (columnName == "Name") ? nameBase + (asc ? " ▲" : " ▼") : nameBase;
+                                var newText = (columnName == "Name") ? nameBase + (asc ? "▲" : "▼") : nameBase;
                                 nameTb.Text = newText;
                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] NameHeader 変更後='{newText}'");
                             }
@@ -340,7 +341,7 @@ namespace DS4WinWPF.DS4Forms
                             if (trigTb != null)
                             {
                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] TriggerHeader 変更前='{trigTb.Text}'");
-                                var newText = (columnName == "Trigger") ? trigBase + (asc ? " ▲" : " ▼") : trigBase;
+                                var newText = (columnName == "Trigger") ? trigBase + (asc ? "▲" : "▼") : trigBase;
                                 trigTb.Text = newText;
                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] TriggerHeader 変更後='{newText}'");
                             }
@@ -352,7 +353,7 @@ namespace DS4WinWPF.DS4Forms
                             if (actTb != null)
                             {
                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionHeader 変更前='{actTb.Text}'");
-                                var newText = (columnName == "Action") ? actBase + (asc ? " ▲" : " ▼") : actBase;
+                                var newText = (columnName == "Action") ? actBase + (asc ? "▲" : "▼") : actBase;
                                 actTb.Text = newText;
                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionHeader 変更後='{newText}'");
                             }
@@ -573,6 +574,10 @@ namespace DS4WinWPF.DS4Forms
                 var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
                 if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 4)
                 {
+                    // columns: 0=Active,1=Name,2=Trigger,3=Detail
+                    // Active 列はプロファイルに永続化しない初期幅を毎回適用する（BackingStore の定数を使用）
+                    gridView.Columns[0].Width = BackingStore.DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH;
+
                     double nameW = Global.SpecialActionNameColWidth;
                     double trigW = Global.SpecialActionTriggerColWidth;
                     double detailW = Global.SpecialActionDetailColWidth;
