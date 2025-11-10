@@ -494,40 +494,10 @@ namespace DS4WinWPF.DS4Forms
                                 }
                                 else
                                 {
-                                    // 万一テンプレートが見つからない場合はログ出力して、従来の Button 生成を最終手段として行う
-                                    App.logHolder.Logger.Debug($"[SortSpecialActionsList] テンプレート '{templateKey}' が見つかりません。フォールバックで Button を生成します");
-                                    string baseText = i switch
-                                    {
-                                        0 => nameBase,
-                                        1 => trigBase,
-                                        2 => actBase,
-                                        _ => col.Header?.ToString() ?? ""
-                                    };
-                                    string newText = baseText;
-                                    if ((i == 0 && columnName == "Name") || (i == 1 && columnName == "Trigger") || (i == 2 && columnName == "Action"))
-                                        newText = baseText + (asc ? " ▲" : " ▼");
-
-                                    var innerTb = new TextBlock() { Text = newText, VerticalAlignment = VerticalAlignment.Center };
-                                    var btn = new Button()
-                                    {
-                                        Content = innerTb,
-                                        Tag = (i == 0 ? "Name" : i == 1 ? "Trigger" : i == 2 ? "Action" : null),
-                                        HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch,
-                                        HorizontalContentAlignment = System.Windows.HorizontalAlignment.Left,
-                                        Padding = new Thickness(0),
-                                        BorderThickness = new Thickness(0),
-                                        MinWidth = 0,
-                                        Margin = new Thickness(0),
-                                        Background = System.Windows.Media.Brushes.Transparent,
-                                        Width = (double.IsNaN(col.Width) || col.Width <= 0) ? col.ActualWidth : col.Width
-                                    };
-                                    btn.Click += SpecialActionsHeader_Click;
-                                    App.logHolder.Logger.Debug($"[SortSpecialActionsList] Column[{i}] の Header を Button(TextBlock) に置換(フォールバック): '{newText}'");
-                                    col.Header = btn;
-
-                                    if (i == 0) nameTb = innerTb;
-                                    if (i == 1) trigTb = innerTb;
-                                    if (i == 2) actTb = innerTb;
+                                    // フォールバックの Button/TextBlock 自動生成は段階的に削除しました。
+                                    // DataTemplate をプロジェクト内で必須とし、ここでは何もしない（ログのみ）。
+                                    App.logHolder.Logger.Debug($"[SortSpecialActionsList] テンプレート '{templateKey}' が見つかりません。フォールバック生成はスキップします");
+                                    // ここでは Header を変更せず、Loaded ハンドラや将来のテンプレート適用を待ちます。
                                 }
                             }
                         }
@@ -1504,7 +1474,9 @@ namespace DS4WinWPF.DS4Forms
             axialRSStickControl.AxialVM.DeadZoneYChanged += UpdateReadingsRsDeadZoneY;
 
             // 初期表示も統一ソートメソッドを使用
-            SortSpecialActionsList("Name", true);
+            // NOTE: 呼び出しを削除しました。レンダリング完了後に Dispatcher.BeginInvoke で
+            //       `SortSpecialActionsList(currentSortColumn, currentSortAsc)` を実行して
+            //       ヘッダー内の DataTemplate 部分が確実に生成されてから ▲/▼ を反映します。
 
             if (profileSettingsVM.UseControllerReadout)
             {
