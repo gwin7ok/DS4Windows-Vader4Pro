@@ -3439,7 +3439,7 @@ namespace DS4Windows
         }
     
     // ProfileEditor layout fields (DTOと統合)
-    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = 720;
+    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = 760;
     public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = 600;
     public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = 310;
     public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = 150;
@@ -3866,7 +3866,7 @@ namespace DS4Windows
           new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER }, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER}, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER } };
         public Boolean useExclusiveMode = false; // Re-enable Ex Mode
 
-    public const int DEFAULT_FORM_WIDTH = 1700;
+    public const int DEFAULT_FORM_WIDTH = 1740;
     public int formWidth = DEFAULT_FORM_WIDTH;
 
     public const int DEFAULT_FORM_HEIGHT = 1270;
