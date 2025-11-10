@@ -245,7 +245,7 @@ namespace DS4WinWPF.DS4Forms
                     // Dispatcher を使ってレンダリング後に Button を優先的に探索・更新する。
                     try
                     {
-                        this.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
+                        this.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, new Action(() =>
                         {
                             try
                             {
@@ -424,8 +424,56 @@ namespace DS4WinWPF.DS4Forms
                                     // ActualWidth バインド等が機能し、列リサイズに追従します。
                                     var contentCtrl = new ContentControl() { ContentTemplate = tpl };
                                     App.logHolder.Logger.Debug($"[SortSpecialActionsList] Column[{i}] に DataTemplate('{templateKey}') を割り当てます");
+
+                                    // テンプレートが実体化されたとき（Loaded）に内部の named TextBlock を
+                                    // 確実に取得して更新するため、Loaded イベントで更新処理を実行します。
+                                    // Loaded は複数回呼ばれる可能性があるため、実行後にハンドラを解除します。
+                                    int colIdx = i;
+                                    RoutedEventHandler loadedHandler = null;
+                                    loadedHandler = (s, e) =>
+                                    {
+                                        try
+                                        {
+                                            App.logHolder.Logger.Debug($"[SortSpecialActionsList] ContentControl.Loaded event for Column[{colIdx}] - searching named TextBlocks");
+                                            var namedNameTb2 = FindVisualChildByName<TextBlock>(contentCtrl, "NameHeaderTextBlock");
+                                            var namedTrigTb2 = FindVisualChildByName<TextBlock>(contentCtrl, "TriggerHeaderTextBlock");
+                                            var namedActTb2 = FindVisualChildByName<TextBlock>(contentCtrl, "ActionHeaderTextBlock");
+
+                                            if (namedNameTb2 != null)
+                                            {
+                                                var newTxt = (columnName == "Name") ? nameBase + (asc ? " ▲" : " ▼") : nameBase;
+                                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named NameHeader old='{namedNameTb2.Text}' new='{newTxt}'");
+                                                namedNameTb2.Text = newTxt;
+                                                nameTb = namedNameTb2;
+                                            }
+                                            if (namedTrigTb2 != null)
+                                            {
+                                                var newTxt = (columnName == "Trigger") ? trigBase + (asc ? " ▲" : " ▼") : trigBase;
+                                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named TriggerHeader old='{namedTrigTb2.Text}' new='{newTxt}'");
+                                                namedTrigTb2.Text = newTxt;
+                                                trigTb = namedTrigTb2;
+                                            }
+                                            if (namedActTb2 != null)
+                                            {
+                                                var newTxt = (columnName == "Action") ? actBase + (asc ? " ▲" : " ▼") : actBase;
+                                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named ActionHeader old='{namedActTb2.Text}' new='{newTxt}'");
+                                                namedActTb2.Text = newTxt;
+                                                actTb = namedActTb2;
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded handler exception: {ex.Message}");
+                                        }
+                                        finally
+                                        {
+                                            try { contentCtrl.Loaded -= loadedHandler; } catch { }
+                                        }
+                                    };
+                                    contentCtrl.Loaded += loadedHandler;
+
                                     col.Header = contentCtrl;
-                                    // テンプレート内の TextBlock は Dispatcher 内で追跡・更新されるため
+                                    // テンプレート内の TextBlock は Loaded ハンドラで追跡・更新されるため
                                     // ここでは参照更新は行わない。
                                 }
                                 else
@@ -631,6 +679,23 @@ namespace DS4WinWPF.DS4Forms
 
             // --- 追加: 保存されたSplitter位置と列幅の復元 ---
             RestoreSplitterAndColumnWidths();
+            // 初期表示時にソート済みであればヘッダーの ▲/▼ を反映させる
+            try
+            {
+                this.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
+                {
+                    try
+                    {
+                        App.logHolder.Logger.Debug($"[ProfileEditor ctor] 初期ヘッダー表示更新を呼び出します: col={currentSortColumn}, asc={currentSortAsc}");
+                        SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                    }
+                    catch (Exception ex)
+                    {
+                        App.logHolder.Logger.Debug($"[ProfileEditor ctor] 初期ヘッダー更新で例外: {ex.Message}");
+                    }
+                }));
+            }
+            catch { }
         }
         // Splitter位置とSpecial Actions列幅の保存・復元はGlobal経由で統一
 
