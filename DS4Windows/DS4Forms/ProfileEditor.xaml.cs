@@ -45,16 +45,26 @@ namespace DS4WinWPF.DS4Forms
         {
             string baseName = col switch
             {
-                "Active" => "有効",
+                // Active column intentionally has no base label; only show arrow when active
+                "Active" => string.Empty,
                 "Name" => "名前", // lex:Loc Name
                 "Trigger" => "トリガー", // lex:Loc Trigger
                 "Action" => "アクション", // lex:Loc Action
                 _ => col
             };
+
             if (col == currentCol)
-                return baseName + (asc ? " ▲" : " ▼");
+            {
+                // For Active, show only the arrow. For others, append a leading space then arrow.
+                if (col == "Active")
+                    return asc ? "▲" : "▼";
+                else
+                    return baseName + (asc ? " ▲" : " ▼");
+            }
             else
+            {
                 return baseName;
+            }
         } // ← 修正: GetSortButtonContent メソッドの閉じ括弧を追加
 
         public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
@@ -182,7 +192,6 @@ namespace DS4WinWPF.DS4Forms
                 // ハンドラによる1回限りの更新に任せる方針とします。
                 TextBlock activeTb = null, nameTb = null, trigTb = null, actTb = null;
                 // ヘッダーベース名を先に定義（フォールバックで使用するため）
-                string activeBase = "有効";
                 string nameBase = "名前";
                 string trigBase = "トリガー";
                 string actBase = "アクション";
@@ -240,7 +249,7 @@ namespace DS4WinWPF.DS4Forms
 
                                             if (namedActiveTb2 != null)
                                             {
-                                                var newTxt = (columnName == "Active") ? activeBase + (asc ? " ▲" : " ▼") : activeBase;
+                                                var newTxt = (columnName == "Active") ? (asc ? "▲" : "▼") : string.Empty;
                                                 App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named ActiveHeader old='{namedActiveTb2.Text}' new='{newTxt}'");
                                                 namedActiveTb2.Text = newTxt;
                                                 activeTb = namedActiveTb2;
@@ -297,55 +306,65 @@ namespace DS4WinWPF.DS4Forms
                         }
                     } // end if (nameTb == null || ...)
 
-                // If the GridViewColumnHeader visuals haven't been realized yet, skip the
-                // immediate search/update and rely on the DataTemplate.Loaded handlers.
-                // However, if headers are present but the named TextBlocks aren't found,
-                // keep logging because that indicates a true mismatch (e.g. wrong template).
-                bool headerVisualized = UtilMethods.FindVisualChildren<DependencyObject>(lv)
-                    .Any(d => d.GetType()?.FullName == "System.Windows.Controls.Primitives.GridViewColumnHeader");
+                        // Determine whether GridViewColumnHeader visuals exist in the ListView.
+                        bool headerVisualized = UtilMethods.FindVisualChildren<DependencyObject>(lv)
+                            .Any(d => d.GetType()?.FullName == "System.Windows.Controls.Primitives.GridViewColumnHeader");
 
-                if (headerVisualized)
-                {
-                    if (nameTb != null)
-                    {
-                        App.logHolder.Logger.Debug($"[SortSpecialActionsList] NameHeader 変更前='{nameTb.Text}'");
-                        var newText = (columnName == "Name") ? nameBase + (asc ? " ▲" : " ▼") : nameBase;
-                        nameTb.Text = newText;
-                        App.logHolder.Logger.Debug($"[SortSpecialActionsList] NameHeader 変更後='{newText}'");
-                    }
-                    else
-                    {
-                        App.logHolder.Logger.Debug("[SortSpecialActionsList] NameHeaderTextBlock が見つかりませんでした");
-                    }
+                        if (headerVisualized)
+                        {
+                            // Update any header textblocks that we were able to locate.
+                            if (activeTb != null)
+                            {
+                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActiveHeader 変更前='{activeTb.Text}'");
+                                var newText = (columnName == "Active") ? (asc ? "▲" : "▼") : string.Empty;
+                                activeTb.Text = newText;
+                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActiveHeader 変更後='{newText}'");
+                            }
+                            else
+                            {
+                                App.logHolder.Logger.Debug("[SortSpecialActionsList] ActiveHeaderTextBlock が見つかりませんでした");
+                            }
 
-                    if (trigTb != null)
-                    {
-                        App.logHolder.Logger.Debug($"[SortSpecialActionsList] TriggerHeader 変更前='{trigTb.Text}'");
-                        var newText = (columnName == "Trigger") ? trigBase + (asc ? " ▲" : " ▼") : trigBase;
-                        trigTb.Text = newText;
-                        App.logHolder.Logger.Debug($"[SortSpecialActionsList] TriggerHeader 変更後='{newText}'");
-                    }
-                    else
-                    {
-                        App.logHolder.Logger.Debug("[SortSpecialActionsList] TriggerHeaderTextBlock が見つかりませんでした");
-                    }
+                            if (nameTb != null)
+                            {
+                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] NameHeader 変更前='{nameTb.Text}'");
+                                var newText = (columnName == "Name") ? nameBase + (asc ? " ▲" : " ▼") : nameBase;
+                                nameTb.Text = newText;
+                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] NameHeader 変更後='{newText}'");
+                            }
+                            else
+                            {
+                                App.logHolder.Logger.Debug("[SortSpecialActionsList] NameHeaderTextBlock が見つかりませんでした");
+                            }
 
-                    if (actTb != null)
-                    {
-                        App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionHeader 変更前='{actTb.Text}'");
-                        var newText = (columnName == "Action") ? actBase + (asc ? " ▲" : " ▼") : actBase;
-                        actTb.Text = newText;
-                        App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionHeader 変更後='{newText}'");
-                    }
-                    else
-                    {
-                        App.logHolder.Logger.Debug("[SortSpecialActionsList] ActionHeaderTextBlock が見つかりませんでした");
-                    }
-                }
-                else
-                {
-                    App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーはまだ実体化されていないため、即時更新をスキップします（Loaded ハンドラに委譲します）");
-                }
+                            if (trigTb != null)
+                            {
+                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] TriggerHeader 変更前='{trigTb.Text}'");
+                                var newText = (columnName == "Trigger") ? trigBase + (asc ? " ▲" : " ▼") : trigBase;
+                                trigTb.Text = newText;
+                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] TriggerHeader 変更後='{newText}'");
+                            }
+                            else
+                            {
+                                App.logHolder.Logger.Debug("[SortSpecialActionsList] TriggerHeaderTextBlock が見つかりませんでした");
+                            }
+
+                            if (actTb != null)
+                            {
+                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionHeader 変更前='{actTb.Text}'");
+                                var newText = (columnName == "Action") ? actBase + (asc ? " ▲" : " ▼") : actBase;
+                                actTb.Text = newText;
+                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionHeader 変更後='{newText}'");
+                            }
+                            else
+                            {
+                                App.logHolder.Logger.Debug("[SortSpecialActionsList] ActionHeaderTextBlock が見つかりませんでした");
+                            }
+                        }
+                        else
+                        {
+                            App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーはまだ実体化されていないため、即時更新をスキップします（Loaded ハンドラに委譲します）");
+                        }
             }
             catch (Exception ex)
             {

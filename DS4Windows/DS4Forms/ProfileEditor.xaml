@@ -26,7 +26,8 @@
                 Background="Transparent" BorderThickness="0"
                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                 Width="{Binding RelativeSource={RelativeSource AncestorType=GridViewColumnHeader}, Path=ActualWidth}">
-            <TextBlock x:Name="ActiveHeaderTextBlock" Text="有効" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <!-- 初期はラベル無し。ソート列になったときのみ矢印を表示 -->
+            <TextBlock x:Name="ActiveHeaderTextBlock" Text="" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Button>
     </DataTemplate>
     <DataTemplate x:Key="TriggerHeaderTemplate">
