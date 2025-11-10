@@ -106,6 +106,7 @@ namespace DS4WinWPF.DS4Forms
 
         public ProfileEditor(int device)
         {
+            App.logHolder.Logger.Debug($"[ProfileEditor] プロフィール編集画面を開きました device={device}");
 
             InitializeComponent();
 
@@ -608,6 +609,7 @@ namespace DS4WinWPF.DS4Forms
             { point = new Point(156, 47), size = new Size(146, 94) };
             hoverLocations[topTouchConBtn] = new HoverImageInfo()
             { point = new Point(155, 6), size = new Size(153, 114) };
+
 
             hoverLocations[l3ConBtn] = new HoverImageInfo()
             {
@@ -2067,26 +2069,55 @@ namespace DS4WinWPF.DS4Forms
         // 列ヘッダークリックイベント
         private void SpecialActionsHeader_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is string col)
+            string col = null;
+            if (sender is Button btn && btn.Tag is string tagCol)
+                col = tagCol;
+            App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] ソート要求: {col}");
+            if (col != null)
             {
                 if (col != currentSortColumn)
                 {
-                    // 新しい列なら昇順で開始
                     currentSortColumn = col;
                     currentSortAsc = true;
+                    App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] 新しい列: {col}, 昇順で開始");
                 }
                 else
                 {
-                    // 同じ列なら並び順を逆に
                     currentSortAsc = !currentSortAsc;
+                    App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] 同じ列: {col}, 並び順反転: {currentSortAsc}");
                 }
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] SortActions呼び出し: {currentSortColumn}, {currentSortAsc}");
                 specialActionsVM.SortActions(currentSortColumn, currentSortAsc);
                 var view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] CollectionView取得: {view?.Count}件");
                 view.SortDescriptions.Clear();
                 view.Refresh();
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] View.Refresh後: {view?.Count}件");
                 OnPropertyChanged(nameof(NameSortButtonContent));
                 OnPropertyChanged(nameof(TriggerSortButtonContent));
                 OnPropertyChanged(nameof(ActionSortButtonContent));
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] OnPropertyChanged完了");
+            }
+        }
+
+        private void SpecialActionsHeader_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+                {
+                    App.logHolder.Logger.Debug($"[SpecialActionsHeader_MouseLeftButtonUp] 列ヘッダーがクリックされました sender={sender?.ToString()} e={e?.ToString()}");
+            if (sender is TextBlock tb)
+            {
+                string col = null;
+                switch (tb.Text)
+                {
+                    case "名前": col = "Name"; break;
+                    case "トリガー": col = "Trigger"; break;
+                    case "アクション": col = "Action"; break;
+                }
+                if (col != null)
+                {
+                    App.logHolder.Logger.Debug($"[SpecialActionsHeader_MouseLeftButtonUp] 列クリック: {col}");
+                    var dummyBtn = new Button { Tag = col };
+                    SpecialActionsHeader_Click(dummyBtn, new RoutedEventArgs());
+                }
             }
         }
         // ここでProfileEditorクラスの閉じ括弧

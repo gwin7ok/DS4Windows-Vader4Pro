@@ -241,7 +241,11 @@
                                 <GridView>
                                     <GridViewColumn Width="150">
                                         <GridViewColumn.Header>
-                                            <Button Content="{lex:Loc Name}" Click="SpecialActionsHeader_Click" Tag="Name" Padding="0" Margin="0" />
+                                            <Grid Background="Transparent">
+                                                <Button Tag="Name" Click="SpecialActionsHeader_Click" Cursor="Hand" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" MinWidth="0" Width="Auto" Height="Auto">
+                                                    <TextBlock Text="{lex:Loc Name}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Button>
+                                            </Grid>
                                         </GridViewColumn.Header>
                                         <GridViewColumn.CellTemplate>
                                             <DataTemplate>
@@ -257,7 +261,11 @@
                                     </GridViewColumn>
                                     <GridViewColumn Width="100">
                                         <GridViewColumn.Header>
-                                            <Button Content="{lex:Loc Trigger}" Click="SpecialActionsHeader_Click" Tag="Trigger" Padding="0" Margin="0" />
+                                            <Grid Background="Transparent">
+                                                <Button Tag="Trigger" Click="SpecialActionsHeader_Click" Cursor="Hand" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" MinWidth="0" Width="Auto" Height="Auto">
+                                                    <TextBlock Text="{lex:Loc Trigger}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Button>
+                                            </Grid>
                                         </GridViewColumn.Header>
                                         <GridViewColumn.DisplayMemberBinding>
                                             <Binding Path="Controls" />
@@ -265,7 +273,11 @@
                                     </GridViewColumn>
                                     <GridViewColumn Width="Auto">
                                         <GridViewColumn.Header>
-                                            <Button Content="{lex:Loc Action}" Click="SpecialActionsHeader_Click" Tag="Action" Padding="0" Margin="0" />
+                                            <Grid Background="Transparent">
+                                                <Button Tag="Action" Click="SpecialActionsHeader_Click" Cursor="Hand" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" MinWidth="0" Width="Auto" Height="Auto">
+                                                    <TextBlock Text="{lex:Loc Action}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Button>
+                                            </Grid>
                                         </GridViewColumn.Header>
                                         <GridViewColumn.DisplayMemberBinding>
                                             <Binding Path="TypeName" />
