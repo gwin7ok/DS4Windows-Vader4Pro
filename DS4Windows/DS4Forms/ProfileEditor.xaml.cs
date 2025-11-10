@@ -104,6 +104,22 @@ namespace DS4WinWPF.DS4Forms
         private TouchButtonUserControl touchButtonUC;
         private ContentControl activeTouchButtonDisplayControl;
 
+        // （重複していた空のコンストラクタ宣言を削除）
+        // 統一ソート処理
+        private void SortSpecialActionsList(string columnName, bool asc)
+        {
+            currentSortColumn = columnName;
+            currentSortAsc = asc;
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] ソート: {columnName}, 昇順={asc}");
+            specialActionsVM.SortActions(columnName, asc);
+            var view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
+            view.SortDescriptions.Clear();
+            view.Refresh();
+            OnPropertyChanged(nameof(NameSortButtonContent));
+            OnPropertyChanged(nameof(TriggerSortButtonContent));
+            OnPropertyChanged(nameof(ActionSortButtonContent));
+        }
+
         public ProfileEditor(int device)
         {
             App.logHolder.Logger.Debug($"[ProfileEditor] プロフィール編集画面を開きました device={device}");
@@ -994,11 +1010,8 @@ namespace DS4WinWPF.DS4Forms
             axialRSStickControl.AxialVM.DeadZoneXChanged += UpdateReadingsRsDeadZoneX;
             axialRSStickControl.AxialVM.DeadZoneYChanged += UpdateReadingsRsDeadZoneY;
 
-            // Sort special action list by action name
-            CollectionView view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
-            view.SortDescriptions.Clear();
-            view.SortDescriptions.Add(new SortDescription("ActionName", ListSortDirection.Ascending));
-            view.Refresh();
+            // 初期表示も統一ソートメソッドを使用
+            SortSpecialActionsList("Name", true);
 
             if (profileSettingsVM.UseControllerReadout)
             {
@@ -2069,55 +2082,13 @@ namespace DS4WinWPF.DS4Forms
         // 列ヘッダークリックイベント
         private void SpecialActionsHeader_Click(object sender, RoutedEventArgs e)
         {
-            string col = null;
-            if (sender is Button btn && btn.Tag is string tagCol)
-                col = tagCol;
-            App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] ソート要求: {col}");
+            var btn = sender as Button;
+            var col = btn?.Tag as string;
             if (col != null)
             {
-                if (col != currentSortColumn)
-                {
-                    currentSortColumn = col;
-                    currentSortAsc = true;
-                    App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] 新しい列: {col}, 昇順で開始");
-                }
-                else
-                {
-                    currentSortAsc = !currentSortAsc;
-                    App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] 同じ列: {col}, 並び順反転: {currentSortAsc}");
-                }
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] SortActions呼び出し: {currentSortColumn}, {currentSortAsc}");
-                specialActionsVM.SortActions(currentSortColumn, currentSortAsc);
-                var view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] CollectionView取得: {view?.Count}件");
-                view.SortDescriptions.Clear();
-                view.Refresh();
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] View.Refresh後: {view?.Count}件");
-                OnPropertyChanged(nameof(NameSortButtonContent));
-                OnPropertyChanged(nameof(TriggerSortButtonContent));
-                OnPropertyChanged(nameof(ActionSortButtonContent));
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] OnPropertyChanged完了");
-            }
-        }
-
-        private void SpecialActionsHeader_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-                {
-                    App.logHolder.Logger.Debug($"[SpecialActionsHeader_MouseLeftButtonUp] 列ヘッダーがクリックされました sender={sender?.ToString()} e={e?.ToString()}");
-            if (sender is TextBlock tb)
-            {
-                string col = null;
-                switch (tb.Text)
-                {
-                    case "名前": col = "Name"; break;
-                    case "トリガー": col = "Trigger"; break;
-                    case "アクション": col = "Action"; break;
-                }
-                if (col != null)
-                {
-                    App.logHolder.Logger.Debug($"[SpecialActionsHeader_MouseLeftButtonUp] 列クリック: {col}");
-                    var dummyBtn = new Button { Tag = col };
-                    SpecialActionsHeader_Click(dummyBtn, new RoutedEventArgs());
-                }
+                bool asc = col != currentSortColumn ? true : !currentSortAsc;
+                SortSpecialActionsList(col, asc);
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] 列クリック: {col}");
             }
         }
         // ここでProfileEditorクラスの閉じ括弧
