@@ -8062,20 +8062,9 @@ namespace DS4Windows
                     testStr = strWriter.ToString();
             }
 
-            // Insert root attributes app_version and config_version into the serialized root element
             try
             {
-                int idx = testStr.IndexOf("<Profile");
-                if (idx >= 0)
-                {
-                    int gt = testStr.IndexOf('>', idx);
-                    if (gt > idx)
-                    {
-                        string insert = $" app_version=\"{Global.exeversion}\" config_version=\"{Global.APP_CONFIG_VERSION}\"";
-                        testStr = testStr.Insert(gt, insert);
-                    }
-                }
-
+                // The DTO now contains app_version/config_version as XmlAttributes, so write directly.
                 using (StreamWriter sw = new StreamWriter(output_path, false))
                 {
                     sw.Write(testStr);

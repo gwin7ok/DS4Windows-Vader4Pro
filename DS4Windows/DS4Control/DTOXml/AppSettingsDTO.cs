@@ -66,6 +66,12 @@ public class AppSettingsDTO
     [XmlElement("specialActionDetailColWidth")]
     public int SpecialActionDetailColWidth { get; set; } = BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
 
+    // ルート属性として保存するアプリ/設定バージョン
+    [XmlAttribute("app_version")]
+    public string AppVersion { get; set; }
+
+    [XmlAttribute("config_version")]
+    public string ConfigVersion { get; set; }
 
         [XmlElement("ProcessPriority")]
         public int ProcessPriority { get; set; }
@@ -757,6 +763,9 @@ public class AppSettingsDTO
         SpecialActionNameColWidth = source.specialActionNameColWidth > 0 ? source.specialActionNameColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
         SpecialActionTriggerColWidth = source.specialActionTriggerColWidth > 0 ? source.specialActionTriggerColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
         SpecialActionDetailColWidth = source.specialActionDetailColWidth > 0 ? source.specialActionDetailColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+            // ルート属性に現在のアプリ/設定バージョンをセット（シリアライザで属性として出力される）
+            AppVersion = Global.exeversion;
+            ConfigVersion = Global.APP_CONFIG_VERSION.ToString();
             UseExclusiveMode = source.useExclusiveMode;
             StartMinimized = source.startMinimized;
             MinimizeToTaskbar = source.minToTaskbar;
