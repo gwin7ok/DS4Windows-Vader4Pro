@@ -359,14 +359,23 @@ namespace DS4WinWPF.DS4Forms
             var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
             if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 4)
             {
-                // Global経由で保存
-                Global.ProfileEditorLeftWidth = (int)leftWidth;
-                Global.ProfileEditorRightWidth = (int)rightWidth;
-                // columns: 0=Active,1=Name,2=Trigger,3=Detail
-                Global.SpecialActionNameColWidth = (int)gridView.Columns[1].Width;
-                Global.SpecialActionTriggerColWidth = (int)gridView.Columns[2].Width;
-                Global.SpecialActionDetailColWidth = (int)gridView.Columns[3].Width;
-                // 必要なら他の列も追加
+                try
+                {
+                    // Global経由で保存
+                    Global.ProfileEditorLeftWidth = (int)leftWidth;
+                    Global.ProfileEditorRightWidth = (int)rightWidth;
+                    // columns: 0=Active,1=Name,2=Trigger,3=Detail
+                    Global.SpecialActionNameColWidth = (int)gridView.Columns[1].Width;
+                    Global.SpecialActionTriggerColWidth = (int)gridView.Columns[2].Width;
+                    Global.SpecialActionDetailColWidth = (int)gridView.Columns[3].Width;
+                    // 必要なら他の列も追加
+
+                    App.logHolder?.Logger?.Debug($"[SaveSplitterAndColumnWidths] Saved left={Global.ProfileEditorLeftWidth} right={Global.ProfileEditorRightWidth} nameCol={Global.SpecialActionNameColWidth} trigCol={Global.SpecialActionTriggerColWidth} detailCol={Global.SpecialActionDetailColWidth}");
+                }
+                catch (Exception ex)
+                {
+                    App.logHolder?.Logger?.Debug($"[SaveSplitterAndColumnWidths] failed: {ex.Message}");
+                }
             }
         }
 
@@ -405,7 +414,7 @@ namespace DS4WinWPF.DS4Forms
             }
             catch (Exception ex)
             {
-                // ログ出力やデフォルト値復元など（必要なら）
+                App.logHolder?.Logger?.Debug($"[RestoreSplitterAndColumnWidths] failed: {ex.Message}");
             }
         }
 
@@ -645,9 +654,17 @@ namespace DS4WinWPF.DS4Forms
 
         private void PopulateReverseHoverIndexes()
         {
-            foreach (KeyValuePair<Button, int> pair in hoverIndexes)
+            try
             {
-                reverseHoverIndexes.Add(pair.Value, pair.Key);
+                foreach (KeyValuePair<Button, int> pair in hoverIndexes)
+                {
+                    reverseHoverIndexes.Add(pair.Value, pair.Key);
+                }
+                App.logHolder?.Logger?.Debug($"[PopulateReverseHoverIndexes] Built reverseHoverIndexes count={reverseHoverIndexes.Count}");
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[PopulateReverseHoverIndexes] failed: {ex.Message}");
             }
         }
 
@@ -672,7 +689,9 @@ namespace DS4WinWPF.DS4Forms
             hoverIndexes[l3ConBtn] = 16;
             hoverIndexes[r3ConBtn] = 17;
 
-            hoverIndexes[leftTouchConBtn] = mappingListVM.ControlIndexMap[DS4Controls.TouchLeft]; // 21
+            hoverIndexes[brpConBtn] = 44;
+
+            App.logHolder?.Logger?.Debug($"[PopulateHoverIndexes] Populated hoverIndexes count={hoverIndexes.Count}");
             hoverIndexes[rightTouchConBtn] = mappingListVM.ControlIndexMap[DS4Controls.TouchRight]; // 22
             hoverIndexes[multiTouchConBtn] = mappingListVM.ControlIndexMap[DS4Controls.TouchMulti]; // 23
             hoverIndexes[topTouchConBtn] = mappingListVM.ControlIndexMap[DS4Controls.TouchUpper]; // 24
@@ -715,6 +734,8 @@ namespace DS4WinWPF.DS4Forms
                 point = new Point(Canvas.GetLeft(circleConBtn), Canvas.GetTop(circleConBtn)),
                 size = new Size(circleConBtn.Width, circleConBtn.Height)
             };
+
+                App.logHolder?.Logger?.Debug($"[PopulateHoverLocations] Populated hoverLocations count={hoverLocations.Count}");
             hoverLocations[squareConBtn] = new HoverImageInfo()
             {
                 point = new Point(Canvas.GetLeft(squareConBtn), Canvas.GetTop(squareConBtn)),
@@ -894,6 +915,7 @@ namespace DS4WinWPF.DS4Forms
 
         private void PopulateHoverImages()
         {
+            App.logHolder?.Logger?.Debug("[PopulateHoverImages] loading hover images");
             ImageSourceConverter sourceConverter = new ImageSourceConverter();
 
             ImageSource temp =
@@ -1053,6 +1075,8 @@ namespace DS4WinWPF.DS4Forms
             hoverImages[fnrConBtn] = guideHover;
             hoverImages[blpConBtn] = guideHover;
             hoverImages[brpConBtn] = guideHover;
+
+            App.logHolder?.Logger?.Debug($"[PopulateHoverImages] loaded hoverImages count={hoverImages.Count}");
         }
 
         public void Reload(int device, ProfileEntity profile = null)
