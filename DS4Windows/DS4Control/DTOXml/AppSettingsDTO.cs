@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Xml.Serialization;
+using System.Globalization;
 using DS4Windows;
 /*
 DS4Windows
@@ -173,10 +174,38 @@ public class AppSettingsDTO
             get => LastChecked.ToString("MM/dd/yyyy HH:mm:ss");
             set
             {
-                if (DateTime.TryParse(value, out DateTime temp))
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    // leave LastChecked as default (DateTime.MinValue) if empty
+                    return;
+                }
+
+                DateTime temp;
+                // Try several common formats using invariant culture first to avoid culture-specific parsing issues.
+                string[] formats = new[] {
+                    "MM/dd/yyyy HH:mm:ss",
+                    "M/d/yyyy H:mm:ss",
+                    "yyyy-MM-ddTHH:mm:ss",
+                    "yyyy-MM-dd HH:mm:ss",
+                    "yyyy/MM/dd HH:mm:ss",
+                    "yyyy-MM-ddTHH:mm:ssZ",
+                    "o", // round-trip ISO 8601
+                    "s"  // sortable
+                };
+
+                if (DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal, out temp))
+                {
+                    LastChecked = temp;
+                    return;
+                }
+
+                // Fallback to invariant culture parse, then to current culture.
+                if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal, out temp) ||
+                    DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal, out temp))
                 {
                     LastChecked = temp;
                 }
+                // If parsing fails, keep existing LastChecked (no throw/log here to keep DTO lightweight).
             }
         }
 
