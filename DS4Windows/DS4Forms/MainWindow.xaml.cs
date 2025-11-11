@@ -274,7 +274,7 @@ namespace DS4WinWPF.DS4Forms
                         if (!string.IsNullOrEmpty(newUpdaterVersion))
                         {
                             Util.StartProcessHelper(
-                                $"https://github.com/schmaldeo/DS4Updater/releases/tag/v{newUpdaterVersion}/{mainWinVM.updaterExe}");
+                                $"https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/tag/v{newUpdaterVersion}/{mainWinVM.updaterExe}");
                         }
                     });
                 }
@@ -387,9 +387,9 @@ namespace DS4WinWPF.DS4Forms
                     {
                         try
                         {
-                            bool isProfileNotification = e.Data.Contains("を使用しています") || e.Data.Contains("is using Profile") || 
+                            bool isProfileNotification = e.Data.Contains("を使用しています") || e.Data.Contains("is using Profile") ||
                                                        e.Data.Contains("using Profile") || e.Data.Contains("using temp Profile");
-                            
+
                             if (isProfileNotification)
                             {
                                 // プロファイル通知：カスタムウィンドウのみを表示
@@ -1144,12 +1144,12 @@ Suspend support not enabled.", true);
                                 strData[0] = strData[0].ToLower();
 
                                 if (strData[0] == "start")
-                                { 
-                                    if(!Program.rootHub.running) 
+                                {
+                                    if(!Program.rootHub.running)
                                         ChangeService();
                                 }
                                 else if (strData[0] == "stop")
-                                {    
+                                {
                                     if (Program.rootHub.running)
                                         ChangeService();
                                 }
@@ -1256,7 +1256,7 @@ Suspend support not enabled.", true);
                                 }
                                 else if (strData[0] == "outputslot" && strData.Length >= 3)
                                 {
-                                    // Command syntax: 
+                                    // Command syntax:
                                     //    OutputSlot.slot#.Unplug
                                     //    OutputSlot.slot#.PlugDS4
                                     //    OutputSlot.slot#.PlugX360
@@ -1767,7 +1767,7 @@ Suspend support not enabled.", true);
                 profDockPanel.Children.Add(editor);
                 editor.Reload(device, entity);
             }
-            
+
         }
 
         private void Editor_CreatedProfile(ProfileEditor sender, string profile)

@@ -20,13 +20,13 @@
 		<Version>3.11.3</Version>
 		<Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
 		<Platform Condition=" '$(Platform)' == '' ">x64</Platform>
-		<Copyright>Copyright © Scarlet.Crush Productions 2012, 2013; InhexSTER, HecticSeptic, electrobrains 2013, 2014; Jays2Kings 2013, 2014, 2015, 2016; Ryochan7 2017-2023, schmaldeo 2024</Copyright>
+		<Copyright>Copyright © Scarlet.Crush Productions 2012, 2013; InhexSTER, HecticSeptic, electrobrains 2013, 2014; Jays2Kings 2013, 2014, 2015, 2016; Ryochan7 2017-2023, schmaldeo 2024,AhmedAmrNabil 2025, gwin7ok 2025</Copyright>
 		<Description>Sony DualShock 4 to Microsoft Xinput controller mapper</Description>
-		<Authors>schmaldeo</Authors>
-		<Company>schmaldeo</Company>
+		<Authors>gwin7ok</Authors>
+		<Company>gwin7ok</Company>
 		<PackageProjectUrl>https://schmaldeo.github.io/DS4WindowsDocs</PackageProjectUrl>
 		<PackageLicenseUrl>https://www.gnu.org/licenses/gpl-3.0.txt</PackageLicenseUrl>
-		<RepositoryUrl>https://github.com/schmaldeo/DS4Windows</RepositoryUrl>
+		<RepositoryUrl>https://github.com/gwin7ok/DS4Windows-Vader4Pro</RepositoryUrl>
 		<!-- Suppress WPF-related false positive errors -->
 		<NoWarn>$(NoWarn);CS0103;CS1061;CS0246;CS0234</NoWarn>
 		<WarningsAsErrors />

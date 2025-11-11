@@ -31,15 +31,15 @@ available in this source code from the COPYING file.
 
 ## Downloads
 
-- **[Main builds of DS4Windows](https://github.com/schmaldeo/DS4Windows/releases)**
+- **[Main builds of DS4Windows](https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases)**
 
 ## Install
 
-You can install DS4Windows by downloading it from [releases](https://github.com/schmaldeo/DS4Windows/releases) and place it to your preferred place.
+You can install DS4Windows by downloading it from [releases](https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases) and place it to your preferred place.
 
 Alternatively, you can install [`ds4windows`](https://scoop.sh/#/apps?q=ds4windows&o=true&id=c8b519fcb06da6bb014569fd0a07521839ec5425) via [Scoop](https://scoop.sh/).
 
-Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/schmaldeo/DS4Windows/refs/heads/master/ds4w.bat) file and execute it. It will open a window that downloads and places the program in `%LOCALAPPDATA%\DS4Windows` and creates a desktop shortcut to the executable.
+Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/master/ds4w.bat) file and execute it. It will open a window that downloads and places the program in `%LOCALAPPDATA%\DS4Windows` and creates a desktop shortcut to the executable.
 
 ## Requirements
 
