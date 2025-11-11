@@ -7655,32 +7655,9 @@ namespace DS4Windows
             return Loaded;
         }
 
-        public bool Load()
-        {
-            // Use legacy loader exclusively. New DTO-based schema is no longer used.
-            bool loaded = LoadOld();
+        // Legacy Load implementation (formerly LoadOld) will be the canonical Load method below.
 
-            if (loaded)
-            {
-                Global.PrepareAbsMonitorBounds(absDisplayEDID);
-
-                string custom_exe_name_path = Path.Combine(Global.exedirpath, Global.CUSTOM_EXE_CONFIG_FILENAME);
-                bool fakeExeFileExists = File.Exists(custom_exe_name_path);
-                if (fakeExeFileExists)
-                {
-                    string fake_exe_name = File.ReadAllText(custom_exe_name_path).Trim();
-                    bool valid = !(fake_exe_name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0);
-                    if (valid)
-                    {
-                        fakeExeFileName = fake_exe_name;
-                    }
-                }
-            }
-
-            return loaded;
-        }
-
-        public bool LoadOld()
+    public bool Load()
         {
             bool Loaded = true;
             bool missingSetting = false;
