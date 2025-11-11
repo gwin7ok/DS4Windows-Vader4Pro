@@ -2862,7 +2862,7 @@ namespace DS4Windows
             bool xinputChange = true, bool postLoad = true)
         {
             Global.loggedInvalidActions.Clear();
-            bool result = m_Config.LoadProfileNew(device, launchprogram, control, "", xinputChange, postLoad);
+            bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
             //bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
             tempprofilename[device] = string.Empty;
             useTempProfile[device] = false;
@@ -2875,7 +2875,7 @@ namespace DS4Windows
             ControlService control, bool xinputChange = true)
         {
             Global.loggedInvalidActions.Clear();
-            bool result = m_Config.LoadProfileNew(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
+            bool result = m_Config.LoadProfile(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
             //bool result = m_Config.LoadProfile(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
             if (result)
             {
@@ -3014,13 +3014,12 @@ namespace DS4Windows
 
         public static void SaveProfile(int device, string proName)
         {
-            m_Config.SaveProfileNew(device, proName);
-            //m_Config.SaveProfile(device, proName);
+            m_Config.SaveProfile(device, proName);
         }
 
-        public static void SaveAsNewProfile(int device, string propath)
+        public static void SaveAsProfile(int device, string propath)
         {
-            m_Config.SaveAsNewProfile(device, propath);
+            m_Config.SaveAsProfile(device, propath);
         }
 
         public static bool SaveLinkedProfiles()
@@ -4420,27 +4419,15 @@ namespace DS4Windows
             return result;
         }
 
-        public bool SaveAsNewProfile(int device, string proName)
+        public bool SaveAsProfile(int device, string proName)
         {
             bool Saved = true;
             ResetProfile(device);
-            //Saved = SaveProfile(device, proName);
-            Saved = SaveProfileNew(device, proName);
+            Saved = SaveProfile(device, proName);
             return Saved;
         }
 
-        public bool SaveProfileNew(int device, string proName)
-        {
-            // Save using the older 3.9.9-compatible XML structure.
-            // Keep rebuilding action dictionaries as before, but delegate actual
-            // XML generation to the existing SaveProfileOld implementation so
-            // we maintain the legacy layout while still including newer fields
-            // where SaveProfileOld already handles them.
-            RebuildProfileActionDicts(device);
-            return SaveProfileOld(device, proName);
-        }
-
-        public bool SaveProfileOld(int device, string proName)
+        public bool SaveProfile(int device, string proName)
         {
             bool Saved = true;
             //string path = Global.appdatapath + @"\Profiles\" + Path.GetFileNameWithoutExtension(proName) + ".xml";
@@ -5264,234 +5251,7 @@ namespace DS4Windows
             return "Unbound";
         }
 
-        public bool LoadProfileNew(int device, bool launchprogram, ControlService control,
-            string propath = "", bool xinputChange = true, bool postLoad = true)
-        {
-            // プロファイル切り替え時にエラーログ履歴をクリア
-            // Global.loggedInvalidActions.Clear(); // 外部からの切り替え時のみクリアする
-            bool loaded = true;
-            string profilepath;
-            if (propath == "")
-                profilepath = Path.Combine(Global.appdatapath, "Profiles",
-                    $"{profilePath[device]}.xml");
-            else
-                profilepath = propath;
 
-            if (File.Exists(profilepath))
-            {
-                string profileXml = string.Empty;
-
-                // Read profile XML without performing automatic migrations at startup.
-                // We will not call ProfileMigration.Migrate() automatically; instead
-                // load the file's current text and attempt to deserialize. This
-                // prevents the program from rewriting profile files on load.
-                using FileStream fileStream = new FileStream(profilepath, FileMode.Open, FileAccess.Read);
-                ProfileMigration tmpMigration = new ProfileMigration(fileStream);
-                if (tmpMigration.ProfileReader != null)
-                {
-                    profileXml = tmpMigration.CurrentMigrationText;
-                }
-                else
-                {
-                    loaded = false;
-                }
-                tmpMigration.Close();
-
-                if (device < Global.MAX_DS4_CONTROLLER_COUNT)
-                {
-                    DS4LightBar.forcelight[device] = false;
-                    DS4LightBar.forcedFlash[device] = 0;
-                }
-
-                OutContType oldContType = Global.activeOutDevType[device];
-                LightbarSettingInfo lightbarSettings = lightbarSettingInfo[device];
-                LightbarDS4WinInfo lightInfo = lightbarSettings.ds4winSettings;
-
-                bool xinputPlug = false;
-                bool xinputStatus = false;
-
-                // Make sure to reset currently set profile values before parsing
-                ResetProfile(device);
-                ResetMouseProperties(device, control);
-                // Reset some Mapping properties before attempting to load different
-                // profile
-                control.PreLoadReset(device);
-
-                profileActions[device].Clear();
-                foreach (DS4ControlSettings dcs in ds4settings[device])
-                    dcs.Reset();
-
-                //XmlReader xmlReader = XmlReader.Create()
-                XmlSerializer serializer = new XmlSerializer(typeof(ProfileDTO),
-                    ProfileDTO.GetAttributeOverrides());
-                using StringReader sr = new StringReader(profileXml);
-                try
-                {
-                    ProfileDTO dto = serializer.Deserialize(sr) as ProfileDTO;
-                    dto.DeviceIndex = device;
-                    dto.MapTo(this);
-                }
-                catch (InvalidOperationException e)
-                {
-                    AppLogger.LogToGui($"Failed to load {profilepath}. {e.InnerException.Message}", false);
-                    loaded = false;
-                }
-                catch (XmlException e)
-                {
-                    AppLogger.LogToGui($"Failed to load {profilepath}. Invalid XML. {e.InnerException.Message}", false);
-                    loaded = false;
-                }
-
-                if (!loaded)
-                {
-                    return loaded;
-                }
-
-                containsCustomAction[device] = false;
-                containsCustomExtras[device] = false;
-                profileActionCount[device] = profileActions[device].Count;
-                profileActionDict[device].Clear();
-                profileActionIndexDict[device].Clear();
-                foreach (string actionname in profileActions[device])
-                {
-                    var actionObj = Global.GetAction(actionname);
-                    int index = Global.GetActionIndexOf(actionname);
-                    profileActionDict[device][actionname] = actionObj;
-                    profileActionIndexDict[device][actionname] = index;
-                    // プロファイル読み込み時のみ、同じスペシャルアクション名につき1回だけエラーログを出力
-                    if (actionObj == null || actionObj.name == "null" || index < 0)
-                    {
-                        if (!Global.loggedInvalidActions.Contains(actionname))
-                        {
-                            AppLogger.LogToGui($"Invalid action index for '{actionname}': {index}. ActionDone count: {(Mapping.actionDone != null ? Mapping.actionDone.Count : 0)}", false);
-                            Global.loggedInvalidActions.Add(actionname);
-                        }
-                    }
-                }
-
-                // Only change xinput devices under certain conditions. Avoid
-                // performing this upon program startup before loading devices.
-                if (xinputChange && device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-                {
-                    CheckOldDevicestatus(device, control, oldContType,
-                        out xinputPlug, out xinputStatus);
-                }
-
-                CacheProfileCustomsFlags(device);
-                buttonMouseInfos[device].activeButtonSensitivity =
-                    buttonMouseInfos[device].buttonSensitivity;
-
-                // Check if profile sets a program to launch on loading
-                if (launchprogram && launchProgram[device] != string.Empty)
-                {
-                    string programPath = launchProgram[device];
-                    Process[] localAll = Process.GetProcesses();
-                    bool procFound = false;
-                    for (int procInd = 0, procsLen = localAll.Length; !procFound && procInd < procsLen; procInd++)
-                    {
-                        try
-                        {
-                            string temp = localAll[procInd].MainModule.FileName;
-                            if (temp == programPath)
-                            {
-                                procFound = true;
-                            }
-                        }
-                        // Ignore any process for which this information
-                        // is not exposed
-                        catch { }
-                    }
-
-                    if (!procFound)
-                    {
-                        Task processTask = new Task(() =>
-                        {
-                            Thread.Sleep(5000);
-                            using Process tempProcess = new Process();
-                            tempProcess.StartInfo.FileName = programPath;
-                            tempProcess.StartInfo.WorkingDirectory = new FileInfo(programPath).Directory.ToString();
-                            //tempProcess.StartInfo.UseShellExecute = false;
-                            try { tempProcess.Start(); }
-                            catch { }
-                        });
-
-                        processTask.Start();
-                    }
-                }
-
-                // Check if Touchpad should be switched off
-                if (startTouchpadOff[device] == true) control.StartTPOff(device);
-
-                {
-                    bool tempToggle = gyroControlsInf[device].triggerToggle;
-                    SetGyroControlsToggle(device, tempToggle, control);
-                }
-
-                {
-                    bool tempToggle = gyroMouseToggle[device];
-                    SetGyroMouseToggle(device, tempToggle, control);
-                }
-
-                {
-                    bool tempToggle = gyroMouseStickToggle[device];
-                    SetGyroMouseStickToggle(device, tempToggle, control);
-                }
-
-                {
-                    int tempDZ = gyroMouseDZ[device];
-                    SetGyroMouseDZ(device, tempDZ, control);
-                }
-
-                // If a device exists, make sure to transfer relevant profile device
-                // options to device instance
-                if (postLoad && device < Global.MAX_DS4_CONTROLLER_COUNT)
-                {
-                    PostLoadSnippet(device, control, xinputStatus, xinputPlug);
-                }
-
-                // Do not automatically save migrated files at startup. Any conversion
-                // to a different on-disk schema must be performed explicitly by the
-                // user or tooling.
-            }
-            else
-            {
-                loaded = false;
-                ResetProfile(device);
-                ResetMouseProperties(device, control);
-
-                // Reset some Mapping properties
-                control.PreLoadReset(device);
-
-                profileActions[device].Clear();
-                foreach (DS4ControlSettings dcs in ds4settings[device])
-                    dcs.Reset();
-
-                containsCustomAction[device] = false;
-                containsCustomExtras[device] = false;
-                profileActionCount[device] = profileActions[device].Count;
-                profileActionDict[device].Clear();
-                profileActionIndexDict[device].Clear();
-
-                // Unplug existing output device if requested profile does not exist
-                OutputDevice tempOutDev = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ?
-                    control.outputDevices[device] : null;
-                if (tempOutDev != null)
-                {
-                    tempOutDev = null;
-                    //Global.activeOutDevType[device] = OutContType.None;
-                    DS4Device tempDev = control.DS4Controllers[device];
-                    if (tempDev != null)
-                    {
-                        tempDev.queueEvent(() =>
-                        {
-                            control.UnplugOutDev(device, tempDev);
-                        });
-                    }
-                }
-            }
-
-            return loaded;
-        }
 
 
     public bool LoadProfile(int device, bool launchprogram, ControlService control,
@@ -7859,7 +7619,7 @@ namespace DS4Windows
             if (missingSetting && Loaded)// && buttons != null)
             {
                 string proName = Path.GetFileName(profilepath);
-                SaveProfileOld(device, proName);
+                SaveProfile(device, proName);
             }
 
             if (Loaded)
@@ -7897,35 +7657,8 @@ namespace DS4Windows
 
         public bool Load()
         {
-            bool loaded = true;
-            if (File.Exists(m_Profile))
-            {
-                XmlSerializer serializer = new XmlSerializer(typeof(AppSettingsDTO));
-                using StreamReader sr = new StreamReader(m_Profile);
-                try
-                {
-                    AppSettingsDTO dto = serializer.Deserialize(sr) as AppSettingsDTO;
-                    dto.MapTo(this);
-
-                    PostProcessLoad();
-                }
-                catch (InvalidOperationException)
-                {
-                    // Attempt to load using the old-profile loader as a fallback so
-                    // files saved in the 3.9.9-compatible structure remain readable.
-                    AppLogger.LogToGui("Profiles.xml could not be deserialized as AppSettingsDTO; attempting legacy load.", false);
-                    loaded = LoadOld();
-                }
-                catch (System.Xml.XmlException)
-                {
-                    AppLogger.LogToGui("Profiles.xml contains invalid XML; attempting legacy load.", false);
-                    loaded = LoadOld();
-                }
-            }
-            else
-            {
-                loaded = false;
-            }
+            // Use legacy loader exclusively. New DTO-based schema is no longer used.
+            bool loaded = LoadOld();
 
             if (loaded)
             {
