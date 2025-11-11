@@ -205,18 +205,18 @@ namespace DS4WinWPF.DS4Forms
             currentSortColumn = columnName;
             currentSortAsc = asc;
 
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] 呼び出し: 列={columnName}, 昇順={asc}, 以前の列={prevCol}, 以前の昇順={prevAsc}");
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Called: column={columnName}, asc={asc}, prevCol={prevCol}, prevAsc={prevAsc}");
 
-            // 1) ViewModel側のソート実行前ログ
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] specialActionsVM.SortActions を呼び出します");
+            // 1) ViewModel-side sort execution
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Calling specialActionsVM.SortActions");
             specialActionsVM.SortActions(columnName, asc);
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] specialActionsVM.SortActions 実行完了");
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] specialActionsVM.SortActions completed");
 
             // 2) CollectionView の準備と状態ログ
             var view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
             if (view == null)
             {
-                App.logHolder.Logger.Debug("[SortSpecialActionsList] CollectionView が null です。処理を中止します。");
+                App.logHolder.Logger.Debug("[SortSpecialActionsList] CollectionView is null. Aborting.");
                 return;
             }
 
@@ -224,13 +224,13 @@ namespace DS4WinWPF.DS4Forms
             try
             {
                 var preItems = specialActionsVM.ActionCol?.Cast<object>().Take(5).Select(x => x.ToString()).ToArray() ?? Array.Empty<string>();
-                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Refresh 前のActionCol 件数={(specialActionsVM.ActionCol == null ? 0 : specialActionsVM.ActionCol.Count)}, 先頭サンプル=" + string.Join(",", preItems));
+                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionCol count before Refresh={(specialActionsVM.ActionCol == null ? 0 : specialActionsVM.ActionCol.Count)}, head sample=" + string.Join(",", preItems));
             }
             catch { /* 安全のため無視 */ }
 
-            App.logHolder.Logger.Debug("[SortSpecialActionsList] CollectionView.Refresh を実行します");
+            App.logHolder.Logger.Debug("[SortSpecialActionsList] Executing CollectionView.Refresh");
             view.Refresh();
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Refresh 実行後の表示件数={view.Count}");
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Item count after Refresh={view.Count}");
 
             // 既存のバインディング更新（残して互換性を保つ）
             OnPropertyChanged(nameof(ActiveSortButtonContent));
@@ -263,7 +263,7 @@ namespace DS4WinWPF.DS4Forms
 
         public ProfileEditor(int device)
         {
-            App.logHolder.Logger.Debug($"[ProfileEditor] プロフィール編集画面を開きました device={device}");
+            App.logHolder.Logger.Debug($"[ProfileEditor] Opened profile editor for device={device}");
 
             InitializeComponent();
 
@@ -2405,12 +2405,12 @@ namespace DS4WinWPF.DS4Forms
             var col = btn?.Tag as string;
             if (col != null)
             {
-                // ログ: クリック直前のソート状態
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] クリック: col={col}, currentSortColumn={currentSortColumn}, currentSortAsc={currentSortAsc}");
+                // Log: sort state just before click
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Click: col={col}, currentSortColumn={currentSortColumn}, currentSortAsc={currentSortAsc}");
                 bool asc = col != currentSortColumn ? true : !currentSortAsc;
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] ソート方向決定: col={col}, asc={asc}");
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Determined sort direction: col={col}, asc={asc}");
                 SortSpecialActionsList(col, asc);
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] 列クリック処理完了: {col}");
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Column click handling complete: {col}");
             }
         }
     } // ← ProfileEditorクラスの閉じ括弧を追加

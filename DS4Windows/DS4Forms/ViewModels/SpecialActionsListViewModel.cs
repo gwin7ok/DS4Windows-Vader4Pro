@@ -76,8 +76,8 @@ public class SpecialActionsListViewModel
         try {
             isUiThread = System.Windows.Application.Current?.Dispatcher?.CheckAccess() ?? false;
         } catch { }
-        Logger.Debug($"[SortActions] UIスレッド: {isUiThread}");
-        if (!isUiThread) Logger.Warn("[SortActions] UIスレッド外で実行されています。ObservableCollectionの操作は失敗する可能性があります。");
+    Logger.Debug($"[SortActions] UI thread: {isUiThread}");
+    if (!isUiThread) Logger.Warn("[SortActions] Running off the UI thread. Operations on ObservableCollection may fail.");
 
         Logger.Debug($"[SortActions] column={column}, ascending={ascending}, actionCol.Count(before)={actionCol.Count}");
         IEnumerable<SpecialActionItem> sorted = null;
@@ -101,7 +101,7 @@ public class SpecialActionsListViewModel
                                    : actionCol.OrderByDescending(x => x.TypeName, StringComparer.CurrentCultureIgnoreCase);
                 break;
             default:
-                Logger.Debug($"[SortActions] column値が不正: {column}");
+                Logger.Debug($"[SortActions] Invalid column value: {column}");
                 return;
         }
         var sortedList = sorted.ToList(); // Clear前に評価
@@ -124,13 +124,13 @@ public class SpecialActionsListViewModel
             }
             catch (Exception ex)
             {
-                Logger.Error($"[SortActions] 追加時例外: {item?.ActionName} - {ex}");
+                Logger.Error($"[SortActions] Exception adding item: {item?.ActionName} - {ex}");
                 throw;
             }
         }
         if (!object.ReferenceEquals(actionCol, oldRef))
         {
-            Logger.Debug($"[SortActions] actionColの参照が切り替わった！");
+            Logger.Debug($"[SortActions] actionCol reference changed!");
         }
         Logger.Debug($"[SortActions] actionCol.Count(after)={actionCol.Count}");
     }
