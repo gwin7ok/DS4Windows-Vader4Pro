@@ -3320,8 +3320,8 @@ namespace DS4Windows
 
     public class Changelog
     {
-        public const string GITHUB_RELEASES_API_URI = "https://api.github.com/repos/schmaldeo/DS4Windows/releases";
-        public const string GITHUB_LATEST_RELEASE_API_URI = "https://api.github.com/repos/schmaldeo/DS4Windows/releases/latest";
+        public const string GITHUB_RELEASES_API_URI = "https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases";
+        public const string GITHUB_LATEST_RELEASE_API_URI = "https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest";
 
         private static bool? _newerVersionAvailable = null;
         private static Version _latestVersion;
@@ -3437,7 +3437,7 @@ namespace DS4Windows
                 }
             }
         }
-    
+
     // ProfileEditor layout fields (DTOと統合)
     public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = 760;
     public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = 600;
@@ -3700,7 +3700,7 @@ namespace DS4Windows
 
 
         // Start of DualSense specific profile options
-        //  
+        //
         public DualSenseDevice.RumbleEmulationMode[] dualSenseRumbleEmulationMode = new DualSenseDevice.RumbleEmulationMode[Global.TEST_PROFILE_ITEM_COUNT]
         {
             0,0,0,0,0,0,0,0,0
@@ -5544,7 +5544,7 @@ namespace DS4Windows
             return loaded;
         }
 
-    
+
     public bool LoadProfile(int device, bool launchprogram, ControlService control,
             string propath = "", bool xinputChange = true, bool postLoad = true)
         {
@@ -7163,7 +7163,7 @@ namespace DS4Windows
                 }
 
 
-                // Start of DualSense specific profile load 
+                // Start of DualSense specific profile load
                 //
                 XmlNode xmlDualSenseControllerSettingsElement =
                     m_Xdoc.SelectSingleNode("/" + rootname + "/DualSenseControllerSettings");
@@ -7211,7 +7211,7 @@ namespace DS4Windows
                     missingSetting = true;
                 }
                 //
-                // End of DualSense specific profile load 
+                // End of DualSense specific profile load
 
                 try { Item = m_Xdoc.SelectSingleNode("/" + rootname + "/L2OutputCurveCustom"); l2OutBezierCurveObj[device].CustomDefinition = Item.InnerText; }
                 catch { missingSetting = true; }
@@ -8858,13 +8858,13 @@ namespace DS4Windows
             {
                 actions.Add(new SpecialAction("Disconnect Controller", "PS/Options", "DisconnectBT", "0"));
                 loaded = SaveActions();
-                
+
                 // ★新規追加: デフォルトアクション用のactionDone初期化
                 if (loaded)
                 {
                     Mapping.InitializeActionDoneList();
                 }
-                
+
                 return loaded;
             }
 
