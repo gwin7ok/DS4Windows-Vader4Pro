@@ -45,9 +45,9 @@ namespace DS4WinWPF.DS4Forms
             Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro");
         }
 
-        private void Ryochan7Link_Click(object sender, RoutedEventArgs e)
+        private void gwin7okLink_Click(object sender, RoutedEventArgs e)
         {
-            Util.StartProcessHelper("https://github.com/Ryochan7");
+            Util.StartProcessHelper("https://github.com/gwin7ok");
         }
 
         private void Jays2KingsLink_Click(object sender, RoutedEventArgs e)
