@@ -445,7 +445,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 // suppression set (Global.loggedInvalidActions).
                 try
                 {
-                    Global.CacheExtraProfileInfo(devIndex);
+                    // Emit missing-action logs for this device after profile load.
+                    Global.store.EmitMissingActionLogsForDevice(devIndex, false);
                 }
                 catch { }
 

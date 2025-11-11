@@ -1773,10 +1773,8 @@ Suspend support not enabled.", true);
                 // editor is opened (user expectation).
                 try
                 {
-                    var prev = new HashSet<string>(Global.loggedInvalidActions);
-                    Global.loggedInvalidActions.Clear();
-                    Global.CacheExtraProfileInfo(device);
-                    Global.loggedInvalidActions = prev;
+                    // Force emitting missing-action logs for this editor open (ignore suppression).
+                    Global.store.EmitMissingActionLogsForDevice(device, true);
                 }
                 catch { }
             }

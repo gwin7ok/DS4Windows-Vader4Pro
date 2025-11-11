@@ -4172,14 +4172,31 @@ namespace DS4Windows
                 int index = GetActionIndexOf(actionname);
                 profileActionDict[device][actionname] = actionObj;
                 profileActionIndexDict[device][actionname] = index;
+            }
+        }
 
-                // If action is missing or index invalid, log once per profile-load
+        /// <summary>
+        /// Emit "Invalid action index" logs for missing actions in the profile for the given device.
+        /// Respects Global.loggedInvalidActions unless forceEmit is true.
+        /// </summary>
+        public void EmitMissingActionLogsForDevice(int device, bool forceEmit = false)
+        {
+            if (profileActions == null || device < 0 || device >= profileActions.Length) return;
+
+            foreach (string actionname in profileActions[device])
+            {
+                var actionObj = GetAction(actionname);
+                int index = GetActionIndexOf(actionname);
                 if (actionObj == null || actionObj.name == "null" || index < 0)
                 {
-                    if (!Global.loggedInvalidActions.Contains(actionname))
+                    if (forceEmit || !Global.loggedInvalidActions.Contains(actionname))
                     {
                         AppLogger.LogToGui($"Invalid action index for '{actionname}': {index}. ActionDone count: {(Mapping.actionDone != null ? Mapping.actionDone.Count : 0)}", false);
-                        Global.loggedInvalidActions.Add(actionname);
+                        try
+                        {
+                            Global.loggedInvalidActions.Add(actionname);
+                        }
+                        catch { }
                     }
                 }
             }

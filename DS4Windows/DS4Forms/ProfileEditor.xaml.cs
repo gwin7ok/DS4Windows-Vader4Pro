@@ -1984,38 +1984,12 @@ namespace DS4WinWPF.DS4Forms
             profileSettingsVM.UseControllerReadout = false;
             inputTimer.Stop();
             conReadingsUserCon.EnableControl(false);
-            // Suppress emitting missing-action logs when the editor is closing.
-            // Some code paths call CacheExtraProfileInfo() on close, which will
-            // rebuild action dicts and (re)emit "Invalid action index" logs.
-            // To avoid duplicate/unwanted logs at editor-close, temporarily
-            // augment the suppression set with existing profile action names
-            // before invoking the cache, then restore the original set.
+            // Rebuild cached profile info for this device. CalculateProfileActionDicts
+            // no longer emits missing-action logs directly; callers should invoke
+            // EmitMissingActionLogsForDevice when they want messages emitted.
             try
             {
-                var backup = new HashSet<string>(Global.loggedInvalidActions);
-                try
-                {
-                    // Add current profile action keys to the suppression set so
-                    // CacheExtraProfileInfo won't log them on close.
-                    var pad = Global.store?.profileActionDict;
-                    if (pad != null && profileSettingsVM.Device >= 0 && profileSettingsVM.Device < pad.Length)
-                    {
-                        foreach (var kv in pad[profileSettingsVM.Device])
-                        {
-                            if (!string.IsNullOrEmpty(kv.Key))
-                                Global.loggedInvalidActions.Add(kv.Key);
-                        }
-                    }
-
-                    Global.CacheExtraProfileInfo(profileSettingsVM.Device);
-                }
-                finally
-                {
-                    // Restore original suppression set
-                    Global.loggedInvalidActions.Clear();
-                    foreach (var s in backup)
-                        Global.loggedInvalidActions.Add(s);
-                }
+                Global.CacheExtraProfileInfo(profileSettingsVM.Device);
             }
             catch { }
             UnregisterEvents();

@@ -2667,10 +2667,10 @@ namespace DS4Windows
                             AppLogger.LogToTray(prolog);
                             // Ensure profile action dictionaries are evaluated at the moment
                             // the profile is actually applied to the controller (first report).
-                            // This triggers one-time missing-action logging per profile-apply.
+                            // Emit missing-action logs once per profile-apply (respect suppression).
                             try
                             {
-                                Global.CacheExtraProfileInfo(ind);
+                                Global.store.EmitMissingActionLogsForDevice(ind, false);
                             }
                             catch { }
                         }
