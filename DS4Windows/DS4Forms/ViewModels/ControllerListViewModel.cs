@@ -439,6 +439,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             }).Wait();
 
+                // Ensure profile action dictionaries are cached and any missing-action
+                // logs are emitted immediately when the profile is applied to the controller.
+                // This forces a single evaluation per profile-load using the existing
+                // suppression set (Global.loggedInvalidActions).
+                try
+                {
+                    Global.CacheExtraProfileInfo(devIndex);
+                }
+                catch { }
+
             string prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, $"{device.Battery}");
             DS4Windows.AppLogger.LogToGui(prolog, false);
 

@@ -1766,6 +1766,19 @@ Suspend support not enabled.", true);
                 editor.Closed += ProfileEditor_Closed;
                 profDockPanel.Children.Add(editor);
                 editor.Reload(device, entity);
+
+                // When the profile editor is opened, emit missing-action logs once
+                // per editor-open. We temporarily clear the per-load suppression set
+                // so the same missing-action messages will be logged every time the
+                // editor is opened (user expectation).
+                try
+                {
+                    var prev = new HashSet<string>(Global.loggedInvalidActions);
+                    Global.loggedInvalidActions.Clear();
+                    Global.CacheExtraProfileInfo(device);
+                    Global.loggedInvalidActions = prev;
+                }
+                catch { }
             }
 
         }
