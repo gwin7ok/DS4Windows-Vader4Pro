@@ -72,6 +72,47 @@ namespace DS4WinWPF.DS4Forms
         {
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
         }
+
+        // 保持されたヘッダー TextBlock 参照を使って、現在のソート状態に応じて表示を更新する
+        private void UpdateSpecialActionsHeaderTexts()
+        {
+            try
+            {
+                if (specialActionsHeaderTextBlocks == null) return;
+
+                // Active
+                var tb0 = specialActionsHeaderTextBlocks.Length > 0 ? specialActionsHeaderTextBlocks[0] : null;
+                if (tb0 != null)
+                {
+                    tb0.Text = ActiveSortButtonContent ?? string.Empty;
+                }
+
+                // Name
+                var tb1 = specialActionsHeaderTextBlocks.Length > 1 ? specialActionsHeaderTextBlocks[1] : null;
+                if (tb1 != null)
+                {
+                    tb1.Text = NameSortButtonContent ?? string.Empty;
+                }
+
+                // Trigger
+                var tb2 = specialActionsHeaderTextBlocks.Length > 2 ? specialActionsHeaderTextBlocks[2] : null;
+                if (tb2 != null)
+                {
+                    tb2.Text = TriggerSortButtonContent ?? string.Empty;
+                }
+
+                // Action
+                var tb3 = specialActionsHeaderTextBlocks.Length > 3 ? specialActionsHeaderTextBlocks[3] : null;
+                if (tb3 != null)
+                {
+                    tb3.Text = ActionSortButtonContent ?? string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[UpdateSpecialActionsHeaderTexts] failed: {ex.Message}");
+            }
+        }
         // ...既存コード...
 
         private class HoverImageInfo
@@ -88,6 +129,11 @@ namespace DS4WinWPF.DS4Forms
         // Active 列の初期幅は BackingStore の定数を使う（プロファイルに永続化しない）
     // フラグ: 初期ヘッダー更新を一度だけ行うためのガード
     private bool initialHeaderUpdated = false;
+        // カラムヘッダーの Loaded 発火を数えるためのカウンタ
+        private int specialActionsHeaderLoadedCount = 0;
+    // Special Actions ヘッダー内の TextBlock 参照を保持しておき、後で直接更新できるようにする
+    // indices: 0=Active,1=Name,2=Trigger,3=Action
+    private TextBlock[] specialActionsHeaderTextBlocks = new TextBlock[4];
 
         public event EventHandler Closed;
 
@@ -168,6 +214,16 @@ namespace DS4WinWPF.DS4Forms
             OnPropertyChanged(nameof(TriggerSortButtonContent));
             OnPropertyChanged(nameof(ActionSortButtonContent));
 
+            // Loaded で保存されたヘッダー TextBlock 参照があれば、それらを使って表示を即時更新する
+            try
+            {
+                UpdateSpecialActionsHeaderTexts();
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[SortSpecialActionsList] UpdateSpecialActionsHeaderTexts failed: {ex.Message}");
+            }
+
             // ----- 直接ヘッダーテキストを更新する処理（バインド伝搬を使わない） -----
             App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーの TextBlock を直接更新します（GridViewColumn.Header 経由）");
             try
@@ -189,183 +245,17 @@ namespace DS4WinWPF.DS4Forms
                 // Rationale: GridViewColumnHeader とそのテンプレート要素は ListView の
                 // テンプレートのレンダリングタイミングに依存するため、初回呼び出し時に列挙
                 // しても見つからないことが多く、ビジュアルツリー全体を走査するのは高コストで
-                // 無駄になる場合があります。代わりに下の DataTemplate + ContentControl.Loaded
-                // ハンドラによる1回限りの更新に任せる方針とします。
-                TextBlock activeTb = null, nameTb = null, trigTb = null, actTb = null;
-                // ヘッダーベース名を先に定義（フォールバックで使用するため）
-                string nameBase = "名前";
-                string trigBase = "トリガー";
-                string actBase = "アクション";
+                // 無駄になる場合があります。ここでは DataTemplate を割り当て、実体化時の
+                // Loaded ハンドラに完全に委譲する方針とします。
+                // ヘッダーのベース名は Loaded ハンドラ側で直接使用します
                     // ヘッダーのテンプレート要素が見つからない場合のフォールバック:
                     // GridViewColumn.Header を直接置き換えて TextBlock を設定する。
-                    if (activeTb == null || nameTb == null || trigTb == null || actTb == null)
                     {
-                        App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダー要素が見つからないため、GridViewColumn.Header を直接置換します");
-                        try
-                        {
-                            for (int i = 0; i < gridView.Columns.Count && i < 4; i++)
-                            {
-                                var col = gridView.Columns[i];
-                                // まず XAML に定義された DataTemplate を使って Header を設定する
-                                string templateKey = i switch
-                                {
-                                    0 => "ActiveHeaderTemplate",
-                                    1 => "NameHeaderTemplate",
-                                    2 => "TriggerHeaderTemplate",
-                                    3 => "ActionHeaderTemplate",
-                                    _ => null
-                                };
-
-                                DataTemplate tpl = null;
-                                if (!string.IsNullOrEmpty(templateKey))
-                                {
-                                    try
-                                    {
-                                        tpl = this.TryFindResource(templateKey) as DataTemplate;
-                                    }
-                                    catch { tpl = null; }
-                                }
-
-                                if (tpl != null)
-                                {
-                                    // ContentControl にテンプレートを割り当てることで、XAML 側の Button の
-                                    // ActualWidth バインド等が機能し、列リサイズに追従します。
-                                    var contentCtrl = new ContentControl() { ContentTemplate = tpl };
-                                    App.logHolder.Logger.Debug($"[SortSpecialActionsList] Column[{i}] に DataTemplate('{templateKey}') を割り当てます");
-
-                                    // テンプレートが実体化されたとき（Loaded）に内部の named TextBlock を
-                                    // 確実に取得して更新するため、Loaded イベントで更新処理を実行します。
-                                    // Loaded は複数回呼ばれる可能性があるため、実行後にハンドラを解除します。
-                                    int colIdx = i;
-                                    RoutedEventHandler loadedHandler = null;
-                                    loadedHandler = (s, e) =>
-                                    {
-                                        try
-                                        {
-                                            App.logHolder.Logger.Debug($"[SortSpecialActionsList] ContentControl.Loaded event for Column[{colIdx}] - searching named TextBlocks");
-                                            var namedActiveTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "ActiveHeaderTextBlock");
-                                            var namedNameTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
-                                            var namedTrigTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
-                                            var namedActTb2 = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
-
-                                            if (namedActiveTb2 != null)
-                                            {
-                                                var newTxt = (columnName == "Active") ? (asc ? "▲" : "▼") : string.Empty;
-                                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named ActiveHeader old='{namedActiveTb2.Text}' new='{newTxt}'");
-                                                namedActiveTb2.Text = newTxt;
-                                                activeTb = namedActiveTb2;
-                                            }
-                                            if (namedNameTb2 != null)
-                                            {
-                                                var newTxt = (columnName == "Name") ? nameBase + (asc ? "▲" : "▼") : nameBase;
-                                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named NameHeader old='{namedNameTb2.Text}' new='{newTxt}'");
-                                                namedNameTb2.Text = newTxt;
-                                                nameTb = namedNameTb2;
-                                            }
-                                            if (namedTrigTb2 != null)
-                                            {
-                                                var newTxt = (columnName == "Trigger") ? trigBase + (asc ? "▲" : "▼") : trigBase;
-                                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named TriggerHeader old='{namedTrigTb2.Text}' new='{newTxt}'");
-                                                namedTrigTb2.Text = newTxt;
-                                                trigTb = namedTrigTb2;
-                                            }
-                                            if (namedActTb2 != null)
-                                            {
-                                                var newTxt = (columnName == "Action") ? actBase + (asc ? "▲" : "▼") : actBase;
-                                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded: Column[{colIdx}] Named ActionHeader old='{namedActTb2.Text}' new='{newTxt}'");
-                                                namedActTb2.Text = newTxt;
-                                                actTb = namedActTb2;
-                                            }
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Loaded handler exception: {ex.Message}");
-                                        }
-                                        finally
-                                        {
-                                            try { contentCtrl.Loaded -= loadedHandler; } catch { }
-                                        }
-                                    };
-                                    contentCtrl.Loaded += loadedHandler;
-
-                                    col.Header = contentCtrl;
-                                    // テンプレート内の TextBlock は Loaded ハンドラで追跡・更新されるため
-                                    // ここでは参照更新は行わない。
-                                }
-                                else
-                                {
-                                    // フォールバックの Button/TextBlock 自動生成は段階的に削除しました。
-                                    // DataTemplate をプロジェクト内で必須とし、ここでは何もしない（ログのみ）。
-                                    App.logHolder.Logger.Debug($"[SortSpecialActionsList] テンプレート '{templateKey}' が見つかりません。フォールバック生成はスキップします");
-                                    // ここでは Header を変更せず、Loaded ハンドラや将来のテンプレート適用を待ちます。
-                                } // end else
-                            } // end for
-                        }
-                        catch (Exception ex)
-                        {
-                            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Header 置換中に例外: {ex.Message}");
-                        }
+                        App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーのテンプレート割当は EnsureSpecialActionsHeadersAssigned に委譲します");
                     } // end if (nameTb == null || ...)
 
-                        // Determine whether GridViewColumnHeader visuals exist in the ListView.
-                        bool headerVisualized = UtilMethods.FindVisualChildren<DependencyObject>(lv)
-                            .Any(d => d.GetType()?.FullName == "System.Windows.Controls.Primitives.GridViewColumnHeader");
-
-                        if (headerVisualized)
-                        {
-                            // Update any header textblocks that we were able to locate.
-                            if (activeTb != null)
-                            {
-                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActiveHeader 変更前='{activeTb.Text}'");
-                                var newText = (columnName == "Active") ? (asc ? "▲" : "▼") : string.Empty;
-                                activeTb.Text = newText;
-                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActiveHeader 変更後='{newText}'");
-                            }
-                            else
-                            {
-                                App.logHolder.Logger.Debug("[SortSpecialActionsList] ActiveHeaderTextBlock が見つかりませんでした");
-                            }
-
-                            if (nameTb != null)
-                            {
-                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] NameHeader 変更前='{nameTb.Text}'");
-                                var newText = (columnName == "Name") ? nameBase + (asc ? "▲" : "▼") : nameBase;
-                                nameTb.Text = newText;
-                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] NameHeader 変更後='{newText}'");
-                            }
-                            else
-                            {
-                                App.logHolder.Logger.Debug("[SortSpecialActionsList] NameHeaderTextBlock が見つかりませんでした");
-                            }
-
-                            if (trigTb != null)
-                            {
-                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] TriggerHeader 変更前='{trigTb.Text}'");
-                                var newText = (columnName == "Trigger") ? trigBase + (asc ? "▲" : "▼") : trigBase;
-                                trigTb.Text = newText;
-                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] TriggerHeader 変更後='{newText}'");
-                            }
-                            else
-                            {
-                                App.logHolder.Logger.Debug("[SortSpecialActionsList] TriggerHeaderTextBlock が見つかりませんでした");
-                            }
-
-                            if (actTb != null)
-                            {
-                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionHeader 変更前='{actTb.Text}'");
-                                var newText = (columnName == "Action") ? actBase + (asc ? "▲" : "▼") : actBase;
-                                actTb.Text = newText;
-                                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionHeader 変更後='{newText}'");
-                            }
-                            else
-                            {
-                                App.logHolder.Logger.Debug("[SortSpecialActionsList] ActionHeaderTextBlock が見つかりませんでした");
-                            }
-                        }
-                        else
-                        {
-                            App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーはまだ実体化されていないため、即時更新をスキップします（Loaded ハンドラに委譲します）");
-                        }
+                        // ここでは即時のヘッダー更新は行わず、Loaded ハンドラに委譲します。
+                        App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーの更新は Loaded ハンドラに委譲します");
             }
             catch (Exception ex)
             {
@@ -427,73 +317,9 @@ namespace DS4WinWPF.DS4Forms
 
             // --- 追加: 保存されたSplitter位置と列幅の復元 ---
             RestoreSplitterAndColumnWidths();
-            // 初期表示時にソート済みであればヘッダーの ▲/▼ を反映させる（ListView.Loaded を優先）
-            try
-            {
-                var lv = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
-                if (lv != null)
-                {
-                    if (lv.IsLoaded)
-                    {
-                        try
-                        {
-                            if (!initialHeaderUpdated)
-                            {
-                                SortSpecialActionsList(currentSortColumn, currentSortAsc);
-                                initialHeaderUpdated = true;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            App.logHolder.Logger.Debug($"[ProfileEditor ctor] immediate header update で例外: {ex.Message}");
-                        }
-                    }
-                    else
-                    {
-                        RoutedEventHandler loadedHandler = null;
-                        loadedHandler = (s, e) =>
-                        {
-                            try
-                            {
-                                if (!initialHeaderUpdated)
-                                {
-                                    SortSpecialActionsList(currentSortColumn, currentSortAsc);
-                                    initialHeaderUpdated = true;
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                App.logHolder.Logger.Debug($"[ProfileEditor ctor] Loaded header update で例外: {ex.Message}");
-                            }
-                            finally
-                            {
-                                try { lv.Loaded -= loadedHandler; } catch { }
-                            }
-                        };
-                        lv.Loaded += loadedHandler;
-                    }
-                }
-                else
-                {
-                    // ListView が見つからない場合は最終手段として Render 後に実行する（重複を避けるガードあり）
-                    this.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
-                    {
-                        try
-                        {
-                            if (!initialHeaderUpdated)
-                            {
-                                SortSpecialActionsList(currentSortColumn, currentSortAsc);
-                                initialHeaderUpdated = true;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            App.logHolder.Logger.Debug($"[ProfileEditor ctor] fallback initial header update で例外: {ex.Message}");
-                        }
-                    }));
-                }
-            }
-            catch { }
+            // ヘッダーの DataTemplate 実体化とヘッダー文字列の更新は Special Actions タブが
+            // アクティブになったときに行うよう遅延させます。不要な起動時の検索/置換を避けるため。
+            initialHeaderUpdated = false;
         }
         // Splitter位置とSpecial Actions列幅の保存・復元はGlobal経由で統一
 
@@ -2183,6 +2009,21 @@ namespace DS4WinWPF.DS4Forms
 
         private void SidebarTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            // Special Actions タブに切り替えられたときは毎回ソートとヘッダー更新を行う。
+            // ユーザーがタブを行き来したときに最新の表示状態を反映させたい。
+            try
+            {
+                if (sidebarTabControl.SelectedItem == specialActionsTab)
+                {
+                    App.logHolder?.Logger?.Debug("[SidebarTabControl_SelectionChanged] SpecialActions tab selected - ensuring header templates are assigned");
+                    EnsureSpecialActionsHeadersAssigned();
+                }
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[SidebarTabControl_SelectionChanged] header init failed: {ex.Message}");
+            }
+
             if (sidebarTabControl.SelectedItem == contReadingsTab)
             {
                 controllerReadingsTabActive = true;
@@ -2206,6 +2047,93 @@ namespace DS4WinWPF.DS4Forms
             mpControl.UpdateMappingName();
             UpdateHighlightLabel(mpControl);
             Global.CacheProfileCustomsFlags(profileSettingsVM.Device);
+        }
+
+        // Special Actions の GridViewColumn に DataTemplate を割り当て、
+        // ContentControl.Loaded ハンドラでヘッダー内部の TextBlock を初期化します。
+        // すべてのカラムの Loaded が発火したらソートを実行します。
+        private void EnsureSpecialActionsHeadersAssigned()
+        {
+            try
+            {
+                var lv = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
+                if (lv == null) return;
+                if (!(lv.View is GridView gridView)) return;
+
+                specialActionsHeaderLoadedCount = 0;
+                int targetCount = Math.Min(4, gridView.Columns.Count);
+
+                // ヘッダーテンプレート割当と Loaded ハンドラ登録
+                for (int i = 0; i < targetCount; i++)
+                {
+                    var col = gridView.Columns[i];
+                    string templateKey = i switch
+                    {
+                        0 => "ActiveHeaderTemplate",
+                        1 => "NameHeaderTemplate",
+                        2 => "TriggerHeaderTemplate",
+                        3 => "ActionHeaderTemplate",
+                        _ => null
+                    };
+
+                    if (string.IsNullOrEmpty(templateKey)) continue;
+                    var tpl = this.TryFindResource(templateKey) as DataTemplate;
+                    if (tpl == null) continue;
+
+                    var contentCtrl = new ContentControl() { ContentTemplate = tpl };
+                    int colIdx = i;
+                    RoutedEventHandler loadedHandler = null;
+                    loadedHandler = (s, e) =>
+                    {
+                        try
+                        {
+                            App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] ContentControl.Loaded event for Column[{colIdx}] - updating header textblocks");
+                            // テンプレート内の TextBlock を探索し、参照を配列に保持する
+                            var foundTbs = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).ToList();
+                            var namedActiveTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "ActiveHeaderTextBlock");
+                            var namedNameTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
+                            var namedTrigTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
+                            var namedActTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
+
+                            // colIdx に応じて該当する TextBlock 参照を保存する（既に保存されていれば上書きしない）
+                            if (colIdx == 0 && namedActiveTb2 != null)
+                                specialActionsHeaderTextBlocks[0] = namedActiveTb2;
+                            if (colIdx == 1 && namedNameTb2 != null)
+                                specialActionsHeaderTextBlocks[1] = namedNameTb2;
+                            if (colIdx == 2 && namedTrigTb2 != null)
+                                specialActionsHeaderTextBlocks[2] = namedTrigTb2;
+                            if (colIdx == 3 && namedActTb2 != null)
+                                specialActionsHeaderTextBlocks[3] = namedActTb2;
+
+                            // 保持した参照を使って現在のソート状態を反映する
+                            UpdateSpecialActionsHeaderTexts();
+                        }
+                        catch (Exception ex)
+                        {
+                            App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] Loaded handler exception: {ex.Message}");
+                        }
+                        finally
+                        {
+                            try { contentCtrl.Loaded -= loadedHandler; } catch { }
+                        }
+
+                        // 全てのカラムで Loaded が発火したら Sort を実行
+                        specialActionsHeaderLoadedCount++;
+                        if (specialActionsHeaderLoadedCount >= targetCount)
+                        {
+                            App.logHolder?.Logger?.Debug("[EnsureSpecialActionsHeadersAssigned] all headers loaded - calling SortSpecialActionsList");
+                            SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                        }
+                    };
+
+                    contentCtrl.Loaded += loadedHandler;
+                    col.Header = contentCtrl;
+                }
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] failed: {ex.Message}");
+            }
         }
 
         private void SwipeControlsButton_Click(object sender, RoutedEventArgs e)
