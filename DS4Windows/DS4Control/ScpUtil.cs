@@ -7666,6 +7666,56 @@ namespace DS4Windows
             {
                 if (File.Exists(m_Profile))
                 {
+                    // First try DTO-based deserialization. Support both <AppSettingsDTO> and
+                    // <Profile> roots by attempting XmlSerializer with a Profile root
+                    // then falling back to the default DTO root.
+                    string fileXml = File.ReadAllText(m_Profile);
+                    bool dtoLoaded = false;
+                    try
+                    {
+                        AppSettingsDTO dto = null;
+                        try
+                        {
+                            var xr = new XmlRootAttribute("Profile");
+                            var ser = new XmlSerializer(typeof(AppSettingsDTO), xr);
+                            using (var sr = new StringReader(fileXml))
+                            {
+                                dto = ser.Deserialize(sr) as AppSettingsDTO;
+                            }
+                        }
+                        catch { dto = null; }
+
+                        if (dto == null)
+                        {
+                            try
+                            {
+                                var ser2 = new XmlSerializer(typeof(AppSettingsDTO));
+                                using (var sr2 = new StringReader(fileXml))
+                                {
+                                    dto = ser2.Deserialize(sr2) as AppSettingsDTO;
+                                }
+                            }
+                            catch { dto = null; }
+                        }
+
+                        if (dto != null)
+                        {
+                            // Map DTO into this backing store
+                            dto.MapTo(this);
+                            dtoLoaded = true;
+                        }
+                    }
+                    catch { /* fall through to legacy loader below */ }
+
+                    if (dtoLoaded)
+                    {
+                        // Post processing same as legacy path
+                        Global.PrepareAbsMonitorBounds(absDisplayEDID);
+                        Loaded = true;
+                        return Loaded;
+                    }
+
+                    // Fall back to legacy DOM-based loader
                     XmlNode Item;
 
                     m_Xdoc.Load(m_Profile);
@@ -7980,9 +8030,81 @@ namespace DS4Windows
 
         public bool Save()
         {
-            // Use legacy SaveOld() to persist application settings in 3.9.9-compatible
-            // structure. This avoids emitting the newer AppSettingsDTO schema.
-            return SaveOld();
+            // Use DTO-based serialization as canonical save format but keep compatibility
+            // with older readers by writing a <Profile> root (same as legacy files).
+            bool saved = true;
+            string output_path = m_Profile;
+            string testStr = string.Empty;
+
+            XmlSerializer serializer = new XmlSerializer(typeof(AppSettingsDTO), new XmlRootAttribute("Profile"));
+            using (Utf8StringWriter strWriter = new Utf8StringWriter())
+            {
+                using XmlWriter xmlWriter = XmlWriter.Create(strWriter,
+                    new XmlWriterSettings()
+                    {
+                        Encoding = Encoding.UTF8,
+                        Indent = true,
+                    });
+
+                    // Write header comments
+                    xmlWriter.WriteComment(String.Format(" Profile Configuration Data. {0} ", DateTime.Now));
+                    xmlWriter.WriteWhitespace("\r\n");
+                    xmlWriter.WriteWhitespace("\r\n");
+
+                    // Serialize DTO with root <Profile>
+                    AppSettingsDTO dto = new AppSettingsDTO();
+                    dto.MapFrom(this);
+                    serializer.Serialize(xmlWriter, dto,
+                        new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
+                    xmlWriter.Flush();
+                    xmlWriter.Close();
+
+                    testStr = strWriter.ToString();
+            }
+
+            // Insert root attributes app_version and config_version into the serialized root element
+            try
+            {
+                int idx = testStr.IndexOf("<Profile");
+                if (idx >= 0)
+                {
+                    int gt = testStr.IndexOf('>', idx);
+                    if (gt > idx)
+                    {
+                        string insert = $" app_version=\"{Global.exeversion}\" config_version=\"{Global.APP_CONFIG_VERSION}\"";
+                        testStr = testStr.Insert(gt, insert);
+                    }
+                }
+
+                using (StreamWriter sw = new StreamWriter(output_path, false))
+                {
+                    sw.Write(testStr);
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                saved = false;
+            }
+            catch (IOException ex)
+            {
+                AppLogger.LogToGui($"Could not save Profiles.xml due to IO error: {ex.Message}", false);
+                saved = false;
+            }
+
+            // Write fake exe config file if needed (same behavior as legacy save)
+            bool adminNeeded = Global.AdminNeeded();
+            if (saved &&
+                (!adminNeeded || (adminNeeded && Global.IsAdministrator())))
+            {
+                string custom_exe_name_path = Path.Combine(Global.exedirpath, Global.CUSTOM_EXE_CONFIG_FILENAME);
+                bool fakeExeFileExists = File.Exists(custom_exe_name_path);
+                if (!string.IsNullOrEmpty(fakeExeFileName) || fakeExeFileExists)
+                {
+                    File.WriteAllText(custom_exe_name_path, fakeExeFileName);
+                }
+            }
+
+            return saved;
         }
 
         public bool SaveOld()
