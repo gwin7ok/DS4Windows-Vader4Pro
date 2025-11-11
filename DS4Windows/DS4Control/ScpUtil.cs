@@ -4431,64 +4431,13 @@ namespace DS4Windows
 
         public bool SaveProfileNew(int device, string proName)
         {
-            // 保存前にprofileActionsから辞書を再構築
+            // Save using the older 3.9.9-compatible XML structure.
+            // Keep rebuilding action dictionaries as before, but delegate actual
+            // XML generation to the existing SaveProfileOld implementation so
+            // we maintain the legacy layout while still including newer fields
+            // where SaveProfileOld already handles them.
             RebuildProfileActionDicts(device);
-            bool saved = true;
-            if (proName.EndsWith(Global.XML_EXTENSION))
-            {
-                proName = proName.Remove(proName.LastIndexOf(Global.XML_EXTENSION));
-            }
-
-            string path = Path.Combine(Global.appdatapath, "Profiles",
-                $"{proName}{Global.XML_EXTENSION}");
-            string testStr = string.Empty;
-            XmlSerializer serializer = new XmlSerializer(typeof(ProfileDTO),
-                ProfileDTO.GetAttributeOverrides());
-            using (Utf8StringWriter strWriter = new Utf8StringWriter())
-            {
-                using XmlWriter xmlWriter = XmlWriter.Create(strWriter,
-                    new XmlWriterSettings()
-                    {
-                        Encoding = Encoding.UTF8,
-                        Indent = true,
-                    });
-
-                // Write header explicitly
-                //xmlWriter.WriteStartDocument();
-                xmlWriter.WriteComment(string.Format(" DS4Windows Configuration Data. {0} ", DateTime.Now));
-                xmlWriter.WriteComment(string.Format(" Made with DS4Windows version {0} ", Global.exeversion));
-                xmlWriter.WriteWhitespace("\r\n");
-                xmlWriter.WriteWhitespace("\r\n");
-
-                // Write root element and children
-                ProfileDTO dto = new ProfileDTO();
-                dto.DeviceIndex = device;
-                dto.MapFrom(this);
-                // Omit xmlns:xsi and xmlns:xsd from output
-                serializer.Serialize(xmlWriter, dto,
-                    new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
-                xmlWriter.Flush();
-                xmlWriter.Close();
-
-                testStr = strWriter.ToString();
-                //Trace.WriteLine("TEST OUTPUT");
-                //Trace.WriteLine(testStr);
-            }
-
-            try
-            {
-                using (StreamWriter sw = new StreamWriter(path, false))
-                {
-                    sw.Write(testStr);
-                }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                AppLogger.LogToGui("Unauthorized Access - Save failed to path: " + path, false);
-                saved = false;
-            }
-
-            return saved;
+            return SaveProfileOld(device, proName);
         }
 
         public bool SaveProfileOld(int device, string proName)
@@ -5321,8 +5270,6 @@ namespace DS4Windows
             // プロファイル切り替え時にエラーログ履歴をクリア
             // Global.loggedInvalidActions.Clear(); // 外部からの切り替え時のみクリアする
             bool loaded = true;
-
-            bool migratePerformed = false;
             string profilepath;
             if (propath == "")
                 profilepath = Path.Combine(Global.appdatapath, "Profiles",
@@ -5334,32 +5281,21 @@ namespace DS4Windows
             {
                 string profileXml = string.Empty;
 
-                // Run migrations
+                // Read profile XML without performing automatic migrations at startup.
+                // We will not call ProfileMigration.Migrate() automatically; instead
+                // load the file's current text and attempt to deserialize. This
+                // prevents the program from rewriting profile files on load.
+                using FileStream fileStream = new FileStream(profilepath, FileMode.Open, FileAccess.Read);
+                ProfileMigration tmpMigration = new ProfileMigration(fileStream);
+                if (tmpMigration.ProfileReader != null)
                 {
-                    XmlDocument migrationDoc = new XmlDocument();
-
-                    using FileStream fileStream = new FileStream(profilepath, FileMode.Open, FileAccess.Read);
-                    ProfileMigration tmpMigration = new ProfileMigration(fileStream);
-                    if (tmpMigration.RequiresMigration())
-                    {
-                        tmpMigration.Migrate();
-                        //migrationDoc.Load(tmpMigration.ProfileReader);
-                        profileXml = tmpMigration.CurrentMigrationText;
-                        migratePerformed = true;
-                    }
-                    else if (tmpMigration.ProfileReader != null)
-                    {
-                        profileXml = tmpMigration.CurrentMigrationText;
-                        //migrationDoc.Load(tmpMigration.ProfileReader);
-                        //migrationDoc.Load(profilepath);
-                    }
-                    else
-                    {
-                        loaded = false;
-                    }
-
-                    tmpMigration.Close();
+                    profileXml = tmpMigration.CurrentMigrationText;
                 }
+                else
+                {
+                    loaded = false;
+                }
+                tmpMigration.Close();
 
                 if (device < Global.MAX_DS4_CONTROLLER_COUNT)
                 {
@@ -5513,12 +5449,9 @@ namespace DS4Windows
                     PostLoadSnippet(device, control, xinputStatus, xinputPlug);
                 }
 
-                // Migration was performed. Save new XML schema in file
-                if (migratePerformed)
-                {
-                    string proName = Path.GetFileName(profilepath);
-                    SaveProfileNew(device, proName);
-                }
+                // Do not automatically save migrated files at startup. Any conversion
+                // to a different on-disk schema must be performed explicitly by the
+                // user or tooling.
             }
             else
             {
@@ -5577,7 +5510,6 @@ namespace DS4Windows
             Dictionary<DS4Controls, String> shiftCustomMapExtras = new Dictionary<DS4Controls, String>();
             string rootname = "DS4Windows";
             bool missingSetting = false;
-            bool migratePerformed = false;
             string profilepath;
             if (propath == "")
                 profilepath = Global.appdatapath + @"\Profiles\" + profilePath[device] + ".xml";
@@ -5593,21 +5525,17 @@ namespace DS4Windows
 
                 using FileStream fileStream = new FileStream(profilepath, FileMode.Open, FileAccess.Read);
                 ProfileMigration tmpMigration = new ProfileMigration(fileStream);
-                if (tmpMigration.RequiresMigration())
-                {
-                    tmpMigration.Migrate();
-                    m_Xdoc.Load(tmpMigration.ProfileReader);
-                    migratePerformed = true;
-                }
-                else if (tmpMigration.ProfileReader != null)
+                // Do not perform automatic migrations at startup. Load profile text
+                // as-is via the migration helper's reader if available.
+                if (tmpMigration.ProfileReader != null)
                 {
                     m_Xdoc.Load(tmpMigration.ProfileReader);
-                    //m_Xdoc.Load(profilepath);
                 }
                 else
                 {
                     Loaded = false;
                 }
+                tmpMigration.Close();
 
                 if (m_Xdoc.SelectSingleNode(rootname) == null)
                 {
@@ -7928,7 +7856,7 @@ namespace DS4Windows
             }
 
             // Only add missing settings if the actual load was graceful
-            if ((missingSetting || migratePerformed) && Loaded)// && buttons != null)
+            if (missingSetting && Loaded)// && buttons != null)
             {
                 string proName = Path.GetFileName(profilepath);
                 SaveProfileOld(device, proName);
@@ -7983,8 +7911,15 @@ namespace DS4Windows
                 }
                 catch (InvalidOperationException)
                 {
-                    AppLogger.LogToGui("Failed to load Profiles.xml.", false);
-                    loaded = false;
+                    // Attempt to load using the old-profile loader as a fallback so
+                    // files saved in the 3.9.9-compatible structure remain readable.
+                    AppLogger.LogToGui("Profiles.xml could not be deserialized as AppSettingsDTO; attempting legacy load.", false);
+                    loaded = LoadOld();
+                }
+                catch (System.Xml.XmlException)
+                {
+                    AppLogger.LogToGui("Profiles.xml contains invalid XML; attempting legacy load.", false);
+                    loaded = LoadOld();
                 }
             }
             else
@@ -8296,7 +8231,11 @@ namespace DS4Windows
             catch { }
 
             if (missingSetting)
-                Save();
+            {
+                // Do not auto-save changes discovered during legacy load. Auto-saving
+                // at startup may overwrite files and cause conflicts (file locks).
+                AppLogger.LogToGui("Profiles.xml is missing some settings; not auto-saving to avoid overwriting existing file.", false);
+            }
 
             if (Loaded)
             {
@@ -8320,66 +8259,9 @@ namespace DS4Windows
 
         public bool Save()
         {
-            bool saved = true;
-
-            string testStr = string.Empty;
-            XmlSerializer serializer = new XmlSerializer(typeof(AppSettingsDTO));
-            using (Utf8StringWriter strWriter = new Utf8StringWriter())
-            {
-                using XmlWriter xmlWriter = XmlWriter.Create(strWriter,
-                    new XmlWriterSettings()
-                    {
-                        Encoding = Encoding.UTF8,
-                        Indent = true,
-                    });
-
-                // Write header explicitly
-                xmlWriter.WriteStartDocument();
-                xmlWriter.WriteComment(string.Format(" Profile Configuration Data. {0} ", DateTime.Now));
-                xmlWriter.WriteComment(string.Format(" Made with DS4Windows version {0} ", Global.exeversion));
-                xmlWriter.WriteWhitespace("\r\n");
-                xmlWriter.WriteWhitespace("\r\n");
-
-                // Write root element and children
-                AppSettingsDTO dto = new AppSettingsDTO();
-                dto.MapFrom(this);
-                // Omit xmlns:xsi and xmlns:xsd from output
-                serializer.Serialize(xmlWriter, dto,
-                    new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
-                xmlWriter.Flush();
-                xmlWriter.Close();
-
-                testStr = strWriter.ToString();
-                //Trace.WriteLine("TEST OUTPUT");
-                //Trace.WriteLine(testStr);
-            }
-
-            try
-            {
-                using (StreamWriter sw = new StreamWriter(m_Profile, false))
-                {
-                    sw.Write(testStr);
-                }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                AppLogger.LogToGui("Unauthorized Access - Save failed to path: " + m_Profile, false);
-                saved = false;
-            }
-
-            bool adminNeeded = Global.AdminNeeded();
-            if (saved &&
-                (!adminNeeded || (adminNeeded && Global.IsAdministrator())))
-            {
-                string custom_exe_name_path = Path.Combine(Global.exedirpath, Global.CUSTOM_EXE_CONFIG_FILENAME);
-                bool fakeExeFileExists = File.Exists(custom_exe_name_path);
-                if (!string.IsNullOrEmpty(fakeExeFileName) || fakeExeFileExists)
-                {
-                    File.WriteAllText(custom_exe_name_path, fakeExeFileName);
-                }
-            }
-
-            return saved;
+            // Use legacy SaveOld() to persist application settings in 3.9.9-compatible
+            // structure. This avoids emitting the newer AppSettingsDTO schema.
+            return SaveOld();
         }
 
         public bool SaveOld()
@@ -8523,6 +8405,12 @@ namespace DS4Windows
                 m_Xdoc.Save(m_Profile);
             }
             catch (UnauthorizedAccessException) { Saved = false; }
+            catch (IOException ex)
+            {
+                // File may be locked by another process. Do not throw—record and continue.
+                AppLogger.LogToGui($"Could not save Profiles.xml due to IO error: {ex.Message}", false);
+                Saved = false;
+            }
 
             bool adminNeeded = Global.AdminNeeded();
             if (Saved &&
