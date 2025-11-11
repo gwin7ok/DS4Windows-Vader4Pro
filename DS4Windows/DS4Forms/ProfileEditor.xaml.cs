@@ -219,10 +219,6 @@ namespace DS4WinWPF.DS4Forms
                 return;
             }
 
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] 現在の SortDescriptions 数={view.SortDescriptions.Count}");
-            view.SortDescriptions.Clear();
-            App.logHolder.Logger.Debug("[SortSpecialActionsList] SortDescriptions をクリアしました");
-
             // 3) Refresh 前のアイテムスナップショット（最大5件を表示）
             try
             {
