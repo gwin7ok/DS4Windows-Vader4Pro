@@ -3320,8 +3320,9 @@ namespace DS4Windows
 
     public class Changelog
     {
-        public const string GITHUB_RELEASES_API_URI = "https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases";
-        public const string GITHUB_LATEST_RELEASE_API_URI = "https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest";
+    // Use the GitHub REST API /repos/ path so the app queries releases for the correct repo
+    public const string GITHUB_RELEASES_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases";
+    public const string GITHUB_LATEST_RELEASE_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest";
 
         private static bool? _newerVersionAvailable = null;
         private static Version _latestVersion;
@@ -3399,11 +3400,26 @@ namespace DS4Windows
             StringBuilder sb = new();
             foreach (var version in versions)
             {
+                // if we've already added content, ensure separation before next header
+                if (sb.Length > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine();
+                }
+
+                // Header + blank line
                 sb.Append("## Version ");
                 sb.Append(version.Key);
-                sb.Append(Environment.NewLine);
-                var parsedChangelog = ParseChangelogString(version.Value);
-                sb.Append(parsedChangelog);
+                sb.AppendLine();
+                sb.AppendLine();
+
+                var parsedChangelog = ParseChangelogString(version.Value)?.Trim();
+                if (!string.IsNullOrEmpty(parsedChangelog))
+                {
+                    sb.Append(parsedChangelog);
+                    // ensure the section ends with a blank line
+                    sb.AppendLine();
+                }
             }
 
             return sb.ToString();
