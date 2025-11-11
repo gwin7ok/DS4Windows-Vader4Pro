@@ -80,37 +80,62 @@ namespace DS4WinWPF.DS4Forms
             {
                 if (specialActionsHeaderTextBlocks == null) return;
 
+                // Use shared setter so we get uniform old/new logging when SortSpecialActionsList
+                // triggers an update as well as when templates are first Loaded.
                 // Active
-                var tb0 = specialActionsHeaderTextBlocks.Length > 0 ? specialActionsHeaderTextBlocks[0] : null;
-                if (tb0 != null)
+                if (specialActionsHeaderTextBlocks.Length > 0 && specialActionsHeaderTextBlocks[0] != null)
                 {
-                    tb0.Text = ActiveSortButtonContent ?? string.Empty;
+                    SetAndLogHeaderText(specialActionsHeaderTextBlocks[0], 0, "ActiveHeader", ActiveSortButtonContent ?? string.Empty, "[SortSpecialActionsList] Updated:");
                 }
 
                 // Name
-                var tb1 = specialActionsHeaderTextBlocks.Length > 1 ? specialActionsHeaderTextBlocks[1] : null;
-                if (tb1 != null)
+                if (specialActionsHeaderTextBlocks.Length > 1 && specialActionsHeaderTextBlocks[1] != null)
                 {
-                    tb1.Text = NameSortButtonContent ?? string.Empty;
+                    SetAndLogHeaderText(specialActionsHeaderTextBlocks[1], 1, "NameHeader", NameSortButtonContent ?? string.Empty, "[SortSpecialActionsList] Updated:");
                 }
 
                 // Trigger
-                var tb2 = specialActionsHeaderTextBlocks.Length > 2 ? specialActionsHeaderTextBlocks[2] : null;
-                if (tb2 != null)
+                if (specialActionsHeaderTextBlocks.Length > 2 && specialActionsHeaderTextBlocks[2] != null)
                 {
-                    tb2.Text = TriggerSortButtonContent ?? string.Empty;
+                    SetAndLogHeaderText(specialActionsHeaderTextBlocks[2], 2, "TriggerHeader", TriggerSortButtonContent ?? string.Empty, "[SortSpecialActionsList] Updated:");
                 }
 
                 // Action
-                var tb3 = specialActionsHeaderTextBlocks.Length > 3 ? specialActionsHeaderTextBlocks[3] : null;
-                if (tb3 != null)
+                if (specialActionsHeaderTextBlocks.Length > 3 && specialActionsHeaderTextBlocks[3] != null)
                 {
-                    tb3.Text = ActionSortButtonContent ?? string.Empty;
+                    SetAndLogHeaderText(specialActionsHeaderTextBlocks[3], 3, "ActionHeader", ActionSortButtonContent ?? string.Empty, "[SortSpecialActionsList] Updated:");
                 }
             }
             catch (Exception ex)
             {
                 App.logHolder?.Logger?.Debug($"[UpdateSpecialActionsHeaderTexts] failed: {ex.Message}");
+            }
+        }
+
+        // 共通ヘッダ更新ヘルパー: TextBlock を設定し、old/new を一貫した形式でログ出力する。
+        // prefix はログの先頭（例: "[EnsureSpecialActionsHeadersAssigned] Loaded:" や
+        // "[SortSpecialActionsList] Updated:") を渡します。
+        private void SetAndLogHeaderText(TextBlock tb, int idx, string logicalName, string newText, string prefix)
+        {
+            try
+            {
+                var oldTxt = tb?.Text ?? string.Empty;
+                // キャッシュを更新
+                if (specialActionsHeaderTextBlocks != null && idx >= 0 && idx < specialActionsHeaderTextBlocks.Length)
+                {
+                    specialActionsHeaderTextBlocks[idx] = tb;
+                }
+
+                if (tb != null)
+                {
+                    tb.Text = newText ?? string.Empty;
+                }
+
+                App.logHolder?.Logger?.Debug($"{prefix} Column[{idx}] Named {logicalName} old='{oldTxt}' new='{newText}'");
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[SetAndLogHeaderText] failed for Column[{idx}] Name={logicalName}: {ex.Message}");
             }
         }
         // ...既存コード...
@@ -2087,26 +2112,32 @@ namespace DS4WinWPF.DS4Forms
                     {
                         try
                         {
-                            App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] ContentControl.Loaded event for Column[{colIdx}] - updating header textblocks");
-                            // テンプレート内の TextBlock を探索し、参照を配列に保持する
+                            // Loaded 時点ではテンプレート内の TextBlock 参照を取得してキャッシュするのみにする。
+                            // 実際のヘッダー表示更新（▲/▼ の付与など）は SortSpecialActionsList 側で一元的に行う。
+                            App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] ContentControl.Loaded event for Column[{colIdx}] - caching header textblocks");
                             var foundTbs = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).ToList();
                             var namedActiveTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "ActiveHeaderTextBlock");
                             var namedNameTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
                             var namedTrigTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
                             var namedActTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
 
-                            // colIdx に応じて該当する TextBlock 参照を保存する（既に保存されていれば上書きしない）
-                            if (colIdx == 0 && namedActiveTb2 != null)
+                            // 見つかった TextBlock 参照を配列に保持する（表示更新は行わない）
+                            if (namedActiveTb2 != null && specialActionsHeaderTextBlocks.Length > 0)
+                            {
                                 specialActionsHeaderTextBlocks[0] = namedActiveTb2;
-                            if (colIdx == 1 && namedNameTb2 != null)
+                            }
+                            if (namedNameTb2 != null && specialActionsHeaderTextBlocks.Length > 1)
+                            {
                                 specialActionsHeaderTextBlocks[1] = namedNameTb2;
-                            if (colIdx == 2 && namedTrigTb2 != null)
+                            }
+                            if (namedTrigTb2 != null && specialActionsHeaderTextBlocks.Length > 2)
+                            {
                                 specialActionsHeaderTextBlocks[2] = namedTrigTb2;
-                            if (colIdx == 3 && namedActTb2 != null)
+                            }
+                            if (namedActTb2 != null && specialActionsHeaderTextBlocks.Length > 3)
+                            {
                                 specialActionsHeaderTextBlocks[3] = namedActTb2;
-
-                            // 保持した参照を使って現在のソート状態を反映する
-                            UpdateSpecialActionsHeaderTexts();
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -2128,6 +2159,16 @@ namespace DS4WinWPF.DS4Forms
 
                     contentCtrl.Loaded += loadedHandler;
                     col.Header = contentCtrl;
+                    // ログ: 列オブジェクトへ Header テンプレートを割り当てた直後のタイミングを記録
+                    try
+                    {
+                        var headerType = col.Header?.GetType().Name ?? "null";
+                        App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] Assigned Header template to Column[{i}] - HeaderType={headerType}");
+                    }
+                    catch (Exception ex)
+                    {
+                        App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] Assigned Header logging failed: {ex.Message}");
+                    }
                 }
             }
             catch (Exception ex)
