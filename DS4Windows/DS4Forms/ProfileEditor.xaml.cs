@@ -156,6 +156,8 @@ namespace DS4WinWPF.DS4Forms
     private bool initialHeaderUpdated = false;
         // カラムヘッダーの Loaded 発火を数えるためのカウンタ
         private int specialActionsHeaderLoadedCount = 0;
+        // ヘッダーテンプレート割当が既に行われているかを示すガード
+        private bool specialActionsHeadersAssigned = false;
     // Special Actions ヘッダー内の TextBlock 参照を保持しておき、後で直接更新できるようにする
     // indices: 0=Active,1=Name,2=Trigger,3=Action
     private TextBlock[] specialActionsHeaderTextBlocks = new TextBlock[4];
@@ -2034,13 +2036,27 @@ namespace DS4WinWPF.DS4Forms
 
         private void SidebarTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            App.logHolder?.Logger?.Debug($"[SidebarTabControl_SelectionChanged] SelectedItem={sidebarTabControl.SelectedItem?.GetType().Name}, SelectedIndex={sidebarTabControl.SelectedIndex}, IsLoaded={sidebarTabControl.IsLoaded}, IsVisible={sidebarTabControl.IsVisible}, Added={e.AddedItems?.Count}, Removed={e.RemovedItems?.Count}");
             // Special Actions タブに切り替えられたときは毎回ソートとヘッダー更新を行う。
             // ユーザーがタブを行き来したときに最新の表示状態を反映させたい。
             try
             {
-                if (sidebarTabControl.SelectedItem == specialActionsTab)
+                bool addedContainsSpecial = e.AddedItems != null && e.AddedItems.Contains(specialActionsTab);
+                bool removedContainsSpecial = e.RemovedItems != null && e.RemovedItems.Contains(specialActionsTab);
+
+                if (addedContainsSpecial)
                 {
-                    App.logHolder?.Logger?.Debug("[SidebarTabControl_SelectionChanged] SpecialActions tab selected - ensuring header templates are assigned");
+                    App.logHolder?.Logger?.Debug("[SidebarTabControl_SelectionChanged] SpecialActions tab was added (user switched to it) - ensuring header templates are assigned");
+                    EnsureSpecialActionsHeadersAssigned();
+                }
+                else if (removedContainsSpecial)
+                {
+                    App.logHolder?.Logger?.Debug("[SidebarTabControl_SelectionChanged] SpecialActions tab was removed (likely closing/unloading) - skipping header assignment");
+                }
+                else if (sidebarTabControl.SelectedItem == specialActionsTab && !specialActionsHeadersAssigned)
+                {
+                    // Fallback: sometimes SelectionChanged doesn't populate AddedItems as expected
+                    App.logHolder?.Logger?.Debug("[SidebarTabControl_SelectionChanged] Fallback: SelectedItem==specialActionsTab and headers not assigned - ensuring header templates are assigned");
                     EnsureSpecialActionsHeadersAssigned();
                 }
             }
@@ -2081,6 +2097,11 @@ namespace DS4WinWPF.DS4Forms
         {
             try
             {
+                if (specialActionsHeadersAssigned)
+                {
+                    App.logHolder?.Logger?.Debug("[EnsureSpecialActionsHeadersAssigned] headers already assigned - skipping");
+                    return;
+                }
                 var lv = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
                 if (lv == null) return;
                 if (!(lv.View is GridView gridView)) return;
@@ -2088,6 +2109,7 @@ namespace DS4WinWPF.DS4Forms
                 specialActionsHeaderLoadedCount = 0;
                 int targetCount = Math.Min(4, gridView.Columns.Count);
 
+                bool assignedAny = false;
                 // ヘッダーテンプレート割当と Loaded ハンドラ登録
                 for (int i = 0; i < targetCount; i++)
                 {
@@ -2159,6 +2181,7 @@ namespace DS4WinWPF.DS4Forms
 
                     contentCtrl.Loaded += loadedHandler;
                     col.Header = contentCtrl;
+                    assignedAny = true;
                     // ログ: 列オブジェクトへ Header テンプレートを割り当てた直後のタイミングを記録
                     try
                     {
@@ -2169,6 +2192,10 @@ namespace DS4WinWPF.DS4Forms
                     {
                         App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] Assigned Header logging failed: {ex.Message}");
                     }
+                }
+                if (assignedAny)
+                {
+                    specialActionsHeadersAssigned = true;
                 }
             }
             catch (Exception ex)
