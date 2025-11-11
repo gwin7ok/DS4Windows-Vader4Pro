@@ -47,9 +47,10 @@ namespace DS4WinWPF.DS4Forms
             {
                 // Active column intentionally has no base label; only show arrow when active
                 "Active" => string.Empty,
-                "Name" => "名前", // lex:Loc Name
-                "Trigger" => "トリガー", // lex:Loc Trigger
-                "Action" => "アクション", // lex:Loc Action
+                // Use resource strings so header text follows localization settings
+                "Name" => Translations.Strings.Name,
+                "Trigger" => Translations.Strings.Trigger,
+                "Action" => Translations.Strings.Action,
                 _ => col
             };
 
