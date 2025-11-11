@@ -7975,6 +7975,17 @@ namespace DS4Windows
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/formLocationY"); Int32.TryParse(Item.InnerText, out formLocationY); }
                     catch { missingSetting = true; }
 
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/profileEditorLeftWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out profileEditorLeftWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/profileEditorRightWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out profileEditorRightWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/specialActionNameColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out specialActionNameColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/specialActionTriggerColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out specialActionTriggerColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/specialActionDetailColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out specialActionDetailColWidth); }
+                    catch { missingSetting = true; }
+
                     for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
                     {
                         string contTag = $"/Profile/Controller{i + 1}";
@@ -8296,6 +8307,11 @@ namespace DS4Windows
             XmlNode xmlFormHeight = m_Xdoc.CreateNode(XmlNodeType.Element, "formHeight", null); xmlFormHeight.InnerText = formHeight.ToString(); rootElement.AppendChild(xmlFormHeight);
             XmlNode xmlFormLocationX = m_Xdoc.CreateNode(XmlNodeType.Element, "formLocationX", null); xmlFormLocationX.InnerText = formLocationX.ToString(); rootElement.AppendChild(xmlFormLocationX);
             XmlNode xmlFormLocationY = m_Xdoc.CreateNode(XmlNodeType.Element, "formLocationY", null); xmlFormLocationY.InnerText = formLocationY.ToString(); rootElement.AppendChild(xmlFormLocationY);
+            XmlNode xmlProfileEditorLeftWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "profileEditorLeftWidth", null); xmlProfileEditorLeftWidth.InnerText = profileEditorLeftWidth.ToString(); rootElement.AppendChild(xmlProfileEditorLeftWidth);
+            XmlNode xmlProfileEditorRightWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "profileEditorRightWidth", null); xmlProfileEditorRightWidth.InnerText = profileEditorRightWidth.ToString(); rootElement.AppendChild(xmlProfileEditorRightWidth);
+            XmlNode xmlSpecialActionNameColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionNameColWidth", null); xmlSpecialActionNameColWidth.InnerText = specialActionNameColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionNameColWidth);
+            XmlNode xmlSpecialActionTriggerColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionTriggerColWidth", null); xmlSpecialActionTriggerColWidth.InnerText = specialActionTriggerColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionTriggerColWidth);
+            XmlNode xmlSpecialActionDetailColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionDetailColWidth", null); xmlSpecialActionDetailColWidth.InnerText = specialActionDetailColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionDetailColWidth);
 
             for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
             {
