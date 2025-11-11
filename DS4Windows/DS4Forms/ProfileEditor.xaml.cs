@@ -251,44 +251,8 @@ namespace DS4WinWPF.DS4Forms
                 App.logHolder?.Logger?.Debug($"[SortSpecialActionsList] UpdateSpecialActionsHeaderTexts failed: {ex.Message}");
             }
 
-            // ----- 直接ヘッダーテキストを更新する処理（バインド伝搬を使わない） -----
-            App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーの TextBlock を直接更新します（GridViewColumn.Header 経由）");
-            try
-            {
-                var lv = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
-                if (lv == null)
-                {
-                    App.logHolder.Logger.Debug("[SortSpecialActionsList] specialActionsLV が見つかりません。");
-                    return;
-                }
-
-                if (!(lv.View is GridView gridView))
-                {
-                    App.logHolder.Logger.Debug("[SortSpecialActionsList] ListView.View が GridView ではありません。");
-                    return;
-                }
-
-                // NOTE: removed expensive visual-tree enumeration and Dispatcher-wide searches.
-                // Rationale: GridViewColumnHeader とそのテンプレート要素は ListView の
-                // テンプレートのレンダリングタイミングに依存するため、初回呼び出し時に列挙
-                // しても見つからないことが多く、ビジュアルツリー全体を走査するのは高コストで
-                // 無駄になる場合があります。ここでは DataTemplate を割り当て、実体化時の
-                // Loaded ハンドラに完全に委譲する方針とします。
-                // ヘッダーのベース名は Loaded ハンドラ側で直接使用します
-                    // ヘッダーのテンプレート要素が見つからない場合のフォールバック:
-                    // GridViewColumn.Header を直接置き換えて TextBlock を設定する。
-                    {
-                        App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーのテンプレート割当は EnsureSpecialActionsHeadersAssigned に委譲します");
-                    } // end if (nameTb == null || ...)
-
-                        // ここでは即時のヘッダー更新は行わず、Loaded ハンドラに委譲します。
-                        App.logHolder.Logger.Debug("[SortSpecialActionsList] ヘッダーの更新は Loaded ハンドラに委譲します");
-            }
-            catch (Exception ex)
-            {
-                // ヘッダー更新は非致命的なのでログにのみ出力
-                App.logHolder?.Logger?.Debug($"[SortSpecialActionsList] ヘッダー更新失敗: {ex.Message}");
-            }
+            // ヘッダーの表示更新は Loaded ハンドラでキャッシュした TextBlock により行われます。
+            App.logHolder.Logger.Debug("[SortSpecialActionsList] Header updates are handled via cached TextBlocks and Loaded handlers.");
         }
 
         // NOTE: Local visual-tree helper methods were removed in favor of the shared
