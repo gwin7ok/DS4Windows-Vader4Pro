@@ -7,61 +7,125 @@ on:
     paths:
       - 'Directory.Build.props'
       - 'CHANGELOG.md'
+  workflow_dispatch: {}
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Get version
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Get version from Directory.Build.props
         id: get_version
+        shell: pwsh
         run: |
-          VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" Directory.Build.props || true)
-          if [ -z "$VERSION" ]; then
-            echo "No <Version> found in Directory.Build.props" >&2
-            exit 1
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          $v = (Select-String -Path './Directory.Build.props' -Pattern '<Version>(.*?)</Version>' -AllMatches).Matches.Groups[1].Value
+          if (-not $v) { Write-Error 'No <Version> found in Directory.Build.props'; exit 1 }
+          echo "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
 
-      - name: Extract latest changelog section
-        id: changelog
+      - name: Extract changelog section
+        id: extract_changelog
+        shell: pwsh
         run: |
-          # Extract the changelog section for the current version into changes.txt
-          awk '/^## \['${{ steps.get_version.outputs.version }}'\]/{flag=1;next}/^## \[/{flag=0}flag' CHANGELOG.md > changes.txt
-          if [ ! -s changes.txt ]; then
-            echo "No changelog section found for version ${{ steps.get_version.outputs.version }}" >&2
-            exit 1
-          fi
+          $v = '${{ steps.get_version.outputs.version }}'
+          $out = 'changes.txt'
+          if (Test-Path $out) { Remove-Item $out }
+          $inSection = $false
+          Get-Content CHANGELOG.md | ForEach-Object {
+            if ($_ -match "^## \[$v\]") { $inSection = $true; return }
+            if ($inSection -and ($_ -match '^## \[')) { $inSection = $false }
+            if ($inSection) { Add-Content -Path $out -Value $_ }
+          }
+          if (-not (Test-Path $out) -or (Get-Content $out).Count -eq 0) { Write-Error "No changelog section found for version $v"; exit 1 }
+
+      - name: Publish (dotnet)
+        shell: pwsh
+        run: |
+          dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:Platform=x64 -o ./artifacts/win-x64
 
       - name: Create GitHub Release
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: Release v${{ steps.get_version.outputs.version }}
           body_path: changes.txt
+          files: |
+            artifacts/win-x64/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-name: .NET Release
+name: Release
 
 on:
-  release:
-    types: [published]
-
-permissions:
-  contents: write
+  push:
+    branches:
+      - master
+    paths:
+      - 'Directory.Build.props'
+      - 'CHANGELOG.md'
+  workflow_dispatch: {}
 
 jobs:
-  release:
+  build-and-release:
     runs-on: windows-latest
-    #this makes it not run if tests failed.
-    #needs: test
+    permissions:
+      contents: write
     steps:
-    - uses: actions/checkout@v4
-      with:
-           ref: ${{ github.event.release.tag_name }}
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Get version from Directory.Build.props
+        id: get_version
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path './Directory.Build.props' -Pattern '<Version>(.*?)</Version>' -AllMatches).Matches.Groups[1].Value
+          if (-not $v) { Write-Error 'No <Version> found in Directory.Build.props'; exit 1 }
+          echo "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
+
+      - name: Extract changelog section
+        id: extract_changelog
+        shell: pwsh
+        run: |
+          $v = '${{ steps.get_version.outputs.version }}'
+          $out = 'changes.txt'
+          if (Test-Path $out) { Remove-Item $out }
+          $inSection = $false
+          Get-Content CHANGELOG.md | ForEach-Object {
+            if ($_ -match "^## \[$v\]") { $inSection = $true; return }
+            if ($inSection -and ($_ -match '^## \[')) { $inSection = $false }
+            if ($inSection) { Add-Content -Path $out -Value $_ }
+          }
+          if (-not (Test-Path $out) -or (Get-Content $out).Count -eq 0) { Write-Error "No changelog section found for version $v"; exit 1 }
+
+      - name: Publish (dotnet)
+        shell: pwsh
+        run: |
+          dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:Platform=x64 -o ./artifacts/win-x64
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
+          body_path: changes.txt
+          files: |
+            artifacts/win-x64/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         dotnet-version: 8.0.x
     - name: Set up Python 3.10
