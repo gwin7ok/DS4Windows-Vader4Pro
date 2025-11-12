@@ -6,19 +6,18 @@
     },
     {
         "key": "ctrl+shift+alt+b",
-        "command": "workbench.action.tasks.runTask", 
+        "command": "workbench.action.tasks.runTask",
         "args": "build-release-like-github-x86"
     },
     {
         "key": "ctrl+shift+alt+c",
         "command": "workbench.action.tasks.runTask",
         "args": "clean-output"
-    }
-    ,
+    },
     {
-        "key": "ctrl+alt+r",
+        "key": "ctrl+alt+f1",
         "command": "workbench.action.tasks.runTask",
-        "args": "release: publish-and-create-release",
-        "when": "editorTextFocus"
+        "args": "release: tag-and-push-short",
+        "when": "editorTextFocus || terminalFocus"
     }
 ]
