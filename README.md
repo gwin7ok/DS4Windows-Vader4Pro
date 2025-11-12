@@ -62,24 +62,8 @@ Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/g
 
 ## Modifications in This Fork (gwin7ok)
 
-### v3.11.2 - Special Actions Profile Switching Bug Fix
+The detailed history of changes for this fork has been moved to `CHANGELOG.md`.
 
-#### Critical Bug Fix
-- **Fixed Profile Switching Failure**: Resolved an issue where Special Actions for profile switching would fail to work if the action was not positioned at the end of the actions.xml file after DS4Windows startup
+Please see [CHANGELOG.md](./CHANGELOG.md) for versioned release notes and details (example: v3.11.3, v3.11.2, v3.11.1, v3.11.0).
 
-### v3.11.1 - Custom Notification System & Profile Accuracy Fix
-
-#### Custom Notification Window System
-- **Independent Notification Display**: Profile changes now use a custom notification window instead of Windows Action Center
-- **Optimal Positioning**: Notifications appear at the top-right corner of the screen to avoid conflicts with Windows Action Center
-- **Focus-Independent Operation**: Notifications display correctly regardless of whether DS4Windows has focus
-- **System Sound Integration**: Custom notifications include system beep sounds for better user awareness
-
-#### Profile Notification Accuracy
-- **Accurate Profile Names**: Controller connection notifications now display the actual active profile name
-
-### v3.11.0 - Special Action Button Suppression Fix
-
-When a Special Action is triggered, if the last pressed button has another function assigned to it, the system now prevents that separate function from being executed alongside the Special Action.
-
-This modification prevents unwanted duplicate inputs when using multi-button Special Actions.
+_This README retains a short pointer — full changelog entries are maintained in `CHANGELOG.md`._

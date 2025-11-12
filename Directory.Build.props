@@ -4,5 +4,10 @@
     <NoWarn>$(NoWarn);CS0103;CS1061;CS0246;CS0234</NoWarn>
     <WarningsAsErrors />
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Versioning: set the project's canonical version here. -->
+    <!-- Update this value to create a new release (Actions will read it). -->
+    <Version>3.11.3</Version>
+    <FileVersion>3.11.3.0</FileVersion>
+    <AssemblyVersion>3.11.3.0</AssemblyVersion>
   </PropertyGroup>
 </Project>

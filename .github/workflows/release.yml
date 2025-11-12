@@ -1,3 +1,47 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'Directory.Build.props'
+      - 'CHANGELOG.md'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" Directory.Build.props || true)
+          if [ -z "$VERSION" ]; then
+            echo "No <Version> found in Directory.Build.props" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Extract latest changelog section
+        id: changelog
+        run: |
+          # Extract the changelog section for the current version into changes.txt
+          awk '/^## \['${{ steps.get_version.outputs.version }}'\]/{flag=1;next}/^## \[/{flag=0}flag' CHANGELOG.md > changes.txt
+          if [ ! -s changes.txt ]; then
+            echo "No changelog section found for version ${{ steps.get_version.outputs.version }}" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
+          body_path: changes.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 name: .NET Release
 
 on:
