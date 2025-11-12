@@ -14,4 +14,11 @@
         "command": "workbench.action.tasks.runTask",
         "args": "clean-output"
     }
+    ,
+    {
+        "key": "ctrl+shift+r",
+        "command": "workbench.action.tasks.runTask",
+        "args": "release: publish-and-create-release",
+        "when": "editorTextFocus"
+    }
 ]

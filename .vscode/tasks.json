@@ -40,5 +40,36 @@
                 "isDefault": true
             }
         }
+        ,
+        {
+            "label": "release: tag-and-push-short",
+            "type": "shell",
+            "command": "pwsh",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "./scripts/release-tag.ps1"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+        ,
+        {
+            "label": "release: publish-and-create-release",
+            "type": "shell",
+            "command": "pwsh",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "./scripts/release-and-publish.ps1",
+                "-WithV"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
     ]
 }
