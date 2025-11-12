@@ -63,17 +63,52 @@ All notable changes to this project are recorded in this file.
 - (bc937107) プロフィール編集画面の左右境界の余白変更、ウィンドウ幅初期値の調整
 - (513d4822) プロフィール編集画面の左右境界線を太くする変更
 
-## [3.11.2] - (previous)
-- See repository tag `v3.11.2` for previous release details.
+## [3.11.2] - 2025-11-06
+
+CI
+- (c8cd8a8d) Fix auto-release workflow (`auto-release.yml`).
+- (32246d73) Fix auto-release workflow (`auto-release.yml`).
+- (d25340f3) Fix auto-release workflow (`auto-release.yml`).
+- (18838ffd) CI/Docs: remove version description from auto-release workflow.
+
+Fixes
+- (4f237854) Fix profile switching when a Special Action is registered in actions.xml at a position other than the end (could cause profile-switch failure after startup). Also: test fixes and ensure language files are saved to `lang/` at build time.
+
+Docs / Changelog
+- (87eb4562) Fix README (typos/formatting).
+
+Chore
+- (b0ba181f) Exclude `C:\Program Files\DS4Windows` (packaging/ignore adjustments).
 
 > Note: CI/GitHub Actions will extract the section matching the version in `Directory.Build.props` to populate release notes.
 
-## [3.11.2]
-- Fixed Profile Switching Failure: Resolved an issue where Special Actions for profile switching would fail to work if the action was not positioned at the end of the actions.xml file after DS4Windows startup.
+## [3.11.1] - 2025-11-05
 
-## [3.11.1]
-- Custom Notification Window System: profile changes use an independent notification window instead of Windows Action Center. Notifications appear at top-right, are focus-independent, and include system beep.
-- Profile Notification Accuracy: controller connection notifications now display the actual active profile name.
+CI
+- (8f272340) Fix PowerShell syntax in workflow (use proper PS conditional and error handling).
+- (846dcc86) Workflow fixes.
+- (09671a04) Misc workflow file fixes.
+- (72d6d210) Replace deprecated create-release action with `gh` CLI for reliable release creation.
+- (f6298837) Workflow fixes.
+- (fe09d2ef) Revert to working v3.11.0 workflow structure while applying v3.11.1 content.
+- (acc564d0) Fix workflow: create release after build (move create-release step to after successful build/publish).
+- (98e07393) Update GitHub Actions to use modern `gh` CLI instead of deprecated actions.
+
+Features / UI
+- (0112ced9) Display active profile notifications using a custom top-right window (focus-independent).
+- (ddb01d9f) Use custom window to show the active profile name in notifications.
+
+Fixes
+- (ef916d53) Ensure notifications display the actual active profile name.
+
+Docs / Changelog
+- (1bf98a7f) Update release description for v3.11.1 features.
+- (b64bef1a) Update Changelog for v3.11.1 — custom notification system and profile accuracy improvements.
+
+Chore / Misc
+- (cd190051) Configure error-suppression settings (attempt to reduce noisy errors).
+- (d4cfb1c8) WIP: attempted fixes for an error (investigation/attempted patch).
+- (722f7799) Remove obsolete profile-notification code from `Log.cs`.
 
 ## [3.11.0]
 - Special Action Button Suppression Fix: when a Special Action is triggered, the last pressed button's other assigned function is now prevented from executing alongside the Special Action to avoid duplicate inputs.
