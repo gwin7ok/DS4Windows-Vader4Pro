@@ -16,7 +16,7 @@
     }
     ,
     {
-        "key": "ctrl+shift+r",
+        "key": "ctrl+alt+r",
         "command": "workbench.action.tasks.runTask",
         "args": "release: publish-and-create-release",
         "when": "editorTextFocus"
