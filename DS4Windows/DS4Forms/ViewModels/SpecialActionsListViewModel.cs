@@ -250,10 +250,11 @@ public class SpecialActionsListViewModel
         return displayName;
     }
 
-    public void ExportEnabledActions()
+    // Returns the list of currently enabled action names (does not mutate global state).
+    public List<string> GetEnabledActionNames()
     {
         List<string> pactions = new List<string>();
-        foreach(SpecialActionItem item in actionCol)
+        foreach (SpecialActionItem item in actionCol)
         {
             if (item.Active)
             {
@@ -261,8 +262,36 @@ public class SpecialActionsListViewModel
             }
         }
 
-        Global.ProfileActions[deviceNum] = pactions;
-        Global.CacheExtraProfileInfo(deviceNum);
+        return pactions;
+    }
+
+    public List<string> ExportEnabledActions()
+    {
+        Logger.Debug($"[ExportEnabledActions] called for device={deviceNum}, actionCol.Count={actionCol.Count}");
+
+        // Build list of currently active action names (no side-effects).
+        List<string> pactions = new List<string>();
+        foreach (SpecialActionItem item in actionCol)
+        {
+            if (item.Active)
+            {
+                pactions.Add(item.ActionName);
+            }
+        }
+
+        // Determine removed invalid actions (present previously but not in new list and not defined in Actions.xml)
+        var prev = Global.ProfileActions[deviceNum] ?? new List<string>();
+        var removed = prev.Except(pactions).Where(name => Global.GetActions().All(a => a.name != name)).ToList();
+
+        Logger.Debug($"[ExportEnabledActions] device={deviceNum} prevCount={prev.Count} pactionsCount={pactions.Count} removedCount={removed.Count}");
+        if (removed.Count > 0)
+        {
+            try { Logger.Debug($"[ExportEnabledActions] removed list: {string.Join(",", removed)}"); } catch { }
+        }
+
+        // NOTE: This method intentionally does NOT mutate Global.ProfileActions or call CacheExtraProfileInfo.
+        // Persistence and logging of removed invalid actions are handled by the caller (Apply/Save flow).
+        return removed;
     }
 
     public void RemoveAction(SpecialActionItem item)
@@ -270,8 +299,10 @@ public class SpecialActionsListViewModel
         Global.RemoveAction(item.SpecialAction.name);
         int itemIndex = item.Index;
         actionCol.RemoveAt(itemIndex);
-        Global.ProfileActions[deviceNum].Remove(item.SpecialAction.name);
-        Global.CacheExtraProfileInfo(deviceNum);
+
+        // IMPORTANT: Do NOT modify Global.ProfileActions or call CacheExtraProfileInfo here.
+        // The Apply/Save flow is responsible for comparing the previous and new "use" list,
+        // persisting changes and emitting any user-visible logs for removed invalid actions.
     }
 }
 

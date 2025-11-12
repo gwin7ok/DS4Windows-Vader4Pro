@@ -4814,7 +4814,17 @@ namespace DS4Windows
                     }
                 }
             }
-            catch { return; }
+            catch (Exception ex)
+            {
+                // Log the exception so async void faults do not crash the process.
+                try
+                {
+                    AppLogger.LogToGui($"MapCustomAction exception: {ex}", true);
+                }
+                catch { }
+
+                return;
+            }
 
             if (untriggeraction[device] != null)
             {

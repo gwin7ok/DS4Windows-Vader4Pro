@@ -1402,6 +1402,41 @@ namespace DS4WinWPF.DS4Forms
                 temp.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) == -1)
             {
                 SetLateProperties(false);
+
+                // Compute pre-save vs to-be-saved special-action lists and defer
+                // persistence until now. We must detect which actions will be removed
+                // and which of those are invalid (not present in Actions.xml). The
+                // actual Global.ProfileActions update and CacheExtraProfileInfo call
+                // happen here before we save the profile to disk.
+                List<string> removedInvalidSpecialActions = new List<string>();
+                try
+                {
+                    var prevList = Global.ProfileActions != null && Global.ProfileActions.Length > deviceNum && Global.ProfileActions[deviceNum] != null
+                        ? new List<string>(Global.ProfileActions[deviceNum])
+                        : new List<string>();
+
+                    var newList = specialActionsVM?.GetEnabledActionNames() ?? new List<string>();
+
+                    var removed = prevList.Except(newList).ToList();
+
+                    var actionsXml = Global.GetActions() ?? new List<SpecialAction>();
+                    removedInvalidSpecialActions = removed.Where(name => actionsXml.All(a => a.name != name)).ToList();
+
+                    // Persist the new list into Global and rebuild cached info before saving file
+                    // Global.ProfileActions is an array of List<string> exposed via a read-only
+                    // property; update the element in-place.
+                    try
+                    {
+                        var pa = Global.ProfileActions; // List<string>[]
+                        if (pa != null && pa.Length > deviceNum)
+                        {
+                            pa[deviceNum] = new List<string>(newList);
+                        }
+                        Global.CacheExtraProfileInfo(deviceNum);
+                    }
+                    catch { }
+                }
+                catch { }
                 DS4Windows.Global.ProfilePath[deviceNum] =
                     DS4Windows.Global.OlderProfilePath[deviceNum] = temp;
 
@@ -1419,6 +1454,22 @@ namespace DS4WinWPF.DS4Forms
                 {
                     currentProfile.SaveProfile(deviceNum);
                     currentProfile.FireSaved();
+
+                    // Log removed invalid special actions after save completes
+                    try
+                    {
+                        if (removedInvalidSpecialActions != null && removedInvalidSpecialActions.Count > 0)
+                        {
+                            string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
+                            foreach (var name in removedInvalidSpecialActions)
+                            {
+                                try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch { }
+                                try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch { }
+                            }
+                        }
+                    }
+                    catch { }
+
                     result = true;
                 }
                 else
@@ -1428,6 +1479,22 @@ namespace DS4WinWPF.DS4Forms
                     {
                         Global.SaveProfile(deviceNum, temp);
                         CreatedProfile?.Invoke(this, temp);
+
+                        // Log removed invalid special actions after save completes
+                        try
+                        {
+                            if (removedInvalidSpecialActions != null && removedInvalidSpecialActions.Count > 0)
+                            {
+                                string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
+                                foreach (var name in removedInvalidSpecialActions)
+                                {
+                                    try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch { }
+                                    try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch { }
+                                }
+                            }
+                        }
+                        catch { }
+
                         result = true;
                     }
                     else
@@ -1821,9 +1888,8 @@ namespace DS4WinWPF.DS4Forms
                 specialActionsVM.ActionCol.Add(newitem);
                 specialActionDockPanel.Children.Remove(actEditor);
                 baseSpeActPanel.Visibility = Visibility.Visible;
-
-                specialActionsVM.ExportEnabledActions();
-                Global.CacheExtraProfileInfo(profileSettingsVM.Device);
+                // Persistence and cache update deferred to Apply/Save to avoid
+                // emitting removed-invalid logs at UI-time.
             };
         }
 
@@ -1856,7 +1922,6 @@ namespace DS4WinWPF.DS4Forms
                     specialActionsVM.ActionCol.Insert(currentIndex, newitem);
                     specialActionDockPanel.Children.Remove(actEditor);
                     baseSpeActPanel.Visibility = Visibility.Visible;
-                    Global.CacheExtraProfileInfo(profileSettingsVM.Device);
                 };
             }
         }
@@ -1869,13 +1934,12 @@ namespace DS4WinWPF.DS4Forms
                 //int currentIndex = specialActionsVM.ActionCol[specialActionsVM.SpecialActionIndex].Index;
                 //SpecialActionItem item = specialActionsVM.ActionCol[currentIndex];
                 specialActionsVM.RemoveAction(item);
-                Global.CacheExtraProfileInfo(profileSettingsVM.Device);
             }
         }
 
         private void SpecialActionCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            specialActionsVM.ExportEnabledActions();
+            // Export is intentionally not invoked here; Apply/Save will handle persistence.
         }
 
         private void Ds4LightbarColorBtn_MouseEnter(object sender, MouseEventArgs e)

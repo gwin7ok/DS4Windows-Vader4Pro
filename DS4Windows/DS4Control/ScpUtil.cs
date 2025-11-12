@@ -523,6 +523,14 @@ namespace DS4Windows
 
     public class Global
     {
+        static Global()
+        {
+            // Initialize pending lists
+            for (int i = 0; i < TEST_PROFILE_ITEM_COUNT; i++)
+            {
+                PendingRemovedInvalidSpecialActions[i] = new List<string>();
+            }
+        }
         // プロファイル切り替え時の無効アクション名エラーログ抑制用
         public static HashSet<string> loggedInvalidActions = new HashSet<string>();
         // ProfileEditor layout properties (統合管理)
@@ -629,6 +637,10 @@ namespace DS4Windows
         public static bool[] useDInputOnly = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
         public static bool[] linkedProfileCheck = new bool[MAX_DS4_CONTROLLER_COUNT] { false, false, false, false, false, false, false, false };
         public static bool[] touchpadActive = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
+    // Pending removed invalid special actions detected by UI operations. These are
+    // collected when ExportEnabledActions() runs in response to UI changes and
+    // then consumed/cleared when an Apply/Save actually writes the profile file.
+    public static List<string>[] PendingRemovedInvalidSpecialActions = new List<string>[TEST_PROFILE_ITEM_COUNT];
         // Used to hold device type desired from Profile Editor
         public static OutContType[] outDevTypeTemp = new OutContType[TEST_PROFILE_ITEM_COUNT] { DS4Windows.OutContType.X360, DS4Windows.OutContType.X360,
             DS4Windows.OutContType.X360, DS4Windows.OutContType.X360,
