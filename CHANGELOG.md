@@ -3,7 +3,6 @@
 All notable changes to this project are recorded in this file.
 
 ## [3.11.3] - 2025-11-12
-## [3.11.3] - 2025-11-12
 
 Features / UI
 - (ceb2b330) Display "(invalid special action)" in the action column and gray out invalid special action names in the Special Actions list; users can remove them by unchecking and saving.

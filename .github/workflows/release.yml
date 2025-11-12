@@ -76,6 +76,30 @@ jobs:
             Write-Error 'Artifacts folder not found'
             exit 1
           }
+      - name: Delete existing GitHub Release if present
+        id: delete_old_release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          $v = '${{ steps.get_version.outputs.version }}'
+          $tag = "v$v"
+          $repo = $env:REPO
+          $uri = "https://api.github.com/repos/$repo/releases/tags/$tag"
+          $headers = @{ Authorization = "token $env:GITHUB_TOKEN"; "User-Agent" = "actions" }
+          try {
+            $resp = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get -ErrorAction Stop
+            if ($null -ne $resp -and $resp.id) {
+              Write-Output "Found existing release id $($resp.id) for $tag. Deleting..."
+              $delUri = "https://api.github.com/repos/$repo/releases/$($resp.id)"
+              Invoke-RestMethod -Uri $delUri -Headers $headers -Method Delete -ErrorAction Stop
+              Write-Output "Deleted release $tag (id $($resp.id))."
+            }
+          } catch {
+            # If release doesn't exist, GET returns 404 which will be caught here - that's fine
+            Write-Output "No existing release for $tag or could not query releases: $($_.Exception.Message)"
+          }
 
       - name: Create GitHub Release
         id: create_release
