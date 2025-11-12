@@ -17,7 +17,13 @@
     {
         "key": "ctrl+alt+f1",
         "command": "workbench.action.tasks.runTask",
-        "args": "release: tag-and-push-short",
+        "args": "release-tag-and-push-short",
+        "when": "editorTextFocus || terminalFocus"
+    },
+    {
+        "key": "ctrl+shift+f1",
+        "command": "workbench.action.tasks.runTask",
+        "args": "release-tag-and-push-short",
         "when": "editorTextFocus || terminalFocus"
     }
 ]

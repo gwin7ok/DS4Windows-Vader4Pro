@@ -42,7 +42,7 @@
         }
         ,
         {
-            "label": "release: tag-and-push-short",
+            "label": "release-tag-and-push-short",
             "type": "shell",
             "command": "pwsh",
             "args": [
@@ -64,7 +64,8 @@
                 "-NoProfile",
                 "-File",
                 "./scripts/release-and-publish.ps1",
-                "-WithV"
+                "-WithV",
+                "-SkipBuild"
             ],
             "presentation": {
                 "reveal": "always",

@@ -6,6 +6,10 @@ import shutil
 target_dir = Path(sys.argv[1])
 project_dir = Path(sys.argv[2])
 version = sys.argv[3]
+# Optional 4th argument: explicit arch string (e.g. 'x64' or 'x86')
+arch_override = None
+if len(sys.argv) > 4:
+    arch_override = sys.argv[4]
 
 # ディレクトリ存在チェック
 if not target_dir.exists():
@@ -53,13 +57,39 @@ for search_dir in search_dirs:
                     pass
 
 # create a zip
-arch = target_dir.parents[1].name
+# Allow CI to pass an explicit arch (preferred). Otherwise fall back to
+# the previous heuristic based on directory layout.
+if arch_override:
+    arch = arch_override
+else:
+    try:
+        arch = target_dir.parents[1].name
+    except Exception:
+        arch = 'unknown'
+
 zip_name = f"DS4Windows_{version}_{arch}"
 target_zip_path = target_dir.parent / f"{zip_name}.zip"
 if target_zip_path.exists():
     os.remove(target_zip_path)
+# Ensure the zip contains a top-level 'DS4Windows' folder.
+# Some CI runs produce different parent layouts; create a staging folder
+# so the archive root is predictable.
+staging_dir = target_dir.parent / 'DS4Windows'
+if staging_dir.exists():
+    shutil.rmtree(staging_dir)
 
-zip_dir = shutil.make_archive(zip_name, "zip", target_dir.parent)
+# Copy output (target_dir) into staging_dir (results in staging_dir/*)
+shutil.copytree(target_dir, staging_dir)
+
+# Create archive only for the staging_dir (so zip root contains DS4Windows/)
+# Use make_archive with root_dir and base_dir to avoid including other files.
+zip_dir = shutil.make_archive(zip_name, "zip", root_dir=str(staging_dir.parent), base_dir=staging_dir.name)
 
 # move the zip to the build directory
 shutil.move(zip_dir, target_zip_path)
+
+# cleanup staging
+try:
+    shutil.rmtree(staging_dir)
+except Exception:
+    pass

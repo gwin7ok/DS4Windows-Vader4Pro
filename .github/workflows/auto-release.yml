@@ -1,47 +1,11 @@
-name: Auto Release on Tag
+name: DISABLED - Auto Release (kept for history)
 
 on:
-  push:
-    tags:
-      - 'v*'  # v3.11.0 のようなタグでトリガー
-
-permissions:
-  contents: write
+  workflow_dispatch: {}
 
 jobs:
-  auto-release:
-    runs-on: windows-latest
+  noop:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.10"
-
-      - name: Set envars for versions
-        run: |
-          TAG=${{ github.ref_name }}
-          VERSION=${TAG#v}
-          echo Version: $VERSION
-          name: DISABLED - use .github/workflows/release.yml
-
-          # This workflow has been disabled and replaced by .github/workflows/release.yml
-          # Kept for history; avoid running it. It only supports manual dispatch now.
-          on:
-            workflow_dispatch: {}
-
-          jobs:
-            noop:
-              runs-on: windows-latest
-              steps:
-                - name: Disabled
-                  run: echo "This workflow is disabled. Use .github/workflows/release.yml"
-          $ErrorActionPreference = "Stop"
-
-          if ($LASTEXITCODE -eq 0) {
+      - name: Disabled
+        run: echo "This workflow is disabled. Use .github/workflows/release.yml"
