@@ -4191,7 +4191,13 @@ namespace DS4Windows
                 {
                     if (forceEmit || !Global.loggedInvalidActions.Contains(actionname))
                     {
-                        AppLogger.LogToGui($"Invalid action index for '{actionname}': {index}. ActionDone count: {(Mapping.actionDone != null ? Mapping.actionDone.Count : 0)}", false);
+                        // Determine the profile name actually in use for this device (temporary or regular)
+                        string profName = (Global.useTempProfile != null && device >= 0 && device < Global.useTempProfile.Length && Global.useTempProfile[device])
+                            ? (Global.tempprofilename != null && device >= 0 && device < Global.tempprofilename.Length ? Global.tempprofilename[device] : string.Empty)
+                            : (profilePath != null && device >= 0 && device < profilePath.Length ? profilePath[device] : string.Empty);
+
+                        string displayProfile = string.IsNullOrEmpty(profName) ? "(unknown)" : profName;
+                        AppLogger.LogToGui($"Profile '{displayProfile}' contains an invalid special action '{actionname}'.", false);
                         try
                         {
                             Global.loggedInvalidActions.Add(actionname);
