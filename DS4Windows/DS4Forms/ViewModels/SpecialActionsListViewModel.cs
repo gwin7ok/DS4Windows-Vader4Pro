@@ -265,35 +265,6 @@ public class SpecialActionsListViewModel
         return pactions;
     }
 
-    public List<string> ExportEnabledActions()
-    {
-        Logger.Debug($"[ExportEnabledActions] called for device={deviceNum}, actionCol.Count={actionCol.Count}");
-
-        // Build list of currently active action names (no side-effects).
-        List<string> pactions = new List<string>();
-        foreach (SpecialActionItem item in actionCol)
-        {
-            if (item.Active)
-            {
-                pactions.Add(item.ActionName);
-            }
-        }
-
-        // Determine removed invalid actions (present previously but not in new list and not defined in Actions.xml)
-        var prev = Global.ProfileActions[deviceNum] ?? new List<string>();
-        var removed = prev.Except(pactions).Where(name => Global.GetActions().All(a => a.name != name)).ToList();
-
-        Logger.Debug($"[ExportEnabledActions] device={deviceNum} prevCount={prev.Count} pactionsCount={pactions.Count} removedCount={removed.Count}");
-        if (removed.Count > 0)
-        {
-            try { Logger.Debug($"[ExportEnabledActions] removed list: {string.Join(",", removed)}"); } catch { }
-        }
-
-        // NOTE: This method intentionally does NOT mutate Global.ProfileActions or call CacheExtraProfileInfo.
-        // Persistence and logging of removed invalid actions are handled by the caller (Apply/Save flow).
-        return removed;
-    }
-
     public void RemoveAction(SpecialActionItem item)
     {
         Global.RemoveAction(item.SpecialAction.name);
