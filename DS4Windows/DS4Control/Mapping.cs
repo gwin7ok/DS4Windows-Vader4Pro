@@ -4025,10 +4025,10 @@ namespace DS4Windows
 
         /// <summary>
         /// アクションリスト初期化完了待機メソッド
-        /// 
+        ///
         /// 動作フロー：
         /// 1. 完了チェック：10msごとに初期化完了を確認
-        /// 2. 完了確認時：スペシャルアクション実行のためループを抜ける  
+        /// 2. 完了確認時：スペシャルアクション実行のためループを抜ける
         /// 3. 500msタイムアウト時：強制初期化を実行して先頭へループ
         /// 4. 最大3回リトライ後：スペシャルアクション実行せず安全終了
         /// </summary>
@@ -4107,7 +4107,7 @@ namespace DS4Windows
         {
             /* TODO: This method is slow sauce. Find ways to speed up action execution */
 
-            // ★ユーザー提案の完璧な実装: 
+            // ★ユーザー提案の完璧な実装:
             // - 10msごとの完了チェック
             // - 完了確認時はスペシャルアクション実行でループ抜ける
             // - 500msタイムアウト時は強制初期化して先頭ループ
@@ -4125,6 +4125,10 @@ namespace DS4Windows
 
             try
             {
+                // Wrap the MapCustomAction body in a try/catch so any unexpected exception
+                // (for example due to data races with profile editing) is logged and doesn't
+                // bring down the process. MapCustomAction is an async void method, so
+                // unhandled exceptions would otherwise be fatal.
                 int actionDoneCount = actionDone.Count;
                 int totalActionCount = GetActions().Count;
 
@@ -4137,9 +4141,14 @@ namespace DS4Windows
                 }
 
                 DS4StateFieldMapping previousFieldMapping = null;
-                List<string> profileActions = getProfileActions(device);
-                //foreach (string actionname in profileActions)
-                for (int actionIndex = 0, profileListLen = profileActions.Count;
+
+                // Make a snapshot copy of profile action names to avoid concurrent modification
+                // while iterating (UI thread may modify Global.ProfileActions). Using an array
+                // prevents ArgumentOutOfRangeException / InvalidOperationException from
+                // crashing the async void mapping task.
+                string[] profileActions = getProfileActions(device)?.ToArray() ?? Array.Empty<string>();
+
+                for (int actionIndex = 0, profileListLen = profileActions.Length;
                      actionIndex < profileListLen; actionIndex++)
                 {
                     //DS4KeyType keyType = getShiftCustomKeyType(device, customKey.Key);
@@ -4398,7 +4407,7 @@ namespace DS4Windows
 
                                             if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
                                             {
-                                                // If the new profile has any actions with the same action key (controls) than this action (which doesn't have untrigger keys) then set status of those actions to wait for the release of the existing action key. 
+                                                // If the new profile has any actions with the same action key (controls) than this action (which doesn't have untrigger keys) then set status of those actions to wait for the release of the existing action key.
                                                 List<string> profileActionsNext = getProfileActions(device);
                                                 for (int actionIndexNext = 0, profileListLenNext = profileActionsNext.Count; actionIndexNext < profileListLenNext; actionIndexNext++)
                                                 {
@@ -4831,7 +4840,7 @@ namespace DS4Windows
                 }
                 else
                 {
-                    // Untrigger as soon any of the defined regular trigger keys have been released. 
+                    // Untrigger as soon any of the defined regular trigger keys have been released.
                     utriggeractivated = false;
 
                     for (int i = 0, trigLen = action.trigger.Count; i < trigLen; i++)
@@ -4921,7 +4930,7 @@ namespace DS4Windows
             }
         }
 
-        // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action). 
+        // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
         // Macro steps are defined either as macrostr string value, macroLst list<int> object or as macroArr integer array. Only one of these should have a valid macro definition when this method is called.
         // If the macro definition is a macroStr string value then it will be converted as integer array on the fl. If steps are already defined as list or array of integers then there is no need to do type cast conversion.
         private static void PlayMacro(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action = null, ActionState actionDoneState = null)
@@ -4935,7 +4944,7 @@ namespace DS4Windows
                     macroTaskQueue[device][action.controls] = prevTask.ContinueWith((x) => PlayMacroTask(device, macroControl, macroStr, macroLst, macroArr, control, keyType, action, actionDoneState));
             }
             else
-                // Run macro as "fire and forget" background task. No need to wait for completion of any of the other macros. 
+                // Run macro as "fire and forget" background task. No need to wait for completion of any of the other macros.
                 // If the same trigger macro is re-launched while previous macro is still running then the order of parallel macros is not guaranteed.
                 Task.Factory.StartNew(() => PlayMacroTask(device, macroControl, macroStr, macroLst, macroArr, control, keyType, action, actionDoneState));
         }
@@ -6971,7 +6980,7 @@ namespace DS4Windows
 
                 result = CalculateControllerAngle(gyroAccelX, gyroAccelZ, controller);
 
-                // Apply deadzone (SA X-deadzone value). This code assumes that 20deg is the max deadzone anyone ever might wanna use (in practice effective deadzone 
+                // Apply deadzone (SA X-deadzone value). This code assumes that 20deg is the max deadzone anyone ever might wanna use (in practice effective deadzone
                 // is probably just few degrees by using SXDeadZone values 0.01...0.05)
                 double sxDead = getSXDeadzone(device);
                 if (sxDead > 0)
@@ -7098,7 +7107,7 @@ namespace DS4Windows
                         }
 
                     case SASteeringWheelEmulationAxisType.L2R2:
-                        // DS4 Trigger axis output. L2+R2 triggers share the same axis in x360 xInput/DInput controller, 
+                        // DS4 Trigger axis output. L2+R2 triggers share the same axis in x360 xInput/DInput controller,
                         // so L2+R2 steering output supports only 360 turn range (-255..255 raw value range in the shared trigger axis)
                         if (result == 0) return 0;
 
@@ -7182,4 +7191,4 @@ namespace DS4Windows
     }
 }
 
-    
+
