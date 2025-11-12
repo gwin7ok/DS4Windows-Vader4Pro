@@ -274,7 +274,7 @@ namespace DS4WinWPF.DS4Forms
                         if (!string.IsNullOrEmpty(newUpdaterVersion))
                         {
                             Util.StartProcessHelper(
-                                $"https://github.com/schmaldeo/DS4Updater/releases/tag/v{newUpdaterVersion}/{mainWinVM.updaterExe}");
+                                $"https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/tag/v{newUpdaterVersion}/{mainWinVM.updaterExe}");
                         }
                     });
                 }
@@ -387,9 +387,9 @@ namespace DS4WinWPF.DS4Forms
                     {
                         try
                         {
-                            bool isProfileNotification = e.Data.Contains("を使用しています") || e.Data.Contains("is using Profile") || 
+                            bool isProfileNotification = e.Data.Contains("を使用しています") || e.Data.Contains("is using Profile") ||
                                                        e.Data.Contains("using Profile") || e.Data.Contains("using temp Profile");
-                            
+
                             if (isProfileNotification)
                             {
                                 // プロファイル通知：カスタムウィンドウのみを表示
@@ -1144,12 +1144,12 @@ Suspend support not enabled.", true);
                                 strData[0] = strData[0].ToLower();
 
                                 if (strData[0] == "start")
-                                { 
-                                    if(!Program.rootHub.running) 
+                                {
+                                    if(!Program.rootHub.running)
                                         ChangeService();
                                 }
                                 else if (strData[0] == "stop")
-                                {    
+                                {
                                     if (Program.rootHub.running)
                                         ChangeService();
                                 }
@@ -1256,7 +1256,7 @@ Suspend support not enabled.", true);
                                 }
                                 else if (strData[0] == "outputslot" && strData.Length >= 3)
                                 {
-                                    // Command syntax: 
+                                    // Command syntax:
                                     //    OutputSlot.slot#.Unplug
                                     //    OutputSlot.slot#.PlugDS4
                                     //    OutputSlot.slot#.PlugX360
@@ -1654,7 +1654,15 @@ Suspend support not enabled.", true);
 
         private void MainDS4Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (WindowState != WindowState.Minimized && preserveSize && !IsInitialShow)
+            // プロフィール編集画面が開いている場合はKeepsizeで制御
+            if (WindowState != WindowState.Minimized && editor != null && editor.Keepsize && !IsInitialShow)
+            {
+                var result = WindowPlacementHelper.GetPlacement(this);
+                Global.FormWidth = result.Right - result.Left;
+                Global.FormHeight = result.Bottom - result.Top;
+            }
+            // 編集画面が開いていない場合は常に保存
+            else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
             {
                 var result = WindowPlacementHelper.GetPlacement(this);
                 Global.FormWidth = result.Right - result.Left;
@@ -1664,9 +1672,20 @@ Suspend support not enabled.", true);
 
         private void MainDS4Window_LocationChanged(object sender, EventArgs e)
         {
-            var result = WindowPlacementHelper.GetPlacement(this);
-            Global.FormLocationX = result.Left;
-            Global.FormLocationY = result.Top;
+            // プロフィール編集画面が開いている場合はKeepsizeで制御
+            if (WindowState != WindowState.Minimized && editor != null && editor.Keepsize && !IsInitialShow)
+            {
+                var result = WindowPlacementHelper.GetPlacement(this);
+                Global.FormLocationX = result.Left;
+                Global.FormLocationY = result.Top;
+            }
+            // 編集画面が開いていない場合は常に保存
+            else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
+            {
+                var result = WindowPlacementHelper.GetPlacement(this);
+                Global.FormLocationX = result.Left;
+                Global.FormLocationY = result.Top;
+            }
         }
 
         private void NotifyIcon_TrayMiddleMouseDown(object sender, RoutedEventArgs e)
@@ -1695,7 +1714,7 @@ Suspend support not enabled.", true);
             profDockPanel.Children.Remove(editor);
             profOptsToolbar.Visibility = Visibility.Visible;
             profilesListBox.Visibility = Visibility.Visible;
-            preserveSize = true;
+            // preserveSizeの操作は不要
             if (!editor.Keepsize)
             {
                 this.Width = oldSize.Width;
@@ -1704,8 +1723,12 @@ Suspend support not enabled.", true);
             else
             {
                 oldSize = new Size(Width, Height);
+                var result = WindowPlacementHelper.GetPlacement(this);
+                Global.FormWidth = result.Right - result.Left;
+                Global.FormHeight = result.Bottom - result.Top;
+                Global.FormLocationX = result.Left;
+                Global.FormLocationY = result.Top;
             }
-
             editor = null;
             mainTabCon.SelectedIndex = 0;
             mainWinVM.FullTabsEnabled = true;
@@ -1725,7 +1748,7 @@ Suspend support not enabled.", true);
                 profilesListBox.Visibility = Visibility.Collapsed;
                 mainWinVM.FullTabsEnabled = false;
 
-                preserveSize = false;
+                // preserveSizeは常にtrue
                 oldSize.Width = Width;
                 oldSize.Height = Height;
                 if (this.Width < DEFAULT_PROFILE_EDITOR_WIDTH)
@@ -1743,8 +1766,19 @@ Suspend support not enabled.", true);
                 editor.Closed += ProfileEditor_Closed;
                 profDockPanel.Children.Add(editor);
                 editor.Reload(device, entity);
+
+                // When the profile editor is opened, emit missing-action logs once
+                // per editor-open. We temporarily clear the per-load suppression set
+                // so the same missing-action messages will be logged every time the
+                // editor is opened (user expectation).
+                try
+                {
+                    // Force emitting missing-action logs for this editor open (ignore suppression).
+                    Global.store.EmitMissingActionLogsForDevice(device, true);
+                }
+                catch { }
             }
-            
+
         }
 
         private void Editor_CreatedProfile(ProfileEditor sender, string profile)

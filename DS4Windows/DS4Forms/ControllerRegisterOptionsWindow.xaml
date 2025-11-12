@@ -27,7 +27,7 @@
                 <CheckBox Content="{lex:Loc AdvancedSupport}" IsChecked="{Binding UseAdvancedMoonlight}"
                           Visibility="{Binding Path=UseMoonlight, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="20 0 0 0"/>
                 <TextBlock>
-                    <Hyperlink NavigateUri="https://github.com/schmaldeo/DS4Windows/blob/moonlight/doc/moonlight_support.md"
+                    <Hyperlink NavigateUri="https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/moonlight/doc/moonlight_support.md"
                                RequestNavigate="Hyperlink_RequestNavigate">
                         About virtual controller support
                     </Hyperlink>
@@ -37,7 +37,7 @@
             <StackPanel DockPanel.Dock="Top" Margin="0,16,0,0">
                 <CheckBox Content="{lex:Loc EnableVerboseLog}" IsChecked="{Binding VerboseLogMessages}" ToolTip="{lex:Loc EnableVerboseLogTip}"/>
             </StackPanel>
-            
+
             <DockPanel DockPanel.Dock="Bottom" Margin="0,20,0,0">
                 <Label Content="{lex:Loc DetectedControllers}" ContentStringFormat="{}{0}:" DockPanel.Dock="Top" FontWeight="Bold" />
                 <ListBox x:Name="controllerListBox" ItemsSource="{Binding CurrentInputDevices}" SelectedIndex="{Binding ControllerSelectedIndex}"
@@ -49,7 +49,7 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
             </DockPanel>
-            
+
         </DockPanel>
 
         <TabControl x:Name="deviceSettingsTabControl" DockPanel.Dock="Right" SelectedIndex="{Binding CurrentTabSelectedIndex}" Margin="40,4,4,4">
@@ -61,7 +61,7 @@
                     <CheckBox Content="{lex:Loc Copycat}" IsChecked="{Binding Options.IsCopyCat, FallbackValue='False'}" ToolTip="{lex:Loc CopycatTip}" />
                 </StackPanel>
             </TabItem>
-            
+
             <TabItem x:Name="dualSenseOptsTabItem" Header="DualSense" Visibility="Collapsed">
                 <StackPanel Visibility="{Binding Visible, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="4">
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">

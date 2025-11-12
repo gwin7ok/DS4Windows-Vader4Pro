@@ -2,25 +2,6 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build-release-x64",
-            "type": "shell",
-            "command": "dotnet",
-            "args": [
-                "build",
-                "./DS4Windows/DS4WinWPF.csproj",
-                "-c", "Release",
-                "/p:platform=x64"
-            ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "problemMatcher": "$msCompile"
-        },
-        {
             "label": "publish-release-x64",
             "type": "shell",
             "command": "dotnet",
@@ -29,80 +10,23 @@
                 "./DS4Windows/DS4WinWPF.csproj",
                 "-c", "Release",
                 "/p:platform=x64",
-                "/p:AssemblyVersion=3.11.2",
-                "/p:FileVersion=3.11.2", 
-                "/p:Version=3.11.2",
-                "-o", "./bin/x64/Release/output"
+                "-o", "./DS4Windows/bin/x64/Release/net8.0-windows"
             ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "problemMatcher": "$msCompile"
+            "group": "build"
         },
         {
             "label": "post-build-x64",
             "type": "shell",
-            "command": "python",
+            "command": "pwsh",
             "args": [
-                "./utils/post-build.py",
-                "./bin/x64/Release/output",
-                ".",
-                "3.11.2"
+                "-NoProfile",
+                "-File",
+                "./scripts/post-build.ps1",
+                "./DS4Windows/bin/x64/Release/net8.0-windows",
+                "."
             ],
             "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
             "dependsOn": "publish-release-x64"
-        },
-        {
-            "label": "publish-release-x86",
-            "type": "shell",
-            "command": "dotnet",
-            "args": [
-                "publish",
-                "./DS4Windows/DS4WinWPF.csproj",
-                "-c", "Release",
-                "/p:platform=x86",
-                "/p:AssemblyVersion=3.11.2",
-                "/p:FileVersion=3.11.2",
-                "/p:Version=3.11.2",
-                "-o", "./bin/x86/Release/output"
-            ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "post-build-x86",
-            "type": "shell",
-            "command": "python",
-            "args": [
-                "./utils/post-build.py",
-                "./bin/x86/Release/output",
-                ".",
-                "3.11.2"
-            ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "dependsOn": "publish-release-x86"
         },
         {
             "label": "build-release-like-github-x64",
@@ -114,50 +38,6 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "build-release-like-github-x86",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "publish-release-x86",
-                "post-build-x86"
-            ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            }
-        },
-        {
-            "label": "clean-output",
-            "type": "shell",
-            "command": "Remove-Item",
-            "args": [
-                "-Recurse", 
-                "-Force",
-                "-ErrorAction", "SilentlyContinue",
-                "./bin"
-            ],
-            "options": {
-                "shell": {
-                    "executable": "powershell.exe"
-                }
-            },
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
             }
         }
     ]

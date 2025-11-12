@@ -225,6 +225,12 @@
   <data name="Name" xml:space="preserve">
     <value>Name</value>
   </data>
+  <data name="KeepWindowSize" xml:space="preserve">
+    <value>Keep window size after closing</value>
+  </data>
+  <data name="WindowSizeReset" xml:space="preserve">
+    <value>Reset window size</value>
+  </data>
   <data name="New" xml:space="preserve">
     <value>New</value>
   </data>

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Controls.Primitives;
 using NonFormTimer = System.Timers.Timer;
 using DS4WinWPF.DS4Forms.ViewModels;
 using DS4Windows;
@@ -32,6 +34,113 @@ namespace DS4WinWPF.DS4Forms
     /// </summary>
     public partial class ProfileEditor : UserControl
     {
+        // ...既存フィールド...
+
+    public string ActiveSortButtonContent => GetSortButtonContent("Active", currentSortColumn, currentSortAsc);
+    public string NameSortButtonContent => GetSortButtonContent("Name", currentSortColumn, currentSortAsc);
+    public string TriggerSortButtonContent => GetSortButtonContent("Trigger", currentSortColumn, currentSortAsc);
+    public string ActionSortButtonContent => GetSortButtonContent("Action", currentSortColumn, currentSortAsc);
+
+        private string GetSortButtonContent(string col, string currentCol, bool asc)
+        {
+            string baseName = col switch
+            {
+                // Active column intentionally has no base label; only show arrow when active
+                "Active" => string.Empty,
+                // Use resource strings so header text follows localization settings
+                "Name" => Translations.Strings.Name,
+                "Trigger" => Translations.Strings.Trigger,
+                "Action" => Translations.Strings.Action,
+                _ => col
+            };
+
+            if (col == currentCol)
+            {
+                // For Active, show only the arrow. For others, append arrow without leading space.
+                if (col == "Active")
+                    return asc ? "▲" : "▼";
+                else
+                    return baseName + (asc ? "▲" : "▼");
+            }
+            else
+            {
+                return baseName;
+            }
+        } // ← 修正: GetSortButtonContent メソッドの閉じ括弧を追加
+
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged(string name)
+        {
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+        }
+
+        // 保持されたヘッダー TextBlock 参照を使って、現在のソート状態に応じて表示を更新する
+        private void UpdateSpecialActionsHeaderTexts()
+        {
+            try
+            {
+                if (specialActionsHeaderTextBlocks == null) return;
+
+                // Use shared setter so we get uniform old/new logging when SortSpecialActionsList
+                // triggers an update as well as when templates are first Loaded.
+                // Active
+                if (specialActionsHeaderTextBlocks.Length > 0 && specialActionsHeaderTextBlocks[0] != null)
+                {
+                    SetAndLogHeaderText(specialActionsHeaderTextBlocks[0], 0, "ActiveHeader", ActiveSortButtonContent ?? string.Empty, "[SortSpecialActionsList] Updated:");
+                }
+
+                // Name
+                if (specialActionsHeaderTextBlocks.Length > 1 && specialActionsHeaderTextBlocks[1] != null)
+                {
+                    SetAndLogHeaderText(specialActionsHeaderTextBlocks[1], 1, "NameHeader", NameSortButtonContent ?? string.Empty, "[SortSpecialActionsList] Updated:");
+                }
+
+                // Trigger
+                if (specialActionsHeaderTextBlocks.Length > 2 && specialActionsHeaderTextBlocks[2] != null)
+                {
+                    SetAndLogHeaderText(specialActionsHeaderTextBlocks[2], 2, "TriggerHeader", TriggerSortButtonContent ?? string.Empty, "[SortSpecialActionsList] Updated:");
+                }
+
+                // Action
+                if (specialActionsHeaderTextBlocks.Length > 3 && specialActionsHeaderTextBlocks[3] != null)
+                {
+                    SetAndLogHeaderText(specialActionsHeaderTextBlocks[3], 3, "ActionHeader", ActionSortButtonContent ?? string.Empty, "[SortSpecialActionsList] Updated:");
+                }
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[UpdateSpecialActionsHeaderTexts] failed: {ex.Message}");
+            }
+        }
+
+        // 共通ヘッダ更新ヘルパー: TextBlock を設定し、old/new を一貫した形式でログ出力する。
+        // prefix はログの先頭（例: "[EnsureSpecialActionsHeadersAssigned] Loaded:" や
+        // "[SortSpecialActionsList] Updated:") を渡します。
+        private void SetAndLogHeaderText(TextBlock tb, int idx, string logicalName, string newText, string prefix)
+        {
+            try
+            {
+                var oldTxt = tb?.Text ?? string.Empty;
+                // キャッシュを更新
+                if (specialActionsHeaderTextBlocks != null && idx >= 0 && idx < specialActionsHeaderTextBlocks.Length)
+                {
+                    specialActionsHeaderTextBlocks[idx] = tb;
+                }
+
+                if (tb != null)
+                {
+                    tb.Text = newText ?? string.Empty;
+                }
+
+                App.logHolder?.Logger?.Debug($"{prefix} Column[{idx}] Named {logicalName} old='{oldTxt}' new='{newText}'");
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[SetAndLogHeaderText] failed for Column[{idx}] Name={logicalName}: {ex.Message}");
+            }
+        }
+        // ...既存コード...
+
         private class HoverImageInfo
         {
             public Point point;
@@ -43,6 +152,16 @@ namespace DS4WinWPF.DS4Forms
         private MappingListViewModel mappingListVM;
         private ProfileEntity currentProfile;
         private SpecialActionsListViewModel specialActionsVM;
+        // Active 列の初期幅は BackingStore の定数を使う（プロファイルに永続化しない）
+    // フラグ: 初期ヘッダー更新を一度だけ行うためのガード
+    private bool initialHeaderUpdated = false;
+        // カラムヘッダーの Loaded 発火を数えるためのカウンタ
+        private int specialActionsHeaderLoadedCount = 0;
+        // ヘッダーテンプレート割当が既に行われているかを示すガード
+        private bool specialActionsHeadersAssigned = false;
+    // Special Actions ヘッダー内の TextBlock 参照を保持しておき、後で直接更新できるようにする
+    // indices: 0=Active,1=Name,2=Trigger,3=Action
+    private TextBlock[] specialActionsHeaderTextBlocks = new TextBlock[4];
 
         public event EventHandler Closed;
 
@@ -75,9 +194,85 @@ namespace DS4WinWPF.DS4Forms
         private TouchButtonUserControl touchButtonUC;
         private ContentControl activeTouchButtonDisplayControl;
 
+        // （重複していた空のコンストラクタ宣言を削除）
+        // 統一ソート処理
+        private void SortSpecialActionsList(string columnName, bool asc)
+        {
+            // 保存されていたソート状態をログに出す
+            var prevCol = currentSortColumn;
+            var prevAsc = currentSortAsc;
+
+            currentSortColumn = columnName;
+            currentSortAsc = asc;
+
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Called: column={columnName}, asc={asc}, prevCol={prevCol}, prevAsc={prevAsc}");
+
+            // 1) ViewModel-side sort execution
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Calling specialActionsVM.SortActions");
+            specialActionsVM.SortActions(columnName, asc);
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] specialActionsVM.SortActions completed");
+
+            // 2) CollectionView の準備と状態ログ
+            var view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
+            if (view == null)
+            {
+                App.logHolder.Logger.Debug("[SortSpecialActionsList] CollectionView is null. Aborting.");
+                return;
+            }
+
+            // 3) Refresh 前のアイテムスナップショット（最大5件を表示）
+            try
+            {
+                var preItems = specialActionsVM.ActionCol?.Cast<object>().Take(5).Select(x => x.ToString()).ToArray() ?? Array.Empty<string>();
+                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionCol count before Refresh={(specialActionsVM.ActionCol == null ? 0 : specialActionsVM.ActionCol.Count)}, head sample=" + string.Join(",", preItems));
+            }
+            catch { /* 安全のため無視 */ }
+
+            App.logHolder.Logger.Debug("[SortSpecialActionsList] Executing CollectionView.Refresh");
+            view.Refresh();
+            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Item count after Refresh={view.Count}");
+
+            // 既存のバインディング更新（残して互換性を保つ）
+            OnPropertyChanged(nameof(ActiveSortButtonContent));
+            OnPropertyChanged(nameof(NameSortButtonContent));
+            OnPropertyChanged(nameof(TriggerSortButtonContent));
+            OnPropertyChanged(nameof(ActionSortButtonContent));
+
+            // Loaded で保存されたヘッダー TextBlock 参照があれば、それらを使って表示を即時更新する
+            try
+            {
+                UpdateSpecialActionsHeaderTexts();
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[SortSpecialActionsList] UpdateSpecialActionsHeaderTexts failed: {ex.Message}");
+            }
+
+            // ヘッダーの表示更新は Loaded ハンドラでキャッシュした TextBlock により行われます。
+            App.logHolder.Logger.Debug("[SortSpecialActionsList] Header updates are handled via cached TextBlocks and Loaded handlers.");
+        }
+
+        // NOTE: Local visual-tree helper methods were removed in favor of the shared
+        // `UtilMethods.FindVisualChildren<T>` and `UtilMethods.FindVisualChild<childItem>` helpers.
+        //
+        // The previous helper implementations (FindVisualChildByName, FindVisualChildrenByTypeName,
+        // FindAncestorByTypeName) were duplicates of functionality provided by the project's
+        // `UtilMethods` class. They have been removed to reduce maintenance burden and avoid
+        // divergence. If a call site needs specific behavior not covered by UtilMethods,
+        // add a narrowly-scoped helper or adapt the call site accordingly.
+
         public ProfileEditor(int device)
         {
+            App.logHolder.Logger.Debug($"[ProfileEditor] Opened profile editor for device={device}");
+
             InitializeComponent();
+
+            // SpecialActionsリスト表示前にカルチャを明示的に再設定
+            var lang = DS4Windows.Global.UseLang;
+            var ci = System.Globalization.CultureInfo.GetCultureInfo(lang);
+            DS4WinWPF.Properties.Resources.Culture = ci;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = ci;
+            System.Threading.Thread.CurrentThread.CurrentCulture = ci;
 
             deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;
@@ -107,7 +302,129 @@ namespace DS4WinWPF.DS4Forms
             inputTimer = new NonFormTimer(100);
             inputTimer.Elapsed += InputDS4;
             SetupEvents();
+
+            // --- 追加: 保存されたSplitter位置と列幅の復元 ---
+            RestoreSplitterAndColumnWidths();
+            // ヘッダーの DataTemplate 実体化とヘッダー文字列の更新は Special Actions タブが
+            // アクティブになったときに行うよう遅延させます。不要な起動時の検索/置換を避けるため。
+            initialHeaderUpdated = false;
         }
+        // Splitter位置とSpecial Actions列幅の保存・復元はGlobal経由で統一
+
+        // ウィンドウサイズ初期化ボタンのクリックイベント
+        private void WindowSizeResetBtn_Click(object sender, RoutedEventArgs e)
+        {
+            // 初期値にリセット（左右領域・列幅）
+            Global.ProfileEditorLeftWidth = BackingStore.DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
+            Global.ProfileEditorRightWidth = BackingStore.DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
+            Global.SpecialActionNameColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
+            Global.SpecialActionTriggerColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+            Global.SpecialActionDetailColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+
+            // ウィンドウ自体のサイズも初期値にリセット（ポジションは変更しない）
+            Global.FormWidth = BackingStore.DEFAULT_FORM_WIDTH;
+            Global.FormHeight = BackingStore.DEFAULT_FORM_HEIGHT;
+
+            var win = Window.GetWindow(this);
+            if (win != null)
+            {
+                var source = System.Windows.PresentationSource.FromVisual(win);
+                if (source?.CompositionTarget != null)
+                {
+                    var m = source.CompositionTarget.TransformToDevice;
+                    double dpiX = m.M11;
+                    double dpiY = m.M22;
+                    win.Width = BackingStore.DEFAULT_FORM_WIDTH / dpiX;
+                    win.Height = BackingStore.DEFAULT_FORM_HEIGHT / dpiY;
+                }
+                else
+                {
+                    win.Width = BackingStore.DEFAULT_FORM_WIDTH;
+                    win.Height = BackingStore.DEFAULT_FORM_HEIGHT;
+                }
+            }
+
+            // UIにも即時反映
+            RestoreSplitterAndColumnWidths();
+        }
+
+        private void SaveSplitterAndColumnWidths()
+        {
+            var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
+            if (grid == null || grid.ColumnDefinitions.Count < 3) return;
+
+            double leftWidth = grid.ColumnDefinitions[0].Width.Value;
+            double rightWidth = grid.ColumnDefinitions[2].Width.Value;
+
+            // Special Actions ListViewのGridViewColumn幅取得
+            var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
+            if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 4)
+            {
+                try
+                {
+                    // Global経由で保存
+                    Global.ProfileEditorLeftWidth = (int)leftWidth;
+                    Global.ProfileEditorRightWidth = (int)rightWidth;
+                    // columns: 0=Active,1=Name,2=Trigger,3=Detail
+                    Global.SpecialActionNameColWidth = (int)gridView.Columns[1].Width;
+                    Global.SpecialActionTriggerColWidth = (int)gridView.Columns[2].Width;
+                    Global.SpecialActionDetailColWidth = (int)gridView.Columns[3].Width;
+                    // 必要なら他の列も追加
+
+                    App.logHolder?.Logger?.Debug($"[SaveSplitterAndColumnWidths] Saved left={Global.ProfileEditorLeftWidth} right={Global.ProfileEditorRightWidth} nameCol={Global.SpecialActionNameColWidth} trigCol={Global.SpecialActionTriggerColWidth} detailCol={Global.SpecialActionDetailColWidth}");
+                }
+                catch (Exception ex)
+                {
+                    App.logHolder?.Logger?.Debug($"[SaveSplitterAndColumnWidths] failed: {ex.Message}");
+                }
+            }
+        }
+
+        private void RestoreSplitterAndColumnWidths()
+        {
+            try
+            {
+                var grid = this.Content as Grid ?? this.FindName("baseGrid") as Grid;
+                if (grid != null && grid.ColumnDefinitions.Count >= 3)
+                {
+                    double left = Global.ProfileEditorLeftWidth;
+                    double right = Global.ProfileEditorRightWidth;
+                    if (IsValidWidth(left))
+                        grid.ColumnDefinitions[0].Width = new GridLength(left);
+                    if (IsValidWidth(right))
+                        grid.ColumnDefinitions[2].Width = new GridLength(right);
+                }
+                var specialActionsLV = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
+                if (specialActionsLV?.View is GridView gridView && gridView.Columns.Count >= 4)
+                {
+                    // columns: 0=Active,1=Name,2=Trigger,3=Detail
+                    // Active 列はプロファイルに永続化しない初期幅を毎回適用する（BackingStore の定数を使用）
+                    gridView.Columns[0].Width = BackingStore.DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH;
+
+                    double nameW = Global.SpecialActionNameColWidth;
+                    double trigW = Global.SpecialActionTriggerColWidth;
+                    double detailW = Global.SpecialActionDetailColWidth;
+                    // columns: 0=Active,1=Name,2=Trigger,3=Detail
+                    if (IsValidWidth(nameW))
+                        gridView.Columns[1].Width = nameW;
+                    if (IsValidWidth(trigW))
+                        gridView.Columns[2].Width = trigW;
+                    if (IsValidWidth(detailW))
+                        gridView.Columns[3].Width = detailW;
+                }
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[RestoreSplitterAndColumnWidths] failed: {ex.Message}");
+            }
+        }
+
+        private bool IsValidWidth(double w)
+        {
+            return !double.IsNaN(w) && !double.IsInfinity(w) && w > 0.0 && w < 10000.0;
+        }
+
+        // ...既存のコード...
 
         private void PopulateGyroActionsTriggersMenu()
         {
@@ -338,9 +655,17 @@ namespace DS4WinWPF.DS4Forms
 
         private void PopulateReverseHoverIndexes()
         {
-            foreach (KeyValuePair<Button, int> pair in hoverIndexes)
+            try
             {
-                reverseHoverIndexes.Add(pair.Value, pair.Key);
+                foreach (KeyValuePair<Button, int> pair in hoverIndexes)
+                {
+                    reverseHoverIndexes.Add(pair.Value, pair.Key);
+                }
+                App.logHolder?.Logger?.Debug($"[PopulateReverseHoverIndexes] Built reverseHoverIndexes count={reverseHoverIndexes.Count}");
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[PopulateReverseHoverIndexes] failed: {ex.Message}");
             }
         }
 
@@ -365,7 +690,9 @@ namespace DS4WinWPF.DS4Forms
             hoverIndexes[l3ConBtn] = 16;
             hoverIndexes[r3ConBtn] = 17;
 
-            hoverIndexes[leftTouchConBtn] = mappingListVM.ControlIndexMap[DS4Controls.TouchLeft]; // 21
+            hoverIndexes[brpConBtn] = 44;
+
+            App.logHolder?.Logger?.Debug($"[PopulateHoverIndexes] Populated hoverIndexes count={hoverIndexes.Count}");
             hoverIndexes[rightTouchConBtn] = mappingListVM.ControlIndexMap[DS4Controls.TouchRight]; // 22
             hoverIndexes[multiTouchConBtn] = mappingListVM.ControlIndexMap[DS4Controls.TouchMulti]; // 23
             hoverIndexes[topTouchConBtn] = mappingListVM.ControlIndexMap[DS4Controls.TouchUpper]; // 24
@@ -408,6 +735,8 @@ namespace DS4WinWPF.DS4Forms
                 point = new Point(Canvas.GetLeft(circleConBtn), Canvas.GetTop(circleConBtn)),
                 size = new Size(circleConBtn.Width, circleConBtn.Height)
             };
+
+                App.logHolder?.Logger?.Debug($"[PopulateHoverLocations] Populated hoverLocations count={hoverLocations.Count}");
             hoverLocations[squareConBtn] = new HoverImageInfo()
             {
                 point = new Point(Canvas.GetLeft(squareConBtn), Canvas.GetTop(squareConBtn)),
@@ -460,13 +789,14 @@ namespace DS4WinWPF.DS4Forms
             };
 
             hoverLocations[leftTouchConBtn] = new HoverImageInfo()
-                { point = new Point(144, 44), size = new Size(140, 98) };
+            { point = new Point(144, 44), size = new Size(140, 98) };
             hoverLocations[multiTouchConBtn] = new HoverImageInfo()
-                { point = new Point(143, 42), size = new Size(158, 100) };
+            { point = new Point(143, 42), size = new Size(158, 100) };
             hoverLocations[rightTouchConBtn] = new HoverImageInfo()
-                { point = new Point(156, 47), size = new Size(146, 94) };
+            { point = new Point(156, 47), size = new Size(146, 94) };
             hoverLocations[topTouchConBtn] = new HoverImageInfo()
-                { point = new Point(155, 6), size = new Size(153, 114) };
+            { point = new Point(155, 6), size = new Size(153, 114) };
+
 
             hoverLocations[l3ConBtn] = new HoverImageInfo()
             {
@@ -586,6 +916,7 @@ namespace DS4WinWPF.DS4Forms
 
         private void PopulateHoverImages()
         {
+            App.logHolder?.Logger?.Debug("[PopulateHoverImages] loading hover images");
             ImageSourceConverter sourceConverter = new ImageSourceConverter();
 
             ImageSource temp =
@@ -745,6 +1076,8 @@ namespace DS4WinWPF.DS4Forms
             hoverImages[fnrConBtn] = guideHover;
             hoverImages[blpConBtn] = guideHover;
             hoverImages[brpConBtn] = guideHover;
+
+            App.logHolder?.Logger?.Debug($"[PopulateHoverImages] loaded hoverImages count={hoverImages.Count}");
         }
 
         public void Reload(int device, ProfileEntity profile = null)
@@ -851,11 +1184,10 @@ namespace DS4WinWPF.DS4Forms
             axialRSStickControl.AxialVM.DeadZoneXChanged += UpdateReadingsRsDeadZoneX;
             axialRSStickControl.AxialVM.DeadZoneYChanged += UpdateReadingsRsDeadZoneY;
 
-            // Sort special action list by action name
-            CollectionView view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
-            view.SortDescriptions.Clear();
-            view.SortDescriptions.Add(new SortDescription("ActionName", ListSortDirection.Ascending));
-            view.Refresh();
+            // 初期表示も統一ソートメソッドを使用
+            // NOTE: 呼び出しを削除しました。レンダリング完了後に Dispatcher.BeginInvoke で
+            //       `SortSpecialActionsList(currentSortColumn, currentSortAsc)` を実行して
+            //       ヘッダー内の DataTemplate 部分が確実に生成されてから ▲/▼ を反映します。
 
             if (profileSettingsVM.UseControllerReadout)
             {
@@ -1070,6 +1402,41 @@ namespace DS4WinWPF.DS4Forms
                 temp.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) == -1)
             {
                 SetLateProperties(false);
+
+                // Compute pre-save vs to-be-saved special-action lists and defer
+                // persistence until now. We must detect which actions will be removed
+                // and which of those are invalid (not present in Actions.xml). The
+                // actual Global.ProfileActions update and CacheExtraProfileInfo call
+                // happen here before we save the profile to disk.
+                List<string> removedInvalidSpecialActions = new List<string>();
+                try
+                {
+                    var prevList = Global.ProfileActions != null && Global.ProfileActions.Length > deviceNum && Global.ProfileActions[deviceNum] != null
+                        ? new List<string>(Global.ProfileActions[deviceNum])
+                        : new List<string>();
+
+                    var newList = specialActionsVM?.GetEnabledActionNames() ?? new List<string>();
+
+                    var removed = prevList.Except(newList).ToList();
+
+                    var actionsXml = Global.GetActions() ?? new List<SpecialAction>();
+                    removedInvalidSpecialActions = removed.Where(name => actionsXml.All(a => a.name != name)).ToList();
+
+                    // Persist the new list into Global and rebuild cached info before saving file
+                    // Global.ProfileActions is an array of List<string> exposed via a read-only
+                    // property; update the element in-place.
+                    try
+                    {
+                        var pa = Global.ProfileActions; // List<string>[]
+                        if (pa != null && pa.Length > deviceNum)
+                        {
+                            pa[deviceNum] = new List<string>(newList);
+                        }
+                        Global.CacheExtraProfileInfo(deviceNum);
+                    }
+                    catch { }
+                }
+                catch { }
                 DS4Windows.Global.ProfilePath[deviceNum] =
                     DS4Windows.Global.OlderProfilePath[deviceNum] = temp;
 
@@ -1087,6 +1454,22 @@ namespace DS4WinWPF.DS4Forms
                 {
                     currentProfile.SaveProfile(deviceNum);
                     currentProfile.FireSaved();
+
+                    // Log removed invalid special actions after save completes
+                    try
+                    {
+                        if (removedInvalidSpecialActions != null && removedInvalidSpecialActions.Count > 0)
+                        {
+                            string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
+                            foreach (var name in removedInvalidSpecialActions)
+                            {
+                                try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch { }
+                                try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch { }
+                            }
+                        }
+                    }
+                    catch { }
+
                     result = true;
                 }
                 else
@@ -1096,6 +1479,22 @@ namespace DS4WinWPF.DS4Forms
                     {
                         Global.SaveProfile(deviceNum, temp);
                         CreatedProfile?.Invoke(this, temp);
+
+                        // Log removed invalid special actions after save completes
+                        try
+                        {
+                            if (removedInvalidSpecialActions != null && removedInvalidSpecialActions.Count > 0)
+                            {
+                                string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
+                                foreach (var name in removedInvalidSpecialActions)
+                                {
+                                    try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch { }
+                                    try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch { }
+                                }
+                            }
+                        }
+                        catch { }
+
                         result = true;
                     }
                     else
@@ -1114,12 +1513,10 @@ namespace DS4WinWPF.DS4Forms
             return result;
         }
 
-        private void KeepSizeBtn_Click(object sender, RoutedEventArgs e)
+        private void KeepSizeCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            keepsize = true;
-            ImageSourceConverter c = new ImageSourceConverter();
-            sizeImage.Source =
-                c.ConvertFromString($"{Global.ASSEMBLY_RESOURCE_PREFIX}component/Resources/checked.png") as ImageSource;
+            var checkBox = sender as System.Windows.Controls.CheckBox;
+            keepsize = checkBox != null && checkBox.IsChecked == true;
         }
 
         public void Close()
@@ -1127,6 +1524,12 @@ namespace DS4WinWPF.DS4Forms
             if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
                 App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
+            }
+
+            // 画面サイズ保持チェックが有効な場合のみレイアウト保存
+            if (keepsize)
+            {
+                SaveSplitterAndColumnWidths();
             }
 
             Closed?.Invoke(this, EventArgs.Empty);
@@ -1276,25 +1679,25 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-    private void UpdateDualSenseRumble(DS4Windows.InputDevices.DualSenseDevice dualsense)
+        private void UpdateDualSenseRumble(DS4Windows.InputDevices.DualSenseDevice dualsense)
         {
-                switch ((DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode)profileSettingsVM.DualSenseRumbleEmulationPerIndex)
-                {
-                    case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Disabled:
-                        dualsense.UseRumble = false;
-                        dualsense.UseAccurateRumble = false;
-                        break;
-                    case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Legacy:
-                        dualsense.UseRumble = true;
-                        dualsense.UseAccurateRumble = false;
-                        break;
-                    case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Accurate:
-                    default:
-                        dualsense.UseRumble = true;
-                        dualsense.UseAccurateRumble = true;
-                        break;
-                }
-                dualsense.HapticPowerLevel = (byte)profileSettingsVM.DualSenseHapticPowerLevelPerIndex;
+            switch ((DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode)profileSettingsVM.DualSenseRumbleEmulationPerIndex)
+            {
+                case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Disabled:
+                    dualsense.UseRumble = false;
+                    dualsense.UseAccurateRumble = false;
+                    break;
+                case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Legacy:
+                    dualsense.UseRumble = true;
+                    dualsense.UseAccurateRumble = false;
+                    break;
+                case DS4Windows.InputDevices.DualSenseDevice.RumbleEmulationMode.Accurate:
+                default:
+                    dualsense.UseRumble = true;
+                    dualsense.UseAccurateRumble = true;
+                    break;
+            }
+            dualsense.HapticPowerLevel = (byte)profileSettingsVM.DualSenseHapticPowerLevelPerIndex;
         }
 
         private void CustomEditorBtn_Click(object sender, RoutedEventArgs e)
@@ -1485,9 +1888,8 @@ namespace DS4WinWPF.DS4Forms
                 specialActionsVM.ActionCol.Add(newitem);
                 specialActionDockPanel.Children.Remove(actEditor);
                 baseSpeActPanel.Visibility = Visibility.Visible;
-
-                specialActionsVM.ExportEnabledActions();
-                Global.CacheExtraProfileInfo(profileSettingsVM.Device);
+                // Persistence and cache update deferred to Apply/Save to avoid
+                // emitting removed-invalid logs at UI-time.
             };
         }
 
@@ -1520,7 +1922,6 @@ namespace DS4WinWPF.DS4Forms
                     specialActionsVM.ActionCol.Insert(currentIndex, newitem);
                     specialActionDockPanel.Children.Remove(actEditor);
                     baseSpeActPanel.Visibility = Visibility.Visible;
-                    Global.CacheExtraProfileInfo(profileSettingsVM.Device);
                 };
             }
         }
@@ -1533,13 +1934,12 @@ namespace DS4WinWPF.DS4Forms
                 //int currentIndex = specialActionsVM.ActionCol[specialActionsVM.SpecialActionIndex].Index;
                 //SpecialActionItem item = specialActionsVM.ActionCol[currentIndex];
                 specialActionsVM.RemoveAction(item);
-                Global.CacheExtraProfileInfo(profileSettingsVM.Device);
             }
         }
 
         private void SpecialActionCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            specialActionsVM.ExportEnabledActions();
+            // Export is intentionally not invoked here; Apply/Save will handle persistence.
         }
 
         private void Ds4LightbarColorBtn_MouseEnter(object sender, MouseEventArgs e)
@@ -1583,7 +1983,7 @@ namespace DS4WinWPF.DS4Forms
             if (activeWin && profileSettingsVM.UseControllerReadout)
             {
                 int index = -1;
-                switch(Program.rootHub.GetActiveInputControl(tempDeviceNum))
+                switch (Program.rootHub.GetActiveInputControl(tempDeviceNum))
                 {
                     case DS4Controls.None: break;
                     case DS4Controls.Cross: index = 0; break;
@@ -1640,10 +2040,22 @@ namespace DS4WinWPF.DS4Forms
         }
         private void ProfileEditor_Closed(object sender, EventArgs e)
         {
+            // 画面サイズ保持チェックが有効な場合のみレイアウト保存
+            if (keepsize)
+            {
+                SaveSplitterAndColumnWidths();
+            }
             profileSettingsVM.UseControllerReadout = false;
             inputTimer.Stop();
             conReadingsUserCon.EnableControl(false);
-            Global.CacheExtraProfileInfo(profileSettingsVM.Device);
+            // Rebuild cached profile info for this device. CalculateProfileActionDicts
+            // no longer emits missing-action logs directly; callers should invoke
+            // EmitMissingActionLogsForDevice when they want messages emitted.
+            try
+            {
+                Global.CacheExtraProfileInfo(profileSettingsVM.Device);
+            }
+            catch { }
             UnregisterEvents();
         }
 
@@ -1680,6 +2092,35 @@ namespace DS4WinWPF.DS4Forms
 
         private void SidebarTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            App.logHolder?.Logger?.Debug($"[SidebarTabControl_SelectionChanged] SelectedItem={sidebarTabControl.SelectedItem?.GetType().Name}, SelectedIndex={sidebarTabControl.SelectedIndex}, IsLoaded={sidebarTabControl.IsLoaded}, IsVisible={sidebarTabControl.IsVisible}, Added={e.AddedItems?.Count}, Removed={e.RemovedItems?.Count}");
+            // Special Actions タブに切り替えられたときは毎回ソートとヘッダー更新を行う。
+            // ユーザーがタブを行き来したときに最新の表示状態を反映させたい。
+            try
+            {
+                bool addedContainsSpecial = e.AddedItems != null && e.AddedItems.Contains(specialActionsTab);
+                bool removedContainsSpecial = e.RemovedItems != null && e.RemovedItems.Contains(specialActionsTab);
+
+                if (addedContainsSpecial)
+                {
+                    App.logHolder?.Logger?.Debug("[SidebarTabControl_SelectionChanged] SpecialActions tab was added (user switched to it) - ensuring header templates are assigned");
+                    EnsureSpecialActionsHeadersAssigned();
+                }
+                else if (removedContainsSpecial)
+                {
+                    App.logHolder?.Logger?.Debug("[SidebarTabControl_SelectionChanged] SpecialActions tab was removed (likely closing/unloading) - skipping header assignment");
+                }
+                else if (sidebarTabControl.SelectedItem == specialActionsTab && !specialActionsHeadersAssigned)
+                {
+                    // Fallback: sometimes SelectionChanged doesn't populate AddedItems as expected
+                    App.logHolder?.Logger?.Debug("[SidebarTabControl_SelectionChanged] Fallback: SelectedItem==specialActionsTab and headers not assigned - ensuring header templates are assigned");
+                    EnsureSpecialActionsHeadersAssigned();
+                }
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[SidebarTabControl_SelectionChanged] header init failed: {ex.Message}");
+            }
+
             if (sidebarTabControl.SelectedItem == contReadingsTab)
             {
                 controllerReadingsTabActive = true;
@@ -1703,6 +2144,120 @@ namespace DS4WinWPF.DS4Forms
             mpControl.UpdateMappingName();
             UpdateHighlightLabel(mpControl);
             Global.CacheProfileCustomsFlags(profileSettingsVM.Device);
+        }
+
+        // Special Actions の GridViewColumn に DataTemplate を割り当て、
+        // ContentControl.Loaded ハンドラでヘッダー内部の TextBlock を初期化します。
+        // すべてのカラムの Loaded が発火したらソートを実行します。
+        private void EnsureSpecialActionsHeadersAssigned()
+        {
+            try
+            {
+                if (specialActionsHeadersAssigned)
+                {
+                    App.logHolder?.Logger?.Debug("[EnsureSpecialActionsHeadersAssigned] headers already assigned - skipping");
+                    return;
+                }
+                var lv = this.FindName("specialActionsLV") as System.Windows.Controls.ListView;
+                if (lv == null) return;
+                if (!(lv.View is GridView gridView)) return;
+
+                specialActionsHeaderLoadedCount = 0;
+                int targetCount = Math.Min(4, gridView.Columns.Count);
+
+                bool assignedAny = false;
+                // ヘッダーテンプレート割当と Loaded ハンドラ登録
+                for (int i = 0; i < targetCount; i++)
+                {
+                    var col = gridView.Columns[i];
+                    string templateKey = i switch
+                    {
+                        0 => "ActiveHeaderTemplate",
+                        1 => "NameHeaderTemplate",
+                        2 => "TriggerHeaderTemplate",
+                        3 => "ActionHeaderTemplate",
+                        _ => null
+                    };
+
+                    if (string.IsNullOrEmpty(templateKey)) continue;
+                    var tpl = this.TryFindResource(templateKey) as DataTemplate;
+                    if (tpl == null) continue;
+
+                    var contentCtrl = new ContentControl() { ContentTemplate = tpl };
+                    int colIdx = i;
+                    RoutedEventHandler loadedHandler = null;
+                    loadedHandler = (s, e) =>
+                    {
+                        try
+                        {
+                            // Loaded 時点ではテンプレート内の TextBlock 参照を取得してキャッシュするのみにする。
+                            // 実際のヘッダー表示更新（▲/▼ の付与など）は SortSpecialActionsList 側で一元的に行う。
+                            App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] ContentControl.Loaded event for Column[{colIdx}] - caching header textblocks");
+                            var foundTbs = UtilMethods.FindVisualChildren<TextBlock>(contentCtrl).ToList();
+                            var namedActiveTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "ActiveHeaderTextBlock");
+                            var namedNameTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "NameHeaderTextBlock");
+                            var namedTrigTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "TriggerHeaderTextBlock");
+                            var namedActTb2 = foundTbs.FirstOrDefault(tb => tb.Name == "ActionHeaderTextBlock");
+
+                            // 見つかった TextBlock 参照を配列に保持する（表示更新は行わない）
+                            if (namedActiveTb2 != null && specialActionsHeaderTextBlocks.Length > 0)
+                            {
+                                specialActionsHeaderTextBlocks[0] = namedActiveTb2;
+                            }
+                            if (namedNameTb2 != null && specialActionsHeaderTextBlocks.Length > 1)
+                            {
+                                specialActionsHeaderTextBlocks[1] = namedNameTb2;
+                            }
+                            if (namedTrigTb2 != null && specialActionsHeaderTextBlocks.Length > 2)
+                            {
+                                specialActionsHeaderTextBlocks[2] = namedTrigTb2;
+                            }
+                            if (namedActTb2 != null && specialActionsHeaderTextBlocks.Length > 3)
+                            {
+                                specialActionsHeaderTextBlocks[3] = namedActTb2;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] Loaded handler exception: {ex.Message}");
+                        }
+                        finally
+                        {
+                            try { contentCtrl.Loaded -= loadedHandler; } catch { }
+                        }
+
+                        // 全てのカラムで Loaded が発火したら Sort を実行
+                        specialActionsHeaderLoadedCount++;
+                        if (specialActionsHeaderLoadedCount >= targetCount)
+                        {
+                            App.logHolder?.Logger?.Debug("[EnsureSpecialActionsHeadersAssigned] all headers loaded - calling SortSpecialActionsList");
+                            SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                        }
+                    };
+
+                    contentCtrl.Loaded += loadedHandler;
+                    col.Header = contentCtrl;
+                    assignedAny = true;
+                    // ログ: 列オブジェクトへ Header テンプレートを割り当てた直後のタイミングを記録
+                    try
+                    {
+                        var headerType = col.Header?.GetType().Name ?? "null";
+                        App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] Assigned Header template to Column[{i}] - HeaderType={headerType}");
+                    }
+                    catch (Exception ex)
+                    {
+                        App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] Assigned Header logging failed: {ex.Message}");
+                    }
+                }
+                if (assignedAny)
+                {
+                    specialActionsHeadersAssigned = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                App.logHolder?.Logger?.Debug($"[EnsureSpecialActionsHeadersAssigned] failed: {ex.Message}");
+            }
         }
 
         private void SwipeControlsButton_Click(object sender, RoutedEventArgs e)
@@ -1739,7 +2294,7 @@ namespace DS4WinWPF.DS4Forms
             {
                 List<DS4Controls> controls =
                     profileSettingsVM.PresetMenuUtil.ModifySettingWithPreset(baseTag, subTag);
-                foreach(DS4Controls control in controls)
+                foreach (DS4Controls control in controls)
                 {
                     MappedControl mpControl = mappingListVM.ControlMap[control];
                     mpControl.UpdateMappingName();
@@ -1790,7 +2345,7 @@ namespace DS4WinWPF.DS4Forms
             window.ShowDialog();
             mpControl.UpdateMappingName();
             Global.CacheProfileCustomsFlags(profileSettingsVM.Device);
-		}
+        }
 
         private void GyroCalibration_Click(object sender, RoutedEventArgs e)
         {
@@ -1909,7 +2464,27 @@ namespace DS4WinWPF.DS4Forms
                 dialogStream.Close();
             }
         }
-    }
+
+        // ソート状態保持
+        private string currentSortColumn = "Name";
+        private bool currentSortAsc = true;
+
+        // 列ヘッダークリックイベント
+        void SpecialActionsHeader_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = sender as Button;
+            var col = btn?.Tag as string;
+            if (col != null)
+            {
+                // Log: sort state just before click
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Click: col={col}, currentSortColumn={currentSortColumn}, currentSortAsc={currentSortAsc}");
+                bool asc = col != currentSortColumn ? true : !currentSortAsc;
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Determined sort direction: col={col}, asc={asc}");
+                SortSpecialActionsList(col, asc);
+                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Column click handling complete: {col}");
+            }
+        }
+    } // ← ProfileEditorクラスの閉じ括弧を追加
 
     public class ResourcePaths
     {

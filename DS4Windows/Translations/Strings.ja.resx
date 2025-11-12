@@ -303,6 +303,12 @@
   <data name="Trigger" xml:space="preserve">
     <value>トリガー</value>
   </data>
+  <data name="KeepWindowSize" xml:space="preserve">
+    <value>ウィンドウサイズを閉じた後も保持</value>
+  </data>
+  <data name="WindowSizeReset" xml:space="preserve">
+    <value>ウィンドウサイズ初期化</value>
+  </data>
   <data name="WarningsOnly" xml:space="preserve">
     <value>警告のみ</value>
   </data>

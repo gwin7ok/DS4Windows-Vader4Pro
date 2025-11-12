@@ -69,7 +69,7 @@ namespace DS4WinWPF
         private const string SingleAppComEventName = "{a52b5b20-d9ee-4f32-8518-307fa14aa0c6}";
         private EventWaitHandle threadComEvent = null;
         private Timer collectTimer;
-        private static LoggerHolder logHolder;
+    public static LoggerHolder logHolder;
 
         private MemoryMappedFile ipcClassNameMMF = null; // MemoryMappedFile for inter-process communication used to hold className of DS4Form window
         private MemoryMappedFile ipcResultDataMMF = null; // MemoryMappedFile for inter-process communication used to exchange string result data between cmdline client process and the background running DS4Windows app
@@ -213,7 +213,7 @@ namespace DS4WinWPF
                 logger.Info("No config found. Creating default config");
                 AttemptSave();
 
-                DS4Windows.Global.SaveAsNewProfile(0, "Default");
+                DS4Windows.Global.SaveAsProfile(0, "Default");
                 for (int i = 0; i < DS4Windows.ControlService.MAX_DS4_CONTROLLER_COUNT; i++)
                 {
                     DS4Windows.Global.ProfilePath[i] = DS4Windows.Global.OlderProfilePath[i] = "Default";
@@ -425,7 +425,7 @@ namespace DS4WinWPF
                     {
                         if (parser.CommandArgs.ToLower().StartsWith("query."))
                         {
-                            // Query.device# (1..4) command returns a string result via memory mapped file. The cmd is sent to the background DS4Windows 
+                            // Query.device# (1..4) command returns a string result via memory mapped file. The cmd is sent to the background DS4Windows
                             // process (via WM_COPYDATA wnd msg), then this client process waits for the availability of the result and prints it to console output pipe.
                             // Use mutex obj to make sure that concurrent client calls won't try to write and read the same MMF result file at the same time.
                             ipcSingleTaskMutex = new Mutex(false, "DS4Windows_IPCResultData_SingleTaskMtx");
@@ -605,7 +605,7 @@ namespace DS4WinWPF
 
         private void CreateIPCResultDataMMF()
         {
-            // Cmdline client process calls this to create the MMF file used in inter-process-communications. The background DS4Windows process 
+            // Cmdline client process calls this to create the MMF file used in inter-process-communications. The background DS4Windows process
             // uses WriteIPCResultDataMMF method to write a command result and the client process reads the result from the same MMF file.
             if (ipcResultDataMMF != null) return; // Already holding a handle to MMF file. No need to re-write the data
 
@@ -688,7 +688,7 @@ namespace DS4WinWPF
                 // fixes the culture in threads
                 CultureInfo.DefaultThreadCurrentCulture = ci;
                 CultureInfo.DefaultThreadCurrentUICulture = ci;
-                //DS4WinWPF.Properties.Resources.Culture = ci;
+                DS4WinWPF.Properties.Resources.Culture = ci;
                 Thread.CurrentThread.CurrentCulture = ci;
                 Thread.CurrentThread.CurrentUICulture = ci;
             }

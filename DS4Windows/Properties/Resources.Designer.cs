@@ -70,6 +70,15 @@ namespace DS4WinWPF.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to (無効なスペシャルアクション).
+        /// </summary>
+        public static string InvalidSpecialAction {
+            get {
+                return ResourceManager.GetString("InvalidSpecialAction", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Adding to list....
         /// </summary>
         public static string AddingToList {

@@ -46,7 +46,6 @@ using WpfScreenHelper;
 using static DS4Windows.Mouse;
 using static DS4Windows.Util;
 using LightbarMacro = DS4WinWPF.DS4Forms.ViewModels.LightbarMacro;
-
 namespace DS4Windows
 {
     [Flags]
@@ -524,6 +523,40 @@ namespace DS4Windows
 
     public class Global
     {
+        static Global()
+        {
+            // Static initializer retained for future Global initializations.
+        }
+        // プロファイル切り替え時の無効アクション名エラーログ抑制用
+        public static HashSet<string> loggedInvalidActions = new HashSet<string>();
+        // ProfileEditor layout properties (統合管理)
+        public static int ProfileEditorLeftWidth
+        {
+            set { m_Config.profileEditorLeftWidth = value; }
+            get { return m_Config.profileEditorLeftWidth; }
+        }
+        public static int ProfileEditorRightWidth
+        {
+            set { m_Config.profileEditorRightWidth = value; }
+            get { return m_Config.profileEditorRightWidth; }
+        }
+        public static int SpecialActionNameColWidth
+        {
+            set { m_Config.specialActionNameColWidth = value; }
+            get { return m_Config.specialActionNameColWidth; }
+        }
+        public static int SpecialActionTriggerColWidth
+        {
+            set { m_Config.specialActionTriggerColWidth = value; }
+            get { return m_Config.specialActionTriggerColWidth; }
+        }
+        public static int SpecialActionDetailColWidth
+        {
+            set { m_Config.specialActionDetailColWidth = value; }
+            get { return m_Config.specialActionDetailColWidth; }
+        }
+        // SpecialActionDeleteColWidth 削除
+
         public const int MAX_DS4_CONTROLLER_COUNT = 8;
         public const int TEST_PROFILE_ITEM_COUNT = MAX_DS4_CONTROLLER_COUNT + 1;
         public const int TEST_PROFILE_INDEX = TEST_PROFILE_ITEM_COUNT - 1;
@@ -600,6 +633,10 @@ namespace DS4Windows
         public static bool[] useDInputOnly = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
         public static bool[] linkedProfileCheck = new bool[MAX_DS4_CONTROLLER_COUNT] { false, false, false, false, false, false, false, false };
         public static bool[] touchpadActive = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
+    // (Removed) Previously used to hold pending removed invalid special actions
+    // collected by UI-time calls. This mechanism was refactored so that
+    // removal detection and logging happen at save/apply time; the array has
+    // therefore been removed to avoid dead code.
         // Used to hold device type desired from Profile Editor
         public static OutContType[] outDevTypeTemp = new OutContType[TEST_PROFILE_ITEM_COUNT] { DS4Windows.OutContType.X360, DS4Windows.OutContType.X360,
             DS4Windows.OutContType.X360, DS4Windows.OutContType.X360,
@@ -2832,7 +2869,8 @@ namespace DS4Windows
         public static bool LoadProfile(int device, bool launchprogram, ControlService control,
             bool xinputChange = true, bool postLoad = true)
         {
-            bool result = m_Config.LoadProfileNew(device, launchprogram, control, "", xinputChange, postLoad);
+            Global.loggedInvalidActions.Clear();
+            bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
             //bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
             tempprofilename[device] = string.Empty;
             useTempProfile[device] = false;
@@ -2844,7 +2882,8 @@ namespace DS4Windows
         public static bool LoadTempProfile(int device, string name, bool launchprogram,
             ControlService control, bool xinputChange = true)
         {
-            bool result = m_Config.LoadProfileNew(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
+            Global.loggedInvalidActions.Clear();
+            bool result = m_Config.LoadProfile(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
             //bool result = m_Config.LoadProfile(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
             if (result)
             {
@@ -2983,13 +3022,12 @@ namespace DS4Windows
 
         public static void SaveProfile(int device, string proName)
         {
-            m_Config.SaveProfileNew(device, proName);
-            //m_Config.SaveProfile(device, proName);
+            m_Config.SaveProfile(device, proName);
         }
 
-        public static void SaveAsNewProfile(int device, string propath)
+        public static void SaveAsProfile(int device, string propath)
         {
-            m_Config.SaveAsNewProfile(device, propath);
+            m_Config.SaveAsProfile(device, propath);
         }
 
         public static bool SaveLinkedProfiles()
@@ -3289,8 +3327,9 @@ namespace DS4Windows
 
     public class Changelog
     {
-        public const string GITHUB_RELEASES_API_URI = "https://api.github.com/repos/schmaldeo/DS4Windows/releases";
-        public const string GITHUB_LATEST_RELEASE_API_URI = "https://api.github.com/repos/schmaldeo/DS4Windows/releases/latest";
+    // Use the GitHub REST API /repos/ path so the app queries releases for the correct repo
+    public const string GITHUB_RELEASES_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases";
+    public const string GITHUB_LATEST_RELEASE_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest";
 
         private static bool? _newerVersionAvailable = null;
         private static Version _latestVersion;
@@ -3368,11 +3407,26 @@ namespace DS4Windows
             StringBuilder sb = new();
             foreach (var version in versions)
             {
+                // if we've already added content, ensure separation before next header
+                if (sb.Length > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine();
+                }
+
+                // Header + blank line
                 sb.Append("## Version ");
                 sb.Append(version.Key);
-                sb.Append(Environment.NewLine);
-                var parsedChangelog = ParseChangelogString(version.Value);
-                sb.Append(parsedChangelog);
+                sb.AppendLine();
+                sb.AppendLine();
+
+                var parsedChangelog = ParseChangelogString(version.Value)?.Trim();
+                if (!string.IsNullOrEmpty(parsedChangelog))
+                {
+                    sb.Append(parsedChangelog);
+                    // ensure the section ends with a blank line
+                    sb.AppendLine();
+                }
             }
 
             return sb.ToString();
@@ -3386,8 +3440,43 @@ namespace DS4Windows
         }
     }
 
-    public class BackingStore
-    {
+    public class BackingStore{
+        /// <summary>
+        /// profileActions[device]の内容からprofileActionDict等を再構築する（LoadProfileNewの該当部分をpublic化）
+        /// </summary>
+        public void RebuildProfileActionDicts(int device)
+        {
+            profileActionCount[device] = profileActions[device]?.Count ?? 0;
+            profileActionDict[device].Clear();
+            profileActionIndexDict[device].Clear();
+            if (profileActions[device] != null)
+            {
+                foreach (string actionname in profileActions[device])
+                {
+                    var actionObj = Global.GetAction(actionname);
+                    int index = Global.GetActionIndexOf(actionname);
+                    profileActionDict[device][actionname] = actionObj;
+                    profileActionIndexDict[device][actionname] = index;
+                }
+            }
+        }
+
+    // ProfileEditor layout fields (DTOと統合)
+    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = 760;
+    public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = 600;
+    public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = 310;
+    public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = 150;
+    public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = 220;
+    // Active 列はプロファイルに永続化しない列幅の初期値
+    public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = 32;
+    // SpecialActionDeleteColWidth 定数削除
+
+    public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
+    public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
+    public int specialActionNameColWidth = DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
+    public int specialActionTriggerColWidth = DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+    public int specialActionDetailColWidth = DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+    // SpecialActionDeleteColWidth フィールド削除
         public const double DEFAULT_UDP_SMOOTH_MINCUTOFF = 0.4;
         public const double DEFAULT_UDP_SMOOTH_BETA = 0.2;
         // Use 15 minutes for default Idle Disconnect when initially enabling the option
@@ -3634,7 +3723,7 @@ namespace DS4Windows
 
 
         // Start of DualSense specific profile options
-        //  
+        //
         public DualSenseDevice.RumbleEmulationMode[] dualSenseRumbleEmulationMode = new DualSenseDevice.RumbleEmulationMode[Global.TEST_PROFILE_ITEM_COUNT]
         {
             0,0,0,0,0,0,0,0,0
@@ -3800,11 +3889,11 @@ namespace DS4Windows
           new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER }, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER}, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER } };
         public Boolean useExclusiveMode = false; // Re-enable Ex Mode
 
-        public const int DEFAULT_FORM_WIDTH = 782;
-        public int formWidth = DEFAULT_FORM_WIDTH;
+    public const int DEFAULT_FORM_WIDTH = 1740;
+    public int formWidth = DEFAULT_FORM_WIDTH;
 
-        public const int DEFAULT_FORM_HEIGHT = 550;
-        public int formHeight = DEFAULT_FORM_HEIGHT;
+    public const int DEFAULT_FORM_HEIGHT = 1270;
+    public int formHeight = DEFAULT_FORM_HEIGHT;
         public int formLocationX = 0;
         public int formLocationY = 0;
         public Boolean startMinimized = false;
@@ -4087,8 +4176,43 @@ namespace DS4Windows
 
             foreach (string actionname in profileActions[device])
             {
-                profileActionDict[device][actionname] = GetAction(actionname);
-                profileActionIndexDict[device][actionname] = GetActionIndexOf(actionname);
+                var actionObj = GetAction(actionname);
+                int index = GetActionIndexOf(actionname);
+                profileActionDict[device][actionname] = actionObj;
+                profileActionIndexDict[device][actionname] = index;
+            }
+        }
+
+        /// <summary>
+        /// Emit "Invalid action index" logs for missing actions in the profile for the given device.
+        /// Respects Global.loggedInvalidActions unless forceEmit is true.
+        /// </summary>
+        public void EmitMissingActionLogsForDevice(int device, bool forceEmit = false)
+        {
+            if (profileActions == null || device < 0 || device >= profileActions.Length) return;
+
+            foreach (string actionname in profileActions[device])
+            {
+                var actionObj = GetAction(actionname);
+                int index = GetActionIndexOf(actionname);
+                if (actionObj == null || actionObj.name == "null" || index < 0)
+                {
+                    if (forceEmit || !Global.loggedInvalidActions.Contains(actionname))
+                    {
+                        // Determine the profile name actually in use for this device (temporary or regular)
+                        string profName = (Global.useTempProfile != null && device >= 0 && device < Global.useTempProfile.Length && Global.useTempProfile[device])
+                            ? (Global.tempprofilename != null && device >= 0 && device < Global.tempprofilename.Length ? Global.tempprofilename[device] : string.Empty)
+                            : (profilePath != null && device >= 0 && device < profilePath.Length ? profilePath[device] : string.Empty);
+
+                        string displayProfile = string.IsNullOrEmpty(profName) ? "(unknown)" : profName;
+                        AppLogger.LogToGui($"Profile '{displayProfile}' contains an invalid special action '{actionname}'.", false);
+                        try
+                        {
+                            Global.loggedInvalidActions.Add(actionname);
+                        }
+                        catch { }
+                    }
+                }
             }
         }
 
@@ -4338,76 +4462,15 @@ namespace DS4Windows
             return result;
         }
 
-        public bool SaveAsNewProfile(int device, string proName)
+        public bool SaveAsProfile(int device, string proName)
         {
             bool Saved = true;
             ResetProfile(device);
-            //Saved = SaveProfile(device, proName);
-            Saved = SaveProfileNew(device, proName);
+            Saved = SaveProfile(device, proName);
             return Saved;
         }
 
-        public bool SaveProfileNew(int device, string proName)
-        {
-            bool saved = true;
-            if (proName.EndsWith(Global.XML_EXTENSION))
-            {
-                proName = proName.Remove(proName.LastIndexOf(Global.XML_EXTENSION));
-            }
-
-            string path = Path.Combine(Global.appdatapath, "Profiles",
-                $"{proName}{Global.XML_EXTENSION}");
-            string testStr = string.Empty;
-            XmlSerializer serializer = new XmlSerializer(typeof(ProfileDTO),
-                ProfileDTO.GetAttributeOverrides());
-            using (Utf8StringWriter strWriter = new Utf8StringWriter())
-            {
-                using XmlWriter xmlWriter = XmlWriter.Create(strWriter,
-                    new XmlWriterSettings()
-                    {
-                        Encoding = Encoding.UTF8,
-                        Indent = true,
-                    });
-
-                // Write header explicitly
-                //xmlWriter.WriteStartDocument();
-                xmlWriter.WriteComment(string.Format(" DS4Windows Configuration Data. {0} ", DateTime.Now));
-                xmlWriter.WriteComment(string.Format(" Made with DS4Windows version {0} ", Global.exeversion));
-                xmlWriter.WriteWhitespace("\r\n");
-                xmlWriter.WriteWhitespace("\r\n");
-
-                // Write root element and children
-                ProfileDTO dto = new ProfileDTO();
-                dto.DeviceIndex = device;
-                dto.MapFrom(this);
-                // Omit xmlns:xsi and xmlns:xsd from output
-                serializer.Serialize(xmlWriter, dto,
-                    new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
-                xmlWriter.Flush();
-                xmlWriter.Close();
-
-                testStr = strWriter.ToString();
-                //Trace.WriteLine("TEST OUTPUT");
-                //Trace.WriteLine(testStr);
-            }
-
-            try
-            {
-                using (StreamWriter sw = new StreamWriter(path, false))
-                {
-                    sw.Write(testStr);
-                }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                AppLogger.LogToGui("Unauthorized Access - Save failed to path: " + path, false);
-                saved = false;
-            }
-
-            return saved;
-        }
-
-        public bool SaveProfileOld(int device, string proName)
+        public bool SaveProfile(int device, string proName)
         {
             bool Saved = true;
             //string path = Global.appdatapath + @"\Profiles\" + Path.GetFileNameWithoutExtension(proName) + ".xml";
@@ -5231,239 +5294,10 @@ namespace DS4Windows
             return "Unbound";
         }
 
-        public bool LoadProfileNew(int device, bool launchprogram, ControlService control,
-            string propath = "", bool xinputChange = true, bool postLoad = true)
-        {
-            bool loaded = true;
 
-            bool migratePerformed = false;
-            string profilepath;
-            if (propath == "")
-                profilepath = Path.Combine(Global.appdatapath, "Profiles",
-                    $"{profilePath[device]}.xml");
-            else
-                profilepath = propath;
 
-            if (File.Exists(profilepath))
-            {
-                string profileXml = string.Empty;
 
-                // Run migrations
-                {
-                    XmlDocument migrationDoc = new XmlDocument();
-
-                    using FileStream fileStream = new FileStream(profilepath, FileMode.Open, FileAccess.Read);
-                    ProfileMigration tmpMigration = new ProfileMigration(fileStream);
-                    if (tmpMigration.RequiresMigration())
-                    {
-                        tmpMigration.Migrate();
-                        //migrationDoc.Load(tmpMigration.ProfileReader);
-                        profileXml = tmpMigration.CurrentMigrationText;
-                        migratePerformed = true;
-                    }
-                    else if (tmpMigration.ProfileReader != null)
-                    {
-                        profileXml = tmpMigration.CurrentMigrationText;
-                        //migrationDoc.Load(tmpMigration.ProfileReader);
-                        //migrationDoc.Load(profilepath);
-                    }
-                    else
-                    {
-                        loaded = false;
-                    }
-
-                    tmpMigration.Close();
-                }
-
-                if (device < Global.MAX_DS4_CONTROLLER_COUNT)
-                {
-                    DS4LightBar.forcelight[device] = false;
-                    DS4LightBar.forcedFlash[device] = 0;
-                }
-
-                OutContType oldContType = Global.activeOutDevType[device];
-                LightbarSettingInfo lightbarSettings = lightbarSettingInfo[device];
-                LightbarDS4WinInfo lightInfo = lightbarSettings.ds4winSettings;
-
-                bool xinputPlug = false;
-                bool xinputStatus = false;
-
-                // Make sure to reset currently set profile values before parsing
-                ResetProfile(device);
-                ResetMouseProperties(device, control);
-                // Reset some Mapping properties before attempting to load different
-                // profile
-                control.PreLoadReset(device);
-
-                profileActions[device].Clear();
-                foreach (DS4ControlSettings dcs in ds4settings[device])
-                    dcs.Reset();
-
-                //XmlReader xmlReader = XmlReader.Create()
-                XmlSerializer serializer = new XmlSerializer(typeof(ProfileDTO),
-                    ProfileDTO.GetAttributeOverrides());
-                using StringReader sr = new StringReader(profileXml);
-                try
-                {
-                    ProfileDTO dto = serializer.Deserialize(sr) as ProfileDTO;
-                    dto.DeviceIndex = device;
-                    dto.MapTo(this);
-                }
-                catch (InvalidOperationException e)
-                {
-                    AppLogger.LogToGui($"Failed to load {profilepath}. {e.InnerException.Message}", false);
-                    loaded = false;
-                }
-                catch (XmlException e)
-                {
-                    AppLogger.LogToGui($"Failed to load {profilepath}. Invalid XML. {e.InnerException.Message}", false);
-                    loaded = false;
-                }
-
-                if (!loaded)
-                {
-                    return loaded;
-                }
-
-                containsCustomAction[device] = false;
-                containsCustomExtras[device] = false;
-                profileActionCount[device] = profileActions[device].Count;
-                profileActionDict[device].Clear();
-                profileActionIndexDict[device].Clear();
-                foreach (string actionname in profileActions[device])
-                {
-                    profileActionDict[device][actionname] = Global.GetAction(actionname);
-                    profileActionIndexDict[device][actionname] = Global.GetActionIndexOf(actionname);
-                }
-
-                // Only change xinput devices under certain conditions. Avoid
-                // performing this upon program startup before loading devices.
-                if (xinputChange && device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-                {
-                    CheckOldDevicestatus(device, control, oldContType,
-                        out xinputPlug, out xinputStatus);
-                }
-
-                CacheProfileCustomsFlags(device);
-                buttonMouseInfos[device].activeButtonSensitivity =
-                    buttonMouseInfos[device].buttonSensitivity;
-
-                // Check if profile sets a program to launch on loading
-                if (launchprogram && launchProgram[device] != string.Empty)
-                {
-                    string programPath = launchProgram[device];
-                    Process[] localAll = Process.GetProcesses();
-                    bool procFound = false;
-                    for (int procInd = 0, procsLen = localAll.Length; !procFound && procInd < procsLen; procInd++)
-                    {
-                        try
-                        {
-                            string temp = localAll[procInd].MainModule.FileName;
-                            if (temp == programPath)
-                            {
-                                procFound = true;
-                            }
-                        }
-                        // Ignore any process for which this information
-                        // is not exposed
-                        catch { }
-                    }
-
-                    if (!procFound)
-                    {
-                        Task processTask = new Task(() =>
-                        {
-                            Thread.Sleep(5000);
-                            using Process tempProcess = new Process();
-                            tempProcess.StartInfo.FileName = programPath;
-                            tempProcess.StartInfo.WorkingDirectory = new FileInfo(programPath).Directory.ToString();
-                            //tempProcess.StartInfo.UseShellExecute = false;
-                            try { tempProcess.Start(); }
-                            catch { }
-                        });
-
-                        processTask.Start();
-                    }
-                }
-
-                // Check if Touchpad should be switched off
-                if (startTouchpadOff[device] == true) control.StartTPOff(device);
-
-                {
-                    bool tempToggle = gyroControlsInf[device].triggerToggle;
-                    SetGyroControlsToggle(device, tempToggle, control);
-                }
-
-                {
-                    bool tempToggle = gyroMouseToggle[device];
-                    SetGyroMouseToggle(device, tempToggle, control);
-                }
-
-                {
-                    bool tempToggle = gyroMouseStickToggle[device];
-                    SetGyroMouseStickToggle(device, tempToggle, control);
-                }
-
-                {
-                    int tempDZ = gyroMouseDZ[device];
-                    SetGyroMouseDZ(device, tempDZ, control);
-                }
-
-                // If a device exists, make sure to transfer relevant profile device
-                // options to device instance
-                if (postLoad && device < Global.MAX_DS4_CONTROLLER_COUNT)
-                {
-                    PostLoadSnippet(device, control, xinputStatus, xinputPlug);
-                }
-
-                // Migration was performed. Save new XML schema in file
-                if (migratePerformed)
-                {
-                    string proName = Path.GetFileName(profilepath);
-                    SaveProfileNew(device, proName);
-                }
-            }
-            else
-            {
-                loaded = false;
-                ResetProfile(device);
-                ResetMouseProperties(device, control);
-
-                // Reset some Mapping properties
-                control.PreLoadReset(device);
-
-                profileActions[device].Clear();
-                foreach (DS4ControlSettings dcs in ds4settings[device])
-                    dcs.Reset();
-
-                containsCustomAction[device] = false;
-                containsCustomExtras[device] = false;
-                profileActionCount[device] = profileActions[device].Count;
-                profileActionDict[device].Clear();
-                profileActionIndexDict[device].Clear();
-
-                // Unplug existing output device if requested profile does not exist
-                OutputDevice tempOutDev = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ?
-                    control.outputDevices[device] : null;
-                if (tempOutDev != null)
-                {
-                    tempOutDev = null;
-                    //Global.activeOutDevType[device] = OutContType.None;
-                    DS4Device tempDev = control.DS4Controllers[device];
-                    if (tempDev != null)
-                    {
-                        tempDev.queueEvent(() =>
-                        {
-                            control.UnplugOutDev(device, tempDev);
-                        });
-                    }
-                }
-            }
-
-            return loaded;
-        }
-
-        public bool LoadProfile(int device, bool launchprogram, ControlService control,
+    public bool LoadProfile(int device, bool launchprogram, ControlService control,
             string propath = "", bool xinputChange = true, bool postLoad = true)
         {
             bool Loaded = true;
@@ -5479,7 +5313,6 @@ namespace DS4Windows
             Dictionary<DS4Controls, String> shiftCustomMapExtras = new Dictionary<DS4Controls, String>();
             string rootname = "DS4Windows";
             bool missingSetting = false;
-            bool migratePerformed = false;
             string profilepath;
             if (propath == "")
                 profilepath = Global.appdatapath + @"\Profiles\" + profilePath[device] + ".xml";
@@ -5495,21 +5328,17 @@ namespace DS4Windows
 
                 using FileStream fileStream = new FileStream(profilepath, FileMode.Open, FileAccess.Read);
                 ProfileMigration tmpMigration = new ProfileMigration(fileStream);
-                if (tmpMigration.RequiresMigration())
-                {
-                    tmpMigration.Migrate();
-                    m_Xdoc.Load(tmpMigration.ProfileReader);
-                    migratePerformed = true;
-                }
-                else if (tmpMigration.ProfileReader != null)
+                // Do not perform automatic migrations at startup. Load profile text
+                // as-is via the migration helper's reader if available.
+                if (tmpMigration.ProfileReader != null)
                 {
                     m_Xdoc.Load(tmpMigration.ProfileReader);
-                    //m_Xdoc.Load(profilepath);
                 }
                 else
                 {
                     Loaded = false;
                 }
+                tmpMigration.Close();
 
                 if (m_Xdoc.SelectSingleNode(rootname) == null)
                 {
@@ -7081,7 +6910,7 @@ namespace DS4Windows
                 }
 
 
-                // Start of DualSense specific profile load 
+                // Start of DualSense specific profile load
                 //
                 XmlNode xmlDualSenseControllerSettingsElement =
                     m_Xdoc.SelectSingleNode("/" + rootname + "/DualSenseControllerSettings");
@@ -7129,7 +6958,7 @@ namespace DS4Windows
                     missingSetting = true;
                 }
                 //
-                // End of DualSense specific profile load 
+                // End of DualSense specific profile load
 
                 try { Item = m_Xdoc.SelectSingleNode("/" + rootname + "/L2OutputCurveCustom"); l2OutBezierCurveObj[device].CustomDefinition = Item.InnerText; }
                 catch { missingSetting = true; }
@@ -7830,10 +7659,10 @@ namespace DS4Windows
             }
 
             // Only add missing settings if the actual load was graceful
-            if ((missingSetting || migratePerformed) && Loaded)// && buttons != null)
+            if (missingSetting && Loaded)// && buttons != null)
             {
                 string proName = Path.GetFileName(profilepath);
-                SaveProfileOld(device, proName);
+                SaveProfile(device, proName);
             }
 
             if (Loaded)
@@ -7869,52 +7698,9 @@ namespace DS4Windows
             return Loaded;
         }
 
-        public bool Load()
-        {
-            bool loaded = true;
-            if (File.Exists(m_Profile))
-            {
-                XmlSerializer serializer = new XmlSerializer(typeof(AppSettingsDTO));
-                using StreamReader sr = new StreamReader(m_Profile);
-                try
-                {
-                    AppSettingsDTO dto = serializer.Deserialize(sr) as AppSettingsDTO;
-                    dto.MapTo(this);
+        // Legacy Load implementation (formerly LoadOld) will be the canonical Load method below.
 
-                    PostProcessLoad();
-                }
-                catch (InvalidOperationException e)
-                {
-                    AppLogger.LogToGui("Failed to load Profiles.xml.", false);
-                    loaded = false;
-                }
-            }
-            else
-            {
-                loaded = false;
-            }
-
-            if (loaded)
-            {
-                Global.PrepareAbsMonitorBounds(absDisplayEDID);
-
-                string custom_exe_name_path = Path.Combine(Global.exedirpath, Global.CUSTOM_EXE_CONFIG_FILENAME);
-                bool fakeExeFileExists = File.Exists(custom_exe_name_path);
-                if (fakeExeFileExists)
-                {
-                    string fake_exe_name = File.ReadAllText(custom_exe_name_path).Trim();
-                    bool valid = !(fake_exe_name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0);
-                    if (valid)
-                    {
-                        fakeExeFileName = fake_exe_name;
-                    }
-                }
-            }
-
-            return loaded;
-        }
-
-        public bool LoadOld()
+    public bool Load()
         {
             bool Loaded = true;
             bool missingSetting = false;
@@ -7923,6 +7709,56 @@ namespace DS4Windows
             {
                 if (File.Exists(m_Profile))
                 {
+                    // First try DTO-based deserialization. Support both <AppSettingsDTO> and
+                    // <Profile> roots by attempting XmlSerializer with a Profile root
+                    // then falling back to the default DTO root.
+                    string fileXml = File.ReadAllText(m_Profile);
+                    bool dtoLoaded = false;
+                    try
+                    {
+                        AppSettingsDTO dto = null;
+                        try
+                        {
+                            var xr = new XmlRootAttribute("Profile");
+                            var ser = new XmlSerializer(typeof(AppSettingsDTO), xr);
+                            using (var sr = new StringReader(fileXml))
+                            {
+                                dto = ser.Deserialize(sr) as AppSettingsDTO;
+                            }
+                        }
+                        catch { dto = null; }
+
+                        if (dto == null)
+                        {
+                            try
+                            {
+                                var ser2 = new XmlSerializer(typeof(AppSettingsDTO));
+                                using (var sr2 = new StringReader(fileXml))
+                                {
+                                    dto = ser2.Deserialize(sr2) as AppSettingsDTO;
+                                }
+                            }
+                            catch { dto = null; }
+                        }
+
+                        if (dto != null)
+                        {
+                            // Map DTO into this backing store
+                            dto.MapTo(this);
+                            dtoLoaded = true;
+                        }
+                    }
+                    catch { /* fall through to legacy loader below */ }
+
+                    if (dtoLoaded)
+                    {
+                        // Post processing same as legacy path
+                        Global.PrepareAbsMonitorBounds(absDisplayEDID);
+                        Loaded = true;
+                        return Loaded;
+                    }
+
+                    // Fall back to legacy DOM-based loader
                     XmlNode Item;
 
                     m_Xdoc.Load(m_Profile);
@@ -7940,6 +7776,17 @@ namespace DS4Windows
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/formLocationX"); Int32.TryParse(Item.InnerText, out formLocationX); }
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/formLocationY"); Int32.TryParse(Item.InnerText, out formLocationY); }
+                    catch { missingSetting = true; }
+
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/profileEditorLeftWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out profileEditorLeftWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/profileEditorRightWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out profileEditorRightWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/specialActionNameColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out specialActionNameColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/specialActionTriggerColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out specialActionTriggerColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/specialActionDetailColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out specialActionDetailColWidth); }
                     catch { missingSetting = true; }
 
                     for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
@@ -8198,7 +8045,11 @@ namespace DS4Windows
             catch { }
 
             if (missingSetting)
-                Save();
+            {
+                // Do not auto-save changes discovered during legacy load. Auto-saving
+                // at startup may overwrite files and cause conflicts (file locks).
+                AppLogger.LogToGui("Profiles.xml is missing some settings; not auto-saving to avoid overwriting existing file.", false);
+            }
 
             if (Loaded)
             {
@@ -8222,10 +8073,13 @@ namespace DS4Windows
 
         public bool Save()
         {
+            // Use DTO-based serialization as canonical save format but keep compatibility
+            // with older readers by writing a <Profile> root (same as legacy files).
             bool saved = true;
-
+            string output_path = m_Profile;
             string testStr = string.Empty;
-            XmlSerializer serializer = new XmlSerializer(typeof(AppSettingsDTO));
+
+            XmlSerializer serializer = new XmlSerializer(typeof(AppSettingsDTO), new XmlRootAttribute("Profile"));
             using (Utf8StringWriter strWriter = new Utf8StringWriter())
             {
                 using XmlWriter xmlWriter = XmlWriter.Create(strWriter,
@@ -8235,40 +8089,41 @@ namespace DS4Windows
                         Indent = true,
                     });
 
-                // Write header explicitly
-                xmlWriter.WriteStartDocument();
-                xmlWriter.WriteComment(string.Format(" Profile Configuration Data. {0} ", DateTime.Now));
-                xmlWriter.WriteComment(string.Format(" Made with DS4Windows version {0} ", Global.exeversion));
-                xmlWriter.WriteWhitespace("\r\n");
-                xmlWriter.WriteWhitespace("\r\n");
+                    // Write header comments
+                    xmlWriter.WriteComment(String.Format(" Profile Configuration Data. {0} ", DateTime.Now));
+                    xmlWriter.WriteWhitespace("\r\n");
+                    xmlWriter.WriteWhitespace("\r\n");
 
-                // Write root element and children
-                AppSettingsDTO dto = new AppSettingsDTO();
-                dto.MapFrom(this);
-                // Omit xmlns:xsi and xmlns:xsd from output
-                serializer.Serialize(xmlWriter, dto,
-                    new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
-                xmlWriter.Flush();
-                xmlWriter.Close();
+                    // Serialize DTO with root <Profile>
+                    AppSettingsDTO dto = new AppSettingsDTO();
+                    dto.MapFrom(this);
+                    serializer.Serialize(xmlWriter, dto,
+                        new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
+                    xmlWriter.Flush();
+                    xmlWriter.Close();
 
-                testStr = strWriter.ToString();
-                //Trace.WriteLine("TEST OUTPUT");
-                //Trace.WriteLine(testStr);
+                    testStr = strWriter.ToString();
             }
 
             try
             {
-                using (StreamWriter sw = new StreamWriter(m_Profile, false))
+                // The DTO now contains app_version/config_version as XmlAttributes, so write directly.
+                using (StreamWriter sw = new StreamWriter(output_path, false))
                 {
                     sw.Write(testStr);
                 }
             }
             catch (UnauthorizedAccessException)
             {
-                AppLogger.LogToGui("Unauthorized Access - Save failed to path: " + m_Profile, false);
+                saved = false;
+            }
+            catch (IOException ex)
+            {
+                AppLogger.LogToGui($"Could not save Profiles.xml due to IO error: {ex.Message}", false);
                 saved = false;
             }
 
+            // Write fake exe config file if needed (same behavior as legacy save)
             bool adminNeeded = Global.AdminNeeded();
             if (saved &&
                 (!adminNeeded || (adminNeeded && Global.IsAdministrator())))
@@ -8316,6 +8171,11 @@ namespace DS4Windows
             XmlNode xmlFormHeight = m_Xdoc.CreateNode(XmlNodeType.Element, "formHeight", null); xmlFormHeight.InnerText = formHeight.ToString(); rootElement.AppendChild(xmlFormHeight);
             XmlNode xmlFormLocationX = m_Xdoc.CreateNode(XmlNodeType.Element, "formLocationX", null); xmlFormLocationX.InnerText = formLocationX.ToString(); rootElement.AppendChild(xmlFormLocationX);
             XmlNode xmlFormLocationY = m_Xdoc.CreateNode(XmlNodeType.Element, "formLocationY", null); xmlFormLocationY.InnerText = formLocationY.ToString(); rootElement.AppendChild(xmlFormLocationY);
+            XmlNode xmlProfileEditorLeftWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "profileEditorLeftWidth", null); xmlProfileEditorLeftWidth.InnerText = profileEditorLeftWidth.ToString(); rootElement.AppendChild(xmlProfileEditorLeftWidth);
+            XmlNode xmlProfileEditorRightWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "profileEditorRightWidth", null); xmlProfileEditorRightWidth.InnerText = profileEditorRightWidth.ToString(); rootElement.AppendChild(xmlProfileEditorRightWidth);
+            XmlNode xmlSpecialActionNameColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionNameColWidth", null); xmlSpecialActionNameColWidth.InnerText = specialActionNameColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionNameColWidth);
+            XmlNode xmlSpecialActionTriggerColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionTriggerColWidth", null); xmlSpecialActionTriggerColWidth.InnerText = specialActionTriggerColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionTriggerColWidth);
+            XmlNode xmlSpecialActionDetailColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionDetailColWidth", null); xmlSpecialActionDetailColWidth.InnerText = specialActionDetailColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionDetailColWidth);
 
             for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
             {
@@ -8425,6 +8285,12 @@ namespace DS4Windows
                 m_Xdoc.Save(m_Profile);
             }
             catch (UnauthorizedAccessException) { Saved = false; }
+            catch (IOException ex)
+            {
+                // File may be locked by another process. Do not throw—record and continue.
+                AppLogger.LogToGui($"Could not save Profiles.xml due to IO error: {ex.Message}", false);
+                Saved = false;
+            }
 
             bool adminNeeded = Global.AdminNeeded();
             if (Saved &&
@@ -8776,13 +8642,13 @@ namespace DS4Windows
             {
                 actions.Add(new SpecialAction("Disconnect Controller", "PS/Options", "DisconnectBT", "0"));
                 loaded = SaveActions();
-                
+
                 // ★新規追加: デフォルトアクション用のactionDone初期化
                 if (loaded)
                 {
                     Mapping.InitializeActionDoneList();
                 }
-                
+
                 return loaded;
             }
 

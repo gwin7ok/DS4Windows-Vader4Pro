@@ -2659,12 +2659,20 @@ namespace DS4Windows
                     {
                         // 実際に使用されているプロファイル名を取得
                         string actualProfile = Global.useTempProfile[ind] ? Global.tempprofilename[ind] : ProfilePath[ind];
-                        
+
                         if (File.Exists(Path.Combine(appdatapath, "Profiles", $"{ProfilePath[ind]}.xml")))
                         {
                             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (ind + 1).ToString(), actualProfile, $"{device.Battery}");
                             LogDebug(prolog);
                             AppLogger.LogToTray(prolog);
+                            // Ensure profile action dictionaries are evaluated at the moment
+                            // the profile is actually applied to the controller (first report).
+                            // Emit missing-action logs once per profile-apply (respect suppression).
+                            try
+                            {
+                                Global.store.EmitMissingActionLogsForDevice(ind, false);
+                            }
+                            catch { }
                         }
                         else
                         {
@@ -2908,7 +2916,7 @@ namespace DS4Windows
 
         private void CompareAndSendChangesToOSC(int index, DS4State oldState, DS4State newState)
         {
-            // Buttons 
+            // Buttons
             if (oldState.Square != newState.Square)
             {
                 oscSender.Send(new OscMessage("/ds4windows/monitor/" + index + "/square", newState.Square == true ? 1 : 0));
