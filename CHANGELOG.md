@@ -3,65 +3,27 @@
 All notable changes to this project are recorded in this file.
 
 ## [3.11.3] - 2025-11-12
-- (7dc4860a) CI: Build/package x64+x86 and attach zips to Release (use Directory.Build.props & CHANGELOG)
-- (9a38278c) CI: Add Windows build+release workflow using Directory.Build.props; fix other workflow files formatting
-- (88630d2f) Use Directory.Build.props as version source; update tasks and changelog; README points to CHANGELOG
-- (d620058a) Change changelog and release management approach
-- (ac20f682) Remove unnecessary methods and variables added during fix investigation
-- (4c33ea94) Log an info message when an invalid special action is removed from a profile file
-- (48430dfb) Iterate profile actions using an array snapshot; add explanatory comment to MapCustomAction
-- (cf8ef1dd) Reworded log output messages for clarity
-- (86854867) Consolidate special action name check into a common method
-- (10e78add) Organize logging for invalid special action detection (emit once at the appropriate time)
-- (260c7525) Compatibility check between *.xml files for 3.11.3 and 3.9.9 (result: OK)
-- (813efce2) Parse LastChecked using multiple formats to avoid culture-dependent failures
-- (c585e4e9) Modify ScpUtil.Save() to treat app_version and config_version as XmlSerializer attributes
-- (105575a7) Revert to DTO-based load/save for settings files
-- (7f27cfcc) Consolidate LoadOld into Load()
-- (576426b8) Keep legacy load/save methods for compatibility with pre-3.9.9 profiles
-- (777420ba) Fix saving of column and left/right area widths
-- (142c24c8) Change Profile.xml to be compatible with 3.9.9
-- (31a85068) Convert Japanese log outputs to English (internationalization)
-- (6d6cdff5) Replace hard-coded Japanese strings with localization references
-- (136a8e50) Fix display of HidHide settings client launch link
-- (b5db9c18) Fix URLs and related references
-- (7e78c34c) Update URL reference targets
-- (f893622e) Fix changelog display formatting
-- (83cbd5b1) Change update-check URI
-- (470babcb) Increase log archive count to 1000 (NLog.config)
-- (6f04ecf6) Add and organize log output
-- (09af1441) Remove SortDescriptions counter check and clear logic
-- (5018df78) Remove old leftover logic (cleanup)
-- (204ab347) Fix column-name object assignment when closing the profile editor
-- (6d739001) Remove more unnecessary processing
-- (c9717a75) Remove redundant parts of special action column-name handling
-- (5f0a39d7) Increase default window and profile-editor left-area widths
-- (bbd837c2) Set checkbox column default width to 32 and make it restorable via init button
-- (134544ee) Blank checkbox column header; show ▲/▼ on sort
-- (9c9516bd) Place special action list checkboxes in a dedicated left-most column
-- (4891588d) When total width exceeds area, move right edge to the left instead of right
-- (a4e0ea3c) Avoid unnecessary column object retrieval
-- (8d44d589) Run initial pre-display sort only once
-- (bc6aedce) Remove unnecessary code (phase 2)
-- (5ee0f9dc) Show ▲ on column headers at initial display
-- (7624f4cd) Fix perceived sortable state when clicking columns (initial display only)
-- (72a99958) Show ▲/▼ on current sort column
-- (6ca74dfa) Remove tests
-- (f77ccedd) Use the same method for initial display and column-click sorting
-- (d83a87a9) Make entire column area clickable for sorting
-- (7d790f37) Visually enable column-click sorting (implementation requires clicking header text)
-- (232ebd9b) Delete test code
-- (3fb26fbe) Make special action list sorting toggle between ascending/descending
-- (a024a4ee) Add buttons to column headers to allow sorting
-- (ceb2b330) Display "(invalid special action)" in the action column of the special action list
-- (40011c12) Gray out invalid special action names in the list
-- (fecb41b6) Add note that invalid names are grayed out and can be removed by unchecking and saving
-- (56e259b2) Remove unnecessary special-action existence check code
-- (0044537c) Small unnecessary code removals
-- (a5bb8fb5) Fix bug where debug-level errors were continually logged when invalid special actions existed
-- (994b8f28) Remove unused variable `e`
-- (bc937107) Adjust profile editor left/right boundary margins and tweak default window width
-- (513d4822) Make profile editor left/right boundary lines thicker
+## [3.11.3] - 2025-11-12
+
+Features / UI
+- (ceb2b330) Display "(invalid special action)" in the action column and gray out invalid special action names in the Special Actions list; users can remove them by unchecking and saving.
+- (4c33ea94) When an invalid special action is removed from a profile file, show an info-style GUI/tray notification after the file is written: "Profile '{displayProfile}' removed invalid special action '{name}' from its action list."
+- (777420ba) Fix saving and restoring of column widths and left/right area widths so layout changes persist across runs.
+- (bbd837c2) Set the default checkbox column width to 32 and make it restorable via the window init button.
+- (134544ee) Improve column header sort indicators and behavior; clicking a header toggles ascending/descending sort and shows ▲/▼.
+- (5f0a39d7) Increase default window and profile-editor left-area widths for a better default layout.
+
+Bug fixes
+- (204ab347) Fix incorrect column-name object assignment when closing the Profile Editor to prevent layout/assignment issues.
+- (a5bb8fb5) Fix a bug where deleted or renamed special action names left in profiles produced continuous debug-level errors.
+- (8d44d589) and related commits: stabilize initial display/sort behavior and fix cases where sort indicators were inconsistent at first display.
+
+Internationalization / Messages
+- (31a85068) Replace Japanese hard-coded log/UI text with English (localization references) for more consistent user-facing messages.
+
+Other user-facing fixes
+- (83cbd5b1 / b5db9c18 / 7e78c34c) Update update-check URI and several in-app URLs so links and update checks point to the correct locations.
+- Various UI layout and initialization tweaks: initial-window values, init button placement, and split/resize behavior improvements across several commits.
 
 ## [3.11.2] - 2025-11-06
 
