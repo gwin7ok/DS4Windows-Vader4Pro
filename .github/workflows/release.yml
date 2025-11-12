@@ -1,13 +1,9 @@
-name: Release
+name: Release (tag-triggered)
 
 on:
   push:
-    branches:
-      - master
-    paths:
-      - 'Directory.Build.props'
-      - 'CHANGELOG.md'
-  workflow_dispatch: {}
+    tags:
+      - 'v*'
 
 jobs:
   build-and-release:
@@ -23,13 +19,18 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Get version from Directory.Build.props
+      - name: Get version from tag
         id: get_version
         shell: pwsh
         run: |
-          $v = (Select-String -Path './Directory.Build.props' -Pattern '<Version>(.*?)</Version>' -AllMatches).Matches.Groups[1].Value
-          if (-not $v) { Write-Error 'No <Version> found in Directory.Build.props'; exit 1 }
-          echo "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
+          $refName = '${{ github.ref_name }}'
+          if ($refName -match '^v(.+)$') {
+            $v = $Matches[1]
+            echo "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
+          } else {
+            Write-Error "Ref name is not a v* tag: $refName"
+            exit 1
+          }
 
       - name: Extract changelog section
         id: extract_changelog
@@ -88,133 +89,3 @@ jobs:
             artifacts/DS4Windows_${{ steps.get_version.outputs.version }}_x86.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-name: Release
-
-on:
-  push:
-    branches:
-      - master
-    name: Release
-
-    on:
-      push:
-        branches:
-          - master
-        paths:
-          - 'Directory.Build.props'
-          - 'CHANGELOG.md'
-      workflow_dispatch: {}
-
-    jobs:
-      build-and-release:
-        runs-on: windows-latest
-        permissions:
-          contents: write
-        steps:
-          - name: Checkout
-            uses: actions/checkout@v4
-
-          - name: Setup .NET
-            uses: actions/setup-dotnet@v4
-            with:
-              dotnet-version: '8.0.x'
-
-          - name: Get version from Directory.Build.props
-            id: get_version
-            shell: pwsh
-            run: |
-              $v = (Select-String -Path './Directory.Build.props' -Pattern '<Version>(.*?)</Version>' -AllMatches).Matches.Groups[1].Value
-              if (-not $v) { Write-Error 'No <Version> found in Directory.Build.props'; exit 1 }
-              echo "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
-
-          - name: Extract changelog section
-            name: Release
-
-            on:
-              push:
-                branches:
-                  - master
-                paths:
-                  - 'Directory.Build.props'
-                  - 'CHANGELOG.md'
-              workflow_dispatch: {}
-
-            jobs:
-              build-and-release:
-                runs-on: windows-latest
-                permissions:
-                  contents: write
-                steps:
-                  - name: Checkout
-                    uses: actions/checkout@v4
-
-                  - name: Setup .NET
-                    uses: actions/setup-dotnet@v4
-                    with:
-                      dotnet-version: '8.0.x'
-
-                  - name: Get version from Directory.Build.props
-                    id: get_version
-                    shell: pwsh
-                    run: |
-                      $v = (Select-String -Path './Directory.Build.props' -Pattern '<Version>(.*?)</Version>' -AllMatches).Matches.Groups[1].Value
-                      if (-not $v) { Write-Error 'No <Version> found in Directory.Build.props'; exit 1 }
-                      echo "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding ascii -Append
-
-                  - name: Extract changelog section
-                    id: extract_changelog
-                    shell: pwsh
-                    run: |
-                      $v = '${{ steps.get_version.outputs.version }}'
-                      $out = 'changes.txt'
-                      if (Test-Path $out) { Remove-Item $out }
-                      $inSection = $false
-                      Get-Content CHANGELOG.md | ForEach-Object {
-                        if ($_ -match "^## \[$v\]") { $inSection = $true; return }
-                        if ($inSection -and ($_ -match '^## \[')) { $inSection = $false }
-                        if ($inSection) { Add-Content -Path $out -Value $_ }
-                      }
-                      if (-not (Test-Path $out) -or (Get-Content $out).Count -eq 0) { Write-Error "No changelog section found for version $v"; exit 1 }
-
-                  - name: Publish x64
-                    shell: pwsh
-                    run: |
-                      dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:Platform=x64 -o ./artifacts/win-x64
-
-                  - name: Publish x86
-                    shell: pwsh
-                    run: |
-                      dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:Platform=x86 -o ./artifacts/win-x86
-
-                  - name: Package artifacts (zip)
-                    shell: pwsh
-                    run: |
-                      $v = '${{ steps.get_version.outputs.version }}'
-                      if (Test-Path './artifacts') {
-                        if (Test-Path './artifacts/win-x64') {
-                          $zip64 = "./artifacts/DS4Windows_${v}_x64.zip"
-                          if (Test-Path $zip64) { Remove-Item $zip64 }
-                          Compress-Archive -Path './artifacts/win-x64/*' -DestinationPath $zip64 -Force
-                        }
-                        if (Test-Path './artifacts/win-x86') {
-                          $zip86 = "./artifacts/DS4Windows_${v}_x86.zip"
-                          if (Test-Path $zip86) { Remove-Item $zip86 }
-                          Compress-Archive -Path './artifacts/win-x86/*' -DestinationPath $zip86 -Force
-                        }
-                      } else {
-                        Write-Error 'Artifacts folder not found'
-                        exit 1
-                      }
-
-                  - name: Create GitHub Release
-                    id: create_release
-                    uses: softprops/action-gh-release@v2
-                    with:
-                      tag_name: v${{ steps.get_version.outputs.version }}
-                      name: Release v${{ steps.get_version.outputs.version }}
-                      body_path: changes.txt
-                      files: |
-                        artifacts/DS4Windows_${{ steps.get_version.outputs.version }}_x64.zip
-                        artifacts/DS4Windows_${{ steps.get_version.outputs.version }}_x86.zip
-                    env:
-                      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

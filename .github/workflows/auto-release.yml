@@ -29,84 +29,19 @@ jobs:
           TAG=${{ github.ref_name }}
           VERSION=${TAG#v}
           echo Version: $VERSION
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "SHORT_VERSION=${VERSION%-*}" >> $GITHUB_ENV
-        shell: bash
+          name: DISABLED - use .github/workflows/release.yml
 
-      - name: Create or Update GitHub Release
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
-        run: |
-          # Check if release already exists
-          $ErrorActionPreference = "SilentlyContinue"
-          $releaseExists = gh release view ${{ github.ref_name }} 2>$null
+          # This workflow has been disabled and replaced by .github/workflows/release.yml
+          # Kept for history; avoid running it. It only supports manual dispatch now.
+          on:
+            workflow_dispatch: {}
+
+          jobs:
+            noop:
+              runs-on: windows-latest
+              steps:
+                - name: Disabled
+                  run: echo "This workflow is disabled. Use .github/workflows/release.yml"
           $ErrorActionPreference = "Stop"
+
           if ($LASTEXITCODE -eq 0) {
-              Write-Output "Release already exists, deleting it first"
-              gh release delete ${{ github.ref_name }} --yes --cleanup-tag
-              Start-Sleep -Seconds 5
-          }
-          # リリースノートを直接記述
-          $releaseNotes = @"
-          ## DS4Windows v3.11.2
-
-          ### Changes
-          - Resolved an issue where Special Actions for profile switching would fail to work if the action was not positioned at the end of the actions.xml file after DS4Windows startup
-
-          ### Requirements
-          - Windows 10 or newer
-          - .NET 8.0 Desktop Runtime
-          - Visual C++ 2015-2022 Redistributable
-          - ViGEmBus driver
-
-          Based on DS4Windows v3.10.0 with AhmedAmrNabil modifications.
-          "@
-          gh release create ${{ github.ref_name }} --title "DS4Windows ${{ github.ref_name }} - Special Actions Profile Switching Bug Fix" --notes $releaseNotes
-
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build X64
-        run: dotnet publish .\DS4Windows\DS4WinWPF.csproj -c Release /p:platform=x64 /p:AssemblyVersion=${{ env.SHORT_VERSION }} /p:FileVersion=${{ env.SHORT_VERSION }} /p:Version=${{ env.VERSION }} -o .\bin\x64\Release\output
-
-      - name: Post-Build script X64
-        run: python .\utils\post-build.py .\bin\x64\Release\output . ${{ env.VERSION }}
-
-      - name: Build X86
-        run: dotnet publish .\DS4Windows\DS4WinWPF.csproj -c Release /p:platform=x86 /p:AssemblyVersion=${{ env.SHORT_VERSION }} /p:FileVersion=${{ env.SHORT_VERSION }} /p:Version=${{ env.VERSION }} -o .\bin\x86\Release\output
-
-      - name: Post-Build script X86
-        run: python .\utils\post-build.py .\bin\x86\Release\output . ${{ env.VERSION }}
-
-      - name: Publish release Build X64
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
-        run: |
-          $assetPath = ".\bin\x64\Release\DS4Windows_${{ env.VERSION }}_x64.zip"
-          $assetName = "DS4Windows_${{ env.VERSION }}_x64.zip"
-          if (Test-Path $assetPath) {
-            Write-Output "Uploading X64 build: $assetName"
-            gh release upload ${{ github.ref_name }} $assetPath --clobber
-          } else {
-            Write-Error "X64 build file not found: $assetPath"
-            exit 1
-          }
-
-      - name: Publish release Build X86
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: pwsh
-        run: |
-          $assetPath = ".\bin\x86\Release\DS4Windows_${{ env.VERSION }}_x86.zip"
-          $assetName = "DS4Windows_${{ env.VERSION }}_x86.zip"
-          if (Test-Path $assetPath) {
-            Write-Output "Uploading X86 build: $assetName"
-            gh release upload ${{ github.ref_name }} $assetPath --clobber
-          } else {
-            Write-Error "X86 build file not found: $assetPath"
-            exit 1
-          }
-      

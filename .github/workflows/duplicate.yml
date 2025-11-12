@@ -1,24 +1,12 @@
-name: 'Duplicate Issue'
+name: DISABLED - duplicate issue handler
 
+# Disabled: duplicate issue workflow replaced by consolidated maintenance.
 on:
-  issues:
-    types: [labeled, unlabeled, reopened]
-
-permissions:
-  issues: write
+  workflow_dispatch: {}
 
 jobs:
-  action:
+  noop:
     runs-on: ubuntu-latest
     steps:
-      - uses: dessant/support-requests@v2
-        with:
-          github-token: ${{ github.token }}
-          support-label: 'duplicate'
-          issue-comment: >
-            :wave: @{issue-author}, one or more issues for this topic already exist, 
-            please follow those instead of opening another one. Use the search function 
-            to find issues related to your troubles. Thank you!
-          close-issue: true
-          lock-issue: true
-          issue-lock-reason: 'off-topic'
+      - name: Disabled
+        run: echo "duplicate.yml disabled; see .github/workflows/release.yml"
