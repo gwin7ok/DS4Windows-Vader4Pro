@@ -15,9 +15,7 @@
 		<RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
 		<EnableNETAnalyzers>false</EnableNETAnalyzers>
 		<ServerGarbageCollection>true</ServerGarbageCollection>
-		<AssemblyVersion>3.11.3</AssemblyVersion>
-		<FileVersion>3.11.3</FileVersion>
-		<Version>3.11.3</Version>
+		<!-- Version, FileVersion and AssemblyVersion are provided by Directory.Build.props -->
 		<Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
 		<Platform Condition=" '$(Platform)' == '' ">x64</Platform>
 		<Copyright>Copyright © Scarlet.Crush Productions 2012, 2013; InhexSTER, HecticSeptic, electrobrains 2013, 2014; Jays2Kings 2013, 2014, 2015, 2016; Ryochan7 2017-2023, schmaldeo 2024,AhmedAmrNabil 2025, gwin7ok 2025</Copyright>

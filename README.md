@@ -64,6 +64,6 @@ Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/g
 
 The detailed history of changes for this fork has been moved to `CHANGELOG.md`.
 
-Please see [CHANGELOG.md](./CHANGELOG.md) for versioned release notes and details (example: v3.11.3, v3.11.2, v3.11.1, v3.11.0).
+Please see [CHANGELOG.md](./CHANGELOG.md) for versioned release notes and details. Visit the Releases page for the latest build.
 
 _This README retains a short pointer — full changelog entries are maintained in `CHANGELOG.md`._
