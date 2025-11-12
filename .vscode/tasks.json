@@ -20,8 +20,10 @@
             "command": "pwsh",
             "args": [
                 "-NoProfile",
-                "-Command",
-                "$v=(Select-String -Path \"./Directory.Build.props\" -Pattern \"<Version>(.*?)</Version>\" -AllMatches).Matches.Groups[1].Value; if (-not $v) { Write-Error \"Version not found in Directory.Build.props\"; exit 1 }; python ./utils/post-build.py \"./DS4Windows/bin/x64/Release/net8.0-windows\" \".\" $v"
+                "-File",
+                "./scripts/post-build.ps1",
+                "./DS4Windows/bin/x64/Release/net8.0-windows",
+                "."
             ],
             "group": "build",
             "dependsOn": "publish-release-x64"
