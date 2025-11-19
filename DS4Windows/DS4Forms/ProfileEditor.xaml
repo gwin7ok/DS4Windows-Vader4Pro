@@ -2190,13 +2190,13 @@
 
                                             <Label Content="{lex:Loc DualSRumbleModeNPowerLevelTxt}" Margin="0,0,0,0"/>
 
-                                            <ComboBox x:Name="dualSRumbleEmuMode" SelectedIndex="{Binding DualSenseRumbleEmulationPerIndex, FallbackValue=0}" MinWidth="40" ToolTip="{lex:Loc DualSRumbleModes_Tip}" Margin="0,0,0,0" Width="100">
+                                            <ComboBox x:Name="dualSRumbleEmuMode" SelectedIndex="{Binding DualSenseRumbleEmulationPerIndex, FallbackValue=0}" MinWidth="80" ToolTip="{lex:Loc DualSRumbleModes_Tip}" Margin="0,0,0,0" Width="140">
                                                 <ComboBoxItem Content="{lex:Loc DualSRumbleModeAccurate}"   />
                                                 <ComboBoxItem Content="{lex:Loc DualSRumbleModeLegacy}" />
                                                 <ComboBoxItem Content="{lex:Loc DualSRumbleModeDisabled}" />
                                             </ComboBox>
 
-                                            <ComboBox SelectedIndex="{Binding DualSenseHapticPowerLevelPerIndex, FallbackValue=0}" MinWidth="40" ToolTip="{lex:Loc DualSRumblePowerLevel_Tip}" Margin="4,0,0,0" Width="58">
+                                            <ComboBox SelectedIndex="{Binding DualSenseHapticPowerLevelPerIndex, FallbackValue=0}" MinWidth="60" ToolTip="{lex:Loc DualSRumblePowerLevel_Tip}" Margin="4,0,0,0" Width="90">
                                                 <ComboBoxItem Content="100%" />
                                                 <ComboBoxItem Content="87%" />
                                                 <ComboBoxItem Content="75%" />
@@ -2219,7 +2219,7 @@
                         </GroupBox>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <Label Content="{lex:Loc UseController}" ToolTip="{lex:Loc Resources:UseControllerForMapping}" />
-                            <xctk:IntegerUpDown x:Name="useControllerUD" d:IsHidden="True" Width="40" Margin="8,0,0,0"
+                            <xctk:IntegerUpDown x:Name="useControllerUD" d:IsHidden="True" Width="60" MinWidth="50" Margin="8,0,0,0"
                                             Value="0" Minimum="0" Maximum="4" IsEnabled="False"
                                             ToolTip="{lex:Loc Resources:UseControllerForMapping}" />
                             <CheckBox x:Name="useControllerReadoutCk" FlowDirection="RightToLeft" Content="for readout" VerticalAlignment="Center"
