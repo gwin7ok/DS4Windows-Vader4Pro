@@ -73,6 +73,7 @@ namespace DS4WinWPF.DS4Forms
         private NonFormTimer autoProfilesTimer;
         private AutoProfileChecker autoprofileChecker;
         private ProfileEditor editor;
+        private int previousTabIndex = 0;
         private bool preserveSize = true;
         private Size oldSize;
         private bool contextclose;
@@ -1761,7 +1762,18 @@ Suspend support not enabled.", true);
                 Global.FormLocationY = result.Top;
             }
             editor = null;
-            mainTabCon.SelectedIndex = 0;
+            // Restore the tab that was active before opening the profile editor
+            try
+            {
+                if (previousTabIndex >= 0 && previousTabIndex < mainTabCon.Items.Count)
+                    mainTabCon.SelectedIndex = previousTabIndex;
+                else
+                    mainTabCon.SelectedIndex = 0;
+            }
+            catch
+            {
+                mainTabCon.SelectedIndex = 0;
+            }
             mainWinVM.FullTabsEnabled = true;
             //Task.Run(() => GC.Collect(0, GCCollectionMode.Forced, false));
         }
@@ -1775,6 +1787,8 @@ Suspend support not enabled.", true);
         {
             if (editor == null)
             {
+                // Remember current tab so we can restore it when editor closes
+                try { previousTabIndex = mainTabCon.SelectedIndex; } catch { previousTabIndex = 0; }
                 profOptsToolbar.Visibility = Visibility.Collapsed;
                 profilesListBox.Visibility = Visibility.Collapsed;
                 mainWinVM.FullTabsEnabled = false;
