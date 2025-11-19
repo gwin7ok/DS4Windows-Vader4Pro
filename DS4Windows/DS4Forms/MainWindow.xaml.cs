@@ -379,7 +379,6 @@ namespace DS4WinWPF.DS4Forms
         {
             Dispatcher.BeginInvoke((Action)(() =>
             {
-
                 if (Global.Notifications == 2 ||
                     (Global.Notifications == 1 && e.Warning))
                 {
@@ -387,21 +386,10 @@ namespace DS4WinWPF.DS4Forms
                     {
                         try
                         {
-                            bool isProfileNotification = e.Data.Contains("を使用しています") || e.Data.Contains("is using Profile") ||
-                                                       e.Data.Contains("using Profile") || e.Data.Contains("using temp Profile");
-
-                            if (isProfileNotification)
-                            {
-                                // プロファイル通知：カスタムウィンドウのみを表示
-                                ShowProfileChangeNotification(e.Data, e.Warning);
-                            }
-                            else
-                            {
-                                // 通常の通知：アクションセンター経由で表示
-                                string title = TrayIconViewModel.ballonTitle;
-                                notifyIcon.ShowNotification(title, e.Data, !e.Warning ? H.NotifyIcon.Core.NotificationIcon.Info :
-                                H.NotifyIcon.Core.NotificationIcon.Warning);
-                            }
+                            // Profile notifications are emitted via typed ProfileChanged event; treat all tray logs as regular notifications.
+                            string title = TrayIconViewModel.ballonTitle;
+                            notifyIcon.ShowNotification(title, e.Data, !e.Warning ? H.NotifyIcon.Core.NotificationIcon.Info :
+                            H.NotifyIcon.Core.NotificationIcon.Warning);
                         }
                         catch (System.InvalidOperationException)
                         {

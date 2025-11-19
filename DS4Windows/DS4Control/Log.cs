@@ -46,11 +46,11 @@ namespace DS4Windows
             }
         }
 
-        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown)
+        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null)
         {
             try
             {
-                ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source));
+                ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
             }
             catch { }
         }
@@ -73,13 +73,17 @@ namespace DS4Windows
         public string ProfileName { get; }
         public bool IsTemp { get; }
         public ProfileChangeSource Source { get; }
+        public string OriginalMessage { get; }
+        public DateTime Timestamp { get; }
 
-        public ProfileChangedEventArgs(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown)
+        public ProfileChangedEventArgs(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null)
         {
             DeviceIndex = deviceIndex;
             ProfileName = profileName ?? string.Empty;
             IsTemp = isTemp;
             Source = source;
+            OriginalMessage = originalMessage ?? string.Empty;
+            Timestamp = timestamp ?? DateTime.UtcNow;
         }
     }
 }

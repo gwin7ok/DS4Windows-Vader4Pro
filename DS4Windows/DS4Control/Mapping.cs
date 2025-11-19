@@ -4398,7 +4398,7 @@ namespace DS4Windows
                                     AppLogger.LogToGui(prolog, false);
                                     if (Global.ProfileChangedNotification)
                                     {
-                                        try { AppLogger.LogProfileChanged(device, action.details, true, DS4Windows.ProfileChangeSource.MappingAction); } catch { }
+                                        try { AppLogger.LogProfileChanged(device, action.details, true, DS4Windows.ProfileChangeSource.MappingAction, prolog, DateTime.UtcNow); } catch { }
                                     }
                                     await Task.Run(() =>
                                     {
