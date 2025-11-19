@@ -24,6 +24,8 @@ namespace DS4Windows
     {
         public static event EventHandler<DebugEventArgs> TrayIconLog;
         public static event EventHandler<DebugEventArgs> GuiLog;
+        // 型付きプロファイル変更イベント
+        public static event EventHandler<ProfileChangedEventArgs> ProfileChanged;
 
         public static void LogToGui(string data, bool warning, bool temporary = false)
         {
@@ -42,6 +44,42 @@ namespace DS4Windows
                 else
                     TrayIconLog(null, new DebugEventArgs(data, warning));
             }
+        }
+
+        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown)
+        {
+            try
+            {
+                ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source));
+            }
+            catch { }
+        }
+    }
+
+    public enum ProfileChangeSource : byte
+    {
+        Unknown = 0,
+        ControlService,
+        AutoProfile,
+        MappingAction,
+        Hotkey,
+        Manual,
+        Other
+    }
+
+    public class ProfileChangedEventArgs : EventArgs
+    {
+        public int DeviceIndex { get; }
+        public string ProfileName { get; }
+        public bool IsTemp { get; }
+        public ProfileChangeSource Source { get; }
+
+        public ProfileChangedEventArgs(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown)
+        {
+            DeviceIndex = deviceIndex;
+            ProfileName = profileName ?? string.Empty;
+            IsTemp = isTemp;
+            Source = source;
         }
     }
 }

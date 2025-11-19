@@ -319,7 +319,8 @@ namespace DS4WinWPF
                 case AutoProfileDisplayProfileSwitchChoices.Notification:
                     {
                         string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingAutoTempProfile, (ind + 1).ToString(), profile);
-                        DS4Windows.AppLogger.LogToTray(prolog);
+                        // Fire typed profile-changed event for immediate notification
+                        try { DS4Windows.AppLogger.LogProfileChanged(ind, profile, true, DS4Windows.ProfileChangeSource.AutoProfile); } catch { }
                     }
 
                     break;
@@ -327,7 +328,7 @@ namespace DS4WinWPF
                     {
                         string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingAutoTempProfile, (ind + 1).ToString(), profile);
                         DS4Windows.AppLogger.LogToGui(prolog, false);
-                        DS4Windows.AppLogger.LogToTray(prolog);
+                        try { DS4Windows.AppLogger.LogProfileChanged(ind, profile, true, DS4Windows.ProfileChangeSource.AutoProfile); } catch { }
                     }
 
                     break;

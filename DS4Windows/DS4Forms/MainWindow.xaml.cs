@@ -437,6 +437,9 @@ namespace DS4WinWPF.DS4Forms
             conLvViewModel.ControllerCol.CollectionChanged += ControllerCol_CollectionChanged;
             AppLogger.TrayIconLog += ShowNotification;
 
+            // 型付きプロファイル変更イベントを購読
+            AppLogger.ProfileChanged += OnProfileChanged;
+
             AppLogger.GuiLog += UpdateLastStatusMessage;
             logvm.LogItems.CollectionChanged += LogItems_CollectionChanged;
             App.rootHub.Debug += UpdateLastStatusMessage;
@@ -706,7 +709,18 @@ Suspend support not enabled.", true);
             if (Global.Notifications == 2)
             {
                 // 通常のトレイ通知を使用（ShowNotificationで連続通知が改善される）
-                AppLogger.LogToTray(message);
+                // Hotkey-driven profile changes should emit typed ProfileChanged event instead of raw tray log.
+                try
+                {
+                    // Attempt to parse the message for device/profile info. If parsing fails, fall back to LogToTray.
+                    // Expected format: UsingProfile resource (device, profile, battery)
+                    // We will not parse battery; just trigger a generic ProfileChanged with Unknown device (-1).
+                    AppLogger.LogProfileChanged(-1, message, false, DS4Windows.ProfileChangeSource.Hotkey);
+                }
+                catch
+                {
+                    AppLogger.LogToTray(message);
+                }
             }
         }
 
@@ -740,6 +754,35 @@ Suspend support not enabled.", true);
         {
             lastLogMsg.Message = e.Data;
             lastLogMsg.Warning = e.Warning;
+        }
+
+        private void OnProfileChanged(object sender, DS4Windows.ProfileChangedEventArgs e)
+        {
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+                try
+                {
+                    int devIndex = e.DeviceIndex;
+                    string prof = e.ProfileName ?? string.Empty;
+                    string battery = "0";
+                    CompositeDeviceModel item = null;
+                    if (conLvViewModel != null && conLvViewModel.ControllerDict != null && conLvViewModel.ControllerDict.ContainsKey(devIndex))
+                        item = conLvViewModel.ControllerDict[devIndex];
+
+                    if (item != null && item.Device != null)
+                        battery = $"{item.Device.Battery}";
+
+                    string prolog;
+                    // If the event is from AutoProfile, use the AutoTempProfile resource
+                    if (e.Source == DS4Windows.ProfileChangeSource.AutoProfile)
+                        prolog = string.Format(DS4WinWPF.Properties.Resources.UsingAutoTempProfile, (devIndex + 1).ToString(), prof);
+                    else
+                        prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, battery);
+
+                    ShowProfileChangeNotification(prolog, false);
+                }
+                catch { }
+            }));
         }
 
         private void ChangeControllerPanel()

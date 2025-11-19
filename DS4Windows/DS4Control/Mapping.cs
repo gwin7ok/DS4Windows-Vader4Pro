@@ -4396,7 +4396,10 @@ namespace DS4Windows
                                         (device + 1).ToString(), action.details, $"{d.Battery}");
 
                                     AppLogger.LogToGui(prolog, false);
-                                    if (Global.ProfileChangedNotification) AppLogger.LogToTray(prolog);
+                                    if (Global.ProfileChangedNotification)
+                                    {
+                                        try { AppLogger.LogProfileChanged(device, action.details, true, DS4Windows.ProfileChangeSource.MappingAction); } catch { }
+                                    }
                                     await Task.Run(() =>
                                     {
                                         d.HaltReportingRunAction(() =>
