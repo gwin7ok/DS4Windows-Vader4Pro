@@ -282,6 +282,12 @@
   <data name="StartMinimized" xml:space="preserve">
     <value>最小化の状態で起動</value>
   </data>
+  <data name="MinimizeToTaskbar" xml:space="preserve">
+    <value>タスクバーに最小化</value>
+  </data>
+  <data name="MinimizeToTaskbarTip" xml:space="preserve">
+    <value>通知領域（システムトレイ）ではなくタスクバーに最小化します</value>
+  </data>
   <data name="StartText" xml:space="preserve">
     <value>開始</value>
   </data>
