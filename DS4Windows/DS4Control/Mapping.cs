@@ -4395,11 +4395,12 @@ namespace DS4Windows
                                     string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                                         (device + 1).ToString(), action.details, $"{d.Battery}");
 
-                                    AppLogger.LogToGui(prolog, false);
-                                    if (Global.ProfileChangedNotification)
+                                    try
                                     {
-                                        try { AppLogger.LogProfileChanged(device, action.details, true, DS4Windows.ProfileChangeSource.MappingAction, prolog, DateTime.UtcNow); } catch { }
+                                        bool display = Global.ProfileChangedNotification;
+                                        AppLogger.LogProfileChanged(device, action.details, true, DS4Windows.ProfileChangeSource.MappingAction, prolog, DateTime.UtcNow, display);
                                     }
+                                    catch { }
                                     await Task.Run(() =>
                                     {
                                         d.HaltReportingRunAction(() =>
@@ -4898,7 +4899,14 @@ namespace DS4Windows
                             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                                 (device + 1).ToString(), (profileName == string.Empty ? ProfilePath[device] : profileName), $"{d.Battery}");
 
-                            AppLogger.LogToGui(prolog, false);
+                            try
+                            {
+                                bool display = Global.ProfileChangedNotification;
+                                string profToShow = (profileName == string.Empty ? ProfilePath[device] : profileName);
+                                bool isTempProf = (profileName != string.Empty);
+                                AppLogger.LogProfileChanged(device, profToShow, isTempProf, DS4Windows.ProfileChangeSource.MappingAction, prolog, DateTime.UtcNow, display);
+                            }
+                            catch { }
 
                             untriggeraction[device] = null;
 

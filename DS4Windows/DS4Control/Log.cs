@@ -46,11 +46,20 @@ namespace DS4Windows
             }
         }
 
-        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null)
+        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null, bool displayNotification = true)
         {
             try
             {
-                ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
+                // Ensure the message is also sent to GUI log so LogView and status area update.
+                if (!string.IsNullOrEmpty(originalMessage))
+                {
+                    try { LogToGui(originalMessage, false); } catch { }
+                }
+
+                if (displayNotification)
+                {
+                    ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
+                }
             }
             catch { }
         }

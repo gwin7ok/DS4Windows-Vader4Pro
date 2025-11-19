@@ -413,7 +413,9 @@ namespace DS4Windows
                                 DevicePaths.Add(hDevice.DevicePath);
                                 deviceSerials.Add(serial);
                                 serialDevices.Add(serial, ds4Device);
-                                AppLogger.LogToGui($"{DS4WinWPF.Properties.Resources.FoundController} {ds4Device.getMacAddress()} ({ds4Device.getConnectionType()}) ({ds4Device.DisplayName}).", false);
+                                string foundMsg = $"{DS4WinWPF.Properties.Resources.FoundController} {ds4Device.getMacAddress()} ({ds4Device.getConnectionType()}) ({ds4Device.DisplayName}).";
+                                AppLogger.LogToGui(foundMsg, false);
+                                AppLogger.LogToTray(foundMsg);
                             }
                         }
                     }

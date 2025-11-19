@@ -2666,7 +2666,8 @@ namespace DS4Windows
                             LogDebug(prolog);
                             try
                             {
-                                AppLogger.LogProfileChanged(ind, actualProfile, Global.useTempProfile[ind], DS4Windows.ProfileChangeSource.ControlService, prolog, DateTime.UtcNow);
+                                bool display = Global.ProfileChangedNotification;
+                                AppLogger.LogProfileChanged(ind, actualProfile, Global.useTempProfile[ind], DS4Windows.ProfileChangeSource.ControlService, prolog, DateTime.UtcNow, display);
                             }
                             catch { }
                             // Ensure profile action dictionaries are evaluated at the moment
@@ -2684,7 +2685,8 @@ namespace DS4Windows
                             LogDebug(prolog);
                             try
                             {
-                                AppLogger.LogProfileChanged(ind, string.Empty, false, DS4Windows.ProfileChangeSource.ControlService, prolog, DateTime.UtcNow);
+                                bool display = Global.ProfileChangedNotification;
+                                AppLogger.LogProfileChanged(ind, string.Empty, false, DS4Windows.ProfileChangeSource.ControlService, prolog, DateTime.UtcNow, display);
                             }
                             catch { }
                         }

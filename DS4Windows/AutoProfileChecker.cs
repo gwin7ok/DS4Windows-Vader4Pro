@@ -312,23 +312,24 @@ namespace DS4WinWPF
                 case AutoProfileDisplayProfileSwitchChoices.Log:
                     {
                         string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingAutoTempProfile, (ind + 1).ToString(), profile);
-                        DS4Windows.AppLogger.LogToGui(prolog, false);
+                        // Only log to GUI, no notification
+                        DS4Windows.AppLogger.LogProfileChanged(ind, profile, true, DS4Windows.ProfileChangeSource.AutoProfile, prolog, DateTime.UtcNow, false);
                     }
 
                     break;
                 case AutoProfileDisplayProfileSwitchChoices.Notification:
                     {
                         string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingAutoTempProfile, (ind + 1).ToString(), profile);
-                        // Fire typed profile-changed event for immediate notification
-                        try { DS4Windows.AppLogger.LogProfileChanged(ind, profile, true, DS4Windows.ProfileChangeSource.AutoProfile, prolog, DateTime.UtcNow); } catch { }
+                        // Fire typed profile-changed event for immediate notification (and GUI log)
+                        try { DS4Windows.AppLogger.LogProfileChanged(ind, profile, true, DS4Windows.ProfileChangeSource.AutoProfile, prolog, DateTime.UtcNow, true); } catch { }
                     }
 
                     break;
                 case AutoProfileDisplayProfileSwitchChoices.LogAndNotification:
                     {
                         string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingAutoTempProfile, (ind + 1).ToString(), profile);
-                        DS4Windows.AppLogger.LogToGui(prolog, false);
-                        try { DS4Windows.AppLogger.LogProfileChanged(ind, profile, true, DS4Windows.ProfileChangeSource.AutoProfile, prolog, DateTime.UtcNow); } catch { }
+                        // Log and notify via centralized LogProfileChanged
+                        try { DS4Windows.AppLogger.LogProfileChanged(ind, profile, true, DS4Windows.ProfileChangeSource.AutoProfile, prolog, DateTime.UtcNow, true); } catch { }
                     }
 
                     break;

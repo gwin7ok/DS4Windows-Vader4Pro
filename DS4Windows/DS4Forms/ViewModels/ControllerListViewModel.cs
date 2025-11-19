@@ -451,11 +451,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 catch { }
 
             string prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, $"{device.Battery}");
-            DS4Windows.AppLogger.LogToGui(prolog, false);
             try
             {
                 bool isTemp = Global.useTempProfile[devIndex];
-                DS4Windows.AppLogger.LogProfileChanged(devIndex, prof, isTemp, DS4Windows.ProfileChangeSource.Manual, prolog, DateTime.UtcNow);
+                bool display = Global.ProfileChangedNotification;
+                // Centralize: callers only invoke LogProfileChanged; it will also emit GUI log.
+                DS4Windows.AppLogger.LogProfileChanged(devIndex, prof, isTemp, DS4Windows.ProfileChangeSource.Manual, prolog, DateTime.UtcNow, display);
             }
             catch { }
 
