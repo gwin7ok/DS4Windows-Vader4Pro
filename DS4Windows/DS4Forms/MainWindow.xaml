@@ -348,7 +348,7 @@
                                 </StackPanel>
 
                                 <CheckBox x:Name="interpretingOscMonitoringCk" Content="{lex:Loc EnableInterpretingOscMonitoring}" Margin="0,4,0,10" IsChecked="{Binding InterpretingOscMonitoring}" IsEnabled="{Binding UseOSCServer}" />
-                                
+
                                 <StackPanel Orientation="Horizontal" MinHeight="20">
                                     <CheckBox x:Name="useOscSenderCk" Content="{lex:Loc EnableOscSender}" IsChecked="{Binding UseOSCSender}" Click="UseOscSenderCk_Click" VerticalAlignment="Center" />
                                     <TextBox x:Name="oscSenderTxt" IsEnabled="{Binding UseOSCSender,Mode=OneWay}" Text="{Binding OscSenderAddress, UpdateSourceTrigger=LostFocus,FallbackValue='127.0.0.1'}"
@@ -476,14 +476,14 @@
                     <ListView x:Name="logListView" DockPanel.Dock="Top" ItemsSource="{Binding LogItems}" MouseDoubleClick="LogListView_MouseDoubleClick" Margin="0">
                         <ListView.View>
                             <GridView AllowsColumnReorder="False">
-                                <GridViewColumn Header="Time" Width="150">
+                                <GridViewColumn Header="Time" Width="190">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding Path=Datetime, StringFormat=\{0:G\}}"/>
+                                            <TextBlock Text="{Binding Path=Datetime, StringFormat=\{0:yyyy/MM/dd HH\:mm\:ss\}}"/>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn Header="Data" Width="800">
+                                <GridViewColumn Header="Data" Width="1000">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Path=Message}"/>

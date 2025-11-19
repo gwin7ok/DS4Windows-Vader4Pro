@@ -140,7 +140,7 @@ namespace DS4Windows
         internal const int FLYDIGI_VID = 0x04B4;
         internal const int VADER4PRO_PID = 0x2412;
 
-        // https://support.steampowered.com/kb_article.php?ref=5199-TOKV-4426&l=english web site has a list of other PS4 compatible device VID/PID values and brand names. 
+        // https://support.steampowered.com/kb_article.php?ref=5199-TOKV-4426&l=english web site has a list of other PS4 compatible device VID/PID values and brand names.
         // However, not all those are guaranteed to work with DS4Windows app so support is added case by case when users of DS4Windows app tests non-official DS4 gamepads.
 
         private static VidPidInfo[] knownDevices =

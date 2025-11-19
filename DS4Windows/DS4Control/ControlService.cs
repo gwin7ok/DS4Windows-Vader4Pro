@@ -2663,7 +2663,6 @@ namespace DS4Windows
                         if (File.Exists(Path.Combine(appdatapath, "Profiles", $"{ProfilePath[ind]}.xml")))
                         {
                             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (ind + 1).ToString(), actualProfile, $"{device.Battery}");
-                            LogDebug(prolog);
                             try
                             {
                                 bool display = Global.ProfileChangedNotification;
@@ -2682,7 +2681,6 @@ namespace DS4Windows
                         else
                         {
                             string prolog = string.Format(DS4WinWPF.Properties.Resources.NotUsingProfile, (ind + 1).ToString(), $"{device.Battery}");
-                            LogDebug(prolog);
                             try
                             {
                                 bool display = Global.ProfileChangedNotification;
