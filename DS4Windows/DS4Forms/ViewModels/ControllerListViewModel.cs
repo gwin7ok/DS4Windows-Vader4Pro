@@ -452,6 +452,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             string prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, $"{device.Battery}");
             DS4Windows.AppLogger.LogToGui(prolog, false);
+            try
+            {
+                bool isTemp = Global.useTempProfile[devIndex];
+                DS4Windows.AppLogger.LogProfileChanged(devIndex, prof, isTemp, DS4Windows.ProfileChangeSource.Manual, prolog, DateTime.UtcNow);
+            }
+            catch { }
 
             selectedProfile = prof;
             this.selectedEntity = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == prof);

@@ -2664,7 +2664,6 @@ namespace DS4Windows
                         {
                             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (ind + 1).ToString(), actualProfile, $"{device.Battery}");
                             LogDebug(prolog);
-                            AppLogger.LogToTray(prolog);
                             try
                             {
                                 AppLogger.LogProfileChanged(ind, actualProfile, Global.useTempProfile[ind], DS4Windows.ProfileChangeSource.ControlService, prolog, DateTime.UtcNow);
@@ -2683,7 +2682,6 @@ namespace DS4Windows
                         {
                             string prolog = string.Format(DS4WinWPF.Properties.Resources.NotUsingProfile, (ind + 1).ToString(), $"{device.Battery}");
                             LogDebug(prolog);
-                            AppLogger.LogToTray(prolog);
                             try
                             {
                                 AppLogger.LogProfileChanged(ind, string.Empty, false, DS4Windows.ProfileChangeSource.ControlService, prolog, DateTime.UtcNow);
