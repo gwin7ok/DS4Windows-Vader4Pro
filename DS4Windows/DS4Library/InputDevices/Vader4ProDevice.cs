@@ -39,7 +39,7 @@ namespace DS4Windows.InputDevices
         #pragma warning restore CS0067
         public override void PostInit()
         {
-            if (Mac == null || Mac == "" || Mac == BLANK_SERIAL) 
+            if (Mac == null || Mac == "" || Mac == BLANK_SERIAL)
             {
                 Mac = hDevice.GenerateFakeHwSerial();
             }

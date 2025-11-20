@@ -1400,7 +1400,7 @@ namespace DS4Windows.InputDevices
                 buffer[8] = (byte)(freq_data_low + (amp_low >> 8) & 0xFF); // 6
                 buffer[9] = (byte)(amp_low & 0xFF); // 7
             }
-            
+
             //byte amp_high = 0x9a; // 609
             //ushort amp_low = 0x8066; // 609
             //buffer[2] = 0x28; // 0
@@ -1412,7 +1412,7 @@ namespace DS4Windows.InputDevices
             //buffer[7] = 0xc8; // 5
             //buffer[8] = 0x81; // 6
             //buffer[9] = 0x71; // 7
-            
+
             //Console.WriteLine("RUMBLE BUFF: {0}", string.Join(", ", buffer));
             //Console.WriteLine("RUMBLE BUFF: {0}",
             //    string.Concat(buffer.Select(i => string.Format("{0:x2} ", i))));

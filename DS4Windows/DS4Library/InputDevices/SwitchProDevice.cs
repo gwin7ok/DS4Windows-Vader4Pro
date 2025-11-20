@@ -372,7 +372,7 @@ namespace DS4Windows.InputDevices
                 idleInput = true;
                 bool syncWriteReport = conType != ConnectionType.BT;
                 //bool forceWrite = false;
-                
+
                 //int maxBatteryValue = 0;
                 int tempBattery = 0;
                 bool tempCharging = charging;
@@ -591,7 +591,7 @@ namespace DS4Windows.InputDevices
                     int gyroPitch = (short)(gyro_out[6 + IMU_PITCH_IDX] - gyroBias[IMU_PITCH_IDX] - gyroCalibOffsets[IMU_PITCH_IDX]);
                     int gyroRoll = (short)(gyro_out[6 + IMU_ROLL_IDX] - gyroBias[IMU_ROLL_IDX] - gyroCalibOffsets[IMU_ROLL_IDX]);
                     //cState.Motion.populate(gyroYaw, gyroPitch, gyroRoll, accelX, accelY, accelZ, cState.elapsedTime, pState.Motion);
-                    
+
                     // Need to populate the SixAxis object manually to work around conversions
                     //Console.WriteLine("GyroYaw: {0}", gyroYaw);
                     SixAxis tempMotion = cState.Motion;
