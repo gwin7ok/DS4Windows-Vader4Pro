@@ -213,18 +213,22 @@ namespace DS4Windows.InputDevices
         private bool enableHomeLED = true;
         public bool EnableHomeLED { get => enableHomeLED; set => enableHomeLED = value; }
 
+        #pragma warning disable CS0649 // nativeOptionsStore may be set by native/interop code
         private SwitchProControllerOptions nativeOptionsStore;
+        #pragma warning restore CS0649
 
         /// <summary>
         /// Flag to tell methods if device has been successfully initialized and opened
         /// </summary>
         private bool connectionOpened = false;
 
+        #pragma warning disable CS0067 // events declared for compatibility but may be unused
         public override event ReportHandler<EventArgs> Report = null;
         public override event EventHandler<EventArgs> Removal = null;
 
         public override event EventHandler BatteryChanged;
         public override event EventHandler ChargingChanged;
+        #pragma warning restore CS0067
 
         public SwitchProDevice(HidDevice hidDevice,
             string disName, VidPidFeatureSet featureSet = VidPidFeatureSet.DefaultDS4) :

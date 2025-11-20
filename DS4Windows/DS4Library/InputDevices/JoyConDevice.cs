@@ -241,7 +241,9 @@ namespace DS4Windows.InputDevices
         private bool enableHomeLED = true;
         public bool EnableHomeLED { get => enableHomeLED; set => enableHomeLED = value; }
 
+        #pragma warning disable CS0649 // nativeOptionsStore may be set by native/interop code
         private JoyConControllerOptions nativeOptionsStore;
+        #pragma warning restore CS0649
 
         private ReaderWriterLockSlim lockSlim = new ReaderWriterLockSlim();
         private JoyConDevice jointDevice;
@@ -281,8 +283,10 @@ namespace DS4Windows.InputDevices
 
         public override event ReportHandler<EventArgs> Report = null;
         public override event EventHandler<EventArgs> Removal = null;
+        #pragma warning disable CS0067 // events declared for compatibility but may be unused
         public override event EventHandler BatteryChanged;
         public override event EventHandler ChargingChanged;
+        #pragma warning restore CS0067
 
         public JoyConDevice(HidDevice hidDevice,
             string disName, VidPidFeatureSet featureSet = VidPidFeatureSet.DefaultDS4) :

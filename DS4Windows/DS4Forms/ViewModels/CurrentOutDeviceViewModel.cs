@@ -321,7 +321,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
         }
 
+        #pragma warning disable CS0067 // InputSlotNumChanged may not be used in this build configuration
         public event EventHandler InputSlotNumChanged;
+        #pragma warning restore CS0067
 
         public string InputSlotDisplayString
         {

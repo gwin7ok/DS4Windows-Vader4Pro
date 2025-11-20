@@ -154,7 +154,9 @@ namespace DS4WinWPF.DS4Forms
         private SpecialActionsListViewModel specialActionsVM;
         // Active 列の初期幅は BackingStore の定数を使う（プロファイルに永続化しない）
     // フラグ: 初期ヘッダー更新を一度だけ行うためのガード
+    #pragma warning disable CS0414 // initialHeaderUpdated assigned but not read directly; used as a guard
     private bool initialHeaderUpdated = false;
+    #pragma warning restore CS0414
         // カラムヘッダーの Loaded 発火を数えるためのカウンタ
         private int specialActionsHeaderLoadedCount = 0;
         // ヘッダーテンプレート割当が既に行われているかを示すガード

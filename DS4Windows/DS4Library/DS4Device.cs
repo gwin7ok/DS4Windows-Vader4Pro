@@ -957,7 +957,9 @@ namespace DS4Windows
 
         private readonly Stopwatch rumbleAutostopTimer = new Stopwatch(); // Autostop timer to stop rumble motors if those are stuck in a rumble state
 
+        #pragma warning disable CS0414 // outputPendCount is assigned in some flows but read paths may be conditional
         private byte outputPendCount = 0;
+        #pragma warning restore CS0414
         private const int OUTPUT_MIN_COUNT_BT = 3;
         private byte[] outputBTCrc32Head = new byte[] { 0xA2 };
         protected readonly Stopwatch standbySw = new Stopwatch();

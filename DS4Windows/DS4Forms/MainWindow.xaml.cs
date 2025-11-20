@@ -74,7 +74,9 @@ namespace DS4WinWPF.DS4Forms
         private AutoProfileChecker autoprofileChecker;
         private ProfileEditor editor;
         private int previousTabIndex = 0;
+        #pragma warning disable CS0414 // preserveSize kept for behavior compatibility with older logic
         private bool preserveSize = true;
+        #pragma warning restore CS0414
         private Size oldSize;
         private bool contextclose;
         private bool startMinimized;

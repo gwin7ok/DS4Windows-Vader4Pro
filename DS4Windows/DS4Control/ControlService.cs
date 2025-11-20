@@ -36,6 +36,7 @@ using static DS4Windows.Global;
 
 namespace DS4Windows
 {
+    #pragma warning disable CS0219 // some local variables are assigned but not read in legacy handlers
     public class ControlService
     {
         public ViGEmClient vigemTestClient = null;
@@ -77,7 +78,9 @@ namespace DS4Windows
             new OneEuroFilter3D(), new OneEuroFilter3D(),
         };
         Thread tempThread;
+    #pragma warning disable CS0169 // tempBusThread is intentionally unused currently
         Thread tempBusThread;
+    #pragma warning restore CS0169
         Thread eventDispatchThread;
         Dispatcher eventDispatcher;
         public bool suspending;
@@ -1112,6 +1115,7 @@ namespace DS4Windows
                 DS4OutDevice tempDS4 = outDevice as DS4OutDevice;
                 if (tempDS4.CanUseAwaitOutputBuffer)
                 {
+                    #pragma warning disable CS0219 // useRumble assigned but not read; keep variable for possible future use
                     DS4OutDeviceExt.ReceivedOutBufferHandler processOutBuffAction = (DS4OutDeviceExt sender, byte[] reportData) =>
                     {
                         /*
@@ -1172,6 +1176,7 @@ namespace DS4Windows
                         //*/
 
                         //*
+                        #pragma warning disable CS0219 // suppress useRumble assigned but not read in this legacy handler
                         unchecked
                         {
                             //Trace.WriteLine($"INDEX: {devIndex}");
@@ -1233,6 +1238,7 @@ namespace DS4Windows
                     };
 
                     DS4OutDeviceExt tempDS4Ext = tempDS4 as DS4OutDeviceExt;
+                    #pragma warning restore CS0219
                     tempDS4Ext.ReceivedOutBuffer += processOutBuffAction;
                     tempDS4Ext.outBufferFeedbacksDict.TryAdd(index, processOutBuffAction);
                     tempDS4Ext.StartOutputBufferThread();

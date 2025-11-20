@@ -18,7 +18,9 @@ namespace DS4Windows.InputDevices
         private bool outputDirty = false;
         private DS4HapticState previousHapticState = new DS4HapticState();
 
+        #pragma warning disable CS0649 // nativeOptionsStore may be set by native/interop code
         private Vader4ProControllerOptions nativeOptionsStore;
+        #pragma warning restore CS0649
         public Vader4ProControllerOptions NativeOptionsStore { get => nativeOptionsStore; }
         public Vader4ProDevice(HidDevice hidDevice, string disName, VidPidFeatureSet featureSet = VidPidFeatureSet.DefaultDS4, string macAddress = "") :
             base(hidDevice, disName, featureSet)
@@ -30,9 +32,11 @@ namespace DS4Windows.InputDevices
             }
         }
 
+        #pragma warning disable CS0067 // events declared for API compatibility but may be unused
         public override event ReportHandler<EventArgs> Report = null;
         public override event EventHandler BatteryChanged;
         public override event EventHandler ChargingChanged;
+        #pragma warning restore CS0067
         public override void PostInit()
         {
             if (Mac == null || Mac == "" || Mac == BLANK_SERIAL) 

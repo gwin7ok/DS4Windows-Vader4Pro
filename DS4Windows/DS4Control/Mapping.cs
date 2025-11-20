@@ -840,7 +840,9 @@ namespace DS4Windows
             50, // DS4Controls.BLP
             51, // DS4Controls.BRP
         };
+        #pragma warning disable CS0414 // macroEndIndex assigned but not read; keep for readability of macro array length
         private static int macroEndIndex = DS4_CONTROL_MACRO_ARRAY_LEN - 1;
+        #pragma warning restore CS0414
 
         // Special macros
         static bool altTabDone = true;

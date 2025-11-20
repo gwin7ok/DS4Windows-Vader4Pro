@@ -213,9 +213,11 @@ namespace DS4Windows
             private set => touchEnded = value;
         }
 
+        #pragma warning disable CS0414 // toggle flags may be assigned/used in runtime branches
         bool currentToggleGyroControls = false;
         bool currentToggleGyroMouse = false;
         bool currentToggleGyroStick = false;
+        #pragma warning restore CS0414
 
         bool previousUnchangedTouchJoyFrame = false;
         int previousTouchDX = 0;

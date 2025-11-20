@@ -32,12 +32,12 @@
     "csharp.format.enable": false,
     "csharp.codeLens.enableReferencesCodeLens": false,
     "files.exclude": {
-        "**/bin": true,
+        "**/bin": false,
         "**/obj": true,
         "**/.vs": true
     },
     "search.exclude": {
-        "**/bin": true,
+        "**/bin": false,
         "**/obj": true,
         "**/.vs": true
     }

@@ -39,7 +39,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private MenuItem minimizeItem;
         private MenuItem openProgramItem;
         private MenuItem closeItem;
+        #pragma warning disable CS0414 // prevBattery assigned but not read; keep for future tooltip updates
         private int? prevBattery = null;
+        #pragma warning restore CS0414
 
 
         public string TooltipText
