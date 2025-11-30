@@ -259,28 +259,30 @@ namespace DS4WinWPF.DS4Forms
             if (valid)
             {
                 specialActVM.SetAction(tempAct);
-                // Before detaching data contexts and persisting, perform a duplicate-name check
-                if (valid)
-                {
-                    string newName = DS4Windows.Util.NormalizeActionName(specialActVM.ActionName);
-                    string oldName = specialActVM.SavedAction?.name;
-                    string normOld = DS4Windows.Util.NormalizeActionName(oldName);
-                    if (!string.Equals(newName, normOld, StringComparison.Ordinal))
-                    {
-                        var actionsList = DS4Windows.Global.GetActions();
-                        if (actionsList != null && actionsList.Exists(a => DS4Windows.Util.NormalizeActionName(a.name) == newName))
-                        {
-                            // Inform user and do not close the editor
-                            MessageBox.Show(Properties.Resources.ActionExists);
-                            return;
-                        }
-                    }
-                }
+                // Duplicate-name validation is handled by the ViewModel (normalized
+                // comparison). No additional re-check here to avoid duplication
+                // and potential race conditions.
                 valid = CheckActionValid(tempAct, typeId);
             }
             else if (specialActVM.ExistingName)
             {
-                MessageBox.Show(Properties.Resources.ActionExists);
+                // If the ViewModel already detected an existing name error,
+                // show the message near the Save button and bail out *before*
+                // we detach data contexts. This keeps the editor state intact
+                // so the user can correct the name. Use a lightweight custom
+                // window so we can position it precisely.
+                try
+                {
+                    // Use the custom-positioned window but styled to look like
+                    // a native MessageBox so we can control exact placement.
+                    ShowMessageWindowAt(Properties.Resources.ActionExists, saveBtn);
+                }
+                catch
+                {
+                    // Fallback to MessageBox if positioning fails for any reason
+                    MessageBox.Show(Properties.Resources.ActionExists);
+                }
+                return;
             }
 
             UnregisterDataContext();
@@ -542,6 +544,150 @@ namespace DS4WinWPF.DS4Forms
             pressKeyVM.ReadSettings(settings);
             pressKeyVM.UpdateDescribeText();
             pressKeyVM.UpdateToggleControls();
+        }
+
+        // Show a transient message window positioned near the given anchor element.
+        // This creates a small modal window with an OK button and positions it
+        // slightly below the anchor (e.g., the Save button).
+        private void ShowMessageWindowAt(string message, FrameworkElement anchor)
+        {
+            // Keep the existing custom window implementation as a fallback.
+            Window owner = Application.Current?.MainWindow;
+
+            Window msgWin = new Window()
+            {
+                Title = string.Empty,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStyle = WindowStyle.SingleBorderWindow,
+                ResizeMode = ResizeMode.NoResize,
+                ShowInTaskbar = false,
+                Topmost = true,
+                Owner = owner,
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                FontFamily = SystemFonts.MessageFontFamily,
+                FontSize = SystemFonts.MessageFontSize
+            };
+
+            var panel = new StackPanel() { Margin = new Thickness(16) };
+            var tb = new TextBlock()
+            {
+                Text = message,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 12),
+                MaxWidth = 420
+            };
+            var okBtn = new Button() { Content = "OK", IsDefault = true, HorizontalAlignment = HorizontalAlignment.Center, MinWidth = 80 };
+            okBtn.Click += (s, e) => msgWin.Close();
+            panel.Children.Add(tb);
+            panel.Children.Add(okBtn);
+            msgWin.Content = panel;
+
+            // Compute screen position for anchor and horizontally center the dialog
+            double centerX = 0, top = 0;
+            try
+            {
+                if (anchor != null)
+                {
+                    var anchorPt = anchor.PointToScreen(new Point(0, 0));
+                    var src = PresentationSource.FromVisual(this);
+                    if (src != null && src.CompositionTarget != null)
+                    {
+                        var transform = src.CompositionTarget.TransformFromDevice;
+                        var dpiPt = transform.Transform(anchorPt);
+                        centerX = dpiPt.X + anchor.ActualWidth / 2.0;
+                        top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
+                    }
+                    else
+                    {
+                        centerX = anchorPt.X + anchor.ActualWidth / 2.0;
+                        top = anchorPt.Y + anchor.ActualHeight + 8;
+                    }
+                }
+                else if (owner != null)
+                {
+                    centerX = owner.Left + 200;
+                    top = owner.Top + 100;
+                }
+            }
+            catch { }
+
+            // Measure content to determine width, then position so dialog is centered
+            panel.Measure(new Size(600, 400));
+            double contentW = panel.DesiredSize.Width;
+            double windowW = contentW + 32; // include margins/chrome approximation
+            msgWin.Left = centerX - windowW / 2.0;
+            msgWin.Top = top;
+
+            msgWin.ShowDialog();
+        }
+
+        // Show a native MessageBox positioned by creating an invisible tiny owner
+        // window located at the desired anchor point. MessageBox centers itself
+        // over its owner, so placing the owner at the anchor makes the MessageBox
+        // appear at that spot while preserving native look-and-feel.
+        private void ShowPositionedMessageBox(string message, FrameworkElement anchor)
+        {
+            // Compute target point (screen coordinates in WPF units)
+            double left = 0, top = 0;
+            try
+            {
+                if (anchor != null)
+                {
+                    var anchorPt = anchor.PointToScreen(new Point(0, 0));
+                    var src = PresentationSource.FromVisual(this);
+                    if (src != null && src.CompositionTarget != null)
+                    {
+                        var transform = src.CompositionTarget.TransformFromDevice;
+                        var dpiPt = transform.Transform(anchorPt);
+                        left = dpiPt.X + anchor.ActualWidth / 2.0; // center anchor horizontally
+                        top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
+                    }
+                    else
+                    {
+                        left = anchorPt.X + anchor.ActualWidth / 2.0;
+                        top = anchorPt.Y + anchor.ActualHeight + 8;
+                    }
+                }
+                else
+                {
+                    var owner = Application.Current?.MainWindow;
+                    if (owner != null)
+                    {
+                        left = owner.Left + 100;
+                        top = owner.Top + 100;
+                    }
+                }
+            }
+            catch { }
+
+            // Create tiny transparent owner window at the computed point
+            var ownerWindow = new Window()
+            {
+                Width = 1,
+                Height = 1,
+                WindowStyle = WindowStyle.None,
+                AllowsTransparency = true,
+                Background = System.Windows.Media.Brushes.Transparent,
+                ShowInTaskbar = false,
+                ResizeMode = ResizeMode.NoResize,
+                Topmost = true,
+                WindowStartupLocation = WindowStartupLocation.Manual
+            };
+
+            // Place owner so its center is at (left, top). Adjust to account for 1x1 size.
+            ownerWindow.Left = left - 0.5;
+            ownerWindow.Top = top - 0.5;
+
+            try
+            {
+                ownerWindow.Show();
+                // Use ownerWindow as owner for native MessageBox
+                MessageBox.Show(ownerWindow, message);
+            }
+            finally
+            {
+                try { ownerWindow.Close(); } catch { }
+            }
         }
     }
 }

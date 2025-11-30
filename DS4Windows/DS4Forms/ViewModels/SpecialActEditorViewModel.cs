@@ -134,10 +134,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             else if (!editMode || savedaction.name != actionName)
             {
                 // Perform existing name check when creating a new action
-                // or if the action name has changed
+                // or if the action name has changed. Use normalized names so
+                // that case/whitespace differences are treated as duplicates.
+                var normNew = DS4Windows.Util.NormalizeActionName(actionName);
                 foreach (SpecialAction sA in Global.GetActions())
                 {
-                    if (sA.name == actionName)
+                    var normExisting = DS4Windows.Util.NormalizeActionName(sA?.name);
+                    if (string.Equals(normExisting, normNew, StringComparison.Ordinal))
                     {
                         valid = false;
                         actionNameErrors.Add("Existing action with name already exists");
