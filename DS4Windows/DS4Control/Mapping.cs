@@ -757,6 +757,9 @@ namespace DS4Windows
         // ★新規追加: actionDone初期化状態管理
         public static volatile bool actionDoneInitialized = false;
         public static readonly object actionDoneLock = new object();
+        // Rate-limit logging for ActionDone size mismatch to avoid log flood
+        private static DateTime lastActionDoneMismatchLog = DateTime.MinValue;
+        private static readonly TimeSpan actionDoneMismatchLogInterval = TimeSpan.FromSeconds(1);
         public static DateTime[] nowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
         public static DateTime[] oldnowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
         public static int[] untriggerindex = new int[Global.MAX_DS4_CONTROLLER_COUNT] { -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -4138,7 +4141,18 @@ namespace DS4Windows
                 if (actionDoneCount != totalActionCount)
                 {
                     // 想定外の状態：ログ出力して処理をスキップ
-                    AppLogger.LogToGui($"ActionDone list size mismatch. Expected: {totalActionCount}, Actual: {actionDoneCount}", false);
+                    // Rate-limit the log to avoid flooding UI/OS when this occurs
+                    try
+                    {
+                        var now = DateTime.UtcNow;
+                        if ((now - lastActionDoneMismatchLog) >= actionDoneMismatchLogInterval)
+                        {
+                            AppLogger.LogToGui($"ActionDone list size mismatch. Expected: {totalActionCount}, Actual: {actionDoneCount}", false);
+                            lastActionDoneMismatchLog = now;
+                        }
+                    }
+                    catch { }
+
                     return;
                 }
 

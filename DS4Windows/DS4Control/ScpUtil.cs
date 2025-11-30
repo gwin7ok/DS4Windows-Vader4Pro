@@ -2749,6 +2749,17 @@ namespace DS4Windows
         public static void SaveAction(string name, string controls, int mode,
             string details, bool edit, double delayTime = 0.0, string extras = "")
         {
+            // Mark actionDone as uninitialized before mutating actions to reduce
+            // the window where MapCustomAction can observe an inconsistent size.
+            try
+            {
+                lock (Mapping.actionDoneLock)
+                {
+                    Mapping.actionDoneInitialized = false;
+                }
+            }
+            catch { }
+
             m_Config.SaveActionNew(name, controls, mode, details, edit, delayTime, extras);
             //m_Config.SaveAction(name, controls, mode, details, edit, extras);
             //m_Config.SaveActions();
@@ -2757,12 +2768,30 @@ namespace DS4Windows
 
         public static void SaveActions()
         {
+            try
+            {
+                lock (Mapping.actionDoneLock)
+                {
+                    Mapping.actionDoneInitialized = false;
+                }
+            }
+            catch { }
+
             m_Config.SaveActions();
             Mapping.InitializeActionDoneList();
         }
 
         public static void RemoveAction(string name)
         {
+            try
+            {
+                lock (Mapping.actionDoneLock)
+                {
+                    Mapping.actionDoneInitialized = false;
+                }
+            }
+            catch { }
+
             m_Config.RemoveAction(name);
             Mapping.InitializeActionDoneList();
         }
