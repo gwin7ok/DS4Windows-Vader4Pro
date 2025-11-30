@@ -259,6 +259,23 @@ namespace DS4WinWPF.DS4Forms
             if (valid)
             {
                 specialActVM.SetAction(tempAct);
+                // Before detaching data contexts and persisting, perform a duplicate-name check
+                if (valid)
+                {
+                    string newName = DS4Windows.Util.NormalizeActionName(specialActVM.ActionName);
+                    string oldName = specialActVM.SavedAction?.name;
+                    string normOld = DS4Windows.Util.NormalizeActionName(oldName);
+                    if (!string.Equals(newName, normOld, StringComparison.Ordinal))
+                    {
+                        var actionsList = DS4Windows.Global.GetActions();
+                        if (actionsList != null && actionsList.Exists(a => DS4Windows.Util.NormalizeActionName(a.name) == newName))
+                        {
+                            // Inform user and do not close the editor
+                            MessageBox.Show(Properties.Resources.ActionExists);
+                            return;
+                        }
+                    }
+                }
                 valid = CheckActionValid(tempAct, typeId);
             }
             else if (specialActVM.ExistingName)

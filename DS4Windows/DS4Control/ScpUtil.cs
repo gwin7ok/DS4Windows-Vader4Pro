@@ -2795,6 +2795,13 @@ namespace DS4Windows
             return sA;
         }
 
+        // Normalize action name for comparisons (centralized helper)
+        public static string NormalizeActionName(string name)
+        {
+            if (name == null) return string.Empty;
+            return name.Trim();
+        }
+
         public static void CalculateProfileActionDicts(int device)
         {
             m_Config.CalculateProfileActionDicts(device);

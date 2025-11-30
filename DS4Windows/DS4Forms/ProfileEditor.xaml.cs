@@ -1916,12 +1916,53 @@ namespace DS4WinWPF.DS4Forms
                 };
                 actEditor.Saved += (sender2, actionName) =>
                 {
-                    DS4Windows.SpecialAction action = DS4Windows.Global.GetAction(actionName);
+                    string oldName = item.SpecialAction?.name;
+                    string newName = actionName;
+
+                    // Update current profile's references from oldName -> newName
+                    try
+                    {
+                        var pa = DS4Windows.Global.ProfileActions; // List<string>[]
+                        if (pa != null && pa.Length > deviceNum && pa[deviceNum] != null)
+                        {
+                            var list = pa[deviceNum];
+                            for (int i = 0; i < list.Count; i++)
+                            {
+                                if (list[i] == oldName)
+                                {
+                                    list[i] = newName;
+                                }
+                            }
+                        }
+                        DS4Windows.Global.CacheExtraProfileInfo(deviceNum);
+                    }
+                    catch { }
+
+                    // Find the item index at runtime (guard against stale captured index)
+                    int idx = specialActionsVM.ActionCol.IndexOf(item);
+                    if (idx < 0)
+                    {
+                        idx = currentIndex;
+                    }
+
+                    DS4Windows.SpecialAction action = DS4Windows.Global.GetAction(newName);
                     SpecialActionItem newitem = specialActionsVM.CreateActionItem(action);
                     newitem.Active = item.Active;
-                    newitem.Index = currentIndex;
-                    specialActionsVM.ActionCol.RemoveAt(currentIndex);
-                    specialActionsVM.ActionCol.Insert(currentIndex, newitem);
+                    newitem.Index = idx;
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (idx >= 0 && idx < specialActionsVM.ActionCol.Count)
+                        {
+                            specialActionsVM.ActionCol.RemoveAt(idx);
+                            specialActionsVM.ActionCol.Insert(idx, newitem);
+                        }
+                        else
+                        {
+                            specialActionsVM.ActionCol.Add(newitem);
+                        }
+                    });
+
                     specialActionDockPanel.Children.Remove(actEditor);
                     baseSpeActPanel.Visibility = Visibility.Visible;
                 };

@@ -2,12 +2,12 @@
     {
         "key": "ctrl+shift+b",
         "command": "workbench.action.tasks.runTask",
-        "args": "build-release-like-github-x64"
+        "args": "Publish: (Release win-x64)"
     },
     {
         "key": "ctrl+shift+alt+b",
         "command": "workbench.action.tasks.runTask",
-        "args": "build-release-like-github-x86"
+        "args": "Publish: (Release win-x64)"
     },
     {
         "key": "ctrl+shift+alt+c",

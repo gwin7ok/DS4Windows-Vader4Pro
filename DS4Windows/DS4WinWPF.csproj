@@ -4,8 +4,8 @@
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows</TargetFramework>
 		<UseWPF>true</UseWPF>
-		<Platforms>x64;x86</Platforms>
-		<RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
+		<Platforms>x64</Platforms>
+		<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
 		<RootNamespace>DS4WinWPF</RootNamespace>
 		<AssemblyName>DS4Windows</AssemblyName>
 		<ApplicationIcon>DS4W.ico</ApplicationIcon>

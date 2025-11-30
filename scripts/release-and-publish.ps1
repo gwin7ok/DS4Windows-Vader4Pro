@@ -46,15 +46,9 @@ if (-not $SkipBuild) {
     if ($DryRun) { Write-Host "[DryRun] pwsh ./scripts/post-build.ps1 ./DS4Windows/bin/x64/Release/net8.0-windows ." }
     else { pwsh -NoProfile -File ./scripts/post-build.ps1 ./DS4Windows/bin/x64/Release/net8.0-windows .; if ($LASTEXITCODE -ne 0) { Write-Error 'post-build x64 failed'; exit 5 } }
 
-    Write-Host "Building x86..."
-    if ($DryRun) { Write-Host "[DryRun] dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:platform=x86 -o ./DS4Windows/bin/x86/Release/net8.0-windows" }
-    else {
-        & dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:platform=x86 -o ./DS4Windows/bin/x86/Release/net8.0-windows
-        if ($LASTEXITCODE -ne 0) { Write-Error 'dotnet publish x86 failed'; exit 6 }
-    }
-    Write-Host "Running post-build for x86..."
-    if ($DryRun) { Write-Host "[DryRun] pwsh ./scripts/post-build.ps1 ./DS4Windows/bin/x86/Release/net8.0-windows ." }
-    else { pwsh -NoProfile -File ./scripts/post-build.ps1 ./DS4Windows/bin/x86/Release/net8.0-windows .; if ($LASTEXITCODE -ne 0) { Write-Error 'post-build x86 failed'; exit 7 } }
+    # x86 build removed: repository no longer produces x86 artifacts.
+    # Previously this script built/published x86 and ran post-build for x86;
+    # that logic has been intentionally removed to keep releases x64-only.
 }
 
 # locate zips (ensure array)

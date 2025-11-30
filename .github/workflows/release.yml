@@ -52,11 +52,6 @@ jobs:
         run: |
           dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:Platform=x64 -o ./artifacts/win-x64
 
-      - name: Publish x86
-        shell: pwsh
-        run: |
-          dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:Platform=x86 -o ./artifacts/win-x86
-
       - name: Package artifacts (post-build)
         shell: pwsh
         run: |
@@ -66,15 +61,9 @@ jobs:
             Write-Host "Running post-build for artifacts/win-x64 ..."
             python ./utils/post-build.py ./artifacts/win-x64 . $v x64
           } else { Write-Warning './artifacts/win-x64 not found; skipping post-build x64' }
-
-          if (Test-Path './artifacts/win-x86') {
-            Write-Host "Running post-build for artifacts/win-x86 ..."
-            python ./utils/post-build.py ./artifacts/win-x86 . $v x86
-          } else { Write-Warning './artifacts/win-x86 not found; skipping post-build x86' }
-
-          # After post-build.py runs it will create ./artifacts/DS4Windows_${v}_<arch>.zip
-          if (-not (Test-Path "./artifacts/DS4Windows_${v}_x64.zip") -and -not (Test-Path "./artifacts/DS4Windows_${v}_x86.zip")) {
-            Write-Error 'Expected zip artifacts not found after post-build'
+          # After post-build.py runs it will create ./artifacts/DS4Windows_${v}_x64.zip
+          if (-not (Test-Path "./artifacts/DS4Windows_${v}_x64.zip")) {
+            Write-Error 'Expected x64 zip artifact not found after post-build'
             exit 1
           }
       - name: Delete existing GitHub Release if present
@@ -111,6 +100,5 @@ jobs:
           body_path: changes.txt
           files: |
             artifacts/DS4Windows_${{ steps.get_version.outputs.version }}_x64.zip
-            artifacts/DS4Windows_${{ steps.get_version.outputs.version }}_x86.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

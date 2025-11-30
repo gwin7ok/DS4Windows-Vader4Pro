@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "publish-release-x64",
+            "label": "Release win-x64",
             "type": "shell",
             "command": "dotnet",
             "args": [
@@ -23,16 +23,16 @@
                 "-File",
                 "./scripts/post-build.ps1",
                 "./DS4Windows/bin/x64/Release/net8.0-windows",
-                "."
+                "./DS4Windows"
             ],
             "group": "build",
-            "dependsOn": "publish-release-x64"
+            "dependsOn": "Release win-x64"
         },
         {
-            "label": "build-release-like-github-x64",
+            "label": "Publish: (Release win-x64)",
             "dependsOrder": "sequence",
             "dependsOn": [
-                "publish-release-x64",
+                "Release win-x64",
                 "post-build-x64"
             ],
             "group": {
