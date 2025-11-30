@@ -182,7 +182,7 @@ public class SpecialActionsListViewModel
         int idx = 0;
         foreach (var actionName in allActionNames)
         {
-            SpecialAction action = Global.GetActions().FirstOrDefault(a => a.name == actionName);
+            SpecialAction action = Global.GetActions().FirstOrDefault(a => string.Equals(a.name, actionName, StringComparison.CurrentCultureIgnoreCase));
             bool isMissing = action == null;
             if (isMissing)
             {

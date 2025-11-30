@@ -4229,7 +4229,9 @@ namespace DS4Windows
             for (int i = 0, actionCount = actions.Count; i < actionCount; i++)
             {
                 SpecialAction sA = actions[i];
-                if (sA.name == name)
+                var normExisting = Util.NormalizeActionName(sA?.name);
+                var normSearch = Util.NormalizeActionName(name);
+                if (string.Equals(normExisting, normSearch, StringComparison.OrdinalIgnoreCase))
                     return sA;
             }
 
@@ -4240,7 +4242,9 @@ namespace DS4Windows
         {
             for (int i = 0, actionCount = actions.Count; i < actionCount; i++)
             {
-                if (actions[i].name == name)
+                var normExisting = Util.NormalizeActionName(actions[i]?.name);
+                var normSearch = Util.NormalizeActionName(name);
+                if (string.Equals(normExisting, normSearch, StringComparison.OrdinalIgnoreCase))
                     return i;
             }
 

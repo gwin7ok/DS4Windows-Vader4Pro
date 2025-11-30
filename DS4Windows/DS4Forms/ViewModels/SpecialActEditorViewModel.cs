@@ -140,7 +140,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 foreach (SpecialAction sA in Global.GetActions())
                 {
                     var normExisting = DS4Windows.Util.NormalizeActionName(sA?.name);
-                    if (string.Equals(normExisting, normNew, StringComparison.Ordinal))
+                    if (string.Equals(normExisting, normNew, StringComparison.OrdinalIgnoreCase))
                     {
                         valid = false;
                         actionNameErrors.Add("Existing action with name already exists");
