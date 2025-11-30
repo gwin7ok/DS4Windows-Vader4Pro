@@ -1890,6 +1890,9 @@ namespace DS4WinWPF.DS4Forms
                 specialActionsVM.ActionCol.Add(newitem);
                 specialActionDockPanel.Children.Remove(actEditor);
                 baseSpeActPanel.Visibility = Visibility.Visible;
+                // After adding a new special action, re-apply the current sort
+                // so the list reflects the user's chosen sort column and order.
+                SortSpecialActionsList(currentSortColumn, currentSortAsc);
                 // Persistence and cache update deferred to Apply/Save to avoid
                 // emitting removed-invalid logs at UI-time.
             };
@@ -1965,6 +1968,10 @@ namespace DS4WinWPF.DS4Forms
 
                     specialActionDockPanel.Children.Remove(actEditor);
                     baseSpeActPanel.Visibility = Visibility.Visible;
+                    // After editing an existing special action, re-apply the
+                    // current sort so any name/type changes are reflected
+                    // according to the current sort column and direction.
+                    SortSpecialActionsList(currentSortColumn, currentSortAsc);
                 };
             }
         }
