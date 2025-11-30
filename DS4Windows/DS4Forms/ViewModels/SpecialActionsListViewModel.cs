@@ -267,13 +267,42 @@ public class SpecialActionsListViewModel
 
     public void RemoveAction(SpecialActionItem item)
     {
-        Global.RemoveAction(item.SpecialAction.name);
+        // Remove from Actions.xml (global actions list)
+        try
+        {
+            Global.RemoveAction(item.SpecialAction.name);
+        }
+        catch { }
+
+        // Also remove any references to this action from the current profile's
+        // ProfileActions for this viewmodel's device, updating cached profile info
+        // immediately so the UI/logic stays consistent.
+        try
+        {
+            var pa = Global.ProfileActions; // List<string>[]
+            if (pa != null && pa.Length > deviceNum && pa[deviceNum] != null)
+            {
+                // Remove entries that match by normalized name (trim + case-insensitive)
+                var list = pa[deviceNum];
+                string target = Global.NormalizeActionName(item.SpecialAction.name);
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    try
+                    {
+                        if (string.Equals(Global.NormalizeActionName(list[i]), target, StringComparison.OrdinalIgnoreCase))
+                        {
+                            list.RemoveAt(i);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            Global.CacheExtraProfileInfo(deviceNum);
+        }
+        catch { }
+
         int itemIndex = item.Index;
         actionCol.RemoveAt(itemIndex);
-
-        // IMPORTANT: Do NOT modify Global.ProfileActions or call CacheExtraProfileInfo here.
-        // The Apply/Save flow is responsible for comparing the previous and new "use" list,
-        // persisting changes and emitting any user-visible logs for removed invalid actions.
     }
 }
 

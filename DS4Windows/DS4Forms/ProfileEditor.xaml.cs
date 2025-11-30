@@ -1419,10 +1419,14 @@ namespace DS4WinWPF.DS4Forms
 
                     var newList = specialActionsVM?.GetEnabledActionNames() ?? new List<string>();
 
-                    var removed = prevList.Except(newList).ToList();
+                    // Perform name normalization (trim) and case-insensitive comparison
+                    var prevNorm = prevList.Select(n => Global.NormalizeActionName(n)).ToList();
+                    var newNorm = newList.Select(n => Global.NormalizeActionName(n)).ToList();
+                    var removed = prevNorm.Except(newNorm, StringComparer.OrdinalIgnoreCase).ToList();
 
                     var actionsXml = Global.GetActions() ?? new List<SpecialAction>();
-                    removedInvalidSpecialActions = removed.Where(name => actionsXml.All(a => a.name != name)).ToList();
+                    var xmlSet = new HashSet<string>(actionsXml.Select(a => Global.NormalizeActionName(a.name)), StringComparer.OrdinalIgnoreCase);
+                    removedInvalidSpecialActions = removed.Where(name => !xmlSet.Contains(name)).ToList();
 
                     // Persist the new list into Global and rebuild cached info before saving file
                     // Global.ProfileActions is an array of List<string> exposed via a read-only
