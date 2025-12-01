@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <!-- Suppress WPF XAML-related false positive errors -->
-    <NoWarn>$(NoWarn);CS0103;CS1061;CS0246;CS0234</NoWarn>
+    <!-- Suppress WPF XAML-related false positive errors and CsWin32 design-time diagnostics -->
+    <!-- Moved diagnostic suppression to .editorconfig (editor-level) per repository policy. -->
     <WarningsAsErrors />
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Versioning: set the project's canonical version here. -->

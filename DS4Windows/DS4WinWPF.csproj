@@ -29,10 +29,15 @@
 		<PackageProjectUrl>https://schmaldeo.github.io/DS4WindowsDocs</PackageProjectUrl>
 		<PackageLicenseUrl>https://www.gnu.org/licenses/gpl-3.0.txt</PackageLicenseUrl>
 		<RepositoryUrl>https://github.com/gwin7ok/DS4Windows-Vader4Pro</RepositoryUrl>
-		<!-- Suppress WPF-related false positive errors -->
-		<NoWarn>$(NoWarn);CS0103;CS1061;CS0246;CS0234</NoWarn>
-		<WarningsAsErrors />
-		<WarningsNotAsErrors>CS0103;CS1061;CS0246;CS0234</WarningsNotAsErrors>
+		<!-- Suppress WPF-related false positive errors (project-only) -->
+		<NoWarn>$(NoWarn);CS0103;CS0122;CS1061;CS0246;CS0234</NoWarn>
+
+		<!-- Force generated editorconfig to a project-local file so generated wpftmp files
+		     do not override repository-level suppressions. This makes the generated
+		     editorconfig stable and manageable by the project. -->
+		<GeneratedMSBuildEditorConfigFile>$(MSBuildProjectDirectory)\DS4WinWPF.GeneratedMSBuildEditorConfig.editorconfig</GeneratedMSBuildEditorConfigFile>
+
+		
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -420,5 +425,28 @@
 	  <ItemGroup>
 	    <Compile Remove="**/*.cs" />
 	  </ItemGroup>
+	</Target>
+
+	<!-- Ensure generated editorconfig used by IDE includes our project-level suppressions
+	     This appends suppression lines to the GeneratedMSBuildEditorConfig.editorconfig
+	     after MSBuild writes it, so OmniSharp/Roslyn will see the same suppressions
+	     during design-time evaluations and after builds. -->
+	<Target Name="AppendSuppressionToGeneratedEditorConfig" AfterTargets="GenerateMSBuildEditorConfigFileCore;Build">
+	  <ItemGroup>
+	    <_SuppressLines Include="dotnet_diagnostic.CS0103.severity = none" />
+	    <_SuppressLines Include="dotnet_diagnostic.CS0122.severity = none" />
+	    <_SuppressLines Include="dotnet_diagnostic.CS0234.severity = none" />
+	    <_SuppressLines Include="dotnet_diagnostic.CS0246.severity = none" />
+	    <_SuppressLines Include="dotnet_diagnostic.CS1061.severity = none" />
+	  </ItemGroup>
+	  <!-- If the generated file exists, read its lines and write back combined content (preserve existing and avoid duplicates by overwriting with merged lines). -->
+	  <ReadLinesFromFile Condition="Exists('$(GeneratedMSBuildEditorConfigFile)')" File="$(GeneratedMSBuildEditorConfigFile)">
+	    <Output TaskParameter="Lines" ItemName="_ExistingLines" />
+	  </ReadLinesFromFile>
+	  <ItemGroup>
+	    <_MergedLines Include="@(_ExistingLines)" />
+	    <_MergedLines Include="@(_SuppressLines)" />
+	  </ItemGroup>
+	  <WriteLinesToFile File="$(GeneratedMSBuildEditorConfigFile)" Lines="@(_MergedLines)" Overwrite="true" Encoding="utf-8" />
 	</Target>
 </Project>
