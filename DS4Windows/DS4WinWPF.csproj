@@ -5,6 +5,10 @@
 		<TargetFramework>net8.0-windows</TargetFramework>
 		<UseWPF>true</UseWPF>
 		<Platforms>x64</Platforms>
+		<!-- Force build Platform to x64 to avoid AnyCPU/AnyCPU temporary wpftmp projects
+		     resolving libs\AnyCPU paths during design-time builds. -->
+		<Platform>x64</Platform>
+		<PlatformTarget>x64</PlatformTarget>
 		<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
 		<RootNamespace>DS4WinWPF</RootNamespace>
 		<AssemblyName>DS4Windows</AssemblyName>
@@ -96,11 +100,11 @@
 		<PackageReference Include="WpfScreenHelper" Version="2.1.0" />
 
 		<Reference Include="SharpOSC">
-			<HintPath>..\libs\$(Platform)\SharpOSC\SharpOSC.dll</HintPath>
+			<HintPath>libs\x64\SharpOSC\SharpOSC.dll</HintPath>
 		</Reference>
 
 		<Reference Include="Nefarius.ViGEm.Client">
-			<HintPath>..\libs\$(Platform)\Nefarius.ViGEm.Client\Nefarius.ViGEm.Client.dll</HintPath>
+			<HintPath>libs\x64\Nefarius.ViGEm.Client\Nefarius.ViGEm.Client.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 
@@ -388,7 +392,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="libs\$(Platform)\FakerInputWrapper\FakerInputDll.dll">
+		<None Update="libs\x64\FakerInputWrapper\FakerInputDll.dll">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<Link>FakerInputDll.dll</Link>
 		</None>
@@ -407,7 +411,7 @@
 
 	<ItemGroup>
 		<Reference Include="FakerInputWrapper">
-			<HintPath>..\FakerInputWrapper\FakerInputWrapper\bin\x64\Debug\net8.0\FakerInputWrapper.dll</HintPath>
+			<HintPath>libs\x64\FakerInputWrapper\FakerInputWrapper.dll</HintPath>
 		</Reference>
 	</ItemGroup>
 
