@@ -2,7 +2,7 @@
 build_property.CsWin32InputMetadataPaths = C:\Users\naoki\.nuget\packages\microsoft.windows.sdk.win32metadata\60.0.34-preview\Windows.Win32.winmd|C:\Users\naoki\.nuget\packages\microsoft.windows.wdk.win32metadata\0.11.4-experimental\Windows.Wdk.winmd
 build_property.CsWin32InputDocPaths = C:\Users\naoki\.nuget\packages\microsoft.windows.sdk.win32docs\0.1.42-alpha\apidocs.msgpack
 build_property.RootNamespace = DS4WinWPF
-build_property.ProjectDir = G:\Cursor_Folder\DS4Windows-Vader4Pro\DS4Windows\
+build_property.ProjectDir = g:\Cursor_Folder\DS4Windows-Vader4Pro\DS4Windows\
 build_property.EnableComHosting =
 build_property.EnableGeneratedComInterfaceComImportInterop =
 build_property.CsWinRTUseWindowsUIXamlProjections = false
