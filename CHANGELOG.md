@@ -2,6 +2,18 @@
 
 All notable changes to this project are recorded in this file.
 
+## [3.11.4] - 2025-12-09
+
+Features / UI
+- (e768ac1c) Change special action save/delete key from index to action name; add duplicate name check on save to prevent duplicate special actions from appearing in the list.
+- (6e208281) Sort special action list after saving changes (new/edit) to maintain consistent ordering.
+- (afd07be9) Fix issue where editing special actions while a controller is connected caused continuous "ActionDone list size mismatch" output and system slowdown.
+- (bdca5fad) Normalize special action names and use case-insensitive comparison; update current profile references when deleting actions.
+
+Bug fixes / Build improvements
+- (6dec4505) Fix build errors and warnings; limit to x64 platform and remove duplicate Russian language file registration.
+- (b906590a) Suppress error display in Problems tab for issues that don't occur at build stage.
+
 ## [3.11.3] - 2025-11-12
 
 Features / UI
