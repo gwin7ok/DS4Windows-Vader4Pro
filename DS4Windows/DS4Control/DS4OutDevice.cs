@@ -36,9 +36,15 @@ namespace DS4Windows
         public const string devtype = "DS4";
 
         public IDualShock4Controller cont;
+        // The ViGEm event types are marked obsolete in newer client versions.
+        // Suppress obsolete warnings here while keeping compatibility with the
+        // current usage pattern. Consider migrating to AwaitRawOutputReport()
+        // in a future refactor.
+    #pragma warning disable CS0618
         //public DualShock4FeedbackReceivedEventHandler forceFeedbackCall;
-        public Dictionary<int, DualShock4FeedbackReceivedEventHandler> forceFeedbacksDict =
-            new Dictionary<int, DualShock4FeedbackReceivedEventHandler>();
+        public System.Collections.Generic.Dictionary<int, Nefarius.ViGEm.Client.Targets.DualShock4.DualShock4FeedbackReceivedEventHandler> forceFeedbacksDict =
+            new System.Collections.Generic.Dictionary<int, Nefarius.ViGEm.Client.Targets.DualShock4.DualShock4FeedbackReceivedEventHandler>();
+    #pragma warning restore CS0618
 
         protected bool canUseAwaitOutputBuffer = false;
         public bool CanUseAwaitOutputBuffer => canUseAwaitOutputBuffer;
@@ -69,21 +75,25 @@ namespace DS4Windows
 
         public override void RemoveFeedbacks()
         {
-            foreach (KeyValuePair<int, DualShock4FeedbackReceivedEventHandler> pair in forceFeedbacksDict)
+#pragma warning disable CS0618
+            foreach (System.Collections.Generic.KeyValuePair<int, Nefarius.ViGEm.Client.Targets.DualShock4.DualShock4FeedbackReceivedEventHandler> pair in forceFeedbacksDict)
             {
                 cont.FeedbackReceived -= pair.Value;
             }
 
             forceFeedbacksDict.Clear();
+#pragma warning restore CS0618
         }
 
         public override void RemoveFeedback(int inIdx)
         {
-            if (forceFeedbacksDict.TryGetValue(inIdx, out DualShock4FeedbackReceivedEventHandler handler))
+#pragma warning disable CS0618
+            if (forceFeedbacksDict.TryGetValue(inIdx, out Nefarius.ViGEm.Client.Targets.DualShock4.DualShock4FeedbackReceivedEventHandler handler))
             {
                 cont.FeedbackReceived -= handler;
                 forceFeedbacksDict.Remove(inIdx);
             }
+#pragma warning restore CS0618
         }
 
         public virtual void StartOutputBufferThread()
