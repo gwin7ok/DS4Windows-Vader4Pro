@@ -48,7 +48,8 @@
             "args": [
                 "-NoProfile",
                 "-File",
-                "./scripts/release-tag.ps1"
+                "./scripts/release-tag.ps1",
+                "-WithV"
             ],
             "presentation": {
                 "reveal": "always",
