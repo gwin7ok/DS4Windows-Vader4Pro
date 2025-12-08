@@ -104,13 +104,11 @@
 		<PackageReference Include="WPFLocalizeExtension" Version="3.9.4" />
 		<PackageReference Include="WpfScreenHelper" Version="2.1.0" />
 
+		<!-- Use local SharpOSC binary for compatibility; submodule added at libs/SharpOSC for source. -->
 		<Reference Include="SharpOSC">
 			<HintPath>libs\x64\SharpOSC\SharpOSC.dll</HintPath>
 		</Reference>
 
-		<Reference Include="Nefarius.ViGEm.Client">
-			<HintPath>libs\x64\Nefarius.ViGEm.Client\Nefarius.ViGEm.Client.dll</HintPath>
-		</Reference>
 	</ItemGroup>
 
 	<!-- Apparently the None tags are needed as well as the Resource tags.
