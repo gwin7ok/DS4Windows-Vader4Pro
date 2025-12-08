@@ -40,11 +40,13 @@ namespace DS4Windows
         // Suppress obsolete warnings here while keeping compatibility with the
         // current usage pattern. Consider migrating to AwaitRawOutputReport()
         // in a future refactor.
-    #pragma warning disable CS0618
-        //public DualShock4FeedbackReceivedEventHandler forceFeedbackCall;
-        public System.Collections.Generic.Dictionary<int, Nefarius.ViGEm.Client.Targets.DualShock4.DualShock4FeedbackReceivedEventHandler> forceFeedbacksDict =
-            new System.Collections.Generic.Dictionary<int, Nefarius.ViGEm.Client.Targets.DualShock4.DualShock4FeedbackReceivedEventHandler>();
-    #pragma warning restore CS0618
+            // Store handlers as System.Delegate to avoid directly referencing obsolete
+            // delegate types in source; removal/addition will use dynamic dispatch
+            // so the runtime will perform the correct event unsubscribe with the
+            // actual delegate instance. This is a compatibility shim while we
+            // transition to AwaitRawOutputReport() in the future.
+            public System.Collections.Generic.Dictionary<int, System.Delegate> forceFeedbacksDict =
+                new System.Collections.Generic.Dictionary<int, System.Delegate>();
 
         protected bool canUseAwaitOutputBuffer = false;
         public bool CanUseAwaitOutputBuffer => canUseAwaitOutputBuffer;
@@ -75,25 +77,25 @@ namespace DS4Windows
 
         public override void RemoveFeedbacks()
         {
-#pragma warning disable CS0618
-            foreach (System.Collections.Generic.KeyValuePair<int, Nefarius.ViGEm.Client.Targets.DualShock4.DualShock4FeedbackReceivedEventHandler> pair in forceFeedbacksDict)
+            foreach (System.Collections.Generic.KeyValuePair<int, System.Delegate> pair in forceFeedbacksDict)
             {
-                cont.FeedbackReceived -= pair.Value;
+                // Use dynamic to perform runtime event unsubscribe with the
+                // original delegate instance without referencing obsolete types.
+                dynamic d = pair.Value;
+                cont.FeedbackReceived -= d;
             }
 
             forceFeedbacksDict.Clear();
-#pragma warning restore CS0618
         }
 
         public override void RemoveFeedback(int inIdx)
         {
-#pragma warning disable CS0618
-            if (forceFeedbacksDict.TryGetValue(inIdx, out Nefarius.ViGEm.Client.Targets.DualShock4.DualShock4FeedbackReceivedEventHandler handler))
+            if (forceFeedbacksDict.TryGetValue(inIdx, out System.Delegate handler))
             {
-                cont.FeedbackReceived -= handler;
+                dynamic d = handler;
+                cont.FeedbackReceived -= d;
                 forceFeedbacksDict.Remove(inIdx);
             }
-#pragma warning restore CS0618
         }
 
         public virtual void StartOutputBufferThread()
