@@ -547,6 +547,7 @@ namespace DS4WinWPF
                         {
                             MainWindow.Show();
                             MainWindow.WindowState = WindowState.Normal;
+                            MainWindow.Activate();
                         }));
                     }
                 }
