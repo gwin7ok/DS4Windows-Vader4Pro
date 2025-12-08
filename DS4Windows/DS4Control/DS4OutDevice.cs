@@ -82,7 +82,9 @@ namespace DS4Windows
                 // Use dynamic to perform runtime event unsubscribe with the
                 // original delegate instance without referencing obsolete types.
                 dynamic d = pair.Value;
+#pragma warning disable CS0618
                 cont.FeedbackReceived -= d;
+#pragma warning restore CS0618
             }
 
             forceFeedbacksDict.Clear();
@@ -93,7 +95,9 @@ namespace DS4Windows
             if (forceFeedbacksDict.TryGetValue(inIdx, out System.Delegate handler))
             {
                 dynamic d = handler;
+#pragma warning disable CS0618
                 cont.FeedbackReceived -= d;
+#pragma warning restore CS0618
                 forceFeedbacksDict.Remove(inIdx);
             }
         }
