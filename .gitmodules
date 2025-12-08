@@ -1,0 +1,3 @@
+[submodule "externals/SharpOSC"]
+	path = externals/SharpOSC
+	url = https://github.com/ValdemarOrn/SharpOSC
