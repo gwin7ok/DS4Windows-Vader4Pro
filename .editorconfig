@@ -1,3 +1,10 @@
+# EditorConfig is used by Roslyn/OmniSharp to control analyzer severities
+root = true
+
+[*.cs]
+# Suppress 'The name '...' does not exist in the current context' editor diagnostic
+# This hides CS0103 from the Problems pane produced by editor analyzers (OmniSharp/Roslyn).
+dotnet_diagnostic.CS0103.severity = none
 root = true
 
 [*.cs]
