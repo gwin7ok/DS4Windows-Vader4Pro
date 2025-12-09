@@ -239,10 +239,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                                 
                                 if (item.SelectedIndex != newIndex)
                                 {
-                                    // Temporarily unhook to avoid triggering ChangeSelectedProfile
-                                    item.HookEvents(false);
+                                    // Suppress SelectedIndexChanged event to avoid triggering SelectProfCombo_SelectionChanged
+                                    item.suppressSelectedIndexChanged = true;
                                     item.SelectedIndex = newIndex;
-                                    item.HookEvents(true);
+                                    item.suppressSelectedIndexChanged = false;
                                     AppLogger.LogDebug($"Global_SelectedProfileChanged: Updated SelectedIndex to {newIndex}");
                                 }
                             }
@@ -286,6 +286,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private ProfileList profileListHolder;
         private ProfileEntity selectedEntity;
         private int selectedIndex = -1;
+        internal bool suppressSelectedIndexChanged = false; // SelectedIndexChanged イベント抑制フラグ（Global_SelectedProfileChangedからアクセス可能）
         private int devIndex;
 
         public DS4Device Device { get => device; set => device = value; }
@@ -339,7 +340,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (selectedIndex == value) return;
                 selectedIndex = value;
-                SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
+                if (!suppressSelectedIndexChanged)
+                {
+                    SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
         public event EventHandler SelectedIndexChanged;
