@@ -611,6 +611,18 @@ namespace DS4Windows
             set { m_Config.controllerEditColWidth = value; }
             get { return m_Config.controllerEditColWidth; }
         }
+
+        public static int ControllerLinkedProfileColWidth
+        {
+            set { m_Config.controllerLinkedProfileColWidth = value; }
+            get { return m_Config.controllerLinkedProfileColWidth; }
+        }
+
+        public static int ControllerLinkProfIdColWidth
+        {
+            set { m_Config.controllerLinkProfIdColWidth = value; }
+            get { return m_Config.controllerLinkProfIdColWidth; }
+        }
         public static int ControllerCustomColorColWidth
         {
             set { m_Config.controllerCustomColorColWidth = value; }
@@ -3687,14 +3699,16 @@ namespace DS4Windows
 
     // Controller tab column widths
     public const int DEFAULT_CONTROLLER_INDEX_COL_WIDTH = 30;
-    public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = 120;
+    public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = 250;
     public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = 65;
     public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = 65;
-    public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = 105;
-    public const int DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH = 140;
-    public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = 250;
-    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = 100;
-    public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = 150;
+    public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = 100;
+    public const int DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH = 210;
+    public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = 220;
+    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = 75;
+    public const int DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH = 220;
+    public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = 130;
+    public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = 160;
 
     public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
     public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
@@ -3711,6 +3725,8 @@ namespace DS4Windows
     public int controllerLinkProfColWidth = DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
     public int controllerSelectProfileColWidth = DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
     public int controllerEditColWidth = DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+    public int controllerLinkedProfileColWidth = DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+    public int controllerLinkProfIdColWidth = DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
     public int controllerCustomColorColWidth = DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
         public const double DEFAULT_UDP_SMOOTH_MINCUTOFF = 0.4;
         public const double DEFAULT_UDP_SMOOTH_BETA = 0.2;
@@ -8070,6 +8086,10 @@ namespace DS4Windows
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerEditColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerEditColWidth); }
                     catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerLinkedProfileColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerLinkedProfileColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerLinkProfIdColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerLinkProfIdColWidth); }
+                    catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerCustomColorColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerCustomColorColWidth); }
                     catch { missingSetting = true; }
 
@@ -8469,6 +8489,8 @@ namespace DS4Windows
             XmlNode xmlControllerLinkProfColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerLinkProfColWidth", null); xmlControllerLinkProfColWidth.InnerText = controllerLinkProfColWidth.ToString(); rootElement.AppendChild(xmlControllerLinkProfColWidth);
             XmlNode xmlControllerSelectProfileColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerSelectProfileColWidth", null); xmlControllerSelectProfileColWidth.InnerText = controllerSelectProfileColWidth.ToString(); rootElement.AppendChild(xmlControllerSelectProfileColWidth);
             XmlNode xmlControllerEditColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerEditColWidth", null); xmlControllerEditColWidth.InnerText = controllerEditColWidth.ToString(); rootElement.AppendChild(xmlControllerEditColWidth);
+            XmlNode xmlControllerLinkedProfileColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerLinkedProfileColWidth", null); xmlControllerLinkedProfileColWidth.InnerText = controllerLinkedProfileColWidth.ToString(); rootElement.AppendChild(xmlControllerLinkedProfileColWidth);
+            XmlNode xmlControllerLinkProfIdColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerLinkProfIdColWidth", null); xmlControllerLinkProfIdColWidth.InnerText = controllerLinkProfIdColWidth.ToString(); rootElement.AppendChild(xmlControllerLinkProfIdColWidth);
             XmlNode xmlControllerCustomColorColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerCustomColorColWidth", null); xmlControllerCustomColorColWidth.InnerText = controllerCustomColorColWidth.ToString(); rootElement.AppendChild(xmlControllerCustomColorColWidth);
 
             for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)

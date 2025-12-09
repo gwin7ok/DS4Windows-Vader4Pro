@@ -1866,34 +1866,36 @@ Suspend support not enabled.", true);
         private void SaveControllerColumnWidths()
         {
             var gridView = controllerLV.View as GridView;
-            if (gridView != null && gridView.Columns.Count >= 9)
+            if (gridView != null && gridView.Columns.Count >= 10)
             {
                 Global.ControllerIndexColWidth = (int)gridView.Columns[0].Width;
                 Global.ControllerIdColWidth = (int)gridView.Columns[1].Width;
                 Global.ControllerStatusColWidth = (int)gridView.Columns[2].Width;
                 Global.ControllerExclusiveColWidth = (int)gridView.Columns[3].Width;
                 Global.ControllerBatteryColWidth = (int)gridView.Columns[4].Width;
-                Global.ControllerLinkProfColWidth = (int)gridView.Columns[5].Width;
-                Global.ControllerSelectProfileColWidth = (int)gridView.Columns[6].Width;
-                Global.ControllerEditColWidth = (int)gridView.Columns[7].Width;
-                Global.ControllerCustomColorColWidth = (int)gridView.Columns[8].Width;
+                Global.ControllerSelectProfileColWidth = (int)gridView.Columns[5].Width;
+                Global.ControllerEditColWidth = (int)gridView.Columns[6].Width;
+                Global.ControllerLinkedProfileColWidth = (int)gridView.Columns[7].Width;
+                Global.ControllerLinkProfIdColWidth = (int)gridView.Columns[8].Width;
+                Global.ControllerCustomColorColWidth = (int)gridView.Columns[9].Width;
             }
         }
 
         private void RestoreControllerColumnWidths()
         {
             var gridView = controllerLV.View as GridView;
-            if (gridView != null && gridView.Columns.Count >= 9)
+            if (gridView != null && gridView.Columns.Count >= 10)
             {
                 gridView.Columns[0].Width = Global.ControllerIndexColWidth;
                 gridView.Columns[1].Width = Global.ControllerIdColWidth;
                 gridView.Columns[2].Width = Global.ControllerStatusColWidth;
                 gridView.Columns[3].Width = Global.ControllerExclusiveColWidth;
                 gridView.Columns[4].Width = Global.ControllerBatteryColWidth;
-                gridView.Columns[5].Width = Global.ControllerLinkProfColWidth;
-                gridView.Columns[6].Width = Global.ControllerSelectProfileColWidth;
-                gridView.Columns[7].Width = Global.ControllerEditColWidth;
-                gridView.Columns[8].Width = Global.ControllerCustomColorColWidth;
+                gridView.Columns[5].Width = Global.ControllerSelectProfileColWidth;
+                gridView.Columns[6].Width = Global.ControllerEditColWidth;
+                gridView.Columns[7].Width = Global.ControllerLinkedProfileColWidth;
+                gridView.Columns[8].Width = Global.ControllerLinkProfIdColWidth;
+                gridView.Columns[9].Width = Global.ControllerCustomColorColWidth;
             }
         }
 

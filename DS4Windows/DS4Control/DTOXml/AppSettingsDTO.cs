@@ -92,6 +92,12 @@ public class AppSettingsDTO
     [XmlElement("controllerEditColWidth")]
     public int ControllerEditColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
 
+    [XmlElement("controllerLinkedProfileColWidth")]
+    public int ControllerLinkedProfileColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+
+    [XmlElement("controllerLinkProfIdColWidth")]
+    public int ControllerLinkProfIdColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
+
     [XmlElement("controllerCustomColorColWidth")]
     public int ControllerCustomColorColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
@@ -863,6 +869,8 @@ public class AppSettingsDTO
             ControllerLinkProfColWidth = source.controllerLinkProfColWidth > 0 ? source.controllerLinkProfColWidth : BackingStore.DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
             ControllerSelectProfileColWidth = source.controllerSelectProfileColWidth > 0 ? source.controllerSelectProfileColWidth : BackingStore.DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
             ControllerEditColWidth = source.controllerEditColWidth > 0 ? source.controllerEditColWidth : BackingStore.DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+            ControllerLinkedProfileColWidth = source.controllerLinkedProfileColWidth > 0 ? source.controllerLinkedProfileColWidth : BackingStore.DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+            ControllerLinkProfIdColWidth = source.controllerLinkProfIdColWidth > 0 ? source.controllerLinkProfIdColWidth : BackingStore.DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
             ControllerCustomColorColWidth = source.controllerCustomColorColWidth > 0 ? source.controllerCustomColorColWidth : BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
             // ルート属性に現在のアプリ/設定バージョンをセット（シリアライザで属性として出力される）
@@ -983,6 +991,8 @@ public class AppSettingsDTO
             destination.controllerLinkProfColWidth = ControllerLinkProfColWidth > 0 ? ControllerLinkProfColWidth : BackingStore.DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
             destination.controllerSelectProfileColWidth = ControllerSelectProfileColWidth > 0 ? ControllerSelectProfileColWidth : BackingStore.DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
             destination.controllerEditColWidth = ControllerEditColWidth > 0 ? ControllerEditColWidth : BackingStore.DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+            destination.controllerLinkedProfileColWidth = ControllerLinkedProfileColWidth > 0 ? ControllerLinkedProfileColWidth : BackingStore.DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+            destination.controllerLinkProfIdColWidth = ControllerLinkProfIdColWidth > 0 ? ControllerLinkProfIdColWidth : BackingStore.DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
             destination.controllerCustomColorColWidth = ControllerCustomColorColWidth > 0 ? ControllerCustomColorColWidth : BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
             destination.useExclusiveMode = UseExclusiveMode;
