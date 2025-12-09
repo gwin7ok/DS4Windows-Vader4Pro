@@ -2107,10 +2107,13 @@ namespace DS4Windows
                     // LinkedProfiles.xmlは参照しない
                 }
 
-                ProfilePath[index] = Global.SelectedProfile[index];
-
-                // Now attempt to load requested profile and settings
-                profileLoaded = LoadProfile(index, false, this, false, false);
+                // Apply profile using common method (handles data update, logging, and UI notification)
+                string profileToApply = Global.SelectedProfile[index];
+                string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (index + 1).ToString(), profileToApply, "N/A");
+                bool display = Global.ProfileChangedNotification;
+                
+                profileLoaded = Global.ApplyProfile(index, profileToApply, false, false, this,
+                    DS4Windows.ProfileChangeSource.ControlService, prolog, display);
             }
 
             if (profileLoaded || useAutoProfile)
@@ -2682,34 +2685,13 @@ namespace DS4Windows
                     // Only send Log message when device is considered a primary device
                     if (device.PrimaryDevice)
                     {
-                        // 実際に使用されているプロファイル名を取得
-                        string actualProfile = Global.useTempProfile[ind] ? Global.tempprofilename[ind] : ProfilePath[ind];
-
+                        // Emit missing-action logs once per profile-apply (respect suppression).
+                        // Note: Profile logging is already done by ApplyProfile in PrepareConnectedInputControllerSettingEvents
                         if (File.Exists(Path.Combine(appdatapath, "Profiles", $"{ProfilePath[ind]}.xml")))
                         {
-                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (ind + 1).ToString(), actualProfile, $"{device.Battery}");
-                            try
-                            {
-                                bool display = Global.ProfileChangedNotification;
-                                AppLogger.LogProfileChanged(ind, actualProfile, Global.useTempProfile[ind], DS4Windows.ProfileChangeSource.ControlService, prolog, DateTime.UtcNow, display);
-                            }
-                            catch { }
-                            // Ensure profile action dictionaries are evaluated at the moment
-                            // the profile is actually applied to the controller (first report).
-                            // Emit missing-action logs once per profile-apply (respect suppression).
                             try
                             {
                                 Global.store.EmitMissingActionLogsForDevice(ind, false);
-                            }
-                            catch { }
-                        }
-                        else
-                        {
-                            string prolog = string.Format(DS4WinWPF.Properties.Resources.NotUsingProfile, (ind + 1).ToString(), $"{device.Battery}");
-                            try
-                            {
-                                bool display = Global.ProfileChangedNotification;
-                                AppLogger.LogProfileChanged(ind, string.Empty, false, DS4Windows.ProfileChangeSource.ControlService, prolog, DateTime.UtcNow, display);
                             }
                             catch { }
                         }

@@ -108,27 +108,27 @@ namespace DS4WinWPF
                                 if (autoProfileDebugLogLevel > 0)
                                     DS4Windows.AppLogger.LogToGui($"DEBUG: Auto-Profile. LoadProfile Controller {j + 1}={tempname}", false, true);
 
-                                if (Global.autoProfileSwitchNotifyChoice !=
-                                    AutoProfileDisplayProfileSwitchChoices.None)
-                                {
-                                    DisplayProfileChange(j, tempname);
-                                }
-
                                 DS4Device device = Program.rootHub.DS4Controllers[j];
+                                string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingAutoTempProfile, (j + 1).ToString(), tempname);
+                                bool display = (Global.autoProfileSwitchNotifyChoice == AutoProfileDisplayProfileSwitchChoices.Notification ||
+                                                Global.autoProfileSwitchNotifyChoice == AutoProfileDisplayProfileSwitchChoices.LogAndNotification);
+
                                 if (device != null)
                                 {
                                     // Wait for controller to be in a wait period
                                     int tempInd = j;
                                     device.HaltReportingRunAction(() =>
                                     {
-                                        Global.LoadTempProfile(tempInd, tempname, true, Program.rootHub); // j is controller index, i is filename
-                                                                                                            // if (LaunchProgram[j] != string.Empty) Process.Start(LaunchProgram[j]);
+                                        // Use common ApplyProfile method
+                                        Global.ApplyProfile(tempInd, tempname, true, true, Program.rootHub,
+                                            DS4Windows.ProfileChangeSource.AutoProfile, prolog, display);
                                     });
                                 }
                                 else
                                 {
-                                    Global.LoadTempProfile(j, tempname, true, Program.rootHub); // j is controller index, i is filename
-                                                                                                    // if (LaunchProgram[j] != string.Empty) Process.Start(LaunchProgram[j]);
+                                    // Use common ApplyProfile method
+                                    Global.ApplyProfile(j, tempname, true, true, Program.rootHub,
+                                        DS4Windows.ProfileChangeSource.AutoProfile, prolog, display);
                                 }
                             }
                             else
@@ -177,11 +177,10 @@ namespace DS4WinWPF
                                 if (autoProfileDebugLogLevel > 0)
                                     DS4Windows.AppLogger.LogToGui($"DEBUG: Auto-Profile. Unknown process. Reverting to default profile. Controller {j + 1}={Global.ProfilePath[j]} (default)", false, true);
 
-                                if (Global.autoProfileSwitchNotifyChoice !=
-                                    AutoProfileDisplayProfileSwitchChoices.None)
-                                {
-                                    DisplayProfileChange(j, "default");
-                                }
+                                string defaultProfile = Global.ProfilePath[j];
+                                string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (j + 1).ToString(), defaultProfile, "N/A");
+                                bool display = (Global.autoProfileSwitchNotifyChoice == AutoProfileDisplayProfileSwitchChoices.Notification ||
+                                                Global.autoProfileSwitchNotifyChoice == AutoProfileDisplayProfileSwitchChoices.LogAndNotification);
 
                                 DS4Device device = Program.rootHub.DS4Controllers[j];
                                 if (device != null)
@@ -190,12 +189,16 @@ namespace DS4WinWPF
                                     int tempInd = j;
                                     device.HaltReportingRunAction(() =>
                                     {
-                                        Global.LoadProfile(tempInd, false, Program.rootHub);
+                                        // Use common ApplyProfile method
+                                        Global.ApplyProfile(tempInd, defaultProfile, false, false, Program.rootHub,
+                                            DS4Windows.ProfileChangeSource.AutoProfile, prolog, display);
                                     });
                                 }
                                 else
                                 {
-                                    Global.LoadProfile(j, false, Program.rootHub);
+                                    // Use common ApplyProfile method
+                                    Global.ApplyProfile(j, defaultProfile, false, false, Program.rootHub,
+                                        DS4Windows.ProfileChangeSource.AutoProfile, prolog, display);
                                 }
                             }
                             else

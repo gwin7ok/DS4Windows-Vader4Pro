@@ -2783,6 +2783,70 @@ namespace DS4Windows
             SelectedProfileChanged?.Invoke(null, new SelectedProfileChangedEventArgs(deviceIndex, profileName));
         }
 
+        /// <summary>
+        /// プロファイル適用の共通メソッド。データ更新、ログ出力、UI通知を一箇所で行う。
+        /// </summary>
+        /// <param name="device">デバイスインデックス</param>
+        /// <param name="profileName">適用するプロファイル名</param>
+        /// <param name="isTemp">一時プロファイルかどうか</param>
+        /// <param name="launchProgram">プログラム起動を行うか</param>
+        /// <param name="control">ControlServiceインスタンス</param>
+        /// <param name="source">プロファイル変更元</param>
+        /// <param name="prolog">ログメッセージのプロローグ（nullの場合は自動生成）</param>
+        /// <param name="displayNotification">通知を表示するか</param>
+        /// <returns>プロファイル読み込み成功したか</returns>
+        public static bool ApplyProfile(int device, string profileName, bool isTemp, bool launchProgram,
+            ControlService control, ProfileChangeSource source, string prolog = null, bool displayNotification = true)
+        {
+            bool result;
+            
+            // プロファイル読み込み
+            if (isTemp)
+            {
+                result = LoadTempProfile(device, profileName, launchProgram, control);
+            }
+            else
+            {
+                // 通常プロファイルの場合、ProfilePathを更新してからLoadProfile
+                ProfilePath[device] = profileName;
+                result = LoadProfile(device, launchProgram, control);
+            }
+
+            if (result)
+            {
+                // SelectedProfile を更新（UI表示用）
+                SelectedProfile[device] = profileName;
+                
+                // 通常プロファイルの場合のみ OlderProfilePath を更新
+                // 一時プロファイル（Auto Profile、スペシャルアクション）の場合は
+                // デフォルトプロファイルを保持するため更新しない
+                if (!isTemp)
+                {
+                    OlderProfilePath[device] = profileName;
+                }
+
+                // ログ出力（ここで1回のみ）
+                if (prolog == null)
+                {
+                    // デバイス情報からプロローグを生成
+                    DS4Device ds4Device = control.DS4Controllers[device];
+                    string battery = ds4Device != null ? $"{ds4Device.Battery}" : "N/A";
+                    prolog = $"Controller {device + 1} is now using Profile \"{profileName}\" (Battery: {battery}%)";
+                }
+
+                try
+                {
+                    AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow, displayNotification);
+                }
+                catch { }
+
+                // UI更新通知
+                RaiseSelectedProfileChanged(device, profileName);
+            }
+
+            return result;
+        }
+
         public static List<string>[] ProfileActions => m_Config.profileActions;
         public static int getProfileActionCount(int index)
         {

@@ -534,11 +534,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
 
             string prof = ProfileListCol[selectedIndex].Name;
-            Global.SelectedProfile[devIndex] = prof;
-            Global.ProfilePath[devIndex] = prof;
-            Global.OlderProfilePath[devIndex] = prof; // 常に更新（新仕様）
 
-            //Global.Save();
             // Run profile loading in Task. Need to still wait for Task to finish
             Task.Run(() =>
             {
@@ -546,7 +542,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 {
                     device.HaltReportingRunAction(() =>
                     {
-                        Global.LoadProfile(devIndex, true, App.rootHub);
+                        string prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, $"{device.Battery}");
+                        bool display = Global.ProfileChangedNotification;
+
+                        // 共通メソッドを使用（ログ出力は1回のみ）
+                        Global.ApplyProfile(devIndex, prof, false, true, App.rootHub,
+                            DS4Windows.ProfileChangeSource.Manual, prolog, display);
                     });
                 }
 
@@ -562,16 +563,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     Global.store.EmitMissingActionLogsForDevice(devIndex, false);
                 }
                 catch { }
-
-            string prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, $"{device.Battery}");
-            try
-            {
-                bool isTemp = Global.useTempProfile[devIndex];
-                bool display = Global.ProfileChangedNotification;
-                // Centralize: callers only invoke LogProfileChanged; it will also emit GUI log.
-                DS4Windows.AppLogger.LogProfileChanged(devIndex, prof, isTemp, DS4Windows.ProfileChangeSource.Manual, prolog, DateTime.UtcNow, display);
-            }
-            catch { }
 
             selectedProfile = prof;
             this.selectedEntity = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == prof);

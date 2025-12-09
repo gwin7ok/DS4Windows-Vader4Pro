@@ -4410,27 +4410,15 @@ namespace DS4Windows
                                     DS4Device d = ctrl.DS4Controllers[device];
                                     string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                                         (device + 1).ToString(), action.details, $"{d.Battery}");
+                                    bool display = Global.ProfileChangedNotification;
 
-                                    try
-                                    {
-                                        bool display = Global.ProfileChangedNotification;
-                                        AppLogger.LogProfileChanged(device, action.details, true, DS4Windows.ProfileChangeSource.MappingAction, prolog, DateTime.UtcNow, display);
-                                    }
-                                    catch { }
                                     await Task.Run(() =>
                                     {
                                         d.HaltReportingRunAction(() =>
                                         {
-                                            LoadTempProfile(device, action.details, true, ctrl);
-
-                                            // Update SelectedProfile and OlderProfilePath (新仕様)
-                                            Global.SelectedProfile[device] = action.details;
-                                            Global.OlderProfilePath[device] = action.details;
-
-                                            // Notify ViewModel to update UI
-                                            Global.RaiseSelectedProfileChanged(device, action.details);
-
-                                            //LoadProfile(device, false, ctrl);
+                                            // 共通メソッドを使用（ログ出力は1回のみ）
+                                            Global.ApplyProfile(device, action.details, true, true, ctrl,
+                                                DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
 
                                             if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
                                             {
