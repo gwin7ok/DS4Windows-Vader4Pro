@@ -211,34 +211,70 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         // Handle SelectedProfile change from special actions
         private void Global_SelectedProfileChanged(object sender, SelectedProfileChangedEventArgs e)
         {
-            int deviceIndex = e.DeviceIndex;
-            string profileName = e.ProfileName;
-
-            // Update UI on dispatcher thread
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            try
             {
-                if (controllerDict.ContainsKey(deviceIndex))
+                int deviceIndex = e.DeviceIndex;
+                string profileName = e.ProfileName;
+
+                AppLogger.LogDebug($"Global_SelectedProfileChanged: deviceIndex={deviceIndex}, profileName='{profileName}'");
+
+                // Update UI (use BeginInvoke to avoid deadlock when already on UI thread)
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
                 {
-                    CompositeDeviceModel item = controllerDict[deviceIndex];
-                    
-                    // Update SelectedIndex to match the new profile
-                    ProfileEntity newProfile = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == profileName);
-                    if (newProfile != null)
+                    try
                     {
-                        int newIndex = profileListHolder.ProfileListCol.IndexOf(newProfile);
-                        if (item.SelectedIndex != newIndex)
+                        AppLogger.LogDebug($"Global_SelectedProfileChanged: Dispatcher callback started for device {deviceIndex}");
+
+                        if (controllerDict.ContainsKey(deviceIndex))
                         {
-                            // Temporarily unhook to avoid triggering ChangeSelectedProfile
-                            item.HookEvents(false);
-                            item.SelectedIndex = newIndex;
-                            item.HookEvents(true);
+                            CompositeDeviceModel item = controllerDict[deviceIndex];
+                            AppLogger.LogDebug($"Global_SelectedProfileChanged: Found controller item for device {deviceIndex}");
+                            
+                            // Update SelectedIndex to match the new profile
+                            ProfileEntity newProfile = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == profileName);
+                            if (newProfile != null)
+                            {
+                                int newIndex = profileListHolder.ProfileListCol.IndexOf(newProfile);
+                                AppLogger.LogDebug($"Global_SelectedProfileChanged: Profile '{profileName}' found at index {newIndex}, current SelectedIndex={item.SelectedIndex}");
+                                
+                                if (item.SelectedIndex != newIndex)
+                                {
+                                    // Temporarily unhook to avoid triggering ChangeSelectedProfile
+                                    item.HookEvents(false);
+                                    item.SelectedIndex = newIndex;
+                                    item.HookEvents(true);
+                                    AppLogger.LogDebug($"Global_SelectedProfileChanged: Updated SelectedIndex to {newIndex}");
+                                }
+                            }
+                            else
+                            {
+                                AppLogger.LogDebug($"Global_SelectedProfileChanged: Profile '{profileName}' not found in profile list");
+                            }
+                            
+                            // LinkedProfileチェックボックスの状態を更新（再接続時など）
+                            AppLogger.LogDebug($"Global_SelectedProfileChanged: Calling RaiseLinkedProfileChanged for device {deviceIndex}");
+                            item.RaiseLinkedProfileChanged();
+                            AppLogger.LogDebug($"Global_SelectedProfileChanged: Completed successfully for device {deviceIndex}");
+                        }
+                        else
+                        {
+                            AppLogger.LogDebug($"Global_SelectedProfileChanged: Controller item not found for device {deviceIndex}");
                         }
                     }
-                    
-                    // LinkedProfileチェックボックスの状態を更新（再接続時など）
-                    item.RaiseLinkedProfileChanged();
-                }
-            });
+                    catch (Exception ex)
+                    {
+                        AppLogger.LogToGui($"ERROR in Global_SelectedProfileChanged Dispatcher callback: {ex.Message}", true);
+                        AppLogger.LogDebug($"Global_SelectedProfileChanged Dispatcher exception: {ex}");
+                    }
+                });
+
+                AppLogger.LogDebug($"Global_SelectedProfileChanged: BeginInvoke queued for device {deviceIndex}");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"ERROR in Global_SelectedProfileChanged: {ex.Message}", true);
+                AppLogger.LogDebug($"Global_SelectedProfileChanged exception: {ex}");
+            }
         }
     }
 
