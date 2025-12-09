@@ -599,70 +599,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             useCustomColor = Global.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed;
         }
 
-        public void ChangeSelectedProfile()
-        {
-            if (selectedIndex == -1)
-            {
-                return;
-            }
-
-            string prof = ProfileListCol[selectedIndex].Name;
-            
-            // スペシャルアクションやイベントハンドラから呼ばれた場合、
-            // 既に同じプロファイルが適用されていればスキップ
-            if (Global.SelectedProfile[devIndex] == prof)
-            {
-                DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile: Profile '{prof}' already applied for device {devIndex}, skipping");
-                return;
-            }
-            
-            DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile: Applying profile '{prof}' for device {devIndex}");
-
-            if (this.selectedEntity != null)
-            {
-                HookEvents(false);
-            }
-
-            // Run profile loading in Task. Need to still wait for Task to finish
-            Task.Run(() =>
-            {
-                if (device != null)
-                {
-                    device.HaltReportingRunAction(() =>
-                    {
-                        string prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, $"{device.Battery}");
-                        bool display = Global.ProfileChangedNotification;
-
-                        // 共通メソッドを使用（ログ出力は1回のみ）
-                        Global.ApplyProfile(devIndex, prof, false, true, App.rootHub,
-                            DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                    });
-                }
-
-            }).Wait();
-
-                // Ensure profile action dictionaries are cached and any missing-action
-                // logs are emitted immediately when the profile is applied to the controller.
-                // This forces a single evaluation per profile-load using the existing
-                // suppression set (Global.loggedInvalidActions).
-                try
-                {
-                    // Emit missing-action logs for this device after profile load.
-                    Global.store.EmitMissingActionLogsForDevice(devIndex, false);
-                }
-                catch { }
-
-            selectedProfile = prof;
-            this.selectedEntity = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == prof);
-            if (this.selectedEntity != null)
-            {
-                selectedIndex = profileListHolder.ProfileListCol.IndexOf(this.selectedEntity);
-                HookEvents(true);
-            }
-
-            LightColorChanged?.Invoke(this, EventArgs.Empty);
-        }
-
         public void HookEvents(bool state)
         {
             if (state)
@@ -764,46 +700,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             Global.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed = new DS4Color() { red = color.R, green = color.G, blue = color.B };
             LightColorChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        public void ChangeSelectedProfile(string loadprofile)
-        {
-            // プロファイル名からプロファイルを検索
-            ProfileEntity temp = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == loadprofile);
-            if (temp == null)
-            {
-                DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile(string): Profile '{loadprofile}' not found for device {devIndex}");
-                return;
-            }
-
-            // 既に同じプロファイルが適用されていればスキップ
-            if (Global.SelectedProfile[devIndex] == loadprofile)
-            {
-                DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile(string): Profile '{loadprofile}' already applied for device {devIndex}, updating UI only");
-                // UIのみ更新（プロファイルは既に適用済み）
-                int newIndex = profileListHolder.ProfileListCol.IndexOf(temp);
-                if (SelectedIndex != newIndex)
-                {
-                    SelectedIndex = newIndex;
-                }
-                return;
-            }
-
-            DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile(string): Applying profile '{loadprofile}' for device {devIndex}");
-
-            // プロファイルを適用（Global_SelectedProfileChangedがUIを更新する）
-            if (device != null)
-            {
-                device.HaltReportingRunAction(() =>
-                {
-                    string prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), loadprofile, $"{device.Battery}");
-                    bool display = Global.ProfileChangedNotification;
-
-                    // 共通メソッドを使用（UI更新はGlobal_SelectedProfileChangedが行う）
-                    Global.ApplyProfile(devIndex, loadprofile, false, true, App.rootHub,
-                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                });
-            }
         }
 
         public void RequestDisconnect()

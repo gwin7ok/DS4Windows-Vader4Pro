@@ -376,9 +376,16 @@ namespace DS4WinWPF.DS4Forms
         {
             int idx = item.Index;
             CompositeDeviceModel devitem = conLvViewModel.ControllerDict[idx];
-            if (devitem != null)
+            if (devitem != null && devitem.Device != null)
             {
-                devitem.ChangeSelectedProfile(profile);
+                devitem.Device.HaltReportingRunAction(() =>
+                {
+                    string prolog = string.Format(Properties.Resources.UsingProfile,
+                        (idx + 1).ToString(), profile, $"{devitem.Device.Battery}");
+                    bool display = Global.ProfileChangedNotification;
+                    Global.ApplyProfile(idx, profile, false, true, App.rootHub,
+                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
+                });
             }
         }
 
@@ -1039,10 +1046,32 @@ Suspend support not enabled.", true);
                 CompositeDeviceModel item = conLvViewModel.ControllerDict[idx];
                 if (item.SelectedIndex > -1)
                 {
-                    // 注: Global_SelectedProfileChangedから呼ばれた場合、
-                    // 既にプロファイルは適用済みなので、ChangeSelectedProfile()内で
-                    // 重複チェックが行われスキップされる
-                    item.ChangeSelectedProfile();
+                    string prof = item.ProfileListCol[item.SelectedIndex].Name;
+                    
+                    // 既に同じプロファイルが適用されていればスキップ
+                    // （Global_SelectedProfileChangedから呼ばれた場合など）
+                    if (DS4Windows.Global.SelectedProfile[idx] == prof)
+                    {
+                        DS4Windows.AppLogger.LogDebug($"SelectProfCombo_SelectionChanged: Profile '{prof}' already applied for device {idx}, skipping");
+                        return;
+                    }
+                    
+                    DS4Windows.AppLogger.LogDebug($"SelectProfCombo_SelectionChanged: Applying profile '{prof}' for device {idx}");
+                    
+                    // 直接ApplyProfileを呼び出す（すべての切り替え手段を統一）
+                    DS4Device device = item.Device;
+                    if (device != null)
+                    {
+                        device.HaltReportingRunAction(() =>
+                        {
+                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (idx + 1).ToString(), prof, $"{device.Battery}");
+                            bool display = DS4Windows.Global.ProfileChangedNotification;
+
+                            DS4Windows.Global.ApplyProfile(idx, prof, false, true, App.rootHub,
+                                DS4Windows.ProfileChangeSource.Manual, prolog, display);
+                        });
+                    }
+                    
                     trayIconVM.PopulateContextMenu();
                 }
             }
@@ -1280,7 +1309,18 @@ Suspend support not enabled.", true);
 
                                             if (idx >= 0 && tdevice < conLvViewModel.ControllerCol.Count)
                                             {
-                                                conLvViewModel.ControllerCol[tdevice].ChangeSelectedProfile(strData[2]);
+                                                CompositeDeviceModel devitem = conLvViewModel.ControllerCol[tdevice];
+                                                if (devitem?.Device != null)
+                                                {
+                                                    devitem.Device.HaltReportingRunAction(() =>
+                                                    {
+                                                        string prolog = string.Format(Properties.Resources.UsingProfile,
+                                                            (tdevice + 1).ToString(), strData[2], $"{devitem.Device.Battery}");
+                                                        bool display = Global.ProfileChangedNotification;
+                                                        Global.ApplyProfile(tdevice, strData[2], false, true, App.rootHub,
+                                                            DS4Windows.ProfileChangeSource.Manual, prolog, display);
+                                                    });
+                                                }
                                             }
                                             else
                                             {
@@ -1860,7 +1900,18 @@ Suspend support not enabled.", true);
             int devnum = sender.DeviceNum;
             if (devnum >= 0 && devnum+1 <= conLvViewModel.ControllerCol.Count)
             {
-                conLvViewModel.ControllerCol[devnum].ChangeSelectedProfile(profile);
+                CompositeDeviceModel devitem = conLvViewModel.ControllerCol[devnum];
+                if (devitem?.Device != null)
+                {
+                    devitem.Device.HaltReportingRunAction(() =>
+                    {
+                        string prolog = string.Format(Properties.Resources.UsingProfile,
+                            (devnum + 1).ToString(), profile, $"{devitem.Device.Battery}");
+                        bool display = Global.ProfileChangedNotification;
+                        Global.ApplyProfile(devnum, profile, false, true, App.rootHub,
+                            DS4Windows.ProfileChangeSource.Manual, prolog, display);
+                    });
+                }
             }
         }
 
