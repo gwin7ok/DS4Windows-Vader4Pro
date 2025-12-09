@@ -528,12 +528,22 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 return;
             }
 
+            string prof = ProfileListCol[selectedIndex].Name;
+            
+            // スペシャルアクションやイベントハンドラから呼ばれた場合、
+            // 既に同じプロファイルが適用されていればスキップ
+            if (Global.SelectedProfile[devIndex] == prof)
+            {
+                DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile: Profile '{prof}' already applied for device {devIndex}, skipping");
+                return;
+            }
+            
+            DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile: Applying profile '{prof}' for device {devIndex}");
+
             if (this.selectedEntity != null)
             {
                 HookEvents(false);
             }
-
-            string prof = ProfileListCol[selectedIndex].Name;
 
             // Run profile loading in Task. Need to still wait for Task to finish
             Task.Run(() =>

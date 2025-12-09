@@ -17,22 +17,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
+using NLog;
 
 namespace DS4Windows
 {
     public class AppLogger
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         public static event EventHandler<DebugEventArgs> TrayIconLog;
         public static event EventHandler<DebugEventArgs> GuiLog;
         // 型付きプロファイル変更イベント
         public static event EventHandler<ProfileChangedEventArgs> ProfileChanged;
 
+        // GUI表示用ログ（LoggerHolderがGuiLogイベントを受け取ってファイル出力）
         public static void LogToGui(string data, bool warning, bool temporary = false)
         {
             if (GuiLog != null)
             {
                 GuiLog(null, new DebugEventArgs(data, warning, temporary));
             }
+        }
+
+        // Debugレベルログ専用メソッド（GUI表示なし、ログファイルのみ）
+        public static void LogDebug(string data)
+        {
+            Logger.Debug(data);
         }
 
         public static void LogToTray(string data, bool warning = false, bool ignoreSettings = false)
@@ -48,24 +57,21 @@ namespace DS4Windows
 
         public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null, bool displayNotification = true)
         {
-            LogToGui($"[DEBUG] LogProfileChanged CALLED: device={deviceIndex}, profile={profileName}, isTemp={isTemp}, source={source}, display={displayNotification}", false);
+            // NLog Debugレベルで出力（NLog.configで制御可能）
+            Logger.Debug($"LogProfileChanged CALLED: device={deviceIndex}, profile={profileName}, isTemp={isTemp}, source={source}, display={displayNotification}");
             
             try
             {
-                // Ensure the message is also sent to GUI log so LogView and status area update.
-                if (!string.IsNullOrEmpty(originalMessage))
-                {
-                    try { LogToGui(originalMessage, false); } catch { }
-                }
+                // originalMessageは呼び出し側で出力されるのでここでは出力しない（重複防止）
 
                 if (displayNotification)
                 {
-                    LogToGui($"[DEBUG] LogProfileChanged: Invoking ProfileChanged event", false);
+                    Logger.Debug("LogProfileChanged: Invoking ProfileChanged event");
                     ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
                 }
                 else
                 {
-                    LogToGui($"[DEBUG] LogProfileChanged: Skipping notification (displayNotification=false)", false);
+                    Logger.Debug("LogProfileChanged: Skipping notification (displayNotification=false)");
                 }
             }
             catch { }

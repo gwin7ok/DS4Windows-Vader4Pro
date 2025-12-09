@@ -4373,8 +4373,8 @@ namespace DS4Windows
 
                                 if (!actionDone[index].dev[device] && (!useTempProfile[device] || untriggeraction[device] == null || untriggeraction[device].typeID != SpecialAction.ActionTypeId.Profile))
                                 {
-                                    DS4Windows.AppLogger.LogToGui($"[DEBUG] SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}", false);
-                                    DS4Windows.AppLogger.LogToGui($"[DEBUG] SpecialAction PROFILE: actionDone={actionDone[index].dev[device]}, useTempProfile={useTempProfile[device]}", false);
+                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
+                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: actionDone={actionDone[index].dev[device]}, useTempProfile={useTempProfile[device]}");
                                     
                                     actionDone[index].dev[device] = true;
                                     // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
@@ -4420,7 +4420,8 @@ namespace DS4Windows
                                         d.HaltReportingRunAction(() =>
                                         {
                                             // 共通メソッドを使用（ログ出力は1回のみ）
-                                            Global.ApplyProfile(device, action.details, true, true, ctrl,
+                                            // スペシャルアクションは永続的なプロファイル切り替えなので isTemp=false
+                                            Global.ApplyProfile(device, action.details, false, true, ctrl,
                                                 DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
 
                                             if (action.uTrigger.Count == 0 && !action.automaticUntrigger)

@@ -2800,20 +2800,20 @@ namespace DS4Windows
         {
             // Debug: ApplyProfile呼び出しログ
             string stackTrace = new System.Diagnostics.StackTrace(1, true).ToString();
-            AppLogger.LogToGui($"[DEBUG] ApplyProfile CALLED: device={device}, profile={profileName}, isTemp={isTemp}, source={source}", false);
-            AppLogger.LogToGui($"[DEBUG] ApplyProfile CallStack:\n{stackTrace}", false);
+            AppLogger.LogDebug($"ApplyProfile CALLED: device={device}, profile={profileName}, isTemp={isTemp}, source={source}");
+            AppLogger.LogDebug($"ApplyProfile CallStack:\n{stackTrace}");
             
             bool result;
             
             // プロファイル読み込み
             if (isTemp)
             {
-                AppLogger.LogToGui($"[DEBUG] ApplyProfile: Loading TEMP profile '{profileName}' for device {device}", false);
+                AppLogger.LogDebug($"ApplyProfile: Loading TEMP profile '{profileName}' for device {device}");
                 result = LoadTempProfile(device, profileName, launchProgram, control);
             }
             else
             {
-                AppLogger.LogToGui($"[DEBUG] ApplyProfile: Loading NORMAL profile '{profileName}' for device {device}", false);
+                AppLogger.LogDebug($"ApplyProfile: Loading NORMAL profile '{profileName}' for device {device}");
                 // 通常プロファイルの場合、ProfilePathを更新してからLoadProfile
                 ProfilePath[device] = profileName;
                 result = LoadProfile(device, launchProgram, control);
@@ -2821,7 +2821,7 @@ namespace DS4Windows
 
             if (result)
             {
-                AppLogger.LogToGui($"[DEBUG] ApplyProfile: Profile loaded successfully. Updating state...", false);
+                AppLogger.LogDebug($"ApplyProfile: Profile loaded successfully. Updating state...");
                 
                 // SelectedProfile を更新（UI表示用）
                 SelectedProfile[device] = profileName;
@@ -2832,11 +2832,11 @@ namespace DS4Windows
                 if (!isTemp)
                 {
                     OlderProfilePath[device] = profileName;
-                    AppLogger.LogToGui($"[DEBUG] ApplyProfile: OlderProfilePath updated to '{profileName}'", false);
+                    AppLogger.LogDebug($"ApplyProfile: OlderProfilePath updated to '{profileName}'");
                 }
                 else
                 {
-                    AppLogger.LogToGui($"[DEBUG] ApplyProfile: OlderProfilePath NOT updated (isTemp=true). Current value: '{OlderProfilePath[device]}'", false);
+                    AppLogger.LogDebug($"ApplyProfile: OlderProfilePath NOT updated (isTemp=true). Current value: '{OlderProfilePath[device]}'");
                 }
 
                 // ログ出力（ここで1回のみ）
@@ -2848,7 +2848,10 @@ namespace DS4Windows
                     prolog = $"Controller {device + 1} is now using Profile \"{profileName}\" (Battery: {battery}%)";
                 }
 
-                AppLogger.LogToGui($"[DEBUG] ApplyProfile: Calling LogProfileChanged...", false);
+                // プロファイル切り替えメッセージを出力
+                AppLogger.LogToGui(prolog, false);
+
+                AppLogger.LogDebug($"ApplyProfile: Calling LogProfileChanged...");
                 try
                 {
                     AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow, displayNotification);
@@ -2856,15 +2859,15 @@ namespace DS4Windows
                 catch { }
 
                 // UI更新通知
-                AppLogger.LogToGui($"[DEBUG] ApplyProfile: Raising SelectedProfileChanged event", false);
+                AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");
                 RaiseSelectedProfileChanged(device, profileName);
             }
             else
             {
-                AppLogger.LogToGui($"[DEBUG] ApplyProfile: Profile load FAILED for '{profileName}'", false);
+                AppLogger.LogDebug($"ApplyProfile: Profile load FAILED for '{profileName}'");
             }
 
-            AppLogger.LogToGui($"[DEBUG] ApplyProfile COMPLETED: device={device}, profile={profileName}, result={result}", false);
+            AppLogger.LogDebug($"ApplyProfile COMPLETED: device={device}, profile={profileName}, result={result}");
             return result;
         }
 
