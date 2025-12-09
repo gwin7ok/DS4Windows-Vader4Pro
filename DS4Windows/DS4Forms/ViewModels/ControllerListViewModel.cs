@@ -20,6 +20,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -279,7 +280,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
     }
 
-    public class CompositeDeviceModel
+    public class CompositeDeviceModel : INotifyPropertyChanged
     {
         private DS4Device device;
         private string selectedProfile;
@@ -288,6 +289,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private int selectedIndex = -1;
         internal bool suppressSelectedIndexChanged = false; // SelectedIndexChanged イベント抑制フラグ（Global_SelectedProfileChangedからアクセス可能）
         private int devIndex;
+
+        public event PropertyChangedEventHandler PropertyChanged;
 
         public DS4Device Device { get => device; set => device = value; }
         public string SelectedProfile { get => selectedProfile; set => selectedProfile = value; }
@@ -340,6 +343,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (selectedIndex == value) return;
                 selectedIndex = value;
+                
+                // XAMLバインディング用のPropertyChangedイベントを発火
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedIndex)));
+                
+                // 互換性のため既存のSelectedIndexChangedイベントも維持（現在は未使用）
                 if (!suppressSelectedIndexChanged)
                 {
                     SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
