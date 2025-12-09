@@ -2082,41 +2082,53 @@ namespace DS4Windows
             
             if (!useAutoProfile)
             {
+                // ===== プロファイル選択ロジック =====
+                string profileToApply;
+                
                 if (Global.IsFirstConnection(index))
                 {
+                    // 初回接続: LinkedProfiles.xmlまたはOlderProfilePathからプロファイルを選択
                     DS4Windows.AppLogger.LogDebug($"FIRST CONNECTION detected for device {index}");
                     
-                    // ===== 初回接続 =====
                     if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
                     {
                         // Linked登録済み → Linkedを適用
-                        string linkedProfile = getLinkedProfile(device.getMacAddress());
-                        DS4Windows.AppLogger.LogDebug($"Using LINKED profile: '{linkedProfile}' for device {index}");
-                        Global.SelectedProfile[index] = linkedProfile;
-                        Global.LinkedProfileUI[index] = linkedProfile;
-                        Global.linkedProfileCheck[index] = true;
+                        profileToApply = getLinkedProfile(device.getMacAddress());
+                        DS4Windows.AppLogger.LogDebug($"Using LINKED profile: '{profileToApply}' for device {index}");
                     }
                     else
                     {
                         // Linked未登録 → OlderProfilePathを使用
-                        DS4Windows.AppLogger.LogDebug($"Using OLDER profile: '{OlderProfilePath[index]}' for device {index}");
-                        Global.SelectedProfile[index] = OlderProfilePath[index];
-                        Global.LinkedProfileUI[index] = string.Empty;
-                        Global.linkedProfileCheck[index] = false;
+                        profileToApply = OlderProfilePath[index];
+                        DS4Windows.AppLogger.LogDebug($"Using OLDER profile: '{profileToApply}' for device {index}");
                     }
-
+                    
                     Global.MarkConnected(index); // 初回接続完了マーク
                 }
                 else
                 {
-                    DS4Windows.AppLogger.LogDebug($"RECONNECTION detected for device {index}, keeping existing profile: '{Global.SelectedProfile[index]}'");
-                    // ===== 再接続（起動中） =====
-                    // SelectedProfile、LinkedProfileUI、linkedProfileCheckは既に保持されている
-                    // LinkedProfiles.xmlは参照しない
+                    // 再接続: 既存のSelectedProfileを使用
+                    profileToApply = Global.SelectedProfile[index];
+                    DS4Windows.AppLogger.LogDebug($"RECONNECTION detected for device {index}, using existing profile: '{profileToApply}'");
                 }
 
-                // Apply profile using common method (handles data update, logging, and UI notification)
-                string profileToApply = Global.SelectedProfile[index];
+                // ===== 共通処理: プロファイル設定とUI状態の更新 =====
+                Global.SelectedProfile[index] = profileToApply;
+                
+                // LinkedProfiles.xmlの状態を確認してLinkedProfileUIとlinkedProfileCheckを設定
+                if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
+                {
+                    string linkedProfile = getLinkedProfile(device.getMacAddress());
+                    Global.LinkedProfileUI[index] = linkedProfile;
+                    Global.linkedProfileCheck[index] = true;
+                }
+                else
+                {
+                    Global.LinkedProfileUI[index] = string.Empty;
+                    Global.linkedProfileCheck[index] = false;
+                }
+
+                // プロファイル適用
                 string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (index + 1).ToString(), profileToApply, "N/A");
                 bool display = Global.ProfileChangedNotification;
                 

@@ -234,6 +234,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                             item.HookEvents(true);
                         }
                     }
+                    
+                    // LinkedProfileチェックボックスの状態を更新（再接続時など）
+                    item.RaiseLinkedProfileChanged();
                 }
             });
         }
@@ -354,6 +357,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
         }
         public event EventHandler LinkedProfileChanged;
+
+        // LinkedProfileチェックボックスのUI更新を強制する（再接続時など）
+        public void RaiseLinkedProfileChanged()
+        {
+            LinkedProfileChanged?.Invoke(this, EventArgs.Empty);
+        }
 
         // New properties for Selected Profile and Linked Profile
         public string SelectedProfileName
