@@ -1039,6 +1039,9 @@ Suspend support not enabled.", true);
                 CompositeDeviceModel item = conLvViewModel.ControllerDict[idx];
                 if (item.SelectedIndex > -1)
                 {
+                    // 注: Global_SelectedProfileChangedから呼ばれた場合、
+                    // 既にプロファイルは適用済みなので、ChangeSelectedProfile()内で
+                    // 重複チェックが行われスキップされる
                     item.ChangeSelectedProfile();
                     trayIconVM.PopulateContextMenu();
                 }

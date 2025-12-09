@@ -768,10 +768,41 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public void ChangeSelectedProfile(string loadprofile)
         {
+            // プロファイル名からプロファイルを検索
             ProfileEntity temp = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == loadprofile);
-            if (temp != null)
+            if (temp == null)
             {
-                SelectedIndex = profileListHolder.ProfileListCol.IndexOf(temp);
+                DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile(string): Profile '{loadprofile}' not found for device {devIndex}");
+                return;
+            }
+
+            // 既に同じプロファイルが適用されていればスキップ
+            if (Global.SelectedProfile[devIndex] == loadprofile)
+            {
+                DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile(string): Profile '{loadprofile}' already applied for device {devIndex}, updating UI only");
+                // UIのみ更新（プロファイルは既に適用済み）
+                int newIndex = profileListHolder.ProfileListCol.IndexOf(temp);
+                if (SelectedIndex != newIndex)
+                {
+                    SelectedIndex = newIndex;
+                }
+                return;
+            }
+
+            DS4Windows.AppLogger.LogDebug($"ChangeSelectedProfile(string): Applying profile '{loadprofile}' for device {devIndex}");
+
+            // プロファイルを適用（Global_SelectedProfileChangedがUIを更新する）
+            if (device != null)
+            {
+                device.HaltReportingRunAction(() =>
+                {
+                    string prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), loadprofile, $"{device.Battery}");
+                    bool display = Global.ProfileChangedNotification;
+
+                    // 共通メソッドを使用（UI更新はGlobal_SelectedProfileChangedが行う）
+                    Global.ApplyProfile(devIndex, loadprofile, false, true, App.rootHub,
+                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
+                });
             }
         }
 
