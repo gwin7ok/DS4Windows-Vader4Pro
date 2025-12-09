@@ -199,10 +199,8 @@ public class SpecialActionsListViewModel
             {
                 item.Active = true;
             }
-            else if (newProfile && action.typeID == SpecialAction.ActionTypeId.DisconnectBT)
-            {
-                item.Active = true;
-            }
+            // Note: newProfile時の自動チェック処理は削除。
+            // EstablishDefaultSpecialActions()でprofileActionsに追加されたアクションのみがチェックされる。
 
             actionCol.Add(item);
             idx++;

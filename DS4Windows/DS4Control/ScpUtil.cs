@@ -4160,7 +4160,18 @@ namespace DS4Windows
         public void EstablishDefaultSpecialActions(int idx)
         {
             profileActions[idx] = new List<string>();
-            profileActions[idx].Add("Disconnect Controller");
+            
+            // Find first DisconnectBT action by name (ascending order)
+            var disconnectAction = actions
+                .Where(a => a.typeID == SpecialAction.ActionTypeId.DisconnectBT)
+                .OrderBy(a => a.name, StringComparer.CurrentCultureIgnoreCase)
+                .FirstOrDefault();
+            
+            if (disconnectAction != null)
+            {
+                profileActions[idx].Add(disconnectAction.name);
+            }
+            
             profileActionCount[idx] = profileActions[idx].Count;
         }
 

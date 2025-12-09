@@ -6,8 +6,8 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Versioning: set the project's canonical version here. -->
     <!-- Update this value to create a new release (Actions will read it). -->
-    <Version>3.11.4</Version>
-    <FileVersion>3.11.4</FileVersion>
-    <AssemblyVersion>3.11.4</AssemblyVersion>
+    <Version>3.11.5</Version>
+    <FileVersion>3.11.5</FileVersion>
+    <AssemblyVersion>3.11.5</AssemblyVersion>
   </PropertyGroup>
 </Project>
