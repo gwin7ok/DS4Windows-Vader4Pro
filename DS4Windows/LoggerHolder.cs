@@ -42,6 +42,9 @@ namespace DS4WinWPF
             fileTarget.FileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log.txt";
             fileTarget.ArchiveFileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log_{{#}}.txt";
             
+            // Enable archive on startup only
+            fileTarget.ArchiveOldFileOnStartup = true;
+            
             // Apply log settings from Profiles.xml
             ApplyLogSettings(fileTarget);
             
@@ -49,6 +52,15 @@ namespace DS4WinWPF
             LogManager.ReconfigExistingLoggers();
 
             logger = LogManager.GetCurrentClassLogger();
+            
+            // Write first log to trigger archive
+            logger.Info("Logger initialized");
+            
+            // Flush to ensure archive is executed before disabling
+            LogManager.Flush();
+            
+            // Disable archive for subsequent reconfigurations
+            fileTarget.ArchiveOldFileOnStartup = false;
 
             service.Debug += WriteToLog;
             DS4Windows.AppLogger.GuiLog += WriteToLog;
@@ -106,10 +118,15 @@ namespace DS4WinWPF
             var wrapTarget = configuration.FindTargetByName<WrapperTargetBase>("logfile") as WrapperTargetBase;
             var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
             
+            // Update settings without triggering archive
+            // archiveOldFileOnStartup is already false from constructor
             ApplyLogSettings(fileTarget);
             
-            LogManager.Configuration = configuration;
+            // Reconfigure loggers to apply new rules
             LogManager.ReconfigExistingLoggers();
+            
+            // Log the settings change
+            logger?.Debug($"Log settings updated: MaxArchiveFiles={DS4Windows.Global.LogMaxArchiveFiles}, MinLevel={DS4Windows.Global.LogMinLevel}");
         }
 
         private void WriteToLog(object sender, DS4Windows.DebugEventArgs e)
