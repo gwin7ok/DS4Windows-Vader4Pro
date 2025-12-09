@@ -95,6 +95,10 @@ namespace DS4WinWPF.DS4Forms
         {
             InitializeComponent();
 
+            // Initialize log settings ComboBox
+            logMinLevelComboBox.ItemsSource = new string[] { "Trace", "Debug", "Info", "Warn", "Error", "Fatal" };
+            logMinLevelComboBox.SelectedValue = Global.LogMinLevel;
+
             mainWinVM = new MainWindowsViewModel();
             DataContext = mainWinVM;
 
@@ -1973,6 +1977,26 @@ Suspend support not enabled.", true);
 
             optsWindow.Owner = this;
             optsWindow.Show();
+        }
+
+        private void LogMaxArchiveFilesUpDown_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (sender is Xceed.Wpf.Toolkit.IntegerUpDown upDown && upDown.Value.HasValue)
+            {
+                Global.LogMaxArchiveFiles = upDown.Value.Value;
+                App.logHolder.UpdateLogSettings();
+                Global.Save();
+            }
+        }
+
+        private void LogMinLevelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is ComboBox comboBox && comboBox.SelectedValue is string level)
+            {
+                Global.LogMinLevel = level;
+                App.logHolder.UpdateLogSettings();
+                Global.Save();
+            }
         }
 
         private void RenameProfBtn_Click(object sender, RoutedEventArgs e)

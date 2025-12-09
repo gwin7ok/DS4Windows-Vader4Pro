@@ -623,6 +623,18 @@ namespace DS4Windows
             set { m_Config.controllerLinkProfIdColWidth = value; }
             get { return m_Config.controllerLinkProfIdColWidth; }
         }
+
+        public static int LogMaxArchiveFiles
+        {
+            set { m_Config.logMaxArchiveFiles = value; }
+            get { return m_Config.logMaxArchiveFiles; }
+        }
+
+        public static string LogMinLevel
+        {
+            set { m_Config.logMinLevel = value; }
+            get { return m_Config.logMinLevel; }
+        }
         public static int ControllerCustomColorColWidth
         {
             set { m_Config.controllerCustomColorColWidth = value; }
@@ -3710,6 +3722,10 @@ namespace DS4Windows
     public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = 130;
     public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = 160;
 
+    // Log settings
+    public const int DEFAULT_LOG_MAX_ARCHIVE_FILES = 100;
+    public const string DEFAULT_LOG_MIN_LEVEL = "Debug";
+
     public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
     public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
     public int specialActionNameColWidth = DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
@@ -3728,6 +3744,10 @@ namespace DS4Windows
     public int controllerLinkedProfileColWidth = DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
     public int controllerLinkProfIdColWidth = DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
     public int controllerCustomColorColWidth = DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+
+    public int logMaxArchiveFiles = DEFAULT_LOG_MAX_ARCHIVE_FILES;
+    public string logMinLevel = DEFAULT_LOG_MIN_LEVEL;
+
         public const double DEFAULT_UDP_SMOOTH_MINCUTOFF = 0.4;
         public const double DEFAULT_UDP_SMOOTH_BETA = 0.2;
         // Use 15 minutes for default Idle Disconnect when initially enabling the option
@@ -8093,6 +8113,11 @@ namespace DS4Windows
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerCustomColorColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerCustomColorColWidth); }
                     catch { missingSetting = true; }
 
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/logMaxArchiveFiles"); Int32.TryParse(Item?.InnerText ?? string.Empty, out logMaxArchiveFiles); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/logMinLevel"); logMinLevel = Item?.InnerText ?? DEFAULT_LOG_MIN_LEVEL; }
+                    catch { missingSetting = true; }
+
                     for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
                     {
                         string contTag = $"/Profile/Controller{i + 1}";
@@ -8492,6 +8517,9 @@ namespace DS4Windows
             XmlNode xmlControllerLinkedProfileColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerLinkedProfileColWidth", null); xmlControllerLinkedProfileColWidth.InnerText = controllerLinkedProfileColWidth.ToString(); rootElement.AppendChild(xmlControllerLinkedProfileColWidth);
             XmlNode xmlControllerLinkProfIdColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerLinkProfIdColWidth", null); xmlControllerLinkProfIdColWidth.InnerText = controllerLinkProfIdColWidth.ToString(); rootElement.AppendChild(xmlControllerLinkProfIdColWidth);
             XmlNode xmlControllerCustomColorColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerCustomColorColWidth", null); xmlControllerCustomColorColWidth.InnerText = controllerCustomColorColWidth.ToString(); rootElement.AppendChild(xmlControllerCustomColorColWidth);
+
+            XmlNode xmlLogMaxArchiveFiles = m_Xdoc.CreateNode(XmlNodeType.Element, "logMaxArchiveFiles", null); xmlLogMaxArchiveFiles.InnerText = logMaxArchiveFiles.ToString(); rootElement.AppendChild(xmlLogMaxArchiveFiles);
+            XmlNode xmlLogMinLevel = m_Xdoc.CreateNode(XmlNodeType.Element, "logMinLevel", null); xmlLogMinLevel.InnerText = logMinLevel; rootElement.AppendChild(xmlLogMinLevel);
 
             for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
             {

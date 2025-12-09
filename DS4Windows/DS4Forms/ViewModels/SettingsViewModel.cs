@@ -689,6 +689,18 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             AbsMonitorChoicesChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        public int LogMaxArchiveFiles
+        {
+            get => DS4Windows.Global.LogMaxArchiveFiles;
+            set => DS4Windows.Global.LogMaxArchiveFiles = value;
+        }
+
+        public string LogMinLevel
+        {
+            get => DS4Windows.Global.LogMinLevel;
+            set => DS4Windows.Global.LogMinLevel = value;
+        }
     }
 
     public struct MonitorChoiceListing

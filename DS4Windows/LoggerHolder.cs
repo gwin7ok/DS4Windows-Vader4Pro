@@ -41,6 +41,10 @@ namespace DS4WinWPF
             var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
             fileTarget.FileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log.txt";
             fileTarget.ArchiveFileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log_{{#}}.txt";
+            
+            // Apply log settings from Profiles.xml
+            ApplyLogSettings(fileTarget);
+            
             LogManager.Configuration = configuration;
             LogManager.ReconfigExistingLoggers();
 
@@ -48,6 +52,57 @@ namespace DS4WinWPF
 
             service.Debug += WriteToLog;
             DS4Windows.AppLogger.GuiLog += WriteToLog;
+        }
+
+        /// <summary>
+        /// Apply log settings from Profiles.xml to NLog configuration
+        /// </summary>
+        private void ApplyLogSettings(NLog.Targets.FileTarget fileTarget)
+        {
+            // Set maxArchiveFiles
+            fileTarget.MaxArchiveFiles = DS4Windows.Global.LogMaxArchiveFiles;
+            
+            // Set minlevel
+            var configuration = LogManager.Configuration;
+            foreach (var rule in configuration.LoggingRules)
+            {
+                if (rule.LoggerNamePattern == "*" && rule.Targets.Any(t => t.Name == "logfile"))
+                {
+                    rule.SetLoggingLevels(ParseLogLevel(DS4Windows.Global.LogMinLevel), LogLevel.Fatal);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Parse log level string to NLog.LogLevel
+        /// </summary>
+        private LogLevel ParseLogLevel(string level)
+        {
+            return level?.ToLower() switch
+            {
+                "trace" => LogLevel.Trace,
+                "debug" => LogLevel.Debug,
+                "info" => LogLevel.Info,
+                "warn" => LogLevel.Warn,
+                "error" => LogLevel.Error,
+                "fatal" => LogLevel.Fatal,
+                _ => LogLevel.Debug
+            };
+        }
+
+        /// <summary>
+        /// Update NLog configuration with new settings (call when settings change)
+        /// </summary>
+        public void UpdateLogSettings()
+        {
+            var configuration = LogManager.Configuration;
+            var wrapTarget = configuration.FindTargetByName<WrapperTargetBase>("logfile") as WrapperTargetBase;
+            var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
+            
+            ApplyLogSettings(fileTarget);
+            
+            LogManager.Configuration = configuration;
+            LogManager.ReconfigExistingLoggers();
         }
 
         private void WriteToLog(object sender, DS4Windows.DebugEventArgs e)

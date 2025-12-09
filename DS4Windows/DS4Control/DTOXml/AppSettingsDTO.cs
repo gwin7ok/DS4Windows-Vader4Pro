@@ -101,6 +101,12 @@ public class AppSettingsDTO
     [XmlElement("controllerCustomColorColWidth")]
     public int ControllerCustomColorColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
+    [XmlElement("logMaxArchiveFiles")]
+    public int LogMaxArchiveFiles { get; set; } = BackingStore.DEFAULT_LOG_MAX_ARCHIVE_FILES;
+
+    [XmlElement("logMinLevel")]
+    public string LogMinLevel { get; set; } = BackingStore.DEFAULT_LOG_MIN_LEVEL;
+
     // ルート属性として保存するアプリ/設定バージョン
     [XmlAttribute("app_version")]
     public string AppVersion { get; set; }
@@ -873,6 +879,9 @@ public class AppSettingsDTO
             ControllerLinkProfIdColWidth = source.controllerLinkProfIdColWidth > 0 ? source.controllerLinkProfIdColWidth : BackingStore.DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
             ControllerCustomColorColWidth = source.controllerCustomColorColWidth > 0 ? source.controllerCustomColorColWidth : BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
+            LogMaxArchiveFiles = source.logMaxArchiveFiles > 0 ? source.logMaxArchiveFiles : BackingStore.DEFAULT_LOG_MAX_ARCHIVE_FILES;
+            LogMinLevel = !string.IsNullOrEmpty(source.logMinLevel) ? source.logMinLevel : BackingStore.DEFAULT_LOG_MIN_LEVEL;
+
             // ルート属性に現在のアプリ/設定バージョンをセット（シリアライザで属性として出力される）
             AppVersion = Global.exeversion;
             ConfigVersion = Global.APP_CONFIG_VERSION.ToString();
@@ -994,6 +1003,9 @@ public class AppSettingsDTO
             destination.controllerLinkedProfileColWidth = ControllerLinkedProfileColWidth > 0 ? ControllerLinkedProfileColWidth : BackingStore.DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
             destination.controllerLinkProfIdColWidth = ControllerLinkProfIdColWidth > 0 ? ControllerLinkProfIdColWidth : BackingStore.DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
             destination.controllerCustomColorColWidth = ControllerCustomColorColWidth > 0 ? ControllerCustomColorColWidth : BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+
+            destination.logMaxArchiveFiles = LogMaxArchiveFiles > 0 ? LogMaxArchiveFiles : BackingStore.DEFAULT_LOG_MAX_ARCHIVE_FILES;
+            destination.logMinLevel = !string.IsNullOrEmpty(LogMinLevel) ? LogMinLevel : BackingStore.DEFAULT_LOG_MIN_LEVEL;
 
             destination.useExclusiveMode = UseExclusiveMode;
             destination.startMinimized = StartMinimized;

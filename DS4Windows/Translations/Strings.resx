@@ -421,6 +421,15 @@ Example: whyme_DS4Windows</value>
   <data name="Changelog" xml:space="preserve">
     <value>Changelog</value>
   </data>
+  <data name="LogSettings" xml:space="preserve">
+    <value>Log Settings</value>
+  </data>
+  <data name="MaxArchiveFiles" xml:space="preserve">
+    <value>Max Archive Files:</value>
+  </data>
+  <data name="MinLogLevel" xml:space="preserve">
+    <value>Min Log Level:</value>
+  </data>
   <data name="Close" xml:space="preserve">
     <value>Close</value>
   </data>

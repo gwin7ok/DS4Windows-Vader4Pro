@@ -427,6 +427,15 @@
   <data name="Changelog" xml:space="preserve">
     <value>更新履歴</value>
   </data>
+  <data name="LogSettings" xml:space="preserve">
+    <value>ログ設定</value>
+  </data>
+  <data name="MaxArchiveFiles" xml:space="preserve">
+    <value>アーカイブファイル数:</value>
+  </data>
+  <data name="MinLogLevel" xml:space="preserve">
+    <value>最小ログレベル:</value>
+  </data>
   <data name="Close" xml:space="preserve">
     <value>閉じる</value>
   </data>
