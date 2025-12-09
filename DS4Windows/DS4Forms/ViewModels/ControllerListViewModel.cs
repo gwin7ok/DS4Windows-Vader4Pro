@@ -607,12 +607,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             if (state)
             {
-                selectedEntity.ProfileSaved += SelectedEntity_ProfileSaved;
                 selectedEntity.ProfileDeleted += SelectedEntity_ProfileDeleted;
             }
             else
             {
-                selectedEntity.ProfileSaved -= SelectedEntity_ProfileSaved;
                 selectedEntity.ProfileDeleted -= SelectedEntity_ProfileDeleted;
             }
         }
@@ -625,39 +623,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 SelectedIndex = profileListHolder.ProfileListCol.IndexOf(entity);
             }
-        }
-
-        private void SelectedEntity_ProfileSaved(object sender, EventArgs e)
-        {
-            DS4Windows.AppLogger.LogDebug($"SelectedEntity_ProfileSaved CALLED: device={devIndex}");
-            
-            // Use ApplyProfile for consistency (same as new profile creation)
-            string profileName = selectedEntity?.Name;
-            if (string.IsNullOrEmpty(profileName))
-            {
-                DS4Windows.AppLogger.LogDebug($"SelectedEntity_ProfileSaved: Profile name is empty for device {devIndex}");
-                return;
-            }
-
-            DS4Windows.AppLogger.LogDebug($"SelectedEntity_ProfileSaved: Applying profile '{profileName}' for device {devIndex}");
-
-            // Run profile loading in Task. Need to still wait for Task to finish
-            Task.Run(() =>
-            {
-                device.HaltReportingRunAction(() =>
-                {
-                    string prolog = string.Format(Properties.Resources.UsingProfile,
-                        (devIndex + 1).ToString(), profileName, $"{device.Battery}");
-                    bool display = Global.ProfileChangedNotification;
-                    
-                    // Use ApplyProfile instead of LoadProfile directly
-                    // This ensures all profile changes go through the unified flow
-                    Global.ApplyProfile(devIndex, profileName, false, true, App.rootHub,
-                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                });
-            }).Wait();
-            
-            DS4Windows.AppLogger.LogDebug($"SelectedEntity_ProfileSaved COMPLETED: device={devIndex}");
         }
 
         public void RequestUpdatedTooltipID()
