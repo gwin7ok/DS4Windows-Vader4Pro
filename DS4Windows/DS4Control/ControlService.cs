@@ -2077,15 +2077,21 @@ namespace DS4Windows
             touchPad[index] = new Mouse(index, device);
             bool profileLoaded = false;
             bool useAutoProfile = useTempProfile[index];
+            
+            DS4Windows.AppLogger.LogToGui($"[DEBUG] PrepareConnectedInputController: device={index}, useAutoProfile={useAutoProfile}, isFirstConnection={Global.IsFirstConnection(index)}", false);
+            
             if (!useAutoProfile)
             {
                 if (Global.IsFirstConnection(index))
                 {
+                    DS4Windows.AppLogger.LogToGui($"[DEBUG] FIRST CONNECTION detected for device {index}", false);
+                    
                     // ===== 初回接続 =====
                     if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
                     {
                         // Linked登録済み → Linkedを適用
                         string linkedProfile = getLinkedProfile(device.getMacAddress());
+                        DS4Windows.AppLogger.LogToGui($"[DEBUG] Using LINKED profile: '{linkedProfile}' for device {index}", false);
                         Global.SelectedProfile[index] = linkedProfile;
                         Global.LinkedProfileUI[index] = linkedProfile;
                         Global.linkedProfileCheck[index] = true;
@@ -2093,6 +2099,7 @@ namespace DS4Windows
                     else
                     {
                         // Linked未登録 → OlderProfilePathを使用
+                        DS4Windows.AppLogger.LogToGui($"[DEBUG] Using OLDER profile: '{OlderProfilePath[index]}' for device {index}", false);
                         Global.SelectedProfile[index] = OlderProfilePath[index];
                         Global.LinkedProfileUI[index] = string.Empty;
                         Global.linkedProfileCheck[index] = false;
@@ -2102,6 +2109,7 @@ namespace DS4Windows
                 }
                 else
                 {
+                    DS4Windows.AppLogger.LogToGui($"[DEBUG] RECONNECTION detected for device {index}, keeping existing profile: '{Global.SelectedProfile[index]}'", false);
                     // ===== 再接続（起動中） =====
                     // SelectedProfile、LinkedProfileUI、linkedProfileCheckは既に保持されている
                     // LinkedProfiles.xmlは参照しない
@@ -2112,8 +2120,10 @@ namespace DS4Windows
                 string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (index + 1).ToString(), profileToApply, "N/A");
                 bool display = Global.ProfileChangedNotification;
                 
+                DS4Windows.AppLogger.LogToGui($"[DEBUG] PrepareConnectedInputController: About to call ApplyProfile with '{profileToApply}'", false);
                 profileLoaded = Global.ApplyProfile(index, profileToApply, false, false, this,
                     DS4Windows.ProfileChangeSource.ControlService, prolog, display);
+                DS4Windows.AppLogger.LogToGui($"[DEBUG] PrepareConnectedInputController: ApplyProfile returned {profileLoaded}", false);
             }
 
             if (profileLoaded || useAutoProfile)

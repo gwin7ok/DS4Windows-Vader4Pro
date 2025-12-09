@@ -4373,6 +4373,9 @@ namespace DS4Windows
 
                                 if (!actionDone[index].dev[device] && (!useTempProfile[device] || untriggeraction[device] == null || untriggeraction[device].typeID != SpecialAction.ActionTypeId.Profile))
                                 {
+                                    DS4Windows.AppLogger.LogToGui($"[DEBUG] SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}", false);
+                                    DS4Windows.AppLogger.LogToGui($"[DEBUG] SpecialAction PROFILE: actionDone={actionDone[index].dev[device]}, useTempProfile={useTempProfile[device]}", false);
+                                    
                                     actionDone[index].dev[device] = true;
                                     // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
                                     if (action.uTrigger.Count > 0 || action.automaticUntrigger)

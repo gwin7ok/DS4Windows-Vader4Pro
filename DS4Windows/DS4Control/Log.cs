@@ -48,6 +48,8 @@ namespace DS4Windows
 
         public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null, bool displayNotification = true)
         {
+            LogToGui($"[DEBUG] LogProfileChanged CALLED: device={deviceIndex}, profile={profileName}, isTemp={isTemp}, source={source}, display={displayNotification}", false);
+            
             try
             {
                 // Ensure the message is also sent to GUI log so LogView and status area update.
@@ -58,7 +60,12 @@ namespace DS4Windows
 
                 if (displayNotification)
                 {
+                    LogToGui($"[DEBUG] LogProfileChanged: Invoking ProfileChanged event", false);
                     ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
+                }
+                else
+                {
+                    LogToGui($"[DEBUG] LogProfileChanged: Skipping notification (displayNotification=false)", false);
                 }
             }
             catch { }
