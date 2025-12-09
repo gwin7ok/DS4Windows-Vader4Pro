@@ -88,8 +88,7 @@ zip_dir = shutil.make_archive(zip_name, "zip", root_dir=str(staging_dir.parent),
 # move the zip to the build directory
 shutil.move(zip_dir, target_zip_path)
 
-# cleanup staging
-try:
-    shutil.rmtree(staging_dir)
-except Exception:
-    pass
+# Keep staging_dir (DS4Windows folder) for distribution
+# Do not cleanup staging - it's the final output directory
+print(f"Build output: {staging_dir}")
+print(f"Archive created: {target_zip_path}")

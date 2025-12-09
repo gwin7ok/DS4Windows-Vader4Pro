@@ -876,24 +876,15 @@ public class AppSettingsDTO
             FormHeight = source.formHeight;
             FormLocationX = source.formLocationX;
             FormLocationY = source.formLocationY;
-            Controller1CurrentProfile = source.UsedSavedProfileString(0);
-            Controller2CurrentProfile = source.UsedSavedProfileString(1);
-            Controller3CurrentProfile = source.UsedSavedProfileString(2);
-            Controller4CurrentProfile = source.UsedSavedProfileString(3);
-            Controller5CurrentProfile = source.UsedSavedProfileString(4);
-            Controller6CurrentProfile = source.UsedSavedProfileString(5);
-            Controller7CurrentProfile = source.UsedSavedProfileString(6);
-            Controller8CurrentProfile = source.UsedSavedProfileString(7);
-
-            // Selected Profile settings
-            SelectedProfile1 = !string.IsNullOrEmpty(source.selectedProfile[0]) ? source.selectedProfile[0] : string.Empty;
-            SelectedProfile2 = !string.IsNullOrEmpty(source.selectedProfile[1]) ? source.selectedProfile[1] : string.Empty;
-            SelectedProfile3 = !string.IsNullOrEmpty(source.selectedProfile[2]) ? source.selectedProfile[2] : string.Empty;
-            SelectedProfile4 = !string.IsNullOrEmpty(source.selectedProfile[3]) ? source.selectedProfile[3] : string.Empty;
-            SelectedProfile5 = !string.IsNullOrEmpty(source.selectedProfile[4]) ? source.selectedProfile[4] : string.Empty;
-            SelectedProfile6 = !string.IsNullOrEmpty(source.selectedProfile[5]) ? source.selectedProfile[5] : string.Empty;
-            SelectedProfile7 = !string.IsNullOrEmpty(source.selectedProfile[6]) ? source.selectedProfile[6] : string.Empty;
-            SelectedProfile8 = !string.IsNullOrEmpty(source.selectedProfile[7]) ? source.selectedProfile[7] : string.Empty;
+            // Save currently selected profiles to Controller1-8
+            Controller1CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[0]) ? source.selectedProfile[0] : string.Empty;
+            Controller2CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[1]) ? source.selectedProfile[1] : string.Empty;
+            Controller3CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[2]) ? source.selectedProfile[2] : string.Empty;
+            Controller4CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[3]) ? source.selectedProfile[3] : string.Empty;
+            Controller5CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[4]) ? source.selectedProfile[4] : string.Empty;
+            Controller6CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[5]) ? source.selectedProfile[5] : string.Empty;
+            Controller7CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[6]) ? source.selectedProfile[6] : string.Empty;
+            Controller8CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[7]) ? source.selectedProfile[7] : string.Empty;
 
             LastChecked = source.lastChecked;
             CheckWhen = source.CheckWhen;
@@ -1002,24 +993,15 @@ public class AppSettingsDTO
             destination.formHeight = FormHeight;
             destination.formLocationX = FormLocationX;
             destination.formLocationY = FormLocationY;
-            destination.profilePath[0] = destination.olderProfilePath[0] = !string.IsNullOrEmpty(Controller1CurrentProfile) ? Controller1CurrentProfile : string.Empty;
-            destination.profilePath[1] = destination.olderProfilePath[1] = !string.IsNullOrEmpty(Controller2CurrentProfile) ? Controller2CurrentProfile : string.Empty;
-            destination.profilePath[2] = destination.olderProfilePath[2] = !string.IsNullOrEmpty(Controller3CurrentProfile) ? Controller3CurrentProfile : string.Empty;
-            destination.profilePath[3] = destination.olderProfilePath[3] = !string.IsNullOrEmpty(Controller4CurrentProfile) ? Controller4CurrentProfile : string.Empty;
-            destination.profilePath[4] = destination.olderProfilePath[4] = !string.IsNullOrEmpty(Controller5CurrentProfile) ? Controller5CurrentProfile : string.Empty;
-            destination.profilePath[5] = destination.olderProfilePath[5] = !string.IsNullOrEmpty(Controller6CurrentProfile) ? Controller6CurrentProfile : string.Empty;
-            destination.profilePath[6] = destination.olderProfilePath[6] = !string.IsNullOrEmpty(Controller7CurrentProfile) ? Controller7CurrentProfile : string.Empty;
-            destination.profilePath[7] = destination.olderProfilePath[7] = !string.IsNullOrEmpty(Controller8CurrentProfile) ? Controller8CurrentProfile : string.Empty;
-
-            // Selected Profile settings
-            destination.selectedProfile[0] = !string.IsNullOrEmpty(SelectedProfile1) ? SelectedProfile1 : string.Empty;
-            destination.selectedProfile[1] = !string.IsNullOrEmpty(SelectedProfile2) ? SelectedProfile2 : string.Empty;
-            destination.selectedProfile[2] = !string.IsNullOrEmpty(SelectedProfile3) ? SelectedProfile3 : string.Empty;
-            destination.selectedProfile[3] = !string.IsNullOrEmpty(SelectedProfile4) ? SelectedProfile4 : string.Empty;
-            destination.selectedProfile[4] = !string.IsNullOrEmpty(SelectedProfile5) ? SelectedProfile5 : string.Empty;
-            destination.selectedProfile[5] = !string.IsNullOrEmpty(SelectedProfile6) ? SelectedProfile6 : string.Empty;
-            destination.selectedProfile[6] = !string.IsNullOrEmpty(SelectedProfile7) ? SelectedProfile7 : string.Empty;
-            destination.selectedProfile[7] = !string.IsNullOrEmpty(SelectedProfile8) ? SelectedProfile8 : string.Empty;
+            // Load Controller1-8 to both profilePath/olderProfilePath and selectedProfile
+            destination.profilePath[0] = destination.olderProfilePath[0] = destination.selectedProfile[0] = !string.IsNullOrEmpty(Controller1CurrentProfile) ? Controller1CurrentProfile : string.Empty;
+            destination.profilePath[1] = destination.olderProfilePath[1] = destination.selectedProfile[1] = !string.IsNullOrEmpty(Controller2CurrentProfile) ? Controller2CurrentProfile : string.Empty;
+            destination.profilePath[2] = destination.olderProfilePath[2] = destination.selectedProfile[2] = !string.IsNullOrEmpty(Controller3CurrentProfile) ? Controller3CurrentProfile : string.Empty;
+            destination.profilePath[3] = destination.olderProfilePath[3] = destination.selectedProfile[3] = !string.IsNullOrEmpty(Controller4CurrentProfile) ? Controller4CurrentProfile : string.Empty;
+            destination.profilePath[4] = destination.olderProfilePath[4] = destination.selectedProfile[4] = !string.IsNullOrEmpty(Controller5CurrentProfile) ? Controller5CurrentProfile : string.Empty;
+            destination.profilePath[5] = destination.olderProfilePath[5] = destination.selectedProfile[5] = !string.IsNullOrEmpty(Controller6CurrentProfile) ? Controller6CurrentProfile : string.Empty;
+            destination.profilePath[6] = destination.olderProfilePath[6] = destination.selectedProfile[6] = !string.IsNullOrEmpty(Controller7CurrentProfile) ? Controller7CurrentProfile : string.Empty;
+            destination.profilePath[7] = destination.olderProfilePath[7] = destination.selectedProfile[7] = !string.IsNullOrEmpty(Controller8CurrentProfile) ? Controller8CurrentProfile : string.Empty;
 
             destination.lastChecked = LastChecked;
             destination.CheckWhen = CheckWhen;

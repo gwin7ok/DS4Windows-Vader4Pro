@@ -10,7 +10,8 @@
                 "./DS4Windows/DS4WinWPF.csproj",
                 "-c", "Release",
                 "/p:platform=x64",
-                "-o", "./DS4Windows/bin/x64/Release/net8.0-windows"
+                "/p:AppendTargetFrameworkToOutputPath=false",
+                "-o", "./DS4Windows/bin/x64/Release"
             ],
             "group": "build"
         },
@@ -22,8 +23,8 @@
                 "-NoProfile",
                 "-File",
                 "./scripts/post-build.ps1",
-                "./DS4Windows/bin/x64/Release/net8.0-windows",
-                "./DS4Windows"
+                "${workspaceFolder}/DS4Windows/bin/x64/Release",
+                "${workspaceFolder}/DS4Windows"
             ],
             "group": "build",
             "dependsOn": "Release win-x64"

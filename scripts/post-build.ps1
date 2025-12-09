@@ -22,6 +22,13 @@ if ($text -match '<Version>(.*?)</Version>') {
 
 Write-Host "Detected version: $v"
 
+# Detect architecture from path (e.g., x64, x86)
+$arch = 'x64'
+if ($PublishDir -match '\\(x64|x86)\\') {
+    $arch = $matches[1]
+}
+Write-Host "Detected architecture: $arch"
+
 # Call python post-build script via Start-Process to avoid invocation quoting issues
 $python = 'python'
 $script = Join-Path (Get-Location) 'utils\post-build.py'
@@ -30,5 +37,5 @@ if (-not (Test-Path $script)) {
     exit 1
 }
 
-Start-Process -FilePath $python -ArgumentList @($script, $PublishDir, $OutDir, $v) -NoNewWindow -Wait
+Start-Process -FilePath $python -ArgumentList @($script, $PublishDir, $OutDir, $v, $arch) -NoNewWindow -Wait
 exit $LASTEXITCODE
