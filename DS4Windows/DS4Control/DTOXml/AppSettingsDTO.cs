@@ -189,6 +189,39 @@ public class AppSettingsDTO
                 Global.MAX_DS4_CONTROLLER_COUNT >= 8;
         }
 
+        // Selected Profile settings
+        [XmlElement("SelectedProfile1")]
+        public string SelectedProfile1 { get; set; }
+        public bool ShouldSerializeSelectedProfile1() => !string.IsNullOrEmpty(SelectedProfile1);
+
+        [XmlElement("SelectedProfile2")]
+        public string SelectedProfile2 { get; set; }
+        public bool ShouldSerializeSelectedProfile2() => !string.IsNullOrEmpty(SelectedProfile2);
+
+        [XmlElement("SelectedProfile3")]
+        public string SelectedProfile3 { get; set; }
+        public bool ShouldSerializeSelectedProfile3() => !string.IsNullOrEmpty(SelectedProfile3);
+
+        [XmlElement("SelectedProfile4")]
+        public string SelectedProfile4 { get; set; }
+        public bool ShouldSerializeSelectedProfile4() => !string.IsNullOrEmpty(SelectedProfile4);
+
+        [XmlElement("SelectedProfile5")]
+        public string SelectedProfile5 { get; set; }
+        public bool ShouldSerializeSelectedProfile5() => !string.IsNullOrEmpty(SelectedProfile5) && Global.MAX_DS4_CONTROLLER_COUNT >= 5;
+
+        [XmlElement("SelectedProfile6")]
+        public string SelectedProfile6 { get; set; }
+        public bool ShouldSerializeSelectedProfile6() => !string.IsNullOrEmpty(SelectedProfile6) && Global.MAX_DS4_CONTROLLER_COUNT >= 6;
+
+        [XmlElement("SelectedProfile7")]
+        public string SelectedProfile7 { get; set; }
+        public bool ShouldSerializeSelectedProfile7() => !string.IsNullOrEmpty(SelectedProfile7) && Global.MAX_DS4_CONTROLLER_COUNT >= 7;
+
+        [XmlElement("SelectedProfile8")]
+        public string SelectedProfile8 { get; set; }
+        public bool ShouldSerializeSelectedProfile8() => !string.IsNullOrEmpty(SelectedProfile8) && Global.MAX_DS4_CONTROLLER_COUNT >= 8;
+
 
         [XmlIgnore]
         public DateTime LastChecked
@@ -851,6 +884,17 @@ public class AppSettingsDTO
             Controller6CurrentProfile = source.UsedSavedProfileString(5);
             Controller7CurrentProfile = source.UsedSavedProfileString(6);
             Controller8CurrentProfile = source.UsedSavedProfileString(7);
+
+            // Selected Profile settings
+            SelectedProfile1 = !string.IsNullOrEmpty(source.selectedProfile[0]) ? source.selectedProfile[0] : string.Empty;
+            SelectedProfile2 = !string.IsNullOrEmpty(source.selectedProfile[1]) ? source.selectedProfile[1] : string.Empty;
+            SelectedProfile3 = !string.IsNullOrEmpty(source.selectedProfile[2]) ? source.selectedProfile[2] : string.Empty;
+            SelectedProfile4 = !string.IsNullOrEmpty(source.selectedProfile[3]) ? source.selectedProfile[3] : string.Empty;
+            SelectedProfile5 = !string.IsNullOrEmpty(source.selectedProfile[4]) ? source.selectedProfile[4] : string.Empty;
+            SelectedProfile6 = !string.IsNullOrEmpty(source.selectedProfile[5]) ? source.selectedProfile[5] : string.Empty;
+            SelectedProfile7 = !string.IsNullOrEmpty(source.selectedProfile[6]) ? source.selectedProfile[6] : string.Empty;
+            SelectedProfile8 = !string.IsNullOrEmpty(source.selectedProfile[7]) ? source.selectedProfile[7] : string.Empty;
+
             LastChecked = source.lastChecked;
             CheckWhen = source.CheckWhen;
             LastVersionChecked = source.lastVersionChecked;
@@ -966,6 +1010,17 @@ public class AppSettingsDTO
             destination.profilePath[5] = destination.olderProfilePath[5] = !string.IsNullOrEmpty(Controller6CurrentProfile) ? Controller6CurrentProfile : string.Empty;
             destination.profilePath[6] = destination.olderProfilePath[6] = !string.IsNullOrEmpty(Controller7CurrentProfile) ? Controller7CurrentProfile : string.Empty;
             destination.profilePath[7] = destination.olderProfilePath[7] = !string.IsNullOrEmpty(Controller8CurrentProfile) ? Controller8CurrentProfile : string.Empty;
+
+            // Selected Profile settings
+            destination.selectedProfile[0] = !string.IsNullOrEmpty(SelectedProfile1) ? SelectedProfile1 : string.Empty;
+            destination.selectedProfile[1] = !string.IsNullOrEmpty(SelectedProfile2) ? SelectedProfile2 : string.Empty;
+            destination.selectedProfile[2] = !string.IsNullOrEmpty(SelectedProfile3) ? SelectedProfile3 : string.Empty;
+            destination.selectedProfile[3] = !string.IsNullOrEmpty(SelectedProfile4) ? SelectedProfile4 : string.Empty;
+            destination.selectedProfile[4] = !string.IsNullOrEmpty(SelectedProfile5) ? SelectedProfile5 : string.Empty;
+            destination.selectedProfile[5] = !string.IsNullOrEmpty(SelectedProfile6) ? SelectedProfile6 : string.Empty;
+            destination.selectedProfile[6] = !string.IsNullOrEmpty(SelectedProfile7) ? SelectedProfile7 : string.Empty;
+            destination.selectedProfile[7] = !string.IsNullOrEmpty(SelectedProfile8) ? SelectedProfile8 : string.Empty;
+
             destination.lastChecked = LastChecked;
             destination.CheckWhen = CheckWhen;
             destination.lastVersionChecked = LastVersionChecked;

@@ -319,6 +319,91 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 SaveLinked(value);
             }
         }
+        public event EventHandler LinkedProfileChanged;
+
+        // New properties for Selected Profile and Linked Profile
+        public string SelectedProfileName
+        {
+            get => Global.SelectedProfile[devIndex];
+            set
+            {
+                if (Global.SelectedProfile[devIndex] == value) return;
+                Global.SelectedProfile[devIndex] = value;
+                Global.ProfilePath[devIndex] = value;
+                Global.OlderProfilePath[devIndex] = value;
+                SelectedProfileChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        public event EventHandler SelectedProfileChanged;
+
+        public ProfileEntity LinkedProfileName
+        {
+            get
+            {
+                string linkedProfileUI = Global.LinkedProfileUI[devIndex];
+                if (!string.IsNullOrEmpty(linkedProfileUI))
+                {
+                    return profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == linkedProfileUI);
+                }
+                return null;
+            }
+            set
+            {
+                string newValue = value?.Name ?? string.Empty;
+                if (Global.LinkedProfileUI[devIndex] == newValue) return;
+                
+                Global.LinkedProfileUI[devIndex] = newValue;
+                
+                // Link ON時のみLinkedProfiles.xmlを更新
+                if (Global.linkedProfileCheck[devIndex] && device?.isValidSerial() == true)
+                {
+                    if (!string.IsNullOrEmpty(newValue))
+                    {
+                        Global.changeLinkedProfile(device.getMacAddress(), newValue);
+                        Global.SaveLinkedProfiles();
+                    }
+                }
+                
+                LinkedProfileNameChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        public event EventHandler LinkedProfileNameChanged;
+
+        public bool LinkEnabled
+        {
+            get => Global.linkedProfileCheck[devIndex];
+            set
+            {
+                bool temp = Global.linkedProfileCheck[devIndex];
+                if (temp == value) return;
+                
+                Global.linkedProfileCheck[devIndex] = value;
+                
+                if (value)
+                {
+                    // Link ON: Linked列の現在値を登録
+                    string linkedValue = Global.LinkedProfileUI[devIndex];
+                    if (!string.IsNullOrEmpty(linkedValue) && device?.isValidSerial() == true)
+                    {
+                        Global.changeLinkedProfile(device.getMacAddress(), linkedValue);
+                        Global.SaveLinkedProfiles();
+                    }
+                }
+                else
+                {
+                    // Link OFF: LinkedProfiles.xmlから削除、UI空欄に
+                    if (device?.isValidSerial() == true)
+                    {
+                        Global.removeLinkedProfile(device.getMacAddress());
+                        Global.SaveLinkedProfiles();
+                    }
+                    Global.LinkedProfileUI[devIndex] = string.Empty;
+                    LinkedProfileNameChanged?.Invoke(this, EventArgs.Empty);
+                }
+                
+                LinkedProfileChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
 
         public int DevIndex { get => devIndex; }
         public int DisplayDevIndex { get => devIndex + 1; }
@@ -414,16 +499,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 HookEvents(false);
             }
 
-            string prof = Global.ProfilePath[devIndex] = ProfileListCol[selectedIndex].Name;
-            if (LinkedProfile)
-            {
-                Global.changeLinkedProfile(device.getMacAddress(), Global.ProfilePath[devIndex]);
-                Global.SaveLinkedProfiles();
-            }
-            else
-            {
-                Global.OlderProfilePath[devIndex] = Global.ProfilePath[devIndex];
-            }
+            string prof = ProfileListCol[selectedIndex].Name;
+            Global.SelectedProfile[devIndex] = prof;
+            Global.ProfilePath[devIndex] = prof;
+            Global.OlderProfilePath[devIndex] = prof; // 常に更新（新仕様）
 
             //Global.Save();
             // Run profile loading in Task. Need to still wait for Task to finish

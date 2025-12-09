@@ -1041,6 +1041,20 @@ Suspend support not enabled.", true);
             }
         }
 
+        /// <summary>
+        /// Change linked profile based on selection
+        /// </summary>
+        private void LinkedProfCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ComboBox box = sender as ComboBox;
+            int idx = Convert.ToInt32(box.Tag);
+            if (idx > -1 && conLvViewModel.ControllerDict.ContainsKey(idx))
+            {
+                // LinkedProfileNameプロパティのsetterで処理される
+                // Link ON時のみLinkedProfiles.xmlに反映
+            }
+        }
+
         private void CustomColorPick_SelectedColorChanged(object sender, RoutedPropertyChangedEventArgs<Color?> e)
         {
 

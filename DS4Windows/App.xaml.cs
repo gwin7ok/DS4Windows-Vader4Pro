@@ -222,6 +222,9 @@ namespace DS4WinWPF
                 logger.Info("Default config created");
             }
 
+            // Reset first connection flags at startup
+            DS4Windows.Global.ResetConnectionFlags();
+
             skipSave = false;
 
             if (!DS4Windows.Global.LoadActions())

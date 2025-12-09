@@ -96,15 +96,6 @@
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
-                                <GridViewColumn x:Name="LinkProfColumn" Header="{lex:Loc LinkProfileId}" Width="100">
-                                    <GridViewColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Width="{Binding ElementName=LinkProfColumn, Path=Width}">
-                                                <CheckBox IsChecked="{Binding LinkedProfile}" HorizontalAlignment="Center" IsEnabled="{Binding PrimaryDevice}" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </GridViewColumn.CellTemplate>
-                                </GridViewColumn>
                                 <GridViewColumn x:Name="selectProfileColumn" Header="{lex:Loc SelectedProfile}" Width="130">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
@@ -132,6 +123,32 @@
                                                         <Button x:Name="newProfBtn" Content="{lex:Loc NewProfile}" MinWidth="120" Tag="{Binding DevIndex, Mode=OneTime}" Click="NewProfBtn_Click"  />
                                                     </xctk:SplitButton.DropDownContent>
                                                 </xctk:SplitButton>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn x:Name="linkedProfileColumn" Header="Linked Profile" Width="130">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Width="{Binding Path=Width, ElementName=linkedProfileColumn, Mode=OneWay}" HorizontalAlignment="Center">
+                                                <ComboBox x:Name="linkedProfCombo" Width="{Binding Path=ActualWidth, RelativeSource={RelativeSource Mode=TemplatedParent}, Mode=OneWay}"
+                                                          ItemsSource="{Binding ProfileListCol}" SelectedItem="{Binding LinkedProfileName, Mode=TwoWay}" Height="Auto" Tag="{Binding DevIndex, Mode=OneTime}" Visibility="{Binding PrimaryDevice, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0"
+                                                          SelectionChanged="LinkedProfCombo_SelectionChanged">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding Name,Mode=OneWay,FallbackValue=''}" />
+                                                        </DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn x:Name="LinkProfColumn" Header="{lex:Loc LinkProfileId}" Width="100">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Width="{Binding ElementName=LinkProfColumn, Path=Width}">
+                                                <CheckBox IsChecked="{Binding LinkEnabled}" HorizontalAlignment="Center" IsEnabled="{Binding PrimaryDevice}" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>

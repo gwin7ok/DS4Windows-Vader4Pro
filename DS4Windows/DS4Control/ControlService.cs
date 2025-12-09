@@ -2079,16 +2079,35 @@ namespace DS4Windows
             bool useAutoProfile = useTempProfile[index];
             if (!useAutoProfile)
             {
-                if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
+                if (Global.IsFirstConnection(index))
                 {
-                    ProfilePath[index] = getLinkedProfile(device.getMacAddress());
-                    Global.linkedProfileCheck[index] = true;
+                    // ===== 初回接続 =====
+                    if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
+                    {
+                        // Linked登録済み → Linkedを適用
+                        string linkedProfile = getLinkedProfile(device.getMacAddress());
+                        Global.SelectedProfile[index] = linkedProfile;
+                        Global.LinkedProfileUI[index] = linkedProfile;
+                        Global.linkedProfileCheck[index] = true;
+                    }
+                    else
+                    {
+                        // Linked未登録 → OlderProfilePathを使用
+                        Global.SelectedProfile[index] = OlderProfilePath[index];
+                        Global.LinkedProfileUI[index] = string.Empty;
+                        Global.linkedProfileCheck[index] = false;
+                    }
+
+                    Global.MarkConnected(index); // 初回接続完了マーク
                 }
                 else
                 {
-                    ProfilePath[index] = OlderProfilePath[index];
-                    Global.linkedProfileCheck[index] = false;
+                    // ===== 再接続（起動中） =====
+                    // SelectedProfile、LinkedProfileUI、linkedProfileCheckは既に保持されている
+                    // LinkedProfiles.xmlは参照しない
                 }
+
+                ProfilePath[index] = Global.SelectedProfile[index];
 
                 // Now attempt to load requested profile and settings
                 profileLoaded = LoadProfile(index, false, this, false, false);

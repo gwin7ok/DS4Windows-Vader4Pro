@@ -680,6 +680,26 @@ namespace DS4Windows
         public static bool[] useDInputOnly = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
         public static bool[] linkedProfileCheck = new bool[MAX_DS4_CONTROLLER_COUNT] { false, false, false, false, false, false, false, false };
         public static bool[] touchpadActive = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
+
+        // First connection detection methods
+        public static bool IsFirstConnection(int index)
+        {
+            return m_Config.firstConnectionAfterStartup[index];
+        }
+
+        public static void MarkConnected(int index)
+        {
+            m_Config.firstConnectionAfterStartup[index] = false;
+        }
+
+        public static void ResetConnectionFlags()
+        {
+            for (int i = 0; i < TEST_PROFILE_ITEM_COUNT; i++)
+            {
+                m_Config.firstConnectionAfterStartup[i] = true;
+            }
+        }
+
     // (Removed) Previously used to hold pending removed invalid special actions
     // collected by UI-time calls. This mechanism was refactored so that
     // removal detection and logging happen at save/apply time; the array has
@@ -2738,6 +2758,8 @@ namespace DS4Windows
         public static string[] LaunchProgram => m_Config.launchProgram;
         public static string[] ProfilePath => m_Config.profilePath;
         public static string[] OlderProfilePath => m_Config.olderProfilePath;
+        public static string[] SelectedProfile => m_Config.selectedProfile;
+        public static string[] LinkedProfileUI => m_Config.linkedProfileUI;
         public static bool[] DistanceProfiles = m_Config.distanceProfiles;
 
         public static List<string>[] ProfileActions => m_Config.profileActions;
@@ -3655,6 +3677,9 @@ namespace DS4Windows
         public bool[] touchClickPassthru = new bool[Global.TEST_PROFILE_ITEM_COUNT] { false, false, false, false, false, false, false, false, false };
         public string[] profilePath = new string[Global.TEST_PROFILE_ITEM_COUNT] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
         public string[] olderProfilePath = new string[Global.TEST_PROFILE_ITEM_COUNT] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
+        public string[] selectedProfile = new string[Global.TEST_PROFILE_ITEM_COUNT] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
+        public string[] linkedProfileUI = new string[Global.TEST_PROFILE_ITEM_COUNT] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
+        public bool[] firstConnectionAfterStartup = new bool[Global.TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
         public Dictionary<string, string> linkedProfiles = new Dictionary<string, string>();
         // Cache properties instead of performing a string comparison every frame
         public bool[] distanceProfiles = new bool[Global.TEST_PROFILE_ITEM_COUNT] { false, false, false, false, false, false, false, false, false };
