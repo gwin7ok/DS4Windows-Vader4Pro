@@ -83,9 +83,6 @@ public class AppSettingsDTO
     [XmlElement("controllerBatteryColWidth")]
     public int ControllerBatteryColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
 
-    [XmlElement("controllerLinkProfColWidth")]
-    public int ControllerLinkProfColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
-
     [XmlElement("controllerSelectProfileColWidth")]
     public int ControllerSelectProfileColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
 
@@ -872,7 +869,6 @@ public class AppSettingsDTO
             ControllerStatusColWidth = source.controllerStatusColWidth > 0 ? source.controllerStatusColWidth : BackingStore.DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
             ControllerExclusiveColWidth = source.controllerExclusiveColWidth > 0 ? source.controllerExclusiveColWidth : BackingStore.DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
             ControllerBatteryColWidth = source.controllerBatteryColWidth > 0 ? source.controllerBatteryColWidth : BackingStore.DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
-            ControllerLinkProfColWidth = source.controllerLinkProfColWidth > 0 ? source.controllerLinkProfColWidth : BackingStore.DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
             ControllerSelectProfileColWidth = source.controllerSelectProfileColWidth > 0 ? source.controllerSelectProfileColWidth : BackingStore.DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
             ControllerEditColWidth = source.controllerEditColWidth > 0 ? source.controllerEditColWidth : BackingStore.DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
             ControllerLinkedProfileColWidth = source.controllerLinkedProfileColWidth > 0 ? source.controllerLinkedProfileColWidth : BackingStore.DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
@@ -997,7 +993,6 @@ public class AppSettingsDTO
             destination.controllerStatusColWidth = ControllerStatusColWidth > 0 ? ControllerStatusColWidth : BackingStore.DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
             destination.controllerExclusiveColWidth = ControllerExclusiveColWidth > 0 ? ControllerExclusiveColWidth : BackingStore.DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
             destination.controllerBatteryColWidth = ControllerBatteryColWidth > 0 ? ControllerBatteryColWidth : BackingStore.DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
-            destination.controllerLinkProfColWidth = ControllerLinkProfColWidth > 0 ? ControllerLinkProfColWidth : BackingStore.DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
             destination.controllerSelectProfileColWidth = ControllerSelectProfileColWidth > 0 ? ControllerSelectProfileColWidth : BackingStore.DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
             destination.controllerEditColWidth = ControllerEditColWidth > 0 ? ControllerEditColWidth : BackingStore.DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
             destination.controllerLinkedProfileColWidth = ControllerLinkedProfileColWidth > 0 ? ControllerLinkedProfileColWidth : BackingStore.DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;

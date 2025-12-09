@@ -596,11 +596,6 @@ namespace DS4Windows
             set { m_Config.controllerBatteryColWidth = value; }
             get { return m_Config.controllerBatteryColWidth; }
         }
-        public static int ControllerLinkProfColWidth
-        {
-            set { m_Config.controllerLinkProfColWidth = value; }
-            get { return m_Config.controllerLinkProfColWidth; }
-        }
         public static int ControllerSelectProfileColWidth
         {
             set { m_Config.controllerSelectProfileColWidth = value; }
@@ -3715,9 +3710,8 @@ namespace DS4Windows
     public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = 65;
     public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = 65;
     public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = 100;
-    public const int DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH = 210;
     public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = 220;
-    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = 75;
+    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = 95;
     public const int DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH = 220;
     public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = 130;
     public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = 160;
@@ -3738,7 +3732,6 @@ namespace DS4Windows
     public int controllerStatusColWidth = DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
     public int controllerExclusiveColWidth = DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
     public int controllerBatteryColWidth = DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
-    public int controllerLinkProfColWidth = DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
     public int controllerSelectProfileColWidth = DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
     public int controllerEditColWidth = DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
     public int controllerLinkedProfileColWidth = DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
@@ -8100,8 +8093,6 @@ namespace DS4Windows
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerBatteryColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerBatteryColWidth); }
                     catch { missingSetting = true; }
-                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerLinkProfColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerLinkProfColWidth); }
-                    catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerSelectProfileColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerSelectProfileColWidth); }
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerEditColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerEditColWidth); }
@@ -8511,7 +8502,6 @@ namespace DS4Windows
             XmlNode xmlControllerStatusColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerStatusColWidth", null); xmlControllerStatusColWidth.InnerText = controllerStatusColWidth.ToString(); rootElement.AppendChild(xmlControllerStatusColWidth);
             XmlNode xmlControllerExclusiveColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerExclusiveColWidth", null); xmlControllerExclusiveColWidth.InnerText = controllerExclusiveColWidth.ToString(); rootElement.AppendChild(xmlControllerExclusiveColWidth);
             XmlNode xmlControllerBatteryColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerBatteryColWidth", null); xmlControllerBatteryColWidth.InnerText = controllerBatteryColWidth.ToString(); rootElement.AppendChild(xmlControllerBatteryColWidth);
-            XmlNode xmlControllerLinkProfColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerLinkProfColWidth", null); xmlControllerLinkProfColWidth.InnerText = controllerLinkProfColWidth.ToString(); rootElement.AppendChild(xmlControllerLinkProfColWidth);
             XmlNode xmlControllerSelectProfileColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerSelectProfileColWidth", null); xmlControllerSelectProfileColWidth.InnerText = controllerSelectProfileColWidth.ToString(); rootElement.AppendChild(xmlControllerSelectProfileColWidth);
             XmlNode xmlControllerEditColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerEditColWidth", null); xmlControllerEditColWidth.InnerText = controllerEditColWidth.ToString(); rootElement.AppendChild(xmlControllerEditColWidth);
             XmlNode xmlControllerLinkedProfileColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerLinkedProfileColWidth", null); xmlControllerLinkedProfileColWidth.InnerText = controllerLinkedProfileColWidth.ToString(); rootElement.AppendChild(xmlControllerLinkedProfileColWidth);
