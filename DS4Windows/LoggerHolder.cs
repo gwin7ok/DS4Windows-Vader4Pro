@@ -62,15 +62,22 @@ namespace DS4WinWPF
             // Set maxArchiveFiles
             fileTarget.MaxArchiveFiles = DS4Windows.Global.LogMaxArchiveFiles;
             
-            // Set minlevel
+            // Set minlevel for all logging rules that target "logfile"
             var configuration = LogManager.Configuration;
+            var minLevel = ParseLogLevel(DS4Windows.Global.LogMinLevel);
+            
             foreach (var rule in configuration.LoggingRules)
             {
-                if (rule.LoggerNamePattern == "*" && rule.Targets.Any(t => t.Name == "logfile"))
+                if (rule.Targets.Any(t => t.Name == "logfile" || (t is WrapperTargetBase wrapper && wrapper.WrappedTarget?.Name == "logfile")))
                 {
-                    rule.SetLoggingLevels(ParseLogLevel(DS4Windows.Global.LogMinLevel), LogLevel.Fatal);
+                    // Clear existing levels and set new range
+                    rule.DisableLoggingForLevels(LogLevel.Trace, LogLevel.Fatal);
+                    rule.EnableLoggingForLevels(minLevel, LogLevel.Fatal);
                 }
             }
+            
+            // Log the applied settings for debugging
+            System.Diagnostics.Debug.WriteLine($"NLog settings applied: MaxArchiveFiles={fileTarget.MaxArchiveFiles}, MinLevel={minLevel}");
         }
 
         /// <summary>
