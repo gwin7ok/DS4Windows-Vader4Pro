@@ -2820,7 +2820,7 @@ namespace DS4Windows
             // Debug: ApplyProfile呼び出しログ
             string stackTrace = new System.Diagnostics.StackTrace(1, true).ToString();
             AppLogger.LogDebug($"ApplyProfile CALLED: device={device}, profile={profileName}, isTemp={isTemp}, source={source}");
-            AppLogger.LogDebug($"ApplyProfile CallStack:\n{stackTrace}");
+            AppLogger.LogTrace($"ApplyProfile CallStack:\n{stackTrace}");
             
             bool result;
             

@@ -44,6 +44,12 @@ namespace DS4Windows
             Logger.Debug(data);
         }
 
+        // Traceレベルログ専用メソッド（より詳細なデバッグ情報用）
+        public static void LogTrace(string data)
+        {
+            Logger.Trace(data);
+        }
+
         public static void LogToTray(string data, bool warning = false, bool ignoreSettings = false)
         {
             if (TrayIconLog != null)
