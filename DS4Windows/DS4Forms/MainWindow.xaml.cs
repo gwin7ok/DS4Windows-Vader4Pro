@@ -1821,7 +1821,9 @@ Suspend support not enabled.", true);
                 try
                 {
                     // Force emitting missing-action logs for this editor open (ignore suppression).
-                    Global.store.EmitMissingActionLogsForDevice(device, true);
+                    // Pass explicit profile name to avoid confusion with device's currently-assigned profile.
+                    string profileNameForLog = entity != null ? entity.Name : "(new profile)";
+                    Global.store.EmitMissingActionLogsForDevice(device, true, profileNameForLog);
                 }
                 catch { }
             }

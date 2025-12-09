@@ -4234,7 +4234,10 @@ namespace DS4Windows
         /// Emit "Invalid action index" logs for missing actions in the profile for the given device.
         /// Respects Global.loggedInvalidActions unless forceEmit is true.
         /// </summary>
-        public void EmitMissingActionLogsForDevice(int device, bool forceEmit = false)
+        /// <param name="device">Device index</param>
+        /// <param name="forceEmit">If true, ignore suppression and always emit logs</param>
+        /// <param name="overrideProfileName">If provided, use this profile name instead of looking up profilePath[device]</param>
+        public void EmitMissingActionLogsForDevice(int device, bool forceEmit = false, string overrideProfileName = null)
         {
             if (profileActions == null || device < 0 || device >= profileActions.Length) return;
 
@@ -4246,10 +4249,19 @@ namespace DS4Windows
                 {
                     if (forceEmit || !Global.loggedInvalidActions.Contains(actionname))
                     {
-                        // Determine the profile name actually in use for this device (temporary or regular)
-                        string profName = (Global.useTempProfile != null && device >= 0 && device < Global.useTempProfile.Length && Global.useTempProfile[device])
-                            ? (Global.tempprofilename != null && device >= 0 && device < Global.tempprofilename.Length ? Global.tempprofilename[device] : string.Empty)
-                            : (profilePath != null && device >= 0 && device < profilePath.Length ? profilePath[device] : string.Empty);
+                        string profName;
+                        if (overrideProfileName != null)
+                        {
+                            // Use explicitly provided profile name
+                            profName = overrideProfileName;
+                        }
+                        else
+                        {
+                            // Determine the profile name actually in use for this device (temporary or regular)
+                            profName = (Global.useTempProfile != null && device >= 0 && device < Global.useTempProfile.Length && Global.useTempProfile[device])
+                                ? (Global.tempprofilename != null && device >= 0 && device < Global.tempprofilename.Length ? Global.tempprofilename[device] : string.Empty)
+                                : (profilePath != null && device >= 0 && device < profilePath.Length ? profilePath[device] : string.Empty);
+                        }
 
                         string displayProfile = string.IsNullOrEmpty(profName) ? "(unknown)" : profName;
                         AppLogger.LogToGui($"Profile '{displayProfile}' contains an invalid special action '{actionname}'.", false);
