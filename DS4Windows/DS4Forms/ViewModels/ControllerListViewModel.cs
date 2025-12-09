@@ -456,28 +456,48 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 bool temp = Global.linkedProfileCheck[devIndex];
                 if (temp == value) return;
                 
+                AppLogger.LogDebug($"LinkEnabled setter: device={devIndex}, oldValue={temp}, newValue={value}");
                 Global.linkedProfileCheck[devIndex] = value;
                 
                 if (value)
                 {
-                    // Link ON: Linked列の現在値を登録
+                    // Link ON: Linked列の現在値を登録（空の場合は現在適用中のプロファイルを使用）
                     string linkedValue = Global.LinkedProfileUI[devIndex];
+                    if (string.IsNullOrEmpty(linkedValue))
+                    {
+                        linkedValue = Global.SelectedProfile[devIndex];
+                        AppLogger.LogDebug($"LinkEnabled ON: LinkedProfileUI is empty, using SelectedProfile '{linkedValue}' for device {devIndex}");
+                        Global.LinkedProfileUI[devIndex] = linkedValue;
+                    }
+                    
+                    AppLogger.LogDebug($"LinkEnabled ON: Registering profile '{linkedValue}' for device {devIndex}");
+                    
                     if (!string.IsNullOrEmpty(linkedValue) && device?.isValidSerial() == true)
                     {
                         Global.changeLinkedProfile(device.getMacAddress(), linkedValue);
                         Global.SaveLinkedProfiles();
+                        AppLogger.LogDebug($"LinkEnabled ON: Saved to LinkedProfiles.xml for MAC={device.getMacAddress()}");
                     }
+                    else
+                    {
+                        AppLogger.LogDebug($"LinkEnabled ON: Could not save - linkedValue='{linkedValue}', validSerial={device?.isValidSerial()}");
+                    }
+                    
+                    LinkedProfileNameChanged?.Invoke(this, EventArgs.Empty);
                 }
                 else
                 {
-                    // Link OFF: LinkedProfiles.xmlから削除、UI空欄に
+                    // Link OFF: LinkedProfiles.xmlから削除（LinkedProfileUIは保持）
+                    AppLogger.LogDebug($"LinkEnabled OFF: Removing from LinkedProfiles.xml for device {devIndex}");
                     if (device?.isValidSerial() == true)
                     {
                         Global.removeLinkedProfile(device.getMacAddress());
                         Global.SaveLinkedProfiles();
+                        AppLogger.LogDebug($"LinkEnabled OFF: Removed from LinkedProfiles.xml for MAC={device.getMacAddress()}");
                     }
-                    Global.LinkedProfileUI[devIndex] = string.Empty;
-                    LinkedProfileNameChanged?.Invoke(this, EventArgs.Empty);
+                    
+                    // LinkedProfileUIは空にせず保持する（再チェック時に使用）
+                    AppLogger.LogDebug($"LinkEnabled OFF: Keeping LinkedProfileUI value '{Global.LinkedProfileUI[devIndex]}' for device {devIndex}");
                 }
                 
                 LinkedProfileChanged?.Invoke(this, EventArgs.Empty);
