@@ -66,6 +66,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             service.ServiceStarted += ControllersChanged;
             service.PreServiceStop += ClearControllerList;
             service.HotplugController += Service_HotplugController;
+            
+            // Subscribe to SelectedProfile change event (スペシャルアクション対応)
+            Global.SelectedProfileChanged += Global_SelectedProfileChanged;
+            
             //tester.StartControllers += ControllersChanged;
             //tester.ControllersRemoved += ClearControllerList;
 
@@ -202,6 +206,36 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 Global.linkedProfileCheck[found.DevIndex] = false;
                 _colListLocker.ExitWriteLock();
             }
+        }
+
+        // Handle SelectedProfile change from special actions
+        private void Global_SelectedProfileChanged(object sender, SelectedProfileChangedEventArgs e)
+        {
+            int deviceIndex = e.DeviceIndex;
+            string profileName = e.ProfileName;
+
+            // Update UI on dispatcher thread
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (controllerDict.ContainsKey(deviceIndex))
+                {
+                    CompositeDeviceModel item = controllerDict[deviceIndex];
+                    
+                    // Update SelectedIndex to match the new profile
+                    ProfileEntity newProfile = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == profileName);
+                    if (newProfile != null)
+                    {
+                        int newIndex = profileListHolder.ProfileListCol.IndexOf(newProfile);
+                        if (item.SelectedIndex != newIndex)
+                        {
+                            // Temporarily unhook to avoid triggering ChangeSelectedProfile
+                            item.HookEvents(false);
+                            item.SelectedIndex = newIndex;
+                            item.HookEvents(true);
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -550,7 +584,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             LightColorChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private void HookEvents(bool state)
+        public void HookEvents(bool state)
         {
             if (state)
             {

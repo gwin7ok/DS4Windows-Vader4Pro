@@ -521,6 +521,19 @@ namespace DS4Windows
         }
     }
 
+    // Event args for UI profile change notification
+    public class SelectedProfileChangedEventArgs : EventArgs
+    {
+        public int DeviceIndex { get; }
+        public string ProfileName { get; }
+
+        public SelectedProfileChangedEventArgs(int deviceIndex, string profileName)
+        {
+            DeviceIndex = deviceIndex;
+            ProfileName = profileName;
+        }
+    }
+
     public class Global
     {
         static Global()
@@ -2761,6 +2774,14 @@ namespace DS4Windows
         public static string[] SelectedProfile => m_Config.selectedProfile;
         public static string[] LinkedProfileUI => m_Config.linkedProfileUI;
         public static bool[] DistanceProfiles = m_Config.distanceProfiles;
+
+        // Event for profile change notification
+        public static event EventHandler<SelectedProfileChangedEventArgs> SelectedProfileChanged;
+
+        public static void RaiseSelectedProfileChanged(int deviceIndex, string profileName)
+        {
+            SelectedProfileChanged?.Invoke(null, new SelectedProfileChangedEventArgs(deviceIndex, profileName));
+        }
 
         public static List<string>[] ProfileActions => m_Config.profileActions;
         public static int getProfileActionCount(int index)

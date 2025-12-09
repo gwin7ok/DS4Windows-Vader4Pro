@@ -4423,6 +4423,13 @@ namespace DS4Windows
                                         {
                                             LoadTempProfile(device, action.details, true, ctrl);
 
+                                            // Update SelectedProfile and OlderProfilePath (新仕様)
+                                            Global.SelectedProfile[device] = action.details;
+                                            Global.OlderProfilePath[device] = action.details;
+
+                                            // Notify ViewModel to update UI
+                                            Global.RaiseSelectedProfileChanged(device, action.details);
+
                                             //LoadProfile(device, false, ctrl);
 
                                             if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
