@@ -67,6 +67,34 @@ public class AppSettingsDTO
     [XmlElement("specialActionDetailColWidth")]
     public int SpecialActionDetailColWidth { get; set; } = BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
 
+    // Controller tab column widths
+    [XmlElement("controllerIndexColWidth")]
+    public int ControllerIndexColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_INDEX_COL_WIDTH;
+
+    [XmlElement("controllerIdColWidth")]
+    public int ControllerIdColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_ID_COL_WIDTH;
+
+    [XmlElement("controllerStatusColWidth")]
+    public int ControllerStatusColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
+
+    [XmlElement("controllerExclusiveColWidth")]
+    public int ControllerExclusiveColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
+
+    [XmlElement("controllerBatteryColWidth")]
+    public int ControllerBatteryColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
+
+    [XmlElement("controllerLinkProfColWidth")]
+    public int ControllerLinkProfColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
+
+    [XmlElement("controllerSelectProfileColWidth")]
+    public int ControllerSelectProfileColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
+
+    [XmlElement("controllerEditColWidth")]
+    public int ControllerEditColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+
+    [XmlElement("controllerCustomColorColWidth")]
+    public int ControllerCustomColorColWidth { get; set; } = BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+
     // ルート属性として保存するアプリ/設定バージョン
     [XmlAttribute("app_version")]
     public string AppVersion { get; set; }
@@ -792,6 +820,18 @@ public class AppSettingsDTO
         SpecialActionNameColWidth = source.specialActionNameColWidth > 0 ? source.specialActionNameColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
         SpecialActionTriggerColWidth = source.specialActionTriggerColWidth > 0 ? source.specialActionTriggerColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
         SpecialActionDetailColWidth = source.specialActionDetailColWidth > 0 ? source.specialActionDetailColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+            
+            // Controller tab column widths
+            ControllerIndexColWidth = source.controllerIndexColWidth > 0 ? source.controllerIndexColWidth : BackingStore.DEFAULT_CONTROLLER_INDEX_COL_WIDTH;
+            ControllerIdColWidth = source.controllerIdColWidth > 0 ? source.controllerIdColWidth : BackingStore.DEFAULT_CONTROLLER_ID_COL_WIDTH;
+            ControllerStatusColWidth = source.controllerStatusColWidth > 0 ? source.controllerStatusColWidth : BackingStore.DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
+            ControllerExclusiveColWidth = source.controllerExclusiveColWidth > 0 ? source.controllerExclusiveColWidth : BackingStore.DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
+            ControllerBatteryColWidth = source.controllerBatteryColWidth > 0 ? source.controllerBatteryColWidth : BackingStore.DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
+            ControllerLinkProfColWidth = source.controllerLinkProfColWidth > 0 ? source.controllerLinkProfColWidth : BackingStore.DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
+            ControllerSelectProfileColWidth = source.controllerSelectProfileColWidth > 0 ? source.controllerSelectProfileColWidth : BackingStore.DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
+            ControllerEditColWidth = source.controllerEditColWidth > 0 ? source.controllerEditColWidth : BackingStore.DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+            ControllerCustomColorColWidth = source.controllerCustomColorColWidth > 0 ? source.controllerCustomColorColWidth : BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+
             // ルート属性に現在のアプリ/設定バージョンをセット（シリアライザで属性として出力される）
             AppVersion = Global.exeversion;
             ConfigVersion = Global.APP_CONFIG_VERSION.ToString();
@@ -898,6 +938,18 @@ public class AppSettingsDTO
         destination.specialActionNameColWidth = SpecialActionNameColWidth > 0 ? SpecialActionNameColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
         destination.specialActionTriggerColWidth = SpecialActionTriggerColWidth > 0 ? SpecialActionTriggerColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
         destination.specialActionDetailColWidth = SpecialActionDetailColWidth > 0 ? SpecialActionDetailColWidth : BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+            
+            // Controller tab column widths
+            destination.controllerIndexColWidth = ControllerIndexColWidth > 0 ? ControllerIndexColWidth : BackingStore.DEFAULT_CONTROLLER_INDEX_COL_WIDTH;
+            destination.controllerIdColWidth = ControllerIdColWidth > 0 ? ControllerIdColWidth : BackingStore.DEFAULT_CONTROLLER_ID_COL_WIDTH;
+            destination.controllerStatusColWidth = ControllerStatusColWidth > 0 ? ControllerStatusColWidth : BackingStore.DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
+            destination.controllerExclusiveColWidth = ControllerExclusiveColWidth > 0 ? ControllerExclusiveColWidth : BackingStore.DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
+            destination.controllerBatteryColWidth = ControllerBatteryColWidth > 0 ? ControllerBatteryColWidth : BackingStore.DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
+            destination.controllerLinkProfColWidth = ControllerLinkProfColWidth > 0 ? ControllerLinkProfColWidth : BackingStore.DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
+            destination.controllerSelectProfileColWidth = ControllerSelectProfileColWidth > 0 ? ControllerSelectProfileColWidth : BackingStore.DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
+            destination.controllerEditColWidth = ControllerEditColWidth > 0 ? ControllerEditColWidth : BackingStore.DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+            destination.controllerCustomColorColWidth = ControllerCustomColorColWidth > 0 ? ControllerCustomColorColWidth : BackingStore.DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+
             destination.useExclusiveMode = UseExclusiveMode;
             destination.startMinimized = StartMinimized;
             destination.minToTaskbar = MinimizeToTaskbar;

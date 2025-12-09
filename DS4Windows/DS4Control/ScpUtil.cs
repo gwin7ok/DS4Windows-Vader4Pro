@@ -557,6 +557,53 @@ namespace DS4Windows
         }
         // SpecialActionDeleteColWidth 削除
 
+        // Controller tab column width properties
+        public static int ControllerIndexColWidth
+        {
+            set { m_Config.controllerIndexColWidth = value; }
+            get { return m_Config.controllerIndexColWidth; }
+        }
+        public static int ControllerIdColWidth
+        {
+            set { m_Config.controllerIdColWidth = value; }
+            get { return m_Config.controllerIdColWidth; }
+        }
+        public static int ControllerStatusColWidth
+        {
+            set { m_Config.controllerStatusColWidth = value; }
+            get { return m_Config.controllerStatusColWidth; }
+        }
+        public static int ControllerExclusiveColWidth
+        {
+            set { m_Config.controllerExclusiveColWidth = value; }
+            get { return m_Config.controllerExclusiveColWidth; }
+        }
+        public static int ControllerBatteryColWidth
+        {
+            set { m_Config.controllerBatteryColWidth = value; }
+            get { return m_Config.controllerBatteryColWidth; }
+        }
+        public static int ControllerLinkProfColWidth
+        {
+            set { m_Config.controllerLinkProfColWidth = value; }
+            get { return m_Config.controllerLinkProfColWidth; }
+        }
+        public static int ControllerSelectProfileColWidth
+        {
+            set { m_Config.controllerSelectProfileColWidth = value; }
+            get { return m_Config.controllerSelectProfileColWidth; }
+        }
+        public static int ControllerEditColWidth
+        {
+            set { m_Config.controllerEditColWidth = value; }
+            get { return m_Config.controllerEditColWidth; }
+        }
+        public static int ControllerCustomColorColWidth
+        {
+            set { m_Config.controllerCustomColorColWidth = value; }
+            get { return m_Config.controllerCustomColorColWidth; }
+        }
+
         public const int MAX_DS4_CONTROLLER_COUNT = 8;
         public const int TEST_PROFILE_ITEM_COUNT = MAX_DS4_CONTROLLER_COUNT + 1;
         public const int TEST_PROFILE_INDEX = TEST_PROFILE_ITEM_COUNT - 1;
@@ -3507,12 +3554,33 @@ namespace DS4Windows
     public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = 32;
     // SpecialActionDeleteColWidth 定数削除
 
+    // Controller tab column widths
+    public const int DEFAULT_CONTROLLER_INDEX_COL_WIDTH = 30;
+    public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = 120;
+    public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = 40;
+    public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = 50;
+    public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = 60;
+    public const int DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH = 100;
+    public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = 130;
+    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = 100;
+    public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = 150;
+
     public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
     public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
     public int specialActionNameColWidth = DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
     public int specialActionTriggerColWidth = DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
     public int specialActionDetailColWidth = DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
     // SpecialActionDeleteColWidth フィールド削除
+
+    public int controllerIndexColWidth = DEFAULT_CONTROLLER_INDEX_COL_WIDTH;
+    public int controllerIdColWidth = DEFAULT_CONTROLLER_ID_COL_WIDTH;
+    public int controllerStatusColWidth = DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
+    public int controllerExclusiveColWidth = DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
+    public int controllerBatteryColWidth = DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
+    public int controllerLinkProfColWidth = DEFAULT_CONTROLLER_LINKPROF_COL_WIDTH;
+    public int controllerSelectProfileColWidth = DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
+    public int controllerEditColWidth = DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+    public int controllerCustomColorColWidth = DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
         public const double DEFAULT_UDP_SMOOTH_MINCUTOFF = 0.4;
         public const double DEFAULT_UDP_SMOOTH_BETA = 0.2;
         // Use 15 minutes for default Idle Disconnect when initially enabling the option
@@ -7852,6 +7920,25 @@ namespace DS4Windows
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/specialActionDetailColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out specialActionDetailColWidth); }
                     catch { missingSetting = true; }
 
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerIndexColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerIndexColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerIdColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerIdColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerStatusColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerStatusColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerExclusiveColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerExclusiveColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerBatteryColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerBatteryColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerLinkProfColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerLinkProfColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerSelectProfileColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerSelectProfileColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerEditColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerEditColWidth); }
+                    catch { missingSetting = true; }
+                    try { Item = m_Xdoc.SelectSingleNode("/Profile/controllerCustomColorColWidth"); Int32.TryParse(Item?.InnerText ?? string.Empty, out controllerCustomColorColWidth); }
+                    catch { missingSetting = true; }
+
                     for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
                     {
                         string contTag = $"/Profile/Controller{i + 1}";
@@ -8239,6 +8326,16 @@ namespace DS4Windows
             XmlNode xmlSpecialActionNameColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionNameColWidth", null); xmlSpecialActionNameColWidth.InnerText = specialActionNameColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionNameColWidth);
             XmlNode xmlSpecialActionTriggerColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionTriggerColWidth", null); xmlSpecialActionTriggerColWidth.InnerText = specialActionTriggerColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionTriggerColWidth);
             XmlNode xmlSpecialActionDetailColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "specialActionDetailColWidth", null); xmlSpecialActionDetailColWidth.InnerText = specialActionDetailColWidth.ToString(); rootElement.AppendChild(xmlSpecialActionDetailColWidth);
+
+            XmlNode xmlControllerIndexColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerIndexColWidth", null); xmlControllerIndexColWidth.InnerText = controllerIndexColWidth.ToString(); rootElement.AppendChild(xmlControllerIndexColWidth);
+            XmlNode xmlControllerIdColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerIdColWidth", null); xmlControllerIdColWidth.InnerText = controllerIdColWidth.ToString(); rootElement.AppendChild(xmlControllerIdColWidth);
+            XmlNode xmlControllerStatusColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerStatusColWidth", null); xmlControllerStatusColWidth.InnerText = controllerStatusColWidth.ToString(); rootElement.AppendChild(xmlControllerStatusColWidth);
+            XmlNode xmlControllerExclusiveColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerExclusiveColWidth", null); xmlControllerExclusiveColWidth.InnerText = controllerExclusiveColWidth.ToString(); rootElement.AppendChild(xmlControllerExclusiveColWidth);
+            XmlNode xmlControllerBatteryColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerBatteryColWidth", null); xmlControllerBatteryColWidth.InnerText = controllerBatteryColWidth.ToString(); rootElement.AppendChild(xmlControllerBatteryColWidth);
+            XmlNode xmlControllerLinkProfColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerLinkProfColWidth", null); xmlControllerLinkProfColWidth.InnerText = controllerLinkProfColWidth.ToString(); rootElement.AppendChild(xmlControllerLinkProfColWidth);
+            XmlNode xmlControllerSelectProfileColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerSelectProfileColWidth", null); xmlControllerSelectProfileColWidth.InnerText = controllerSelectProfileColWidth.ToString(); rootElement.AppendChild(xmlControllerSelectProfileColWidth);
+            XmlNode xmlControllerEditColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerEditColWidth", null); xmlControllerEditColWidth.InnerText = controllerEditColWidth.ToString(); rootElement.AppendChild(xmlControllerEditColWidth);
+            XmlNode xmlControllerCustomColorColWidth = m_Xdoc.CreateNode(XmlNodeType.Element, "controllerCustomColorColWidth", null); xmlControllerCustomColorColWidth.InnerText = controllerCustomColorColWidth.ToString(); rootElement.AppendChild(xmlControllerCustomColorColWidth);
 
             for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
             {
