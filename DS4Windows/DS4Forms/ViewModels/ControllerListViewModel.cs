@@ -252,6 +252,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                                 AppLogger.LogDebug($"Global_SelectedProfileChanged: Profile '{profileName}' not found in profile list");
                             }
                             
+                            // Update backlight color to match the new profile
+                            item.RaiseLightColorChanged();
+                            AppLogger.LogDebug($"Global_SelectedProfileChanged: LightColorChanged event fired for device {deviceIndex}");
+                            
                             // Note: RaiseLinkedProfileChanged() is not called here to avoid triggering
                             // unnecessary UI updates. LinkedProfile should only be updated when explicitly
                             // changed by the user or during controller reconnection.
@@ -625,16 +629,35 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void SelectedEntity_ProfileSaved(object sender, EventArgs e)
         {
+            DS4Windows.AppLogger.LogDebug($"SelectedEntity_ProfileSaved CALLED: device={devIndex}");
+            
+            // Use ApplyProfile for consistency (same as new profile creation)
+            string profileName = selectedEntity?.Name;
+            if (string.IsNullOrEmpty(profileName))
+            {
+                DS4Windows.AppLogger.LogDebug($"SelectedEntity_ProfileSaved: Profile name is empty for device {devIndex}");
+                return;
+            }
+
+            DS4Windows.AppLogger.LogDebug($"SelectedEntity_ProfileSaved: Applying profile '{profileName}' for device {devIndex}");
+
             // Run profile loading in Task. Need to still wait for Task to finish
             Task.Run(() =>
             {
                 device.HaltReportingRunAction(() =>
                 {
-                    Global.LoadProfile(devIndex, false, App.rootHub);
+                    string prolog = string.Format(Properties.Resources.UsingProfile,
+                        (devIndex + 1).ToString(), profileName, $"{device.Battery}");
+                    bool display = Global.ProfileChangedNotification;
+                    
+                    // Use ApplyProfile instead of LoadProfile directly
+                    // This ensures all profile changes go through the unified flow
+                    Global.ApplyProfile(devIndex, profileName, false, true, App.rootHub,
+                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
                 });
             }).Wait();
-
-            LightColorChanged?.Invoke(this, EventArgs.Empty);
+            
+            DS4Windows.AppLogger.LogDebug($"SelectedEntity_ProfileSaved COMPLETED: device={devIndex}");
         }
 
         public void RequestUpdatedTooltipID()
@@ -700,6 +723,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             Global.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed = new DS4Color() { red = color.R, green = color.G, blue = color.B };
             LightColorChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void RaiseLightColorChanged()
+        {
+            LightColorChanged?.Invoke(this, EventArgs.Empty);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LightColor)));
         }
 
         public void RequestDisconnect()

@@ -1461,6 +1461,27 @@ namespace DS4WinWPF.DS4Forms
                     currentProfile.SaveProfile(deviceNum);
                     currentProfile.FireSaved();
 
+                    // After saving an existing profile, reload it for all devices currently using it
+                    // This ensures backlight color and other settings are updated
+                    for (int i = 0; i < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i++)
+                    {
+                        if (Global.SelectedProfile[i] == temp)
+                        {
+                            DS4Device device = App.rootHub.DS4Controllers[i];
+                            if (device != null)
+                            {
+                                device.HaltReportingRunAction(() =>
+                                {
+                                    string prolog = string.Format(Properties.Resources.UsingProfile,
+                                        (i + 1).ToString(), temp, $"{device.Battery}");
+                                    bool display = Global.ProfileChangedNotification;
+                                    Global.ApplyProfile(i, temp, false, true, App.rootHub,
+                                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
+                                });
+                            }
+                        }
+                    }
+
                     // Log removed invalid special actions after save completes
                     try
                     {
