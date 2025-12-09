@@ -1979,26 +1979,6 @@ Suspend support not enabled.", true);
             optsWindow.Show();
         }
 
-        private void LogMaxArchiveFilesUpDown_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-        {
-            if (sender is Xceed.Wpf.Toolkit.IntegerUpDown upDown && upDown.Value.HasValue)
-            {
-                Global.LogMaxArchiveFiles = upDown.Value.Value;
-                App.logHolder.UpdateLogSettings();
-                Global.Save();
-            }
-        }
-
-        private void LogMinLevelComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (sender is ComboBox comboBox && comboBox.SelectedValue is string level)
-            {
-                Global.LogMinLevel = level;
-                App.logHolder.UpdateLogSettings();
-                Global.Save();
-            }
-        }
-
         private void RenameProfBtn_Click(object sender, RoutedEventArgs e)
         {
             if (profilesListBox.SelectedIndex >= 0)

@@ -177,6 +177,9 @@ namespace DS4WinWPF
                 return;
             }
 
+            // Load Profiles.xml BEFORE creating LoggerHolder so log settings are available
+            bool readAppConfig = DS4Windows.Global.Load();
+
             logHolder = new LoggerHolder(rootHub);
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
@@ -191,7 +194,6 @@ namespace DS4WinWPF
             logger.Info($"System Architecture: {(Environment.Is64BitOperatingSystem ? "x64" : "x86")}");
             logger.Info("Logger created");
 
-            bool readAppConfig = DS4Windows.Global.Load();
             if (!firstRun && !readAppConfig)
             {
                 logger.Info($@"Profiles.xml not read at location ${DS4Windows.Global.appdatapath}\Profiles.xml. Using default app settings");

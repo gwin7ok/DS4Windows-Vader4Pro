@@ -693,14 +693,38 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public int LogMaxArchiveFiles
         {
             get => DS4Windows.Global.LogMaxArchiveFiles;
-            set => DS4Windows.Global.LogMaxArchiveFiles = value;
+            set
+            {
+                if (DS4Windows.Global.LogMaxArchiveFiles != value)
+                {
+                    DS4Windows.Global.LogMaxArchiveFiles = value;
+                    DS4WinWPF.App.logHolder?.UpdateLogSettings();
+                    DS4WinWPF.App.logHolder?.UpdateNLogConfig(value);
+                    DS4Windows.Global.Save();
+                    DS4WinWPF.App.logHolder?.RestoreArchiveSetting(); // Restore after all updates
+                    LogMaxArchiveFilesChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
         }
 
         public string LogMinLevel
         {
             get => DS4Windows.Global.LogMinLevel;
-            set => DS4Windows.Global.LogMinLevel = value;
+            set
+            {
+                if (DS4Windows.Global.LogMinLevel != value)
+                {
+                    DS4Windows.Global.LogMinLevel = value;
+                    DS4WinWPF.App.logHolder?.UpdateLogSettings();
+                    DS4Windows.Global.Save();
+                    DS4WinWPF.App.logHolder?.RestoreArchiveSetting(); // Restore after all updates
+                    LogMinLevelChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
         }
+        
+        public event EventHandler LogMaxArchiveFilesChanged;
+        public event EventHandler LogMinLevelChanged;
     }
 
     public struct MonitorChoiceListing

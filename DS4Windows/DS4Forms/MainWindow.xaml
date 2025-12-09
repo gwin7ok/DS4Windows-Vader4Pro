@@ -485,14 +485,12 @@
                                     <Label Content="{lex:Loc MaxArchiveFiles}" Width="180" VerticalAlignment="Center" />
                                     <xctk:IntegerUpDown x:Name="logMaxArchiveFilesUpDown" Width="100" 
                                                        Value="{Binding LogMaxArchiveFiles}" 
-                                                       Minimum="1" Maximum="1000" 
-                                                       ValueChanged="LogMaxArchiveFilesUpDown_ValueChanged" />
+                                                       Minimum="1" Maximum="1000" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal">
                                     <Label Content="{lex:Loc MinLogLevel}" Width="180" VerticalAlignment="Center" />
                                     <ComboBox x:Name="logMinLevelComboBox" Width="100"
-                                             SelectedValue="{Binding LogMinLevel}"
-                                             SelectionChanged="LogMinLevelComboBox_SelectionChanged" />
+                                             SelectedValue="{Binding LogMinLevel}" />
                                 </StackPanel>
                             </StackPanel>
                         </GroupBox>

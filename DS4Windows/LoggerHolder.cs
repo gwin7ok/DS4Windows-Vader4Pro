@@ -18,10 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using DS4Windows;
 using NLog;
 using NLog.Targets.Wrappers;
@@ -42,25 +44,19 @@ namespace DS4WinWPF
             fileTarget.FileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log.txt";
             fileTarget.ArchiveFileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log_{{#}}.txt";
             
-            // Enable archive on startup only
-            fileTarget.ArchiveOldFileOnStartup = true;
+            // Configure archive settings
+            fileTarget.ArchiveNumbering = NLog.Targets.ArchiveNumberingMode.DateAndSequence;
+            fileTarget.ArchiveDateFormat = "yyyyMMdd";
+            fileTarget.ArchiveOldFileOnStartup = true; // Keep true as default
             
-            // Apply log settings from Profiles.xml
+            // Apply log settings from Profiles.xml (includes MaxArchiveFiles)
             ApplyLogSettings(fileTarget);
             
             LogManager.Configuration = configuration;
             LogManager.ReconfigExistingLoggers();
 
             logger = LogManager.GetCurrentClassLogger();
-            
-            // Write first log to trigger archive
             logger.Info("Logger initialized");
-            
-            // Flush to ensure archive is executed before disabling
-            LogManager.Flush();
-            
-            // Disable archive for subsequent reconfigurations
-            fileTarget.ArchiveOldFileOnStartup = false;
 
             service.Debug += WriteToLog;
             DS4Windows.AppLogger.GuiLog += WriteToLog;
@@ -118,8 +114,9 @@ namespace DS4WinWPF
             var wrapTarget = configuration.FindTargetByName<WrapperTargetBase>("logfile") as WrapperTargetBase;
             var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
             
-            // Update settings without triggering archive
-            // archiveOldFileOnStartup is already false from constructor
+            // Temporarily disable archive to prevent rotation during reconfiguration
+            fileTarget.ArchiveOldFileOnStartup = false;
+            
             ApplyLogSettings(fileTarget);
             
             // Reconfigure loggers to apply new rules
@@ -127,6 +124,60 @@ namespace DS4WinWPF
             
             // Log the settings change
             logger?.Debug($"Log settings updated: MaxArchiveFiles={DS4Windows.Global.LogMaxArchiveFiles}, MinLevel={DS4Windows.Global.LogMinLevel}");
+        }
+        
+        /// <summary>
+        /// Restore archiveOldFileOnStartup after all settings updates are complete
+        /// </summary>
+        public void RestoreArchiveSetting()
+        {
+            var configuration = LogManager.Configuration;
+            var wrapTarget = configuration.FindTargetByName<WrapperTargetBase>("logfile") as WrapperTargetBase;
+            var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
+            fileTarget.ArchiveOldFileOnStartup = true;
+        }
+        
+        /// <summary>
+        /// Update NLog.config file with new maxArchiveFiles setting
+        /// </summary>
+        public void UpdateNLogConfig(int maxArchiveFiles)
+        {
+            try
+            {
+                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NLog.config");
+                if (!File.Exists(configPath))
+                {
+                    logger?.Debug($"NLog.config not found at {configPath}");
+                    return;
+                }
+                
+                XDocument doc = XDocument.Load(configPath);
+                XNamespace ns = "http://www.nlog-project.org/schemas/NLog.xsd";
+                
+                var target = doc.Descendants(ns + "target")
+                    .FirstOrDefault(t => t.Attribute("name")?.Value == "logfile");
+                
+                if (target != null)
+                {
+                    // Update or add maxArchiveFiles attribute
+                    var maxArchiveAttr = target.Attribute("maxArchiveFiles");
+                    if (maxArchiveAttr != null)
+                    {
+                        maxArchiveAttr.Value = maxArchiveFiles.ToString();
+                    }
+                    else
+                    {
+                        target.Add(new XAttribute("maxArchiveFiles", maxArchiveFiles));
+                    }
+                    
+                    doc.Save(configPath);
+                    logger?.Debug($"NLog.config updated: maxArchiveFiles={maxArchiveFiles}");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.Debug($"Failed to update NLog.config: {ex.Message}");
+            }
         }
 
         private void WriteToLog(object sender, DS4Windows.DebugEventArgs e)
