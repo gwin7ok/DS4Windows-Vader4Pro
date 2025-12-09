@@ -50,6 +50,18 @@ namespace DS4Windows
             Logger.Trace(data);
         }
 
+        // Errorレベルログ専用メソッド（エラー情報用）
+        public static void LogError(string data)
+        {
+            Logger.Error(data);
+        }
+
+        // Infoレベルログ専用メソッド（情報ログ用）
+        public static void LogInfo(string data)
+        {
+            Logger.Info(data);
+        }
+
         public static void LogToTray(string data, bool warning = false, bool ignoreSettings = false)
         {
             if (TrayIconLog != null)

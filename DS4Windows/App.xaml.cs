@@ -32,6 +32,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using WPFLocalizeExtension.Engine;
+using DS4Windows;
 
 namespace DS4WinWPF
 {
@@ -183,20 +184,19 @@ namespace DS4WinWPF
             logHolder = new LoggerHolder(rootHub);
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
-            Logger logger = logHolder.Logger;
             string version = DS4Windows.Global.exeversion;
-            logger.Info($"DS4Windows version {version}");
-            logger.Info($"DS4Windows exe file: {DS4Windows.Global.exeFileName}");
-            logger.Info($"DS4Windows Assembly Architecture: {(Environment.Is64BitProcess ? "x64" : "x86")}");
-            logger.Info($"OS Version: {Environment.OSVersion}");
-            logger.Info($"OS Product Name: {DS4Windows.Util.GetOSProductName()}");
-            logger.Info($"OS Release ID: {DS4Windows.Util.GetOSReleaseId()}");
-            logger.Info($"System Architecture: {(Environment.Is64BitOperatingSystem ? "x64" : "x86")}");
-            logger.Info("Logger created");
+            AppLogger.LogInfo($"DS4Windows version {version}");
+            AppLogger.LogInfo($"DS4Windows exe file: {DS4Windows.Global.exeFileName}");
+            AppLogger.LogInfo($"DS4Windows Assembly Architecture: {(Environment.Is64BitProcess ? "x64" : "x86")}");
+            AppLogger.LogInfo($"OS Version: {Environment.OSVersion}");
+            AppLogger.LogInfo($"OS Product Name: {DS4Windows.Util.GetOSProductName()}");
+            AppLogger.LogInfo($"OS Release ID: {DS4Windows.Util.GetOSReleaseId()}");
+            AppLogger.LogInfo($"System Architecture: {(Environment.Is64BitOperatingSystem ? "x64" : "x86")}");
+            AppLogger.LogInfo("Logger created");
 
             if (!firstRun && !readAppConfig)
             {
-                logger.Info($@"Profiles.xml not read at location ${DS4Windows.Global.appdatapath}\Profiles.xml. Using default app settings");
+                AppLogger.LogInfo($@"Profiles.xml not read at location ${DS4Windows.Global.appdatapath}\Profiles.xml. Using default app settings");
             }
 
             // Ask user which devices the mapper should attempt to open when detected.
@@ -212,7 +212,7 @@ namespace DS4WinWPF
 
             if (firstRun)
             {
-                logger.Info("No config found. Creating default config");
+                AppLogger.LogInfo("No config found. Creating default config");
                 AttemptSave();
 
                 DS4Windows.Global.SaveAsProfile(0, "Default");
@@ -221,7 +221,7 @@ namespace DS4WinWPF
                     DS4Windows.Global.ProfilePath[i] = DS4Windows.Global.OlderProfilePath[i] = "Default";
                 }
 
-                logger.Info("Default config created");
+                AppLogger.LogInfo("Default config created");
             }
 
             // Reset first connection flags at startup
@@ -268,10 +268,9 @@ namespace DS4WinWPF
         {
             if (!Current.Dispatcher.CheckAccess())
             {
-                Logger logger = logHolder.Logger;
                 Exception exp = e.ExceptionObject as Exception;
-                logger.Error($"Thread App Crashed with message {exp.Message}");
-                logger.Error(exp.ToString());
+                AppLogger.LogError($"Thread App Crashed with message {exp.Message}");
+                AppLogger.LogError(exp.ToString());
                 //LogManager.Flush();
                 //LogManager.Shutdown();
                 if (e.IsTerminating)
@@ -285,12 +284,11 @@ namespace DS4WinWPF
             }
             else
             {
-                Logger logger = logHolder.Logger;
                 Exception exp = e.ExceptionObject as Exception;
                 if (e.IsTerminating)
                 {
-                    logger.Error($"Thread Crashed with message {exp.Message}");
-                    logger.Error(exp.ToString());
+                    AppLogger.LogError($"Thread Crashed with message {exp.Message}");
+                    AppLogger.LogError(exp.ToString());
 
                     rootHub?.PrepareAbort();
                     CleanShutdown();
@@ -302,9 +300,8 @@ namespace DS4WinWPF
         {
             //Debug.WriteLine("App Crashed");
             //Debug.WriteLine(e.Exception.StackTrace);
-            Logger logger = logHolder.Logger;
-            logger.Error($"Thread Crashed with message {e.Exception.Message}");
-            logger.Error(e.Exception.ToString());
+            AppLogger.LogError($"Thread Crashed with message {e.Exception.Message}");
+            AppLogger.LogError(e.Exception.ToString());
             //LogManager.Flush();
             //LogManager.Shutdown();
         }
@@ -735,16 +732,14 @@ namespace DS4WinWPF
         {
             if (runShutdown)
             {
-                Logger logger = logHolder.Logger;
-                logger.Info("Request App Shutdown");
+                AppLogger.LogInfo("Request App Shutdown");
                 CleanShutdown();
             }
         }
 
         private void Application_SessionEnding(object sender, SessionEndingCancelEventArgs e)
         {
-            Logger logger = logHolder.Logger;
-            logger.Info("User Session Ending");
+            AppLogger.LogInfo("User Session Ending");
             CleanShutdown();
         }
 

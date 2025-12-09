@@ -2875,7 +2875,10 @@ namespace DS4Windows
                 {
                     AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow, displayNotification);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    AppLogger.LogError($"[ApplyProfile] Failed to log profile change: {ex.Message}");
+                }
 
                 // UI更新通知
                 AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");

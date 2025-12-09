@@ -207,18 +207,18 @@ namespace DS4WinWPF.DS4Forms
             currentSortColumn = columnName;
             currentSortAsc = asc;
 
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Called: column={columnName}, asc={asc}, prevCol={prevCol}, prevAsc={prevAsc}");
+            AppLogger.LogDebug($"[SortSpecialActionsList] Called: column={columnName}, asc={asc}, prevCol={prevCol}, prevAsc={prevAsc}");
 
             // 1) ViewModel-side sort execution
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Calling specialActionsVM.SortActions");
+            AppLogger.LogDebug($"[SortSpecialActionsList] Calling specialActionsVM.SortActions");
             specialActionsVM.SortActions(columnName, asc);
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] specialActionsVM.SortActions completed");
+            AppLogger.LogDebug($"[SortSpecialActionsList] specialActionsVM.SortActions completed");
 
             // 2) CollectionView の準備と状態ログ
             var view = (CollectionView)CollectionViewSource.GetDefaultView(specialActionsVM.ActionCol);
             if (view == null)
             {
-                App.logHolder.Logger.Debug("[SortSpecialActionsList] CollectionView is null. Aborting.");
+                AppLogger.LogDebug("[SortSpecialActionsList] CollectionView is null. Aborting.");
                 return;
             }
 
@@ -226,13 +226,13 @@ namespace DS4WinWPF.DS4Forms
             try
             {
                 var preItems = specialActionsVM.ActionCol?.Cast<object>().Take(5).Select(x => x.ToString()).ToArray() ?? Array.Empty<string>();
-                App.logHolder.Logger.Debug($"[SortSpecialActionsList] ActionCol count before Refresh={(specialActionsVM.ActionCol == null ? 0 : specialActionsVM.ActionCol.Count)}, head sample=" + string.Join(",", preItems));
+                AppLogger.LogDebug($"[SortSpecialActionsList] ActionCol count before Refresh={(specialActionsVM.ActionCol == null ? 0 : specialActionsVM.ActionCol.Count)}, head sample=" + string.Join(",", preItems));
             }
             catch { /* 安全のため無視 */ }
 
-            App.logHolder.Logger.Debug("[SortSpecialActionsList] Executing CollectionView.Refresh");
+            AppLogger.LogDebug("[SortSpecialActionsList] Executing CollectionView.Refresh");
             view.Refresh();
-            App.logHolder.Logger.Debug($"[SortSpecialActionsList] Item count after Refresh={view.Count}");
+            AppLogger.LogDebug($"[SortSpecialActionsList] Item count after Refresh={view.Count}");
 
             // 既存のバインディング更新（残して互換性を保つ）
             OnPropertyChanged(nameof(ActiveSortButtonContent));
@@ -247,11 +247,11 @@ namespace DS4WinWPF.DS4Forms
             }
             catch (Exception ex)
             {
-                App.logHolder?.Logger?.Debug($"[SortSpecialActionsList] UpdateSpecialActionsHeaderTexts failed: {ex.Message}");
+                AppLogger.LogDebug($"[SortSpecialActionsList] UpdateSpecialActionsHeaderTexts failed: {ex.Message}");
             }
 
             // ヘッダーの表示更新は Loaded ハンドラでキャッシュした TextBlock により行われます。
-            App.logHolder.Logger.Debug("[SortSpecialActionsList] Header updates are handled via cached TextBlocks and Loaded handlers.");
+            AppLogger.LogDebug("[SortSpecialActionsList] Header updates are handled via cached TextBlocks and Loaded handlers.");
         }
 
         // NOTE: Local visual-tree helper methods were removed in favor of the shared
@@ -265,7 +265,7 @@ namespace DS4WinWPF.DS4Forms
 
         public ProfileEditor(int device)
         {
-            App.logHolder.Logger.Debug($"[ProfileEditor] Opened profile editor for device={device}");
+            AppLogger.LogDebug($"[ProfileEditor] Opened profile editor for device={device}");
 
             InitializeComponent();
 
@@ -1440,9 +1440,15 @@ namespace DS4WinWPF.DS4Forms
                         }
                         Global.CacheExtraProfileInfo(deviceNum);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to update ProfileActions: {ex.Message}");
+                    }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to compute removed invalid special actions: {ex.Message}");
+                }
                 DS4Windows.Global.ProfilePath[deviceNum] =
                     DS4Windows.Global.OlderProfilePath[deviceNum] = temp;
 
@@ -1490,12 +1496,15 @@ namespace DS4WinWPF.DS4Forms
                             string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
                             foreach (var name in removedInvalidSpecialActions)
                             {
-                                try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch { }
-                                try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch { }
+                                try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to GUI: {ex.Message}"); }
+                                try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to tray: {ex.Message}"); }
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to log removed invalid special actions: {ex.Message}");
+                    }
 
                     result = true;
                 }
@@ -1515,12 +1524,15 @@ namespace DS4WinWPF.DS4Forms
                                 string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
                                 foreach (var name in removedInvalidSpecialActions)
                                 {
-                                    try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch { }
-                                    try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch { }
+                                    try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to GUI: {ex.Message}"); }
+                                    try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to tray: {ex.Message}"); }
                                 }
                             }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to log removed invalid special actions: {ex.Message}");
+                        }
 
                         result = true;
                     }
@@ -2552,11 +2564,11 @@ namespace DS4WinWPF.DS4Forms
             if (col != null)
             {
                 // Log: sort state just before click
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Click: col={col}, currentSortColumn={currentSortColumn}, currentSortAsc={currentSortAsc}");
+                AppLogger.LogDebug($"[SpecialActionsHeader_Click] Click: col={col}, currentSortColumn={currentSortColumn}, currentSortAsc={currentSortAsc}");
                 bool asc = col != currentSortColumn ? true : !currentSortAsc;
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Determined sort direction: col={col}, asc={asc}");
+                AppLogger.LogDebug($"[SpecialActionsHeader_Click] Determined sort direction: col={col}, asc={asc}");
                 SortSpecialActionsList(col, asc);
-                App.logHolder.Logger.Debug($"[SpecialActionsHeader_Click] Column click handling complete: {col}");
+                AppLogger.LogDebug($"[SpecialActionsHeader_Click] Column click handling complete: {col}");
             }
         }
     } // ← ProfileEditorクラスの閉じ括弧を追加

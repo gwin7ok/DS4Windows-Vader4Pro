@@ -1889,7 +1889,10 @@ Suspend support not enabled.", true);
                     string profileNameForLog = entity != null ? entity.Name : "(new profile)";
                     Global.store.EmitMissingActionLogsForDevice(device, true, profileNameForLog);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    AppLogger.LogError($"[MainWindow.EditProfile] Failed to emit missing action logs: {ex.Message}");
+                }
             }
 
         }

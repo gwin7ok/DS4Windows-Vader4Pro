@@ -31,9 +31,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 {
 public class SpecialActionsListViewModel
 {
-    // 列クリックで呼び出すシンプルなソートメソッド
-    private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-
     private ObservableCollection<SpecialActionItem> actionCol = new ObservableCollection<SpecialActionItem>();
     private int specialActionIndex = -1;
     private SpecialActionItem currentSAItem;
@@ -76,10 +73,10 @@ public class SpecialActionsListViewModel
         try {
             isUiThread = System.Windows.Application.Current?.Dispatcher?.CheckAccess() ?? false;
         } catch { }
-    Logger.Debug($"[SortActions] UI thread: {isUiThread}");
-    if (!isUiThread) Logger.Warn("[SortActions] Running off the UI thread. Operations on ObservableCollection may fail.");
+    AppLogger.LogDebug($"[SortActions] UI thread: {isUiThread}");
+    if (!isUiThread) AppLogger.LogDebug("[SortActions] WARNING: Running off the UI thread. Operations on ObservableCollection may fail.");
 
-        Logger.Debug($"[SortActions] column={column}, ascending={ascending}, actionCol.Count(before)={actionCol.Count}");
+        AppLogger.LogDebug($"[SortActions] column={column}, ascending={ascending}, actionCol.Count(before)={actionCol.Count}");
         IEnumerable<SpecialActionItem> sorted = null;
         switch (column)
         {
@@ -101,38 +98,38 @@ public class SpecialActionsListViewModel
                                    : actionCol.OrderByDescending(x => x.TypeName, StringComparer.CurrentCultureIgnoreCase);
                 break;
             default:
-                Logger.Debug($"[SortActions] Invalid column value: {column}");
+                AppLogger.LogDebug($"[SortActions] Invalid column value: {column}");
                 return;
         }
         var sortedList = sorted.ToList(); // Clear前に評価
-        Logger.Debug($"[SortActions] sorted.Count={sortedList.Count}");
+        AppLogger.LogDebug($"[SortActions] sorted.Count={sortedList.Count}");
         if (sortedList.Count > 0)
         {
-            Logger.Debug($"[SortActions] sorted items: {string.Join(",", sortedList.Select(x => x.ActionName))}");
+            AppLogger.LogDebug($"[SortActions] sorted items: {string.Join(",", sortedList.Select(x => x.ActionName))}");
         }
         var oldRef = actionCol;
         actionCol.Clear();
-        Logger.Debug($"[SortActions] actionCol.Count(after Clear)={actionCol.Count}");
+        AppLogger.LogDebug($"[SortActions] actionCol.Count(after Clear)={actionCol.Count}");
         int idx = 0;
         foreach (var item in sortedList)
         {
             try
             {
-                Logger.Debug($"[SortActions] Add: {item.ActionName}, Index={idx}");
+                AppLogger.LogDebug($"[SortActions] Add: {item.ActionName}, Index={idx}");
                 item.Index = idx++;
                 actionCol.Add(item);
             }
             catch (Exception ex)
             {
-                Logger.Error($"[SortActions] Exception adding item: {item?.ActionName} - {ex}");
+                AppLogger.LogError($"[SortActions] Exception adding item: {item?.ActionName} - {ex}");
                 throw;
             }
         }
         if (!object.ReferenceEquals(actionCol, oldRef))
         {
-            Logger.Debug($"[SortActions] actionCol reference changed!");
+            AppLogger.LogDebug($"[SortActions] actionCol reference changed!");
         }
-        Logger.Debug($"[SortActions] actionCol.Count(after)={actionCol.Count}");
+        AppLogger.LogDebug($"[SortActions] actionCol.Count(after)={actionCol.Count}");
     }
 
     // 1引数オーバーロード（ProfileEditor.xaml.cs用）
