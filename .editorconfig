@@ -2,12 +2,6 @@
 root = true
 
 [*.cs]
-# Suppress 'The name '...' does not exist in the current context' editor diagnostic
-# This hides CS0103 from the Problems pane produced by editor analyzers (OmniSharp/Roslyn).
-dotnet_diagnostic.CS0103.severity = none
-root = true
-
-[*.cs]
 charset = utf-8
 end_of_line = crlf
 indent_style = space
@@ -26,8 +20,10 @@ csharp_new_line_before_finally = true
 dotnet_diagnostic.CS0103.severity = none
 
 # Suppress other common WPF-related false positives
-dotnet_diagnostic.CS0234.severity = suggestion  # namespace does not exist
-dotnet_diagnostic.CS0246.severity = suggestion  # type not found
+dotnet_diagnostic.CS0234.severity = none
+dotnet_diagnostic.CS0246.severity = none
+dotnet_diagnostic.CS0122.severity = none
+dotnet_diagnostic.CS1061.severity = none
 
 [*.xaml]
 charset = utf-8

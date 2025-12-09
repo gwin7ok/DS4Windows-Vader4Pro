@@ -251,9 +251,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                                 AppLogger.LogDebug($"Global_SelectedProfileChanged: Profile '{profileName}' not found in profile list");
                             }
                             
-                            // LinkedProfileチェックボックスの状態を更新（再接続時など）
-                            AppLogger.LogDebug($"Global_SelectedProfileChanged: Calling RaiseLinkedProfileChanged for device {deviceIndex}");
-                            item.RaiseLinkedProfileChanged();
+                            // Note: RaiseLinkedProfileChanged() is not called here to avoid triggering
+                            // unnecessary UI updates. LinkedProfile should only be updated when explicitly
+                            // changed by the user or during controller reconnection.
+                            
                             AppLogger.LogDebug($"Global_SelectedProfileChanged: Completed successfully for device {deviceIndex}");
                         }
                         else

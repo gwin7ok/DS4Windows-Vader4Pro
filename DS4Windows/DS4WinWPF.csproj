@@ -32,10 +32,8 @@
 		<!-- Suppress WPF-related false positive errors (project-only) -->
 		<NoWarn>$(NoWarn);CS0103;CS0122;CS1061;CS0246;CS0234</NoWarn>
 
-		<!-- Force generated editorconfig to a project-local file so generated wpftmp files
-		     do not override repository-level suppressions. This makes the generated
-		     editorconfig stable and manageable by the project. -->
-		<GeneratedMSBuildEditorConfigFile>$(MSBuildProjectDirectory)\DS4WinWPF.GeneratedMSBuildEditorConfig.editorconfig</GeneratedMSBuildEditorConfigFile>
+		<!-- Disable auto-generated .editorconfig to use repository root .editorconfig only -->
+		<GenerateEditorConfigFile>false</GenerateEditorConfigFile>
 
 		
 	</PropertyGroup>
