@@ -2,6 +2,18 @@
 
 All notable changes to this project are recorded in this file.
 
+## [3.11.5] - 2025-12-10
+Features / UI
+- (a47a68e8) Split original "Selected Profile" column into "Linked Profile" and "Selected Profile" columns, separating functionality between them.
+- (49c618c4) Fix DisconnectBT action auto-check processing; activate based on profile actions.
+- (b3a335bb, f48cd019) Add controller tab column width save/restore functionality with adjusted default values.
+
+Profile Management
+- (9a421270) Update all device settings after profile save and adjust backlight colors to match new profile.
+
+Logging improvements
+- (d9384cfb) Add log settings with max archive file count and minimum log level properties. Add UI bindings for log settings and implement log configuration updates on setting changes.
+
 ## [3.11.4] - 2025-12-09
 
 Features / UI
