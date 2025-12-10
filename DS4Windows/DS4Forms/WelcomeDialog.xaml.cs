@@ -132,8 +132,20 @@ namespace DS4WinWPF.DS4Forms
 
         private void FinishedBtn_Click(object sender, RoutedEventArgs e)
         {
-            monitorTimer.Stop();
-            monitorTimer = null;
+            try
+            {
+                if (monitorTimer != null)
+                {
+                    monitorTimer.Stop();
+                    monitorTimer.Dispose();
+                    monitorTimer = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Defensive: log and continue to close the dialog
+                Debug.WriteLine($"WelcomeDialog.FinishedBtn_Click: failed to stop monitorTimer: {ex.Message}");
+            }
 
             this.Close();
         }
