@@ -164,6 +164,17 @@ namespace DS4WinWPF
                     Current.Shutdown();
                     return;
                 }
+
+                // Update WPF localization engine after language selection
+                if (!string.IsNullOrEmpty(langDialog.SelectedCulture))
+                {
+                    try
+                    {
+                        CultureInfo culture = CultureInfo.GetCultureInfo(langDialog.SelectedCulture);
+                        LocalizeDictionary.Instance.Culture = culture;
+                    }
+                    catch { /* Skip if culture cannot be set */ }
+                }
             }
 
             // Could not find unique profile location; does not exist or multiple places.
