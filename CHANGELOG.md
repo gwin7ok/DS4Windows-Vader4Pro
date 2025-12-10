@@ -2,17 +2,32 @@
 
 All notable changes to this project are recorded in this file.
 
-## [3.11.5] - 2025-12-10
+
+
+## [3.11.5] - 2025-12-11
 Features / UI
 - (a47a68e8) Split original "Selected Profile" column into "Linked Profile" and "Selected Profile" columns, separating functionality between them.
 - (49c618c4) Fix DisconnectBT action auto-check processing; activate based on profile actions.
-- (b3a335bb, f48cd019) Add controller tab column width save/restore functionality with adjusted default values.
+ - (b3a335bb, f48cd019) Add controller tab column width save/restore functionality with adjusted default values.
+ - (11e77fad, e172e98d) Add an "Apply" button to language selection so users can apply language changes at runtime without restarting the application; the apply button becomes enabled when a new language is selected.
 
 Profile Management
 - (9a421270) Update all device settings after profile save and adjust backlight colors to match new profile.
 
 Logging improvements
 - (d9384cfb) Add log settings with max archive file count and minimum log level properties. Add UI bindings for log settings and implement log configuration updates on setting changes.
+
+Window placement / DPI
+- (ee5b7e29) Improve per-monitor DPI handling for window placement: add logic converting between logical and physical pixels when calling Win32 APIs and verify placement after SetWindowPlacement.
+
+UI / Localization
+- (e172e98d, cbbb46fc, 11e77fad, 18e447ad, ec5290ba) Add/adjust language application methods so language selection is applied at first run and can be persisted; update localization application for the welcome/installer dialogs.
+
+Docs
+- (779fa4a3) Add a new DS4Windows introduction guide covering installation, setup, controllers, troubleshooting and FAQ.
+
+Bug fixes
+- (30a50d1c) Fix crash when clicking the Finished button on the driver/setup welcome window: strengthen stopping/disposal of the internal monitor timer and ensure the dialog closes even if exceptions occur.
 
 ## [3.11.4] - 2025-12-09
 
