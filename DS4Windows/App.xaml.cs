@@ -153,6 +153,19 @@ namespace DS4WinWPF
             DS4Windows.Global.FindConfigLocation();
             bool firstRun = DS4Windows.Global.firstRun;
 
+            // On first run, show language selection dialog first
+            if (firstRun)
+            {
+                DS4Forms.LanguageSelectDialog langDialog = new DS4Forms.LanguageSelectDialog();
+                langDialog.ShowDialog();
+                if (!langDialog.ChoiceMade)
+                {
+                    runShutdown = false;
+                    Current.Shutdown();
+                    return;
+                }
+            }
+
             // Could not find unique profile location; does not exist or multiple places.
             // Advise user to specify where DS4Windows should save its configuation files
             // and profiles

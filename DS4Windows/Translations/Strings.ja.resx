@@ -487,4 +487,26 @@
   <data name="SharedAccess" xml:space="preserve">
     <value>共有アクセス</value>
   </data>
+  <data name="SaveWhere.AppDataDescText" xml:space="preserve">
+    <value>通常のインストールを希望する方向け。設定は %appdata%\DS4Windows に保存されます</value>
+  </data>
+  <data name="SaveWhere.DontDelete" xml:space="preserve">
+    <value>他の設定をまだ削除しない</value>
+  </data>
+  <data name="SaveWhere.MultipleSaves" xml:space="preserve">
+    <value>複数の保存場所が検出されました</value>
+  </data>
+  <data name="SaveWhere.PickWhere" xml:space="preserve">
+    <value>プロファイルと設定を保存する場所を選択してください、</value>
+  </data>
+  <data name="SaveWhere.OtherFileLocation" xml:space="preserve">
+    <value>、他の位置にあるファイルは削除されます</value>
+  </data>
+  <data name="SaveWhere.ProgramFolderDescText" xml:space="preserve">
+    <value>ポータブルプログラムを希望する方向け。
+注意: このオプションは、UAC なしで管理者フォルダーにある場合は機能しません</value>
+  </data>
+  <data name="SaveWhere.WinTitle" xml:space="preserve">
+    <value>保存先の選択</value>
+  </data>
 </root>
