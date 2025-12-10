@@ -333,20 +333,10 @@ namespace DS4WinWPF.DS4Forms
             var win = Window.GetWindow(this);
             if (win != null)
             {
-                var source = System.Windows.PresentationSource.FromVisual(win);
-                if (source?.CompositionTarget != null)
-                {
-                    var m = source.CompositionTarget.TransformToDevice;
-                    double dpiX = m.M11;
-                    double dpiY = m.M22;
-                    win.Width = BackingStore.DEFAULT_FORM_WIDTH / dpiX;
-                    win.Height = BackingStore.DEFAULT_FORM_HEIGHT / dpiY;
-                }
-                else
-                {
-                    win.Width = BackingStore.DEFAULT_FORM_WIDTH;
-                    win.Height = BackingStore.DEFAULT_FORM_HEIGHT;
-                }
+                // WindowLayoutDefaultsの値は論理ピクセルの初期値
+                // WPFのWidthプロパティも論理ピクセルなので、そのまま代入
+                win.Width = BackingStore.DEFAULT_FORM_WIDTH;
+                win.Height = BackingStore.DEFAULT_FORM_HEIGHT;
             }
 
             // UIにも即時反映

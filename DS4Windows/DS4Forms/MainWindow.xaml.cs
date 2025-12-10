@@ -1164,6 +1164,29 @@ Suspend support not enabled.", true);
             if (!Global.firstRun)
             {
                 WindowPlacementHelper.ApplyPlacement(this, startMinimized);
+
+                // ApplyPlacement 後に WPF 側でサイズや位置が変更される可能性があるため、
+                // レイアウト完了後に実際のウィンドウ矩形と WPF プロパティをログに残す。
+                this.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        // WPF レベルのプロパティ
+                        AppLogger.LogDebug($"PostApply: WPF Left={this.Left} Top={this.Top} Width={this.Width} Height={this.Height} ActualWidth={this.ActualWidth} ActualHeight={this.ActualHeight} WindowState={this.WindowState}");
+
+                        // Win32 レベルの取得（物理ピクセル）
+                        var phys = WindowPlacementHelper.GetPlacement(this);
+                        AppLogger.LogDebug($"PostApply: GetPlacement physicalRect={phys}");
+
+                        // 論理座標としての取得
+                        var logical = WindowPlacementHelper.GetLogicalPlacement(this);
+                        AppLogger.LogDebug($"PostApply: GetLogicalPlacement => LogicalX={logical.LogicalX} LogicalY={logical.LogicalY} LogicalWidth={logical.LogicalWidth} LogicalHeight={logical.LogicalHeight}");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.LogDebug($"PostApply: Failed to log post-apply window metrics: {ex.Message}");
+                    }
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             }
 
             // Restore controller tab column widths
@@ -1756,16 +1779,18 @@ Suspend support not enabled.", true);
             // プロフィール編集画面が開いている場合はKeepsizeで制御
             if (WindowState != WindowState.Minimized && editor != null && editor.Keepsize && !IsInitialShow)
             {
-                var result = WindowPlacementHelper.GetPlacement(this);
-                Global.FormWidth = result.Right - result.Left;
-                Global.FormHeight = result.Bottom - result.Top;
+                var logical = WindowPlacementHelper.GetLogicalPlacement(this);
+                Global.FormWidth = logical.LogicalWidth;
+                Global.FormHeight = logical.LogicalHeight;
+                AppLogger.LogDebug($"MainWindow.SizeChanged: Saved Logical Width={Global.FormWidth} Height={Global.FormHeight}");
             }
             // 編集画面が開いていない場合は常に保存
             else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
             {
-                var result = WindowPlacementHelper.GetPlacement(this);
-                Global.FormWidth = result.Right - result.Left;
-                Global.FormHeight = result.Bottom - result.Top;
+                var logical = WindowPlacementHelper.GetLogicalPlacement(this);
+                Global.FormWidth = logical.LogicalWidth;
+                Global.FormHeight = logical.LogicalHeight;
+                AppLogger.LogDebug($"MainWindow.SizeChanged: Saved Logical Width={Global.FormWidth} Height={Global.FormHeight}");
             }
         }
 
@@ -1774,16 +1799,18 @@ Suspend support not enabled.", true);
             // プロフィール編集画面が開いている場合はKeepsizeで制御
             if (WindowState != WindowState.Minimized && editor != null && editor.Keepsize && !IsInitialShow)
             {
-                var result = WindowPlacementHelper.GetPlacement(this);
-                Global.FormLocationX = result.Left;
-                Global.FormLocationY = result.Top;
+                var logical = WindowPlacementHelper.GetLogicalPlacement(this);
+                Global.FormLocationX = logical.LogicalX;
+                Global.FormLocationY = logical.LogicalY;
+                AppLogger.LogDebug($"MainWindow.LocationChanged: Saved Logical X={Global.FormLocationX} Y={Global.FormLocationY}");
             }
             // 編集画面が開いていない場合は常に保存
             else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
             {
-                var result = WindowPlacementHelper.GetPlacement(this);
-                Global.FormLocationX = result.Left;
-                Global.FormLocationY = result.Top;
+                var logical = WindowPlacementHelper.GetLogicalPlacement(this);
+                Global.FormLocationX = logical.LogicalX;
+                Global.FormLocationY = logical.LogicalY;
+                AppLogger.LogDebug($"MainWindow.LocationChanged: Saved Logical X={Global.FormLocationX} Y={Global.FormLocationY}");
             }
         }
 
@@ -1822,11 +1849,12 @@ Suspend support not enabled.", true);
             else
             {
                 oldSize = new Size(Width, Height);
-                var result = WindowPlacementHelper.GetPlacement(this);
-                Global.FormWidth = result.Right - result.Left;
-                Global.FormHeight = result.Bottom - result.Top;
-                Global.FormLocationX = result.Left;
-                Global.FormLocationY = result.Top;
+                var logical = WindowPlacementHelper.GetLogicalPlacement(this);
+                Global.FormWidth = logical.LogicalWidth;
+                Global.FormHeight = logical.LogicalHeight;
+                Global.FormLocationX = logical.LogicalX;
+                Global.FormLocationY = logical.LogicalY;
+                AppLogger.LogDebug($"MainWindow.ProfileEditor_Closed: Saved Logical Rect X={Global.FormLocationX} Y={Global.FormLocationY} W={Global.FormWidth} H={Global.FormHeight}");
             }
             editor = null;
             // Restore the tab that was active before opening the profile editor

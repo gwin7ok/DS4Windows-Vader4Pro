@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using DS4WinWPF.DS4Forms.ViewModels;
 using DS4WinWPF.DS4Forms.ViewModels.SpecialActions;
 using Microsoft.Win32;
+using DS4Windows;
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -594,6 +595,7 @@ namespace DS4WinWPF.DS4Forms
                     {
                         var transform = src.CompositionTarget.TransformFromDevice;
                         var dpiPt = transform.Transform(anchorPt);
+                        AppLogger.LogDebug($"SpecialActionEditor: anchorPt(physical)={anchorPt} dpiPt(logical)={dpiPt} anchorSize=({anchor.ActualWidth}x{anchor.ActualHeight})");
                         centerX = dpiPt.X + anchor.ActualWidth / 2.0;
                         top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
                     }
@@ -637,10 +639,11 @@ namespace DS4WinWPF.DS4Forms
                     var src = PresentationSource.FromVisual(this);
                     if (src != null && src.CompositionTarget != null)
                     {
-                        var transform = src.CompositionTarget.TransformFromDevice;
-                        var dpiPt = transform.Transform(anchorPt);
-                        left = dpiPt.X + anchor.ActualWidth / 2.0; // center anchor horizontally
-                        top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
+                            var transform = src.CompositionTarget.TransformFromDevice;
+                            var dpiPt = transform.Transform(anchorPt);
+                            AppLogger.LogDebug($"SpecialActionEditor.ShowPositionedMessageBox: anchorPt(physical)={anchorPt} dpiPt(logical)={dpiPt} anchorSize=({anchor.ActualWidth}x{anchor.ActualHeight})");
+                            left = dpiPt.X + anchor.ActualWidth / 2.0; // center anchor horizontally
+                            top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
                     }
                     else
                     {

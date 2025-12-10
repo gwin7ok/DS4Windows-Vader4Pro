@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using DS4Windows;
 using DS4WinWPF.DS4Forms;
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Windows.Interop;
@@ -117,6 +118,9 @@ namespace DS4WinWPF.DS4Control
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool SetWindowPlacement(IntPtr hWnd, [In] ref WINDOWPLACEMENT lpwndpl);
 
+        [DllImport("user32.dll")]
+        private static extern uint GetDpiForWindow(IntPtr hwnd);
+
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetWindowPlacement(IntPtr hWnd, out WINDOWPLACEMENT lpwndpl);
@@ -135,6 +139,108 @@ namespace DS4WinWPF.DS4Control
                 mainWindowHandle = new WindowInteropHelper(mainWindow).Handle;
             }
 
+            // SetWindowPlacement は常に物理ピクセルを期待する
+            // しかし、保存値は論理ピクセルなので変換が必要
+            // 重要: ウィンドウが配置される先のモニタのDPIで変換する必要があるが、
+            // この時点ではまだウィンドウが表示されていないため、保存された位置から
+            // 対象モニタのDPIを取得する必要がある
+            
+            AppLogger.LogToGui($"ApplyPlacement: Saved Logical Position ({Global.FormLocationX}, {Global.FormLocationY}), Size ({Global.FormWidth}x{Global.FormHeight})", false);
+
+            // 保存された矩形（論理ピクセル）を用意して、各スクリーンとの包含／重なりを出力
+            try
+            {
+                var savedRect = new System.Windows.Rect(Global.FormLocationX, Global.FormLocationY, Global.FormWidth, Global.FormHeight);
+                AppLogger.LogDebug($"ApplyPlacement: Saved Logical Rect = {savedRect}");
+                AppLogger.LogDebug("ApplyPlacement: Enumerating screens:");
+                int si = 0;
+                foreach (var s in WpfScreenHelper.Screen.AllScreens)
+                {
+                    var contains = s.Bounds.Contains(new System.Windows.Point(Global.FormLocationX, Global.FormLocationY));
+                    var inter = System.Windows.Rect.Intersect(savedRect, s.Bounds);
+                    AppLogger.LogDebug($"ApplyPlacement: Screen[{si}] Bounds={s.Bounds} ScaleFactor={s.ScaleFactor:F3} WorkingArea={s.WorkingArea}");
+                    AppLogger.LogDebug($"ApplyPlacement: Screen[{si}] Contains SavedPoint={contains} SavedRectIntersects={!inter.IsEmpty}");
+                    si++;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"ApplyPlacement: Failed while enumerating screens for debug: {ex.Message}", true);
+            }
+
+            // 保存された論理座標から、配置先モニタのDPIを取得
+            double targetDpiX = 1.0;
+            double targetDpiY = 1.0;
+            
+            // WpfScreenHelper を使用して、論理座標に対応するモニタを特定
+            try
+            {
+                var targetScreen = WpfScreenHelper.Screen.AllScreens
+                    .FirstOrDefault(s => s.Bounds.Contains(new System.Windows.Point(Global.FormLocationX, Global.FormLocationY)));
+                
+                if (targetScreen != null)
+                {
+                    targetDpiX = targetScreen.ScaleFactor;
+                    targetDpiY = targetScreen.ScaleFactor;
+                    AppLogger.LogToGui($"ApplyPlacement: Target Monitor DPI Scale = {targetDpiX:F3}", false);
+                }
+                else
+                {
+                    // モニタが見つからない場合はプライマリモニタのDPIを使用
+                    var primaryScreen = WpfScreenHelper.Screen.PrimaryScreen;
+                    if (primaryScreen != null)
+                    {
+                        targetDpiX = primaryScreen.ScaleFactor;
+                        targetDpiY = primaryScreen.ScaleFactor;
+                        AppLogger.LogToGui($"ApplyPlacement: Using Primary Monitor DPI Scale = {targetDpiX:F3}", false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"ApplyPlacement: Failed to get target monitor DPI: {ex.Message}", true);
+            }
+
+            // 論理ピクセル → 物理ピクセルに変換
+            // 注: SetWindowPlacement を呼ぶ時点でウィンドウが別 DPI コンテキストにある場合、
+            // Windows は内部でサイズをスケーリングするため、期待した最終サイズを得るには
+            // 現在のウィンドウ DPI コンテキストに合わせた物理座標を渡す必要がある。
+            // つまり、渡す物理値 = 論理値 * (現在のウィンドウ DPI / 96)。
+            // 計算方針:
+            // - left/top (物理) はターゲットモニタのスケールで計算する (これが最終的な物理左上となるため、論理位置を保持する)
+            // - width/height の差分 (right-left, bottom-top) は SetWindowPlacement 呼び出し前のウィンドウ DPI スケールで計算する。
+            //   Windows は SetWindowPlacement の後で right/bottom にスケーリングを適用するため、差分を before-DPI スケールで渡すと
+            //   最終的にターゲットモニタの DPI で期待した幅/高さになる。
+
+            double windowDpiScale = 1.0;
+            try
+            {
+                var dpiForWindow = GetDpiForWindow(mainWindowHandle);
+                if (dpiForWindow > 0)
+                {
+                    windowDpiScale = dpiForWindow / 96.0;
+                    AppLogger.LogDebug($"ApplyPlacement: Current window DPI scale = {windowDpiScale:F3} (dpi={dpiForWindow})");
+                }
+            }
+            catch { }
+
+            double targetScale = targetDpiX; // targetScreen.ScaleFactor を earlier にセット済み
+            try
+            {
+                AppLogger.LogDebug($"ApplyPlacement: Target monitor scale = {targetScale:F3}");
+            }
+            catch { }
+
+            // 左上はターゲットスケールで計算
+            int physicalX = (int)Math.Round(Global.FormLocationX * targetScale);
+            int physicalY = (int)Math.Round(Global.FormLocationY * targetScale);
+
+            // 幅/高さ差分は現在のウィンドウ DPI スケールで計算（SetWindowPlacement 後にスケーリングされる想定）
+            int physicalWidth = (int)Math.Round(Global.FormWidth * windowDpiScale);
+            int physicalHeight = (int)Math.Round(Global.FormHeight * windowDpiScale);
+
+            AppLogger.LogDebug($"ApplyPlacement: Computed physical LeftTop=({physicalX},{physicalY}) Width/HeightDiff=({physicalWidth}x{physicalHeight}) -- targetScale={targetScale:F3}, windowScale={windowDpiScale:F3}");
+
             var placement = new WINDOWPLACEMENT()
             {
                 Flags = 0,
@@ -142,13 +248,61 @@ namespace DS4WinWPF.DS4Control
                 ShowCmd = (startMinimized ? SW_SHOWMINIMIZED : SW_SHOWNORMAL),
                 MaxPosition = new POINT(-1, -1),
                 MinPosition = new POINT(-1, -1),
-                NormalPosition = new RECT(Global.FormLocationX, Global.FormLocationY, 
-                    Global.FormLocationX + Global.FormWidth, Global.FormLocationY + Global.FormHeight)
+                NormalPosition = new RECT(physicalX, physicalY, 
+                    physicalX + physicalWidth, physicalY + physicalHeight)
             };
 
             try
             {
-                SetWindowPlacement(mainWindowHandle, ref placement);
+                try
+                {
+                    var dpiB = GetDpiForWindow(mainWindowHandle);
+                    AppLogger.LogDebug($"ApplyPlacement: GetDpiForWindow before SetWindowPlacement = {dpiB}");
+                }
+                catch { }
+
+                var setRes = SetWindowPlacement(mainWindowHandle, ref placement);
+
+                // Query resulting placement and DPI
+                var resulting = GetPlacement(mainWindow);
+                AppLogger.LogDebug($"ApplyPlacement: After SetWindowPlacement, GetPlacement physicalRect={resulting}");
+
+                try
+                {
+                    var dpiA = GetDpiForWindow(mainWindowHandle);
+                    AppLogger.LogDebug($"ApplyPlacement: GetDpiForWindow after SetWindowPlacement = {dpiA}");
+                }
+                catch { }
+
+                // Determine which screen contains the center of resulting rect
+                try
+                {
+                    int resWidth = resulting.Right - resulting.Left;
+                    int resHeight = resulting.Bottom - resulting.Top;
+                    double centerX = resulting.Left + resWidth / 2.0;
+                    double centerY = resulting.Top + resHeight / 2.0;
+                    int sidx = 0;
+                    foreach (var s in WpfScreenHelper.Screen.AllScreens)
+                    {
+                        if (s.Bounds.Contains(new System.Windows.Point(centerX, centerY)))
+                        {
+                            AppLogger.LogDebug($"ApplyPlacement: Resulting window center is on Screen[{sidx}] Bounds={s.Bounds} ScaleFactor={s.ScaleFactor}");
+                            break;
+                        }
+                        sidx++;
+                    }
+                }
+                catch { }
+
+                if (!setRes)
+                {
+                    var err = Marshal.GetLastWin32Error();
+                    AppLogger.LogToGui($"ApplyPlacement: SetWindowPlacement returned false, Win32Error={err}", true);
+                }
+                else
+                {
+                    AppLogger.LogToGui($"ApplyPlacement: SetWindowPlacement succeeded", false);
+                }
             }
             catch(Exception ex)
             {
@@ -165,6 +319,40 @@ namespace DS4WinWPF.DS4Control
 
             GetWindowPlacement(mainWindowHandle, out var placement);
             return placement.NormalPosition;
+        }
+
+        /// <summary>
+        /// 物理ピクセル座標を論理ピクセルに変換して返す
+        /// GetWindowPlacementは物理ピクセルを返すため、保存時は論理ピクセルに変換する必要がある
+        /// </summary>
+        internal static (int LogicalWidth, int LogicalHeight, int LogicalX, int LogicalY) GetLogicalPlacement(MainWindow mainWindow)
+        {
+            var physicalRect = GetPlacement(mainWindow);
+            
+            // DPI取得
+            var source = System.Windows.PresentationSource.FromVisual(mainWindow);
+            double dpiScaleX = 1.0;
+            double dpiScaleY = 1.0;
+            if (source?.CompositionTarget != null)
+            {
+                var m = source.CompositionTarget.TransformToDevice;
+                dpiScaleX = m.M11;
+                dpiScaleY = m.M22;
+            }
+
+            // 物理ピクセル → 論理ピクセルに変換
+            int logicalWidth = (int)Math.Round((physicalRect.Right - physicalRect.Left) / dpiScaleX);
+            int logicalHeight = (int)Math.Round((physicalRect.Bottom - physicalRect.Top) / dpiScaleY);
+            int logicalX = (int)Math.Round(physicalRect.Left / dpiScaleX);
+            int logicalY = (int)Math.Round(physicalRect.Top / dpiScaleY);
+
+            try
+            {
+                AppLogger.LogDebug($"GetLogicalPlacement: PhysicalRect={physicalRect} DPI=({dpiScaleX:F3},{dpiScaleY:F3}) => Logical=({logicalX},{logicalY}) Size=({logicalWidth}x{logicalHeight})");
+            }
+            catch { }
+
+            return (logicalWidth, logicalHeight, logicalX, logicalY);
         }
     }
 }
