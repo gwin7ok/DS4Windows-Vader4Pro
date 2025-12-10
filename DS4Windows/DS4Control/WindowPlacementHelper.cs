@@ -145,21 +145,21 @@ namespace DS4WinWPF.DS4Control
             // この時点ではまだウィンドウが表示されていないため、保存された位置から
             // 対象モニタのDPIを取得する必要がある
             
-            AppLogger.LogToGui($"ApplyPlacement: Saved Logical Position ({Global.FormLocationX}, {Global.FormLocationY}), Size ({Global.FormWidth}x{Global.FormHeight})", false);
+            AppLogger.LogDebug($"ApplyPlacement: Saved Logical Position ({Global.FormLocationX}, {Global.FormLocationY}), Size ({Global.FormWidth}x{Global.FormHeight})");
 
             // 保存された矩形（論理ピクセル）を用意して、各スクリーンとの包含／重なりを出力
             try
             {
                 var savedRect = new System.Windows.Rect(Global.FormLocationX, Global.FormLocationY, Global.FormWidth, Global.FormHeight);
-                AppLogger.LogDebug($"ApplyPlacement: Saved Logical Rect = {savedRect}");
-                AppLogger.LogDebug("ApplyPlacement: Enumerating screens:");
+                AppLogger.LogTrace($"ApplyPlacement: Saved Logical Rect = {savedRect}");
+                AppLogger.LogTrace("ApplyPlacement: Enumerating screens:");
                 int si = 0;
                 foreach (var s in WpfScreenHelper.Screen.AllScreens)
                 {
                     var contains = s.Bounds.Contains(new System.Windows.Point(Global.FormLocationX, Global.FormLocationY));
                     var inter = System.Windows.Rect.Intersect(savedRect, s.Bounds);
-                    AppLogger.LogDebug($"ApplyPlacement: Screen[{si}] Bounds={s.Bounds} ScaleFactor={s.ScaleFactor:F3} WorkingArea={s.WorkingArea}");
-                    AppLogger.LogDebug($"ApplyPlacement: Screen[{si}] Contains SavedPoint={contains} SavedRectIntersects={!inter.IsEmpty}");
+                    AppLogger.LogTrace($"ApplyPlacement: Screen[{si}] Bounds={s.Bounds} ScaleFactor={s.ScaleFactor:F3} WorkingArea={s.WorkingArea}");
+                    AppLogger.LogTrace($"ApplyPlacement: Screen[{si}] Contains SavedPoint={contains} SavedRectIntersects={!inter.IsEmpty}");
                     si++;
                 }
             }
@@ -182,7 +182,7 @@ namespace DS4WinWPF.DS4Control
                 {
                     targetDpiX = targetScreen.ScaleFactor;
                     targetDpiY = targetScreen.ScaleFactor;
-                    AppLogger.LogToGui($"ApplyPlacement: Target Monitor DPI Scale = {targetDpiX:F3}", false);
+                    AppLogger.LogDebug($"ApplyPlacement: Target Monitor DPI Scale = {targetDpiX:F3}");
                 }
                 else
                 {
@@ -219,7 +219,7 @@ namespace DS4WinWPF.DS4Control
                 if (dpiForWindow > 0)
                 {
                     windowDpiScale = dpiForWindow / 96.0;
-                    AppLogger.LogDebug($"ApplyPlacement: Current window DPI scale = {windowDpiScale:F3} (dpi={dpiForWindow})");
+                    AppLogger.LogTrace($"ApplyPlacement: Current window DPI scale = {windowDpiScale:F3} (dpi={dpiForWindow})");
                 }
             }
             catch { }
@@ -227,7 +227,7 @@ namespace DS4WinWPF.DS4Control
             double targetScale = targetDpiX; // targetScreen.ScaleFactor を earlier にセット済み
             try
             {
-                AppLogger.LogDebug($"ApplyPlacement: Target monitor scale = {targetScale:F3}");
+                AppLogger.LogTrace($"ApplyPlacement: Target monitor scale = {targetScale:F3}");
             }
             catch { }
 
@@ -239,7 +239,7 @@ namespace DS4WinWPF.DS4Control
             int physicalWidth = (int)Math.Round(Global.FormWidth * windowDpiScale);
             int physicalHeight = (int)Math.Round(Global.FormHeight * windowDpiScale);
 
-            AppLogger.LogDebug($"ApplyPlacement: Computed physical LeftTop=({physicalX},{physicalY}) Width/HeightDiff=({physicalWidth}x{physicalHeight}) -- targetScale={targetScale:F3}, windowScale={windowDpiScale:F3}");
+            AppLogger.LogTrace($"ApplyPlacement: Computed physical LeftTop=({physicalX},{physicalY}) Width/HeightDiff=({physicalWidth}x{physicalHeight}) -- targetScale={targetScale:F3}, windowScale={windowDpiScale:F3}");
 
             var placement = new WINDOWPLACEMENT()
             {
@@ -257,7 +257,7 @@ namespace DS4WinWPF.DS4Control
                 try
                 {
                     var dpiB = GetDpiForWindow(mainWindowHandle);
-                    AppLogger.LogDebug($"ApplyPlacement: GetDpiForWindow before SetWindowPlacement = {dpiB}");
+                    AppLogger.LogTrace($"ApplyPlacement: GetDpiForWindow before SetWindowPlacement = {dpiB}");
                 }
                 catch { }
 
@@ -265,12 +265,12 @@ namespace DS4WinWPF.DS4Control
 
                 // Query resulting placement and DPI
                 var resulting = GetPlacement(mainWindow);
-                AppLogger.LogDebug($"ApplyPlacement: After SetWindowPlacement, GetPlacement physicalRect={resulting}");
+                AppLogger.LogTrace($"ApplyPlacement: After SetWindowPlacement, GetPlacement physicalRect={resulting}");
 
                 try
                 {
                     var dpiA = GetDpiForWindow(mainWindowHandle);
-                    AppLogger.LogDebug($"ApplyPlacement: GetDpiForWindow after SetWindowPlacement = {dpiA}");
+                    AppLogger.LogTrace($"ApplyPlacement: GetDpiForWindow after SetWindowPlacement = {dpiA}");
                 }
                 catch { }
 
@@ -286,7 +286,7 @@ namespace DS4WinWPF.DS4Control
                     {
                         if (s.Bounds.Contains(new System.Windows.Point(centerX, centerY)))
                         {
-                            AppLogger.LogDebug($"ApplyPlacement: Resulting window center is on Screen[{sidx}] Bounds={s.Bounds} ScaleFactor={s.ScaleFactor}");
+                            AppLogger.LogTrace($"ApplyPlacement: Resulting window center is on Screen[{sidx}] Bounds={s.Bounds} ScaleFactor={s.ScaleFactor}");
                             break;
                         }
                         sidx++;
@@ -301,7 +301,7 @@ namespace DS4WinWPF.DS4Control
                 }
                 else
                 {
-                    AppLogger.LogToGui($"ApplyPlacement: SetWindowPlacement succeeded", false);
+                    AppLogger.LogDebug($"ApplyPlacement: SetWindowPlacement succeeded");
                 }
             }
             catch(Exception ex)
@@ -348,7 +348,7 @@ namespace DS4WinWPF.DS4Control
 
             try
             {
-                AppLogger.LogDebug($"GetLogicalPlacement: PhysicalRect={physicalRect} DPI=({dpiScaleX:F3},{dpiScaleY:F3}) => Logical=({logicalX},{logicalY}) Size=({logicalWidth}x{logicalHeight})");
+                AppLogger.LogTrace($"GetLogicalPlacement: PhysicalRect={physicalRect} DPI=({dpiScaleX:F3},{dpiScaleY:F3}) => Logical=({logicalX},{logicalY}) Size=({logicalWidth}x{logicalHeight})");
             }
             catch { }
 

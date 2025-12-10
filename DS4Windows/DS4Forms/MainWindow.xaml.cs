@@ -1172,19 +1172,19 @@ Suspend support not enabled.", true);
                     try
                     {
                         // WPF レベルのプロパティ
-                        AppLogger.LogDebug($"PostApply: WPF Left={this.Left} Top={this.Top} Width={this.Width} Height={this.Height} ActualWidth={this.ActualWidth} ActualHeight={this.ActualHeight} WindowState={this.WindowState}");
+                        AppLogger.LogTrace($"PostApply: WPF Left={this.Left} Top={this.Top} Width={this.Width} Height={this.Height} ActualWidth={this.ActualWidth} ActualHeight={this.ActualHeight} WindowState={this.WindowState}");
 
                         // Win32 レベルの取得（物理ピクセル）
                         var phys = WindowPlacementHelper.GetPlacement(this);
-                        AppLogger.LogDebug($"PostApply: GetPlacement physicalRect={phys}");
+                        AppLogger.LogTrace($"PostApply: GetPlacement physicalRect={phys}");
 
                         // 論理座標としての取得
                         var logical = WindowPlacementHelper.GetLogicalPlacement(this);
-                        AppLogger.LogDebug($"PostApply: GetLogicalPlacement => LogicalX={logical.LogicalX} LogicalY={logical.LogicalY} LogicalWidth={logical.LogicalWidth} LogicalHeight={logical.LogicalHeight}");
+                        AppLogger.LogTrace($"PostApply: GetLogicalPlacement => LogicalX={logical.LogicalX} LogicalY={logical.LogicalY} LogicalWidth={logical.LogicalWidth} LogicalHeight={logical.LogicalHeight}");
                     }
                     catch (Exception ex)
                     {
-                        AppLogger.LogDebug($"PostApply: Failed to log post-apply window metrics: {ex.Message}");
+                        AppLogger.LogTrace($"PostApply: Failed to log post-apply window metrics: {ex.Message}");
                     }
                 }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             }
@@ -1782,7 +1782,7 @@ Suspend support not enabled.", true);
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
                 Global.FormWidth = logical.LogicalWidth;
                 Global.FormHeight = logical.LogicalHeight;
-                AppLogger.LogDebug($"MainWindow.SizeChanged: Saved Logical Width={Global.FormWidth} Height={Global.FormHeight}");
+                AppLogger.LogTrace($"MainWindow.SizeChanged: Saved Logical Width={Global.FormWidth} Height={Global.FormHeight}");
             }
             // 編集画面が開いていない場合は常に保存
             else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
@@ -1790,7 +1790,7 @@ Suspend support not enabled.", true);
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
                 Global.FormWidth = logical.LogicalWidth;
                 Global.FormHeight = logical.LogicalHeight;
-                AppLogger.LogDebug($"MainWindow.SizeChanged: Saved Logical Width={Global.FormWidth} Height={Global.FormHeight}");
+                AppLogger.LogTrace($"MainWindow.SizeChanged: Saved Logical Width={Global.FormWidth} Height={Global.FormHeight}");
             }
         }
 
@@ -1802,7 +1802,7 @@ Suspend support not enabled.", true);
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
                 Global.FormLocationX = logical.LogicalX;
                 Global.FormLocationY = logical.LogicalY;
-                AppLogger.LogDebug($"MainWindow.LocationChanged: Saved Logical X={Global.FormLocationX} Y={Global.FormLocationY}");
+                AppLogger.LogTrace($"MainWindow.LocationChanged: Saved Logical X={Global.FormLocationX} Y={Global.FormLocationY}");
             }
             // 編集画面が開いていない場合は常に保存
             else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
@@ -1810,7 +1810,7 @@ Suspend support not enabled.", true);
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
                 Global.FormLocationX = logical.LogicalX;
                 Global.FormLocationY = logical.LogicalY;
-                AppLogger.LogDebug($"MainWindow.LocationChanged: Saved Logical X={Global.FormLocationX} Y={Global.FormLocationY}");
+                AppLogger.LogTrace($"MainWindow.LocationChanged: Saved Logical X={Global.FormLocationX} Y={Global.FormLocationY}");
             }
         }
 
@@ -1854,7 +1854,7 @@ Suspend support not enabled.", true);
                 Global.FormHeight = logical.LogicalHeight;
                 Global.FormLocationX = logical.LogicalX;
                 Global.FormLocationY = logical.LogicalY;
-                AppLogger.LogDebug($"MainWindow.ProfileEditor_Closed: Saved Logical Rect X={Global.FormLocationX} Y={Global.FormLocationY} W={Global.FormWidth} H={Global.FormHeight}");
+                AppLogger.LogTrace($"MainWindow.ProfileEditor_Closed: Saved Logical Rect X={Global.FormLocationX} Y={Global.FormLocationY} W={Global.FormWidth} H={Global.FormHeight}");
             }
             editor = null;
             // Restore the tab that was active before opening the profile editor
