@@ -1856,18 +1856,21 @@ Suspend support not enabled.", true);
                 profilesListBox.Visibility = Visibility.Collapsed;
                 mainWinVM.FullTabsEnabled = false;
 
-                // preserveSizeは常にtrue
+                // 編集画面を開く前のサイズを保存（閉じる時に元に戻すため）
                 oldSize.Width = Width;
                 oldSize.Height = Height;
-                if (this.Width < WindowLayoutDefaults.PROFILE_EDITOR_WIDTH)
-                {
-                    this.Width = WindowLayoutDefaults.PROFILE_EDITOR_WIDTH;
-                }
-
-                if (this.Height < WindowLayoutDefaults.PROFILE_EDITOR_HEIGHT)
-                {
-                    this.Height = WindowLayoutDefaults.PROFILE_EDITOR_HEIGHT;
-                }
+                
+                // 【仕様】プロフィール編集画面は開く直前のメインウィンドウと同じサイズ・ポジションで開く
+                // サイズ変更処理は不要（以前の最小サイズチェックロジックは無効化）
+                // if (this.Width < WindowLayoutDefaults.PROFILE_EDITOR_WIDTH)
+                // {
+                //     this.Width = WindowLayoutDefaults.PROFILE_EDITOR_WIDTH;
+                // }
+                //
+                // if (this.Height < WindowLayoutDefaults.PROFILE_EDITOR_HEIGHT)
+                // {
+                //     this.Height = WindowLayoutDefaults.PROFILE_EDITOR_HEIGHT;
+                // }
 
                 editor = new ProfileEditor(device);
                 editor.CreatedProfile += Editor_CreatedProfile;
