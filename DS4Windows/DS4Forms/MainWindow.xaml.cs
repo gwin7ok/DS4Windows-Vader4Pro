@@ -51,9 +51,6 @@ namespace DS4WinWPF.DS4Forms
     [System.Security.SuppressUnmanagedCodeSecurity]
     public partial class MainWindow : Window
     {
-        private const int DEFAULT_PROFILE_EDITOR_WIDTH = 1000;
-        private const int DEFAULT_PROFILE_EDITOR_HEIGHT = 650;
-
         private const int POWER_RESUME = 7;
         private const int POWER_SUSPEND = 4;
 
@@ -1862,14 +1859,14 @@ Suspend support not enabled.", true);
                 // preserveSizeは常にtrue
                 oldSize.Width = Width;
                 oldSize.Height = Height;
-                if (this.Width < DEFAULT_PROFILE_EDITOR_WIDTH)
+                if (this.Width < WindowLayoutDefaults.PROFILE_EDITOR_WIDTH)
                 {
-                    this.Width = DEFAULT_PROFILE_EDITOR_WIDTH;
+                    this.Width = WindowLayoutDefaults.PROFILE_EDITOR_WIDTH;
                 }
 
-                if (this.Height < DEFAULT_PROFILE_EDITOR_HEIGHT)
+                if (this.Height < WindowLayoutDefaults.PROFILE_EDITOR_HEIGHT)
                 {
-                    this.Height = DEFAULT_PROFILE_EDITOR_HEIGHT;
+                    this.Height = WindowLayoutDefaults.PROFILE_EDITOR_HEIGHT;
                 }
 
                 editor = new ProfileEditor(device);

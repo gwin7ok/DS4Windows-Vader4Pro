@@ -3698,30 +3698,30 @@ namespace DS4Windows
         }
 
     // ProfileEditor layout fields (DTOと統合)
-    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = 760;
-    public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = 600;
-    public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = 310;
-    public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = 150;
-    public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = 220;
+    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_LEFT_WIDTH;
+    public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_RIGHT_WIDTH;
+    public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_NAME_COL_WIDTH;
+    public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+    public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_DETAIL_COL_WIDTH;
     // Active 列はプロファイルに永続化しない列幅の初期値
-    public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = 32;
+    public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_ACTIVE_COL_WIDTH;
     // SpecialActionDeleteColWidth 定数削除
 
     // Controller tab column widths
-    public const int DEFAULT_CONTROLLER_INDEX_COL_WIDTH = 30;
-    public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = 250;
-    public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = 65;
-    public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = 65;
-    public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = 100;
-    public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = 220;
-    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = 95;
-    public const int DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH = 220;
-    public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = 130;
-    public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = 160;
+    public const int DEFAULT_CONTROLLER_INDEX_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_INDEX_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_ID_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_STATUS_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EXCLUSIVE_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_BATTERY_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_SELECTPROFILE_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EDIT_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINK_PROF_ID_COL_WIDTH;
+    public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
     // Log settings
-    public const int DEFAULT_LOG_MAX_ARCHIVE_FILES = 100;
-    public const string DEFAULT_LOG_MIN_LEVEL = "Debug";
+    public const int DEFAULT_LOG_MAX_ARCHIVE_FILES = 50;
+    public const string DEFAULT_LOG_MIN_LEVEL = "Info";
 
     public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
     public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
@@ -4159,13 +4159,18 @@ namespace DS4Windows
           new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER }, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER}, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER } };
         public Boolean useExclusiveMode = false; // Re-enable Ex Mode
 
-    public const int DEFAULT_FORM_WIDTH = 1740;
+    public const int DEFAULT_FORM_WIDTH = WindowLayoutDefaults.MAIN_WINDOW_WIDTH;
     public int formWidth = DEFAULT_FORM_WIDTH;
 
-    public const int DEFAULT_FORM_HEIGHT = 1270;
+    public const int DEFAULT_FORM_HEIGHT = WindowLayoutDefaults.MAIN_WINDOW_HEIGHT;
     public int formHeight = DEFAULT_FORM_HEIGHT;
-        public int formLocationX = 0;
-        public int formLocationY = 0;
+
+    public const int DEFAULT_FORM_LOCATION_X = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_X;
+    public int formLocationX = DEFAULT_FORM_LOCATION_X;
+
+    public const int DEFAULT_FORM_LOCATION_Y = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_Y;
+    public int formLocationY = DEFAULT_FORM_LOCATION_Y;
+
         public Boolean startMinimized = false;
         public Boolean minToTaskbar = false;
         public DateTime lastChecked;

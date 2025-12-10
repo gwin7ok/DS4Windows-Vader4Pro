@@ -30,21 +30,11 @@ public class AppSettingsDTO
         [XmlElement("formHeight")]
         public int FormHeight { get; set; } = BackingStore.DEFAULT_FORM_HEIGHT;
 
-        private int _formLocationX;
         [XmlElement("formLocationX")]
-        public int FormLocationX
-        {
-            get => _formLocationX;
-            set => _formLocationX = value;
-        }
+        public int FormLocationX { get; set; } = BackingStore.DEFAULT_FORM_LOCATION_X;
 
-        private int _formLocationY;
         [XmlElement("formLocationY")]
-        public int FormLocationY
-        {
-            get => _formLocationY;
-            set => _formLocationY = value;
-        }
+        public int FormLocationY { get; set; } = BackingStore.DEFAULT_FORM_LOCATION_Y;
 
     // ウィンドウ状態管理プロパティ
     public bool UseExclusiveMode { get; set; }

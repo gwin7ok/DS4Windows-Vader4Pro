@@ -314,9 +314,11 @@ namespace DS4WinWPF.DS4Forms
         // Splitter位置とSpecial Actions列幅の保存・復元はGlobal経由で統一
 
         // ウィンドウサイズ初期化ボタンのクリックイベント
+        // すべての初期値は WindowLayoutDefaults から取得される（BackingStore経由）
         private void WindowSizeResetBtn_Click(object sender, RoutedEventArgs e)
         {
             // 初期値にリセット（左右領域・列幅）
+            // これらは WindowLayoutDefaults.PROFILE_EDITOR_* の値を参照している
             Global.ProfileEditorLeftWidth = BackingStore.DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
             Global.ProfileEditorRightWidth = BackingStore.DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
             Global.SpecialActionNameColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
@@ -324,6 +326,7 @@ namespace DS4WinWPF.DS4Forms
             Global.SpecialActionDetailColWidth = BackingStore.DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
 
             // ウィンドウ自体のサイズも初期値にリセット（ポジションは変更しない）
+            // これらは WindowLayoutDefaults.MAIN_WINDOW_* の値を参照している
             Global.FormWidth = BackingStore.DEFAULT_FORM_WIDTH;
             Global.FormHeight = BackingStore.DEFAULT_FORM_HEIGHT;
 
