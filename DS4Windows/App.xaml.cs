@@ -228,6 +228,17 @@ namespace DS4WinWPF
             // Steam Input
             if (firstRun)
             {
+                // Ensure localization is applied before showing FirstLaunchUtilWindow
+                if (!string.IsNullOrEmpty(DS4Windows.Global.UseLang))
+                {
+                    try
+                    {
+                        CultureInfo culture = CultureInfo.GetCultureInfo(DS4Windows.Global.UseLang);
+                        LocalizeDictionary.Instance.Culture = culture;
+                    }
+                    catch { /* Skip if culture cannot be set */ }
+                }
+
                 DS4Forms.FirstLaunchUtilWindow firstLaunchUtilWin =
                     new DS4Forms.FirstLaunchUtilWindow(DS4Windows.Global.DeviceOptions);
                 firstLaunchUtilWin.ShowDialog();
