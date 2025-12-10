@@ -497,10 +497,10 @@
     <value>複数の保存場所が検出されました</value>
   </data>
   <data name="SaveWhere.PickWhere" xml:space="preserve">
-    <value>プロファイルと設定を保存する場所を選択してください、</value>
+    <value>プロファイルと設定を保存する場所を選択してください。</value>
   </data>
   <data name="SaveWhere.OtherFileLocation" xml:space="preserve">
-    <value>、他の位置にあるファイルは削除されます</value>
+    <value></value>
   </data>
   <data name="SaveWhere.ProgramFolderDescText" xml:space="preserve">
     <value>ポータブルプログラムを希望する方向け。

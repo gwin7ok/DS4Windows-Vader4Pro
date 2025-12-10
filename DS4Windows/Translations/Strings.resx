@@ -1274,10 +1274,10 @@ Disabled:
     <value>Multiple save locations detected</value>
   </data>
   <data name="SaveWhere.PickWhere" xml:space="preserve">
-    <value>Pick where you want profiles and settings to be saved,</value>
+    <value>Pick where you want profiles and settings to be saved. </value>
   </data>
   <data name="SaveWhere.OtherFileLocation" xml:space="preserve">
-    <value>, other location files will be deleted</value>
+    <value></value>
   </data>
   <data name="SaveWhere.ProgramFolderDescText" xml:space="preserve">
     <value>For those who prefer a portable program.
