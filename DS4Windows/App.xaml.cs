@@ -106,6 +106,14 @@ namespace DS4WinWPF
             }
         }
 
+        /// <summary>
+        /// Public wrapper for ApplyLanguageSetting to allow access from other components
+        /// </summary>
+        public void ApplyLanguageSettingPublic(string cultureCode)
+        {
+            ApplyLanguageSetting(cultureCode);
+        }
+
         private void Application_Startup(object sender, StartupEventArgs e)
         {
             runShutdown = true;

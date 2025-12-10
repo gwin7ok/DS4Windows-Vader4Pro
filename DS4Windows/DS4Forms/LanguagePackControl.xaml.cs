@@ -55,10 +55,32 @@ namespace DS4WinWPF.DS4Forms
 
         private void CheckForCultureChange(object sender, EventArgs e)
         {
+            // Enable apply button when selection changes
+            applyLangBtn.IsEnabled = true;
+        }
+
+        private void ApplyLangBtn_Click(object sender, RoutedEventArgs e)
+        {
             if (langPackVM.ChangeLanguagePack())
             {
-                MessageBox.Show(Properties.Resources.LanguagePackApplyRestartRequired,
-                    "DS4Windows", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Apply language change immediately using App.ApplyLanguageSetting
+                var app = Application.Current as App;
+                if (app != null)
+                {
+                    LangPackItem selectedItem = langPackVM.LangPackList[langPackVM.SelectedIndex];
+                    string cultureCode = selectedItem.Name;
+                    
+                    // Apply to both Global and UI
+                    app.ApplyLanguageSettingPublic(cultureCode);
+                    
+                    // Save to config
+                    DS4Windows.Global.Save();
+                    
+                    MessageBox.Show(Translations.Strings.ResourceManager.GetString("LangPackControl.LanguageApplied") ?? "Language applied successfully",
+                        "DS4Windows", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                
+                applyLangBtn.IsEnabled = false;
             }
         }
 

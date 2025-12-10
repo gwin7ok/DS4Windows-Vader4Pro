@@ -591,4 +591,7 @@ Bluetooth接続の設定（オプション）：PSボタンとShareボタンを3
   <data name="Welcome.Step5HelpText" xml:space="preserve">
     <value>FakerInputドライバーを使用して、システム全体の仮想キーボード、相対マウス、絶対マウスを公開します。SendInputが失敗する場合に、仮想KB+Mイベントを使用可能にします。このような状況には、管理者権限プロセスやゲーム、UACプロンプト、SendInputイベントをブロックするアンチチートシステムが含まれます。Valorantのようなアンチチート保護を持つゲームでDS4Windowsを動作させるには、FakerInputの使用が必要です。</value>
   </data>
+  <data name="LangPackControl.LanguageApplied" xml:space="preserve">
+    <value>言語設定が適用されました</value>
+  </data>
 </root>

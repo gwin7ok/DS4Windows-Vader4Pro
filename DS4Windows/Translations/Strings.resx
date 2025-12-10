@@ -1030,6 +1030,9 @@ Disabled:
   <data name="LangPackControl.UseLangPack" xml:space="preserve">
     <value>Use language pack</value>
   </data>
+  <data name="LangPackControl.LanguageApplied" xml:space="preserve">
+    <value>Language applied successfully</value>
+  </data>
   <data name="LaunchProgramWithProfile" xml:space="preserve">
     <value>Launch program with profile</value>
   </data>
