@@ -154,6 +154,8 @@ namespace DS4WinWPF
             bool firstRun = DS4Windows.Global.firstRun;
 
             // On first run, show language selection dialog first
+            // Store selected language for first run (will be saved after Load())
+            string selectedLanguage = null;
             if (firstRun)
             {
                 DS4Forms.LanguageSelectDialog langDialog = new DS4Forms.LanguageSelectDialog();
@@ -165,12 +167,15 @@ namespace DS4WinWPF
                     return;
                 }
 
+                // Store selected culture for later
+                selectedLanguage = langDialog.SelectedCulture;
+
                 // Update WPF localization engine after language selection
-                if (!string.IsNullOrEmpty(langDialog.SelectedCulture))
+                if (!string.IsNullOrEmpty(selectedLanguage))
                 {
                     try
                     {
-                        CultureInfo culture = CultureInfo.GetCultureInfo(langDialog.SelectedCulture);
+                        CultureInfo culture = CultureInfo.GetCultureInfo(selectedLanguage);
                         LocalizeDictionary.Instance.Culture = culture;
                     }
                     catch { /* Skip if culture cannot be set */ }
@@ -204,6 +209,22 @@ namespace DS4WinWPF
 
             // Load Profiles.xml BEFORE creating LoggerHolder so log settings are available
             bool readAppConfig = DS4Windows.Global.Load();
+
+            // Re-apply selected language after Load() (which may have reset it to default)
+            if (firstRun && !string.IsNullOrEmpty(selectedLanguage))
+            {
+                DS4Windows.Global.UseLang = selectedLanguage;
+                DS4Windows.Global.SetCulture(selectedLanguage);
+                // Save the language selection to Profiles.xml
+                DS4Windows.Global.Save();
+                // Update WPF localization engine again
+                try
+                {
+                    CultureInfo culture = CultureInfo.GetCultureInfo(selectedLanguage);
+                    LocalizeDictionary.Instance.Culture = culture;
+                }
+                catch { /* Skip if culture cannot be set */ }
+            }
 
             logHolder = new LoggerHolder(rootHub);
             DispatcherUnhandledException += App_DispatcherUnhandledException;
@@ -271,6 +292,17 @@ namespace DS4WinWPF
 
             // Have app use selected culture
             SetUICulture(DS4Windows.Global.UseLang);
+            // Also update LocalizeDictionary to ensure UI is properly localized
+            if (!string.IsNullOrEmpty(DS4Windows.Global.UseLang))
+            {
+                try
+                {
+                    CultureInfo culture = CultureInfo.GetCultureInfo(DS4Windows.Global.UseLang);
+                    LocalizeDictionary.Instance.Culture = culture;
+                }
+                catch { /* Skip if culture cannot be set */ }
+            }
+
             DS4Windows.AppThemeChoice themeChoice = DS4Windows.Global.UseCurrentTheme;
             ChangeTheme(DS4Windows.Global.UseCurrentTheme, false);
 
