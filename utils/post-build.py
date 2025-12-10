@@ -81,6 +81,12 @@ if staging_dir.exists():
 # Copy output (target_dir) into staging_dir (results in staging_dir/*)
 shutil.copytree(target_dir, staging_dir)
 
+# Remove any net8.0-windows subdirectory from staging to avoid duplication
+# (sometimes created even with AppendTargetFrameworkToOutputPath=false)
+net_framework_dir = staging_dir / "net8.0-windows"
+if net_framework_dir.exists():
+    shutil.rmtree(net_framework_dir)
+
 # Create archive only for the staging_dir (so zip root contains DS4Windows/)
 # Use make_archive with root_dir and base_dir to avoid including other files.
 zip_dir = shutil.make_archive(zip_name, "zip", root_dir=str(staging_dir.parent), base_dir=staging_dir.name)

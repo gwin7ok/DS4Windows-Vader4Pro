@@ -35,6 +35,10 @@
 		<!-- Disable auto-generated .editorconfig to use repository root .editorconfig only -->
 		<GenerateEditorConfigFile>false</GenerateEditorConfigFile>
 
+		<!-- Prevent creation of net8.0-windows subdirectory in output path -->
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+
 		
 	</PropertyGroup>
 
