@@ -9,7 +9,7 @@
         lex:ResxLocalizationProvider.DefaultAssembly="DS4Windows"
         lex:ResxLocalizationProvider.DefaultDictionary="Strings"
         mc:Ignorable="d"
-        Title="{lex:Loc Welcome.WinTitle}" Height="440" Width="418" MinWidth="500" MinHeight="500"
+        Title="{lex:Loc Welcome.WinTitle}" Width="700" MinWidth="700" SizeToContent="Height" MaxHeight="800"
         Style="{DynamicResource WindowStyle}">
     <Window.Resources>
         <Style TargetType="{x:Type Button}" x:Key="CommonMargin" BasedOn="{StaticResource {x:Type Button}}">
