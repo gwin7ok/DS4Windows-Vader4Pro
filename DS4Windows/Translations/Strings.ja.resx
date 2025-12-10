@@ -509,4 +509,46 @@
   <data name="SaveWhere.WinTitle" xml:space="preserve">
     <value>保存先の選択</value>
   </data>
+  <data name="FirstLaunch.WinTitle" xml:space="preserve">
+    <value>初回起動</value>
+  </data>
+  <data name="FirstLaunch.Header" xml:space="preserve">
+    <value>Enabled Devices Mapper Support</value>
+  </data>
+  <data name="FirstLaunch.DeviceSupport" xml:space="preserve">
+    <value>デバイスサポート</value>
+  </data>
+  <data name="FirstLaunch.DeviceIntroText" xml:space="preserve">
+    <value>他のマッパー（Steam Inputなど）がデフォルトで複数のデバイスタイプのサポートを有効にしているため、DS4WindowsはデフォルトでDS4コントローラーからの読み取りサポートのみを有効にしています。ここで、サポートされている他のデバイスタイプのマッパーサポートを指定できます。他のマッパーと同時にDS4Windowsを使用する場合は注意してください。</value>
+  </data>
+  <data name="FirstLaunch.DS4EnableCkbLabel" xml:space="preserve">
+    <value>DS4 Device Support</value>
+  </data>
+  <data name="FirstLaunch.DS4EnableText" xml:space="preserve">
+    <value>既知のDualShock 4コントローラーのサポート</value>
+  </data>
+  <data name="FirstLaunch.DSEnableCkbLabel" xml:space="preserve">
+    <value>DualSense Device Support</value>
+  </data>
+  <data name="FirstLaunch.DSEnableText" xml:space="preserve">
+    <value>DualSense（PS5）コントローラーのサポート。ベースモデルとDS Edge</value>
+  </data>
+  <data name="FirstLaunch.SwitchProEnableCkbLabel" xml:space="preserve">
+    <value>Switch Pro Device Support</value>
+  </data>
+  <data name="FirstLaunch.SwitchProEnableText" xml:space="preserve">
+    <value>Switch Pro（Nintendo Switch）コントローラーのサポート</value>
+  </data>
+  <data name="FirstLaunch.JoyConEnableCkbLabel" xml:space="preserve">
+    <value>JoyCon Device Support</value>
+  </data>
+  <data name="FirstLaunch.JoyConEnableText" xml:space="preserve">
+    <value>JoyCon（Nintendo Switch）コントローラーのサポート</value>
+  </data>
+  <data name="FirstLaunch.DS3EnableCkbLabel" xml:space="preserve">
+    <value>DS3 Device Support</value>
+  </data>
+  <data name="FirstLaunch.DS3EnableText" xml:space="preserve">
+    <value>DualShock 3（PS3）コントローラーのサポート。ViGEmプロジェクト（nefarius）のDsHidMiniドライバーの使用が必要です。</value>
+  </data>
 </root>

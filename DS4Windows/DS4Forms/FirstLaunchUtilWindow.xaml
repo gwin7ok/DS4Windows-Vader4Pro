@@ -9,7 +9,7 @@
         lex:ResxLocalizationProvider.DefaultAssembly="DS4Windows"
         lex:ResxLocalizationProvider.DefaultDictionary="Strings"
         mc:Ignorable="d"
-        Title="{lex:Loc FirstLaunch.WinTitle}" Height="500" Width="800"
+        Title="{lex:Loc FirstLaunch.WinTitle}" Width="800" SizeToContent="Height" MaxHeight="600"
         Style="{DynamicResource WindowStyle}">
     <!-- Window will likely be used for other first launch configuration in the future.
          For now, only deal with device mapper support -->
@@ -34,35 +34,35 @@
                             <Border BorderThickness="0" CornerRadius="10" BorderBrush="{DynamicResource BorderColor}" Margin="0,16,0,0">
                                 <StackPanel Orientation="Vertical">
                                     <CheckBox Name="ds4SupportEnableCkb" IsChecked="{Binding EnableDS4}" Content="{lex:Loc FirstLaunch.DS4EnableCkbLabel}" FontWeight="Bold" />
-                                    <TextBlock Text="{lex:Loc FirstLaunch.DS4EnableText}" Margin="0,8,0,0" />
+                                    <TextBlock Text="{lex:Loc FirstLaunch.DS4EnableText}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 </StackPanel>
                             </Border>
 
                             <Border BorderThickness="0" CornerRadius="10" BorderBrush="{DynamicResource BorderColor}" Margin="0,16,0,0">
                                 <StackPanel Orientation="Vertical">
                                     <CheckBox Name="dualSenseSupportEnableCkb" IsChecked="{Binding EnableDualSense}" Content="{lex:Loc FirstLaunch.DSEnableCkbLabel}" FontWeight="Bold" />
-                                    <TextBlock Text="{lex:Loc FirstLaunch.DSEnableText}" Margin="0,8,0,0" />
+                                    <TextBlock Text="{lex:Loc FirstLaunch.DSEnableText}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 </StackPanel>
                             </Border>
 
                             <Border BorderThickness="0" CornerRadius="10" BorderBrush="{DynamicResource BorderColor}" Margin="0,16,0,0">
                                 <StackPanel Orientation="Vertical">
                                     <CheckBox Name="switchProSupportEnableCkb" IsChecked="{Binding EnableSwitchPro}" Content="{lex:Loc FirstLaunch.SwitchProEnableCkbLabel}" FontWeight="Bold" />
-                                    <TextBlock Text="{lex:Loc FirstLaunch.SwitchProEnableText}" Margin="0,8,0,0" />
+                                    <TextBlock Text="{lex:Loc FirstLaunch.SwitchProEnableText}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 </StackPanel>
                             </Border>
 
                             <Border BorderThickness="0" CornerRadius="10" BorderBrush="{DynamicResource BorderColor}" Margin="0,16,0,0">
                                 <StackPanel Orientation="Vertical">
                                     <CheckBox Name="joyConSupportEnableCkb" IsChecked="{Binding EnableJoyCon}" Content="{lex:Loc FirstLaunch.JoyConEnableCkbLabel}" FontWeight="Bold" />
-                                    <TextBlock Text="{lex:Loc FirstLaunch.JoyConEnableText}" Margin="0,8,0,0" />
+                                    <TextBlock Text="{lex:Loc FirstLaunch.JoyConEnableText}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 </StackPanel>
                             </Border>
 
                             <Border BorderThickness="0" CornerRadius="10" BorderBrush="{DynamicResource BorderColor}" Margin="0,16,0,0">
                                 <StackPanel Orientation="Vertical">
                                     <CheckBox Name="ds3SupportEnableCkb" IsChecked="{Binding EnableDS3}" Content="{lex:Loc FirstLaunch.DS3EnableCkbLabel}" FontWeight="Bold" />
-                                    <TextBlock Text="{lex:Loc FirstLaunch.DS3EnableText}" Margin="0,8,0,0" />
+                                    <TextBlock Text="{lex:Loc FirstLaunch.DS3EnableText}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                     <TextBlock>
                                         <Hyperlink x:Name="dsHidMiniLink" Click="DsHidMiniLink_Click" Foreground="{DynamicResource AccentColor}">https://vigem.org/projects/DsHidMini/</Hyperlink>
                                     </TextBlock>
