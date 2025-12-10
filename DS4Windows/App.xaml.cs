@@ -432,6 +432,7 @@ namespace DS4WinWPF
                 {
                     // Have app use selected culture
                     SetUICulture(DS4Windows.Global.UseLang);
+                    ApplyLanguageSetting(DS4Windows.Global.UseLang);
                     DS4Windows.AppThemeChoice themeChoice = DS4Windows.Global.UseCurrentTheme;
                     ChangeTheme(DS4Windows.Global.UseCurrentTheme, false);
                 }

@@ -551,4 +551,44 @@
   <data name="FirstLaunch.DS3EnableText" xml:space="preserve">
     <value>DualShock 3（PS3）コントローラーのサポート。ViGEmプロジェクト（nefarius）のDsHidMiniドライバーの使用が必要です。</value>
   </data>
+  <data name="Welcome.WinTitle" xml:space="preserve">
+    <value>DS4Windowsへようこそ</value>
+  </data>
+  <data name="Welcome.Step1Text" xml:space="preserve">
+    <value>Step 1: ViGEmBusドライバーをインストール</value>
+  </data>
+  <data name="Welcome.Step1HelpText" xml:space="preserve">
+    <value>インストール後にこのウィンドウが再表示される場合は、PCの再起動が必要な可能性があります。</value>
+  </data>
+  <data name="Welcome.Step2Text" xml:space="preserve">
+    <value>Step 2: Windows 7の場合、360ドライバーをインストール</value>
+  </data>
+  <data name="Welcome.Step2HelpText" xml:space="preserve">
+    <value>このPCで以前に360コントローラーを使用したことがある場合は、このステップをスキップできます。</value>
+  </data>
+  <data name="Welcome.Step3HelpText" xml:space="preserve">
+    <value>Step 3: DualShock 4コントローラーの接続。
+有線/USB接続の設定：
+micro-USBケーブルをPCとDualShock 4に接続するだけです。
+
+Bluetooth接続の設定（オプション）：PSボタンとShareボタンを3秒間同時押しします。ライトバーが2回点滅し始めます。</value>
+  </data>
+  <data name="Welcome.Step3BluetoothHelpText" xml:space="preserve">
+    <value>点滅が始まったら、Bluetooth設定を開いて「Wireless Controller」に接続します。ペアリングコードを求められた場合は0000を入力します。ペアリングが完了すれば準備完了です。お楽しみください！</value>
+  </data>
+  <data name="Welcome.BluetoothSettings" xml:space="preserve">
+    <value>Bluetooth設定</value>
+  </data>
+  <data name="Welcome.Step4Text" xml:space="preserve">
+    <value>（オプション）Step 4: HidHideドライバーをインストール</value>
+  </data>
+  <data name="Welcome.Step4HelpText" xml:space="preserve">
+    <value>HidHideを使用して、システム上で実行されている他のアプリから入力コントローラーを設定・非表示にします。一部のゲームでは、コントローラーが1つだけ存在する必要があり、二重入力がゲーム内で問題を引き起こす可能性があります。</value>
+  </data>
+  <data name="Welcome.Step5Text" xml:space="preserve">
+    <value>（オプション）Step 5: FakerInputドライバーをインストール</value>
+  </data>
+  <data name="Welcome.Step5HelpText" xml:space="preserve">
+    <value>FakerInputドライバーを使用して、システム全体の仮想キーボード、相対マウス、絶対マウスを公開します。SendInputが失敗する場合に、仮想KB+Mイベントを使用可能にします。このような状況には、管理者権限プロセスやゲーム、UACプロンプト、SendInputイベントをブロックするアンチチートシステムが含まれます。Valorantのようなアンチチート保護を持つゲームでDS4Windowsを動作させるには、FakerInputの使用が必要です。</value>
+  </data>
 </root>
