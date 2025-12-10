@@ -31,15 +31,17 @@ namespace DS4Windows
         /// MainWindow (メインウィンドウ) の初期幅
         /// Profiles.xml が無い状態で最初に起動したときのウィンドウ幅
         /// 「ウィンドウサイズ初期化」ボタンでもこのサイズに戻る
+        /// MainWindow.xaml.cs のコンストラクタで参照されます
         /// </summary>
-        public const int MAIN_WINDOW_WIDTH = 1740;
+        public const int MAIN_WINDOW_WIDTH = 1400;
 
         /// <summary>
         /// MainWindow (メインウィンドウ) の初期高さ
         /// Profiles.xml が無い状態で最初に起動したときのウィンドウ高さ
         /// 「ウィンドウサイズ初期化」ボタンでもこのサイズに戻る
+        /// MainWindow.xaml.cs のコンストラクタで参照されます
         /// </summary>
-        public const int MAIN_WINDOW_HEIGHT = 1270;
+        public const int MAIN_WINDOW_HEIGHT = 980;
 
         /// <summary>
         /// MainWindow (メインウィンドウ) の初期X位置

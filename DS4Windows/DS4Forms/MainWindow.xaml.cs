@@ -90,6 +90,10 @@ namespace DS4WinWPF.DS4Forms
 
         public MainWindow(ArgumentParser parser)
         {
+            // XAML初期化前にウィンドウサイズを設定（WindowLayoutDefaults から）
+            Width = WindowLayoutDefaults.MAIN_WINDOW_WIDTH;
+            Height = WindowLayoutDefaults.MAIN_WINDOW_HEIGHT;
+            
             InitializeComponent();
 
             // Initialize log settings ComboBox
