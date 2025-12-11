@@ -67,3 +67,8 @@ The detailed history of changes for this fork has been moved to `CHANGELOG.md`.
 Please see [CHANGELOG.md](./CHANGELOG.md) for versioned release notes and details. Visit the Releases page for the latest build.
 
 _This README retains a short pointer — full changelog entries are maintained in `CHANGELOG.md`._
+
+## Installation Guide / 導入ガイド
+
+- English: See the installation and setup guide: [Installation Guide (日本語/English)](導入ガイド.md)
+- 日本語: インストール手順と初回セットアップは次のガイドを参照してください: [導入ガイド](導入ガイド.md)
