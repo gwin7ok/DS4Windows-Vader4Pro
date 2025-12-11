@@ -4185,7 +4185,7 @@ namespace DS4Windows
         public bool profileChangedNotification;
         public bool disconnectBTAtStop = false;
 
-        public const bool DEFAULT_SWIPE_PROFILES = true;
+        public const bool DEFAULT_SWIPE_PROFILES = false;
         public bool swipeProfiles = DEFAULT_SWIPE_PROFILES;
         public bool ds4Mapping = false;
         public bool quickCharge = false;
