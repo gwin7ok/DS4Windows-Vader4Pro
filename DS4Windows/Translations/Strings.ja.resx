@@ -162,12 +162,21 @@
   <data name="Clear" xml:space="preserve">
     <value>クリア</value>
   </data>
+    <data name="DownloadVersion" xml:space="preserve">
+      <value>新しいバージョン *number* がリリースされています</value>
+    </data>
   <data name="CloseMinimizes" xml:space="preserve">
     <value>閉じるボタンで最小化</value>
   </data>
   <data name="Color" xml:space="preserve">
     <value>色</value>
   </data>
+    <data name="OpenReleasePageButton" xml:space="preserve">
+      <value>リリースページを開く</value>
+    </data>
+    <data name="CloseButton" xml:space="preserve">
+      <value>閉じる</value>
+    </data>
   <data name="Controller1Text" xml:space="preserve">
     <value>コントローラー1</value>
   </data>

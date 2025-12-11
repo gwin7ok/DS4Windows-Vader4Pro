@@ -1171,6 +1171,15 @@ Disabled:
   <data name="SkipVersion" xml:space="preserve">
     <value>Skip Version</value>
   </data>
+  <data name="DownloadVersion" xml:space="preserve">
+    <value>A new version *number* has been released.</value>
+  </data>
+  <data name="OpenReleasePageButton" xml:space="preserve">
+    <value>Open Release Page</value>
+  </data>
+  <data name="CloseButton" xml:space="preserve">
+    <value>Close</value>
+  </data>
   <data name="SnapToCenter" xml:space="preserve">
     <value>Snap To Center</value>
   </data>

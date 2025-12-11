@@ -50,7 +50,7 @@
     <value>ダウンロード中 *number*%</value>
   </data>
   <data name="DownloadVersion" xml:space="preserve">
-    <value>バージョン *number* を今すぐダウンロードしますか?</value>
+    <value>新しいバージョン *number* がリリースされています</value>
   </data>
   <data name="DS4Update" xml:space="preserve">
     <value>DS4Windows の更新を利用可能です!</value>

@@ -121,7 +121,7 @@
     <value>Downloading *number*%</value>
   </data>
   <data name="DownloadVersion" xml:space="preserve">
-    <value>Download Version *number* now?</value>
+    <value>A new version *number* has been released.</value>
   </data>
   <data name="DownText" xml:space="preserve">
     <value>Down</value>

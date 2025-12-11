@@ -20,6 +20,7 @@ using DS4WinWPF.DS4Forms.ViewModels;
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Globalization;
 using DS4Windows;
 
 namespace DS4WinWPF.DS4Forms
@@ -38,9 +39,13 @@ namespace DS4WinWPF.DS4Forms
         {
             InitializeComponent();
 
+            // Keep window title localized via Properties.Resources (preserve existing Japanese title)
             Title = Properties.Resources.DS4Update;
-            captionTextBlock.Text = Properties.Resources.DownloadVersion.Replace("*number*",
-                newversion);
+
+            // Display main message and buttons in English
+            var engCulture = CultureInfo.GetCultureInfo("en");
+            string downloadStr = DS4WinWPF.Translations.Strings.ResourceManager.GetString("DownloadVersion", engCulture) ?? "A new version *number* has been released.";
+            captionTextBlock.Text = downloadStr.Replace("*number*", newversion);
             updaterWinVM = new UpdaterWindowViewModel(newversion);
             updaterWinVM.BlankSkippedVersion();
 
@@ -50,6 +55,15 @@ namespace DS4WinWPF.DS4Forms
             {
                 await Dispatcher.InvokeAsync(async () => await updaterWinVM.DisplayChangelog());
             });
+
+            // Use English labels for buttons regardless of app culture
+            string skipLabel = DS4WinWPF.Translations.Strings.ResourceManager.GetString("SkipVersion", engCulture) ?? "Skip Version";
+            string openLabel = DS4WinWPF.Translations.Strings.ResourceManager.GetString("OpenReleasePageButton", engCulture) ?? "Open Release Page";
+            string closeLabel = DS4WinWPF.Translations.Strings.ResourceManager.GetString("CloseButton", engCulture) ?? "Close";
+
+            skipVersionBtn.Content = skipLabel;
+            yesBtn.Content = openLabel;
+            noBtn.Content = closeLabel;
         }
 
         private void YesBtn_Click(object sender, RoutedEventArgs e)
