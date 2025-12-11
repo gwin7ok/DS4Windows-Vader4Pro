@@ -133,6 +133,15 @@
   <data name="DS4Update" xml:space="preserve">
     <value>DS4Windows Update Available!</value>
   </data>
+  <data name="OpenReleasePagePrompt" xml:space="preserve">
+    <value>A new DS4Windows release is available. Open the releases page in your browser?</value>
+  </data>
+  <data name="OpenReleasePageButton" xml:space="preserve">
+    <value>Open Release Page</value>
+  </data>
+  <data name="CloseButton" xml:space="preserve">
+    <value>Close</value>
+  </data>
   <data name="DS4W" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\DS4W.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -294,6 +303,12 @@
   </data>
   <data name="PleaseDownloadUpdater" xml:space="preserve">
     <value>Please Download the Updater now, place it in the programs folder and rename to DS4Updater.exe if on x86, then check for update again. DS4Windows will attempt to open DS4Updater Release page when this window is closed.</value>
+  </data>
+  <data name="UpdaterActionPrompt" xml:space="preserve">
+    <value>Please do one of the following and then retry checking for updates:
+1) Download the full DS4Windows package from the main release page and overwrite your installation.
+OR
+2) Download DS4Updater.exe from the Updater release page, place it into the program folder, then run "Check For Update Now" again.</value>
   </data>
   <data name="PleaseImport" xml:space="preserve">
     <value>Please import or make a profile</value>

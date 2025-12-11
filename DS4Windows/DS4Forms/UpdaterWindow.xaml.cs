@@ -54,6 +54,12 @@ namespace DS4WinWPF.DS4Forms
 
         private void YesBtn_Click(object sender, RoutedEventArgs e)
         {
+            // Open the releases page in user's browser and close
+            try
+            {
+                Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+            }
+            catch { }
             result = MessageBoxResult.Yes;
             Close();
         }

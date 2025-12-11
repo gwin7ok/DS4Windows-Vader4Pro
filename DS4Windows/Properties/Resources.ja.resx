@@ -55,6 +55,15 @@
   <data name="DS4Update" xml:space="preserve">
     <value>DS4Windows の更新を利用可能です!</value>
   </data>
+  <data name="OpenReleasePagePrompt" xml:space="preserve">
+    <value>新しい DS4Windows のリリースが見つかりました。リリースページをブラウザで開きますか？</value>
+  </data>
+  <data name="OpenReleasePageButton" xml:space="preserve">
+    <value>リリースページを開く</value>
+  </data>
+  <data name="CloseButton" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
   <data name="FallBack" xml:space="preserve">
     <value>フォールバック</value>
   </data>
@@ -117,6 +126,12 @@
   </data>
   <data name="PleaseDownloadUpdater" xml:space="preserve">
     <value>アップデーターをダウンロードして、プログラムフォルダ下に格納し DS4Updater.exe にリネームしてください。x86 の場合、再度更新を確認してください。このウインドウを閉じると、DS4Windows は DS4Updater のリリースページを開こうとします。</value>
+  </data>
+  <data name="UpdaterActionPrompt" xml:space="preserve">
+    <value>次のいずれかを行ってから、再度更新の確認を実行してください：
+1) 本体プログラムのリリースページから最新版をダウンロードしてインストールフォルダに上書きする。
+または
+2) Updater のリリースページから DS4Updater.exe をダウンロードし、プログラムフォルダに配置してから「Check For Update Now（今すぐ更新を確認）」を再実行する。</value>
   </data>
   <data name="ProfileCannotRestore" xml:space="preserve">
     <value>*Profile name* を復元することはできません。</value>

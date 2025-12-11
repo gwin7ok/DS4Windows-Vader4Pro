@@ -257,36 +257,6 @@ namespace DS4WinWPF.DS4Forms
                 updaterWin.ShowDialog();
                 result = updaterWin.Result;
             });
-
-            if (result == MessageBoxResult.Yes)
-            {
-                bool launch = true;
-                launch = mainWinVM.RunUpdaterCheck(launch, out string newUpdaterVersion);
-
-                if (launch)
-                {
-                    launch = mainWinVM.LauchDS4Updater();
-                }
-
-                if (launch)
-                {
-                    // Set that the window is getting ready to close for other components
-                    contextclose = true;
-                    Dispatcher.BeginInvoke(Close);
-                }
-                else
-                {
-                    Dispatcher.Invoke(() =>
-                    {
-                        MessageBox.Show(Properties.Resources.PleaseDownloadUpdater);
-                        if (!string.IsNullOrEmpty(newUpdaterVersion))
-                        {
-                            Util.StartProcessHelper(
-                                $"https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/tag/v{newUpdaterVersion}/{mainWinVM.updaterExe}");
-                        }
-                    });
-                }
-            }
         }
 
         private void Check_Version(bool showstatus = false)
@@ -313,43 +283,12 @@ namespace DS4WinWPF.DS4Forms
                 MessageBoxResult result = MessageBoxResult.No;
                 Dispatcher.Invoke(() =>
                 {
-                    UpdaterWindow updaterWin = new UpdaterWindow(newversion);
+                    var updaterWin = new UpdaterWindow(newversion);
                     updaterWin.ShowDialog();
                     result = updaterWin.Result;
                 });
 
-                if (result == MessageBoxResult.Yes)
-                {
-                    bool launch = true;
-                    launch = mainWinVM.RunUpdaterCheck(launch, out string newUpdaterVersion);
-
-                    if (launch)
-                    {
-                        launch = mainWinVM.LauchDS4Updater();
-                    }
-
-                    if (launch)
-                    {
-                        // Set that the window is getting ready to close for other components
-                        contextclose = true;
-                        Dispatcher.BeginInvoke((Action)(() =>
-                        {
-                            Close();
-                        }));
-                    }
-                    else
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            MessageBox.Show(Properties.Resources.PleaseDownloadUpdater);
-                            if (!string.IsNullOrEmpty(newUpdaterVersion))
-                            {
-                                Util.StartProcessHelper($"https://github.com/schmaldeo/DS4Updater/releases/tag/v{newUpdaterVersion}/{mainWinVM.updaterExe}");
-                            }
-                        });
-                    }
-                }
-                else
+                if (result != MessageBoxResult.Yes)
                 {
                     if (versionFileExists)
                         File.Delete(versionFilePath);

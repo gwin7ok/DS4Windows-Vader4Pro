@@ -43,11 +43,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
         public event EventHandler FullTabsEnabledChanged;
 
-        public string updaterExe = Environment.Is64BitProcess ? "DS4Updater.exe" : "DS4Updater_x86.exe";
+        // Use only the x64 updater asset (DS4Updater.exe). x86 support not provided.
+        public string updaterExe = "DS4Updater.exe";
 
         private string DownloadUpstreamUpdaterVersion()
         {
-            // Sorry other devs, gonna have to find your own server
+            // Use this repository's releases to determine the upstream version
             Uri url = new Uri("https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
 
             Task<System.Net.Http.HttpResponseMessage> requestTask = App.requestClient.GetAsync(url.ToString());
@@ -56,11 +57,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 var gitHubReleaseTask = requestTask.Result.Content.ReadFromJsonAsync<GithubRelease>();
                 gitHubReleaseTask.Wait();
-                if (!gitHubReleaseTask.IsFaulted)
+                if (!gitHubReleaseTask.IsFaulted && gitHubReleaseTask.Result != null && !string.IsNullOrEmpty(gitHubReleaseTask.Result.TagName))
                 {
-                    return gitHubReleaseTask.Result.TagName.Substring(1);
+                    return gitHubReleaseTask.Result.TagName.StartsWith("v") ? gitHubReleaseTask.Result.TagName.Substring(1) : gitHubReleaseTask.Result.TagName;
                 }
             }
+
             return string.Empty;
         }
 
@@ -69,33 +71,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             string destPath = Path.Combine(Global.exedirpath, "DS4Updater.exe");
             bool updaterExists = File.Exists(destPath);
             upstreamVersion = DownloadUpstreamUpdaterVersion();
-            if (!updaterExists ||
-                (!string.IsNullOrEmpty(upstreamVersion) && FileVersionInfo.GetVersionInfo(destPath).FileVersion.CompareTo(upstreamVersion) != 0))
+            // If the updater executable does not exist, do not attempt to download it here.
+            // Assume users will place DS4Updater.exe (e.g. from schmaldeo) into the program folder.
+            // If updater exists, use it as-is and proceed to launch it to perform the main program update.
+            if (!updaterExists)
             {
                 launch = false;
-                Uri url2 = new Uri($"https://github.com/schmaldeo/DS4Updater/releases/download/v{upstreamVersion}/{updaterExe}");
-                string filename = Path.Combine(Path.GetTempPath(), "DS4Updater.exe");
-                using (var downloadStream = new FileStream(filename, FileMode.Create))
-                {
-                    Task<System.Net.Http.HttpResponseMessage> temp =
-                        App.requestClient.GetAsync(url2.ToString(), downloadStream);
-                    temp.Wait();
-                    if (temp.Result.IsSuccessStatusCode) launch = true;
-                }
-
-                if (launch)
-                {
-                    if (Global.AdminNeeded())
-                    {
-                        int copyStatus = DS4Windows.Util.ElevatedCopyUpdater(filename);
-                        if (copyStatus != 0) launch = false;
-                    }
-                    else
-                    {
-                        if (updaterExists) File.Delete(destPath);
-                        File.Move(filename, destPath);
-                    }
-                }
+            }
+            else
+            {
+                launch = true;
             }
 
             return launch;

@@ -61,13 +61,13 @@ if ($localTagExists) {
 
 if (-not $NoPush) {
     # remote delete
-    $planned += "git push $Remote --delete $tag  # delete remote tag if exists"
+    $planned += "git push $Remote --delete refs/tags/$tag  # delete remote tag if exists"
 }
 
 $planned += "git tag -a $tag -m 'Release $tag' HEAD"
 
 if (-not $NoPush) {
-    $planned += "git push $Remote $tag"
+    $planned += "git push $Remote refs/tags/$tag"
 }
 
 if ($DryRun) {
@@ -86,7 +86,7 @@ try {
     if (-not $NoPush) {
         Write-Host "Deleting remote tag $tag (if exists) on $Remote..."
         # git push --delete may fail if tag doesn't exist; ignore non-zero safely
-        & git push $Remote --delete $tag 2>$null
+        & git push $Remote --delete refs/tags/$tag 2>$null
     }
 
     Write-Host "Creating annotated tag $tag..."
@@ -95,7 +95,7 @@ try {
 
     if (-not $NoPush) {
         Write-Host "Pushing tag $tag to $Remote..."
-        & git push $Remote $tag
+        & git push $Remote refs/tags/$tag
         if ($LASTEXITCODE -ne 0) { throw "git push failed with exit $LASTEXITCODE" }
     }
 
