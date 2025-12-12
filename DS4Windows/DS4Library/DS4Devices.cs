@@ -415,7 +415,15 @@ namespace DS4Windows
                                 serialDevices.Add(serial, ds4Device);
                                 string foundMsg = $"{DS4WinWPF.Properties.Resources.FoundController} {ds4Device.getMacAddress()} ({ds4Device.getConnectionType()}) ({ds4Device.DisplayName}).";
                                 AppLogger.LogToGui(foundMsg, false);
-                                AppLogger.LogToTray(foundMsg);
+                                try
+                                {
+                                    DS4WinWPF.NotificationService.ShowToast(string.Empty, foundMsg);
+                                }
+                                catch
+                                {
+                                    // Fallback to direct tray log if the facade fails
+                                    AppLogger.LogToTray(foundMsg);
+                                }
                             }
                         }
                     }

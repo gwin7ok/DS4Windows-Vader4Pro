@@ -77,9 +77,18 @@ namespace DS4WinWPF.DS4Forms
                 string ds4UpdaterDir = System.IO.Path.Combine(ds4WindowsDir, "DS4Updater");
                 string ds4UpdaterExe = System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe");
 
-                if (System.IO.File.Exists(ds4UpdaterExe))
+                    if (System.IO.File.Exists(ds4UpdaterExe))
                 {
-                    // Launch existing updater with GUI args and wait for result
+                    // Show notification first, then launch existing updater and monitor exit in background
+                    try
+                    {
+                        DS4WinWPF.NotificationService.ShowToast(string.Empty, DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                    }
+                    catch
+                    {
+                        AppLogger.LogToTray(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                    }
+
                     string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
                     var psi = new System.Diagnostics.ProcessStartInfo(ds4UpdaterExe)
                     {
@@ -90,12 +99,18 @@ namespace DS4WinWPF.DS4Forms
                     var proc = System.Diagnostics.Process.Start(psi);
                     if (proc != null)
                     {
-                        proc.WaitForExit();
-                        if (proc.ExitCode != 0)
+                        var _ = Task.Run(() =>
                         {
-                            // On failure, open releases page as fallback
-                            Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
-                        }
+                            try
+                            {
+                                proc.WaitForExit();
+                                if (proc.ExitCode != 0)
+                                {
+                                    Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                                }
+                            }
+                            catch { }
+                        });
                     }
                 }
                 else
@@ -194,8 +209,15 @@ namespace DS4WinWPF.DS4Forms
                                 }
                                 else
                                 {
-                                    // Installed successfully — show success toast then launch updater
-                                    ProfileNotificationWindow.ShowNotification(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                                    // Installed successfully — use existing tray/toast notification pathway then launch updater
+                                    try
+                                    {
+                                        DS4WinWPF.NotificationService.ShowToast(string.Empty, DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                                    }
+                                    catch
+                                    {
+                                        AppLogger.LogToTray(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                                    }
                                     string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
                                     var psi2 = new System.Diagnostics.ProcessStartInfo(System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe"))
                                     {
@@ -205,11 +227,18 @@ namespace DS4WinWPF.DS4Forms
                                     var proc2 = System.Diagnostics.Process.Start(psi2);
                                     if (proc2 != null)
                                     {
-                                        proc2.WaitForExit();
-                                        if (proc2.ExitCode != 0)
+                                        var _ = Task.Run(() =>
                                         {
-                                            Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
-                                        }
+                                            try
+                                            {
+                                                proc2.WaitForExit();
+                                                if (proc2.ExitCode != 0)
+                                                {
+                                                    Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                                                }
+                                            }
+                                            catch { }
+                                        });
                                     }
                                 }
                             }
@@ -225,8 +254,15 @@ namespace DS4WinWPF.DS4Forms
                         }
                         else
                         {
-                            // Installed without elevation — show success toast then launch updater
-                            ProfileNotificationWindow.ShowNotification(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                            // Installed without elevation — use existing tray/toast notification pathway then launch updater
+                            try
+                            {
+                                DS4WinWPF.NotificationService.ShowToast(string.Empty, DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                            }
+                            catch
+                            {
+                                AppLogger.LogToTray(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                            }
                             string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
                             var psi2 = new System.Diagnostics.ProcessStartInfo(System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe"))
                             {
@@ -236,11 +272,18 @@ namespace DS4WinWPF.DS4Forms
                             var proc2 = System.Diagnostics.Process.Start(psi2);
                             if (proc2 != null)
                             {
-                                proc2.WaitForExit();
-                                if (proc2.ExitCode != 0)
+                                var _ = Task.Run(() =>
                                 {
-                                    Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
-                                }
+                                    try
+                                    {
+                                        proc2.WaitForExit();
+                                        if (proc2.ExitCode != 0)
+                                        {
+                                            Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                                        }
+                                    }
+                                    catch { }
+                                });
                             }
                         }
                     }
