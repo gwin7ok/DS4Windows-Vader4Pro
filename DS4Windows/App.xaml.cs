@@ -128,6 +128,7 @@ namespace DS4WinWPF
                 AppLogger.LogDebug($"DefaultThreadCurrentCulture={System.Globalization.CultureInfo.DefaultThreadCurrentCulture}, DefaultThreadCurrentUICulture={System.Globalization.CultureInfo.DefaultThreadCurrentUICulture}");
                 AppLogger.LogDebug($"Process exe: {Process.GetCurrentProcess().MainModule?.FileName}");
                 AppLogger.LogDebug($"AppDomain BaseDirectory: {AppContext.BaseDirectory}");
+                AppLogger.LogDebug($"Current working directory: {Environment.CurrentDirectory}");
 
                 // Log command-line args for Updater-related diagnostic
                 try
