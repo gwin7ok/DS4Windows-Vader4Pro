@@ -120,6 +120,41 @@ namespace DS4WinWPF
             skipSave = true;
 
             ArgumentParser parser = new ArgumentParser();
+            // Early check: handle elevated 'complete install' mode before normal startup
+            // If process started with --complete-install, perform the file move and exit with code.
+            try
+            {
+                string[] cmdArgs = e.Args;
+                string src = null;
+                string tgt = null;
+                for (int i = 0; i < cmdArgs.Length; i++)
+                {
+                    if (cmdArgs[i] == "--complete-install" && i + 1 < cmdArgs.Length)
+                    {
+                        src = cmdArgs[++i];
+                    }
+                    else if (cmdArgs[i] == "--complete-install-target" && i + 1 < cmdArgs.Length)
+                    {
+                        tgt = cmdArgs[++i];
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(src) && !string.IsNullOrEmpty(tgt))
+                {
+                    // We are in elevated completion mode — perform move/copy and exit
+                    int exit = DS4WinWPF.UpdaterElevatedHelper.CompleteInstall(src, tgt);
+                    // Ensure logs flushed then exit
+                    try { NLog.LogManager.Flush(); } catch { }
+                    Environment.Exit(exit);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                // If something goes wrong here, log and continue with normal startup
+                NLog.LogManager.GetCurrentClassLogger().Error(ex, "Error handling --complete-install args");
+            }
+
             parser.Parse(e.Args);
             CheckOptions(parser);
 
