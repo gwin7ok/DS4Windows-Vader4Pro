@@ -14,7 +14,8 @@ namespace DS4WinWPF
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         // Try to install; returns true on success.
-        public static bool TryInstall(string sourcePath, string targetPath)
+        // If allowElevation is false, do not attempt to relaunch elevated and simply return false on permission errors.
+        public static bool TryInstall(string sourcePath, string targetPath, bool allowElevation = true)
         {
             try
             {
@@ -37,7 +38,12 @@ namespace DS4WinWPF
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    logger.Warn("Non-elevated install failed due to permissions; will attempt elevation");
+                    logger.Warn("Non-elevated install failed due to permissions");
+                    if (!allowElevation)
+                    {
+                        // Caller requested no elevation attempt
+                        return false;
+                    }
                     // fallthrough to elevation attempt
                 }
 

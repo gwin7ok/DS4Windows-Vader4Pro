@@ -4079,6 +4079,33 @@ namespace DS4WinWPF.Translations {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Elevation confirmation body.
+        /// </summary>
+        public static string Elevation_Body {
+            get {
+                return ResourceManager.GetString("Elevation_Body", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Elevation required.
+        /// </summary>
+        public static string Elevation_Title {
+            get {
+                return ResourceManager.GetString("Elevation_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Install succeeded notification.
+        /// </summary>
+        public static string InstallSuccess_Notification {
+            get {
+                return ResourceManager.GetString("InstallSuccess_Notification", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Updater not installed.
         /// </summary>
         public static string UpdaterMissing_Title {

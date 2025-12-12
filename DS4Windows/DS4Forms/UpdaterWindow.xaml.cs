@@ -173,20 +173,62 @@ namespace DS4WinWPF.DS4Forms
                         var exeFile = Directory.EnumerateFiles(extractDir, "DS4Updater.exe", System.IO.SearchOption.AllDirectories).FirstOrDefault();
                         if (exeFile == null) throw new Exception("DS4Updater.exe not found inside archive");
 
-                        // Attempt install
+                        // Attempt non-elevated install first
                         string targetExe = System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe");
-                        bool ok = UpdaterInstaller.TryInstall(exeFile, targetExe);
+                        bool ok = UpdaterInstaller.TryInstall(exeFile, targetExe, allowElevation: false);
                         if (!ok)
                         {
-                            var failMb = MessageBox.Show(DS4WinWPF.Translations.Strings.InstallFailed_Body + "\n\nOpen release page?",
-                                DS4WinWPF.Translations.Strings.InstallFailed_Title,
-                                MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                            if (failMb == MessageBoxResult.Yes)
-                                Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                            // Need elevation - ask user
+                            var elevateMb = MessageBox.Show(DS4WinWPF.Translations.Strings.Elevation_Body,
+                                DS4WinWPF.Translations.Strings.Elevation_Title,
+                                MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            if (elevateMb == MessageBoxResult.Yes)
+                            {
+                                // Caller permits elevation; attempt install which will perform elevation
+                                bool elevatedOk = UpdaterInstaller.TryInstall(exeFile, targetExe, allowElevation: true);
+                                if (!elevatedOk)
+                                {
+                                    var failMb = MessageBox.Show(DS4WinWPF.Translations.Strings.InstallFailed_Body + "\n\nOpen release page?",
+                                        DS4WinWPF.Translations.Strings.InstallFailed_Title,
+                                        MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                                    if (failMb == MessageBoxResult.Yes)
+                                        Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                                }
+                                else
+                                {
+                                    // Installed successfully — show success toast then launch updater
+                                    ProfileNotificationWindow.ShowNotification(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
+                                    string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+                                    var psi2 = new System.Diagnostics.ProcessStartInfo(targetExe)
+                                    {
+                                        UseShellExecute = false,
+                                        Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\""
+                                    };
+                                    var proc2 = System.Diagnostics.Process.Start(psi2);
+                                    if (proc2 != null)
+                                    {
+                                        proc2.WaitForExit();
+                                        if (proc2.ExitCode != 0)
+                                        {
+                                            Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // User declined elevation -> offer release page
+                                var mb = MessageBox.Show(DS4WinWPF.Translations.Strings.UpdaterMissing_Body + "\n\nOpen release page?",
+                                    DS4WinWPF.Translations.Strings.UpdaterMissing_Title,
+                                    MessageBoxButton.YesNo, MessageBoxImage.Information);
+                                if (mb == MessageBoxResult.Yes)
+                                    Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                            }
                         }
                         else
                         {
-                            // Installed successfully — launch updater now
+                            // Installed without elevation — show success toast then launch updater
+                            ProfileNotificationWindow.ShowNotification(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
                             string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
                             var psi2 = new System.Diagnostics.ProcessStartInfo(targetExe)
                             {
