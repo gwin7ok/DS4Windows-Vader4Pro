@@ -4054,6 +4054,21 @@ namespace DS4WinWPF.Translations {
         /// <summary>
         ///   Looks up a localized string similar to Yes.
         /// </summary>
+        public static string UpdaterMissing_Body {
+            get {
+                return ResourceManager.GetString("UpdaterMissing_Body", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Updater not installed.
+        /// </summary>
+        public static string UpdaterMissing_Title {
+            get {
+                return ResourceManager.GetString("UpdaterMissing_Title", resourceCulture);
+            }
+        }
+
         public static string Yes {
             get {
                 return ResourceManager.GetString("Yes", resourceCulture);
