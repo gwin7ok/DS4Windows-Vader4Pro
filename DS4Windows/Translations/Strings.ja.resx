@@ -156,6 +156,53 @@
   <data name="CheckUpdateNow" xml:space="preserve">
     <value>今すぐ更新を確認</value>
   </data>
+  <data name="UpdaterMissing_Title" xml:space="preserve">
+    <value>Updaterがインストールされていません</value>
+  </data>
+  <data name="UpdaterMissing_Body" xml:space="preserve">
+    <value>DS4Updaterがインストールされていません。DS4WindowsはDS4Updaterフォルダーへアップデーターをダウンロードしてインストールできます。Program Filesへ書き込む際に管理者権限が必要になる場合があります。</value>
+  </data>
+  <data name="UpdaterMissing_InstallBtn" xml:space="preserve">
+    <value>Updaterをインストール</value>
+  </data>
+  <data name="UpdaterMissing_OpenReleaseBtn" xml:space="preserve">
+    <value>リリースページを開く</value>
+  </data>
+  <data name="UpdaterMissing_CancelBtn" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
+
+  <data name="Elevation_Title" xml:space="preserve">
+    <value>管理者権限が必要です</value>
+  </data>
+  <data name="Elevation_Body" xml:space="preserve">
+    <value>Program FilesにUpdaterを移動するには管理者権限が必要です。続行して移動操作を管理者権限で許可しますか？</value>
+  </data>
+  <data name="Elevation_Yes" xml:space="preserve">
+    <value>はい、権限を付与</value>
+  </data>
+  <data name="Elevation_No" xml:space="preserve">
+    <value>いいえ、キャンセル</value>
+  </data>
+  <data name="Elevation_Footer" xml:space="preserve">
+    <value>リリースページから手動でダウンロードすることもできます。</value>
+  </data>
+
+  <data name="InstallSuccess_Notification" xml:space="preserve">
+    <value>Updaterをインストール中、起動します...</value>
+  </data>
+  <data name="InstallFailed_Title" xml:space="preserve">
+    <value>Updaterのインストールに失敗しました</value>
+  </data>
+  <data name="InstallFailed_Body" xml:space="preserve">
+    <value>DS4Updaterフォルダーへの移動に失敗しました。リリースページを開いて手動でダウンロード/インストールしてください。</value>
+  </data>
+  <data name="InstallFailed_OpenReleaseBtn" xml:space="preserve">
+    <value>リリースページを開く</value>
+  </data>
+  <data name="InstallFailed_CloseBtn" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
   <data name="CheckUpdateStartup" xml:space="preserve">
     <value>起動時に更新を確認</value>
   </data>

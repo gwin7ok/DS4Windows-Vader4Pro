@@ -156,6 +156,53 @@
   <data name="CheckUpdateNow" xml:space="preserve">
     <value>Check For Update Now</value>
   </data>
+  <data name="UpdaterMissing_Title" xml:space="preserve">
+    <value>Updater not installed</value>
+  </data>
+  <data name="UpdaterMissing_Body" xml:space="preserve">
+    <value>The DS4Updater is not installed. DS4Windows can download and install the updater for you into the DS4Updater folder. This may require administrator rights to write to Program Files.</value>
+  </data>
+  <data name="UpdaterMissing_InstallBtn" xml:space="preserve">
+    <value>Install Updater</value>
+  </data>
+  <data name="UpdaterMissing_OpenReleaseBtn" xml:space="preserve">
+    <value>Open release page</value>
+  </data>
+  <data name="UpdaterMissing_CancelBtn" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+
+  <data name="Elevation_Title" xml:space="preserve">
+    <value>Administrator permission required</value>
+  </data>
+  <data name="Elevation_Body" xml:space="preserve">
+    <value>Moving the updater into Program Files requires administrator permission. Do you want to continue and allow DS4Windows to elevate the move operation?</value>
+  </data>
+  <data name="Elevation_Yes" xml:space="preserve">
+    <value>Yes, elevate</value>
+  </data>
+  <data name="Elevation_No" xml:space="preserve">
+    <value>No, cancel</value>
+  </data>
+  <data name="Elevation_Footer" xml:space="preserve">
+    <value>You can also download the updater manually from the release page.</value>
+  </data>
+
+  <data name="InstallSuccess_Notification" xml:space="preserve">
+    <value>Updater installed and launching...</value>
+  </data>
+  <data name="InstallFailed_Title" xml:space="preserve">
+    <value>Updater installation failed</value>
+  </data>
+  <data name="InstallFailed_Body" xml:space="preserve">
+    <value>Failed to move the updater into the DS4Updater folder. You can open the release page to download and install it manually.</value>
+  </data>
+  <data name="InstallFailed_OpenReleaseBtn" xml:space="preserve">
+    <value>Open release page</value>
+  </data>
+  <data name="InstallFailed_CloseBtn" xml:space="preserve">
+    <value>Close</value>
+  </data>
   <data name="CheckUpdateStartup" xml:space="preserve">
     <value>Check for updates at DS4Windows startup</value>
   </data>
