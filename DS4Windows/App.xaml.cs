@@ -95,6 +95,13 @@ namespace DS4WinWPF
 
             try
             {
+                try
+                {
+                    // Ensure Logs folder exists under application base directory so initial NLog writes succeed
+                    string baseLogs = Path.Combine(AppContext.BaseDirectory, "Logs");
+                    if (!Directory.Exists(baseLogs)) Directory.CreateDirectory(baseLogs);
+                }
+                catch { }
                 AppLogger.LogDebug($"ApplyLanguageSetting requested: {cultureCode}");
                 CultureInfo culture = CultureInfo.GetCultureInfo(cultureCode);
                 DS4Windows.Global.UseLang = cultureCode;
