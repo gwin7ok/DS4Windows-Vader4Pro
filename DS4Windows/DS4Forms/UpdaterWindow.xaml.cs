@@ -20,6 +20,8 @@ using DS4WinWPF.DS4Forms.ViewModels;
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using System.IO;
+using System.Linq;
 using System.Globalization;
 using DS4Windows;
 
@@ -66,7 +68,7 @@ namespace DS4WinWPF.DS4Forms
             noBtn.Content = closeLabel;
         }
 
-        private void YesBtn_Click(object sender, RoutedEventArgs e)
+        private async void YesBtn_Click(object sender, RoutedEventArgs e)
         {
             // Install / Launch latest updater
             try
@@ -98,13 +100,80 @@ namespace DS4WinWPF.DS4Forms
                 }
                 else
                 {
-                    // Updater not present yet: ask user to open releases or cancel
-                    var mb = MessageBox.Show(DS4WinWPF.Translations.Strings.UpdaterMissing_Body + "\n\nOpen release page?",
-                        DS4WinWPF.Translations.Strings.UpdaterMissing_Title,
-                        MessageBoxButton.YesNo, MessageBoxImage.Information);
-                    if (mb == MessageBoxResult.Yes)
+                    // Updater not present yet: attempt A-plan download->extract->install
+                    string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "DS4Updater_tmp");
+                    try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
+                    Directory.CreateDirectory(tempDir);
+
+                    string tempZip = System.IO.Path.Combine(tempDir, "DS4Updater_x64.zip");
+                    string downloadUrl = "https://github.com/gwin7ok/DS4Updater/releases/latest/download/DS4Updater_x64.zip";
+
+                    try
                     {
-                        Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                        using (var client = new System.Net.Http.HttpClient())
+                        using (var resp = await client.GetAsync(downloadUrl))
+                        {
+                            if (!resp.IsSuccessStatusCode) throw new Exception($"Download failed: {resp.StatusCode}");
+                            using (var fs = new System.IO.FileStream(tempZip, System.IO.FileMode.Create, System.IO.FileAccess.Write))
+                            {
+                                await resp.Content.CopyToAsync(fs);
+                            }
+                        }
+
+                        // Extract
+                        string extractDir = System.IO.Path.Combine(tempDir, "extract");
+                        System.IO.Compression.ZipFile.ExtractToDirectory(tempZip, extractDir);
+
+                        // Find DS4Updater.exe inside extracted files
+                        var exeFile = Directory.EnumerateFiles(extractDir, "DS4Updater.exe", System.IO.SearchOption.AllDirectories).FirstOrDefault();
+                        if (exeFile == null) throw new Exception("DS4Updater.exe not found inside archive");
+
+                        // Attempt install
+                        string targetExe = System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe");
+                        bool ok = UpdaterInstaller.TryInstall(exeFile, targetExe);
+                        if (!ok)
+                        {
+                            var failMb = MessageBox.Show(DS4WinWPF.Translations.Strings.InstallFailed_Body + "\n\nOpen release page?",
+                                DS4WinWPF.Translations.Strings.InstallFailed_Title,
+                                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                            if (failMb == MessageBoxResult.Yes)
+                                Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                        }
+                        else
+                        {
+                            // Installed successfully — launch updater now
+                            string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+                            var psi2 = new System.Diagnostics.ProcessStartInfo(targetExe)
+                            {
+                                UseShellExecute = false,
+                                Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\""
+                            };
+                            var proc2 = System.Diagnostics.Process.Start(psi2);
+                            if (proc2 != null)
+                            {
+                                proc2.WaitForExit();
+                                if (proc2.ExitCode != 0)
+                                {
+                                    Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            var mb = MessageBox.Show(DS4WinWPF.Translations.Strings.UpdaterMissing_Body + "\n\nOpen release page?\n\n" + ex.Message,
+                                DS4WinWPF.Translations.Strings.UpdaterMissing_Title,
+                                MessageBoxButton.YesNo, MessageBoxImage.Information);
+                            if (mb == MessageBoxResult.Yes)
+                                Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                        }
+                        catch { }
+                    }
+                    finally
+                    {
+                        try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
                     }
                 }
             }

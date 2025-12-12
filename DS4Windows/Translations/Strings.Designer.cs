@@ -4050,6 +4050,24 @@ namespace DS4WinWPF.Translations {
                 return ResourceManager.GetString("YCenter", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Install failed.
+        /// </summary>
+        public static string InstallFailed_Title {
+            get {
+                return ResourceManager.GetString("InstallFailed_Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installation failed; open releases.
+        /// </summary>
+        public static string InstallFailed_Body {
+            get {
+                return ResourceManager.GetString("InstallFailed_Body", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Yes.
