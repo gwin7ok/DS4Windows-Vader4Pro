@@ -108,6 +108,12 @@ UI 表示要素（追加済みリソースキー）
       - 本文: `Elevation_Body`
       - 選択: `Elevation_Yes`（昇格して移動を再試行） / `Elevation_No`（キャンセル、手動案内）
   d) ユーザーが昇格を承認した場合、昇格プロセスを新しいプロセス（`ProcessStartInfo.Verb = "runas"`）で起動し、管理者権限で移動を実行する。昇格後のプロセスは元のダウンロードファイルを指定してターゲットへ配置する。
+    - 昇格時の引数伝搬（仕様）:
+      - 昇格プロセスには、移動元の一時パスと移動先を明示的に渡すこと。
+      - 推奨引数: `--complete-install "<sourcePath>" --complete-install-target "<targetPath>"`。
+        - 例: `--complete-install "%TEMP%\\DS4Updater_x64.zip" --complete-install-target "%ProgramFiles%\\DS4Windows\\DS4Updater\\DS4Updater.exe"`
+      - 実装上の扱い: エレベーション用のプロセスは（既存の実行ファイルを使うなら）`DS4Windows.exe` の特別モードまたは専用ヘルパーを用いて起動し、受け取った引数で移動を行い、終了コード `0` を返すと成功、それ以外は失敗とする。
+      - ユーザーが UAC をキャンセルした場合、昇格プロセスは起動しないため元のプロセスはキャンセル扱いとして手動インストール案内へ遷移すること。
   e) 昇格での移動が成功したら一時ファイルを削除し、UI に `InstallSuccess_Notification` を表示する（通知/トースト）。
   f) 移動がキャンセルまたは失敗した場合、`InstallFailed_Title` / `InstallFailed_Body` ダイアログを表示し、`InstallFailed_OpenReleaseBtn` でリリースページを開けるよう案内する。
 5. ローカル `...\\DS4Updater\\DS4Updater.exe` が用意できたら、DS4Windows はローカル Updater を起動する。
@@ -115,14 +121,80 @@ UI 表示要素（追加済みリソースキー）
     - `--ds4windows-path "<DS4Windows 実行パス>"`
     - `--ds4updater-path "<DS4Updater 実行パス>"` （明示推奨）
     - 必要に応じて `-autolaunch` と `--launchExe` を付与して、更新完了後に DS4Windows を自動再起動させるフローを指定する。
+      - DS4Updater起動後は DS4Windows側は `Process.WaitForExit` で終了コードを取得して判定すること（成功時は `ExitCode==0`、失敗時は非ゼロ）。
+      - `--launchExe` の扱い: `--launchExe` には起動したい実行ファイルの**フルパス**を渡すことを推奨する（例: `"C:\Program Files\DS4Windows\DS4Windows.exe"`）。Updater 側が実行ファイル名のみを受け取る実装でもフルパスは互換的に扱えるが、フルパスを渡すと起動先が明確になる。
 6. Updater の動作（起動後）:
   - `DS4Updater` は自身の `AdminNeeded()` 判定やセルフアップデート（プロセス停止→バッチでの置換）など、複雑な置換処理を管理する。
   - 必要に応じて `-autolaunch` を使って DS4Windows を再起動する。    
-6. `DS4Updater` は GUI フローで更新を実行する（自身の `AdminNeeded()` 判定やセルフアップデート処理を行う）。
+  - `DS4Updater` は GUI フローで更新を実行する（自身の `AdminNeeded()` 判定やセルフアップデート処理を行う）。
   - Updater が自身の置換を行う際は Updater 側のバッチ置換手順に従う（既存仕様）。
 7. Updater が更新を完了し、必要に応じて DS4Windows を再起動する（`-autolaunch` が指定されている場合）。
 8. ユーザーには完了通知（および失敗時は手動インストール案内）が表示される。
     `DS4Updater` 側の更新処理がインストール失敗で終了した（非ゼロ終了コードや明示的な失敗状態を返した）場合は、既定のブラウザで該当の GitHub Releases ページを開いて手動ダウンロード／確認を促す（`InstallFailed_*` ダイアログの代替／補完として即時オープンすること）。
+
+
+DS4Updater.exe 起動引数一覧と DS4Windows 側の設定
+以下、両仕様書（DS4Updater_INTEGRATION_SPEC.md と DS4Updater_SPEC.md）を基に抽出した起動引数一覧と DS4Windows 側での設定内容のまとめ。
+
+--ds4windows-path "<path>"
+説明: DS4Windows の実行/ルートパスを Updater に明示する。
+推奨: 常に渡す。値は DS4Windows のインストール実行ファイルの親ディレクトリ（例: C:\Program Files\DS4Windows）。
+→ 自動取得可: `DS4Windows.exe` の親ディレクトリ（例: `%ProgramFiles%\DS4Windows`）。
+  - 実装上の注意: `DS4Windows` 側では実行中プロセスの実行パスから自動検出可能なので、通常はその自動取得値を使って渡す。
+
+--ds4updater-path "<path>"
+説明: Updater の実行ディレクトリ（self-update で使用）。
+推奨: 常に渡す。値は起動する DS4Updater.exe のディレクトリ（例: %ProgramFiles%\DS4Updater または DS4Windows サブフォルダに配置する場合のパス）。
+→ DS4Updater.exe を含むディレクトリのパス（例: `%ProgramFiles%\DS4Windows\DS4Updater`）。
+  - 実装上の注意: `DS4Windows` 側では `Path.Combine(ds4WindowsDir, "DS4Updater")` のように自動生成して渡してください。複雑なフォールバック探索はテストと保守を困難にするため追加しないでください。
+
+-autolaunch
+説明: 更新完了後に DS4Windows を自動再起動するフラグ。
+推奨: ユーザーが「Install Latest」でインストールを開始した場合に付与する（自動再起動を行いたい場合）。オプションで UI にチェックを出して制御しても良い。
+→付加
+
+--launchExe "<name>"
+説明: Updater に対して更新後に起動する実行ファイル名を指定。
+推奨: -autolaunch を付与する場合に合わせて渡す（通常は DS4Windows.exe）。フルパスではなく実行ファイル名を使う既存仕様に沿う。
+説明: -autolaunch を付ける場合、--launchExe を合わせて渡すことで Updater が更新後に指定実行ファイルを起動する。
+推奨: 自動再起動を有効にするなら両方渡す。
+伝達方式 / 値の取得
+→"DS4Windows.exe"
+
+--ds4updater-repo "<url|owner/repo>"
+説明: Updater 自身のリポジトリをオーバーライドする（テストや別ビルド向け）。
+推奨: 通常は渡さない（デフォルトを使用）。開発／テスト目的でのみ明示的に渡す。
+→"gwin7ok/DS4Updater"
+
+--ds4windows-repo "<url|owner/repo>"
+説明: DS4Windows のリポジトリを指定して Releases を参照させる。
+推奨: 通常は渡さない（内蔵設定を使用）。リポジトリを差し替える必要がある環境のみ渡す。
+→"gwin7ok/DS4Windows-Vader4Pro"
+
+--base-url "<legacy>"
+説明: 互換用（--ds4windows-repo と同等扱い）。
+推奨: 使用しない（互換性のみ）。新実装では --ds4windows-repo を使う。
+→なし
+
+--ci
+説明: CI/非対話モード（JSON 出力、昇格プロンプト抑制、終了コードで判定）。
+推奨: DS4Windows は GUI フローで呼ぶため 渡さない（仕様に従う）。内部自動化／テスト用に別で使う場合のみ。
+→なし
+
+-skipLang
+説明: 言語パックダウンロードをスキップするフラグ。
+推奨: 通常は渡さない。言語パックを別で管理したい特殊ケースのみ。
+→なし
+
+-user
+説明: AutoOpen 時にユーザー権限で起動することを強制するフラグ（Updater 側の挙動に影響）。
+推奨: 通常は渡さない。昇格を避けたい特殊フローでのみ検討。
+（補助）--launchExe と -autolaunch の併用挙動
+→なし
+
+引数についての注意事項
+パスに空白が含まれる可能性があるため、ProcessStartInfo.ArgumentList（.NET）や確実なクオート方法で安全に渡すこと。
+
 
 重要な UX の条件
 - 昇格は最小限に留め、ユーザーに必ず事前確認を行うこと。
