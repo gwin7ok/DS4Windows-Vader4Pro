@@ -43,6 +43,12 @@
 アセット選択
 - 常に x64 ビルドを使用する。アーキテクチャ自動判定は不要（プロジェクトは x64 を想定）。
 
+アセット URL の決定方法（明確化）
+- `DS4Windows` が `DS4Updater.exe` をローカルで発見できない場合、DS4Windows は必ず起動時に参照する Updater リポジトリ（デフォルト: `gwin7ok/DS4Updater`、オーバーライド可能な引数: `--ds4updater-repo`）の**最新（latest）リリースに含まれる x64 向けアーカイブ**をダウンロードしてインストールします。
+- この取得はリリースの "latest" タグにあるアセットから直接行うものであり、DS4Updater 側の Changelog を参照する必要はありません。ダウンロード URL はリポジトリのリリース配下にある形式になります（例: `https://github.com/gwin7ok/DS4Updater/releases/download/v3.0.0/DS4Updater_3.0.0_x64.zip`）。
+- 実装上は GitHub Releases API を使って最新リリースのタグ名とアセット一覧を取得し、アセット名に `x64` を含む適切なアーカイブを選択してそのダウンロード URL を使用してください。アセット名にはバージョン番号や日付が含まれることがあるため、URL をハードコーディングしないこと。
+- ダウンロード時には HTTP ステータスに加え、レスポンスヘッダの `Content-Length` 等でサイズを検証すること（チェックサム検証は将来対応でよい）。
+
 UI 表示要素（追加済みリソースキー）
 - 英語 / 日本語で追加したキーの一覧（`Translations/Strings.resx` / `Strings.ja.resx`）:
   - `UpdaterMissing_Title`, `UpdaterMissing_Body`, `Install_LatestBtn`, `UpdaterMissing_OpenReleaseBtn`, `UpdaterMissing_CancelBtn`
