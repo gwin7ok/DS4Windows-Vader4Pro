@@ -160,7 +160,7 @@
     <value>Updater not installed</value>
   </data>
   <data name="UpdaterMissing_Body" xml:space="preserve">
-    <value>The DS4Updater is not installed. DS4Windows can download and install the updater for you into the DS4Updater folder. This may require administrator rights to write to Program Files.</value>
+    <value>The DS4Updater is not installed. DS4Windows can download and install the updater for you into the DS4Updater folder. This may require administrator rights to write to the DS4Windows install folder (specified by `--ds4windows-path`).</value>
   </data>
   <data name="UpdaterMissing_InstallBtn" xml:space="preserve">
     <value>Install Updater</value>
@@ -176,7 +176,7 @@
     <value>Administrator permission required</value>
   </data>
   <data name="Elevation_Body" xml:space="preserve">
-    <value>Moving the updater into Program Files requires administrator permission. Do you want to continue and allow DS4Windows to elevate the move operation?</value>
+    <value>Moving the updater into the DS4Windows install folder requires administrator permission. Do you want to continue and allow DS4Windows to elevate the move operation?</value>
   </data>
   <data name="Elevation_Yes" xml:space="preserve">
     <value>Yes, elevate</value>

@@ -169,13 +169,11 @@ namespace DS4WinWPF.DS4Forms
                         string extractDir = System.IO.Path.Combine(tempDir, "extract");
                         System.IO.Compression.ZipFile.ExtractToDirectory(tempZip, extractDir);
 
-                        // Find DS4Updater.exe inside extracted files
-                        var exeFile = Directory.EnumerateFiles(extractDir, "DS4Updater.exe", System.IO.SearchOption.AllDirectories).FirstOrDefault();
-                        if (exeFile == null) throw new Exception("DS4Updater.exe not found inside archive");
+                        // Ensure extracted files exist
+                        if (!Directory.Exists(extractDir)) throw new Exception("Extraction directory missing after unzip");
 
-                        // Attempt non-elevated install first
-                        string targetExe = System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe");
-                        bool ok = UpdaterInstaller.TryInstall(exeFile, targetExe, allowElevation: false);
+                        // Attempt non-elevated install of entire extracted directory into ds4UpdaterDir
+                        bool ok = UpdaterInstaller.TryInstallDirectory(extractDir, ds4UpdaterDir, allowElevation: false);
                         if (!ok)
                         {
                             // Need elevation - ask user
@@ -185,7 +183,7 @@ namespace DS4WinWPF.DS4Forms
                             if (elevateMb == MessageBoxResult.Yes)
                             {
                                 // Caller permits elevation; attempt install which will perform elevation
-                                bool elevatedOk = UpdaterInstaller.TryInstall(exeFile, targetExe, allowElevation: true);
+                                bool elevatedOk = UpdaterInstaller.TryInstallDirectory(extractDir, ds4UpdaterDir, allowElevation: true);
                                 if (!elevatedOk)
                                 {
                                     var failMb = MessageBox.Show(DS4WinWPF.Translations.Strings.InstallFailed_Body + "\n\nOpen release page?",
@@ -199,7 +197,7 @@ namespace DS4WinWPF.DS4Forms
                                     // Installed successfully — show success toast then launch updater
                                     ProfileNotificationWindow.ShowNotification(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
                                     string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
-                                    var psi2 = new System.Diagnostics.ProcessStartInfo(targetExe)
+                                    var psi2 = new System.Diagnostics.ProcessStartInfo(System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe"))
                                     {
                                         UseShellExecute = false,
                                         Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\""
@@ -230,7 +228,7 @@ namespace DS4WinWPF.DS4Forms
                             // Installed without elevation — show success toast then launch updater
                             ProfileNotificationWindow.ShowNotification(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
                             string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
-                            var psi2 = new System.Diagnostics.ProcessStartInfo(targetExe)
+                            var psi2 = new System.Diagnostics.ProcessStartInfo(System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe"))
                             {
                                 UseShellExecute = false,
                                 Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\""

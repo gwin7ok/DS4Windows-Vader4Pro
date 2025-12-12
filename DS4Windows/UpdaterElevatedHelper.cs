@@ -20,29 +20,53 @@ namespace DS4WinWPF
                     return 4; // cannot_save_download / invalid args
                 }
 
-                if (!File.Exists(sourcePath))
+                if (Directory.Exists(sourcePath))
                 {
-                    logger.Error($"Source file not found: {sourcePath}");
-                    return 2; // download_failed / missing source
+                    // Copy directory recursively into targetPath (targetPath is destination directory)
+                    try
+                    {
+                        if (!Directory.Exists(targetPath)) Directory.CreateDirectory(targetPath);
+                        CopyDirectoryRecursive(sourcePath, targetPath);
+                        try { Directory.Delete(sourcePath, true); } catch { }
+                        logger.Info($"CompleteInstall succeeded (dir): {sourcePath} -> {targetPath}");
+                        return 0;
+                    }
+                    catch (UnauthorizedAccessException ex)
+                    {
+                        logger.Error(ex, "Unauthorized while completing directory install");
+                        return 3; // admin_required
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, "Failed to complete directory install");
+                        return 5;
+                    }
                 }
-
-                var targetDir = Path.GetDirectoryName(targetPath);
-                if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
-
-                // Use copy then delete to allow overwrite semantics
-                File.Copy(sourcePath, targetPath, true);
-                try
+                else if (File.Exists(sourcePath))
                 {
-                    File.Delete(sourcePath);
-                }
-                catch (Exception ex)
-                {
-                    // not fatal; log and continue
-                    logger.Warn(ex, $"Failed to delete temp file {sourcePath}");
-                }
+                    var targetDir = Path.GetDirectoryName(targetPath);
+                    if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 
-                logger.Info($"CompleteInstall succeeded: {sourcePath} -> {targetPath}");
-                return 0;
+                    // Use copy then delete to allow overwrite semantics
+                    File.Copy(sourcePath, targetPath, true);
+                    try
+                    {
+                        File.Delete(sourcePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        // not fatal; log and continue
+                        logger.Warn(ex, $"Failed to delete temp file {sourcePath}");
+                    }
+
+                    logger.Info($"CompleteInstall succeeded: {sourcePath} -> {targetPath}");
+                    return 0;
+                }
+                else
+                {
+                    logger.Error($"Source path not found: {sourcePath}");
+                    return 2; // missing source
+                }
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -53,6 +77,22 @@ namespace DS4WinWPF
             {
                 logger.Error(ex, $"Failed to complete install {sourcePath} -> {targetPath}");
                 return 5; // replace_failed / general failure
+            }
+        }
+
+        private static void CopyDirectoryRecursive(string sourceDir, string destinationDir)
+        {
+            // Create directories
+            foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
+            {
+                Directory.CreateDirectory(dirPath.Replace(sourceDir, destinationDir));
+            }
+
+            // Copy files
+            foreach (var filePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+            {
+                var destPath = filePath.Replace(sourceDir, destinationDir);
+                File.Copy(filePath, destPath, true);
             }
         }
     }

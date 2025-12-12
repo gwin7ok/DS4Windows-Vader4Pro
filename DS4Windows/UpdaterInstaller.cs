@@ -84,5 +84,95 @@ namespace DS4WinWPF
                 return false;
             }
         }
+
+        // Try to install a directory (copy all files/subdirs under sourceDir into targetDir)
+        public static bool TryInstallDirectory(string sourceDir, string targetDir, bool allowElevation = true)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(sourceDir) || string.IsNullOrEmpty(targetDir))
+                {
+                    logger.Error("TryInstallDirectory called with empty paths");
+                    return false;
+                }
+
+                if (!Directory.Exists(sourceDir))
+                {
+                    logger.Error($"Source directory not found: {sourceDir}");
+                    return false;
+                }
+
+                // Ensure target directory exists
+                if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
+
+                try
+                {
+                    // Copy recursively
+                    CopyDirectoryRecursive(sourceDir, targetDir);
+                    logger.Info($"Installed directory without elevation: {targetDir}");
+                    return true;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    logger.Warn("Non-elevated directory install failed due to permissions");
+                    if (!allowElevation)
+                    {
+                        return false;
+                    }
+                    // else fallthrough to elevation attempt
+                }
+
+                // Elevation: start elevated process to perform complete install
+                string exePath = Process.GetCurrentProcess().MainModule.FileName;
+                // Pass source directory and target directory as arguments
+                string args = $"--complete-install \"{sourceDir}\" --complete-install-target \"{targetDir}\"";
+                var psi = new ProcessStartInfo(exePath)
+                {
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    Arguments = args
+                };
+
+                try
+                {
+                    var proc = Process.Start(psi);
+                    if (proc == null)
+                    {
+                        logger.Error("Failed to start elevated process (null)");
+                        return false;
+                    }
+
+                    proc.WaitForExit();
+                    int code = proc.ExitCode;
+                    logger.Info($"Elevated installer exited with code {code}");
+                    return code == 0;
+                }
+                catch (Win32Exception ex)
+                {
+                    logger.Warn(ex, "Elevation cancelled or failed");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "TryInstallDirectory failed");
+                return false;
+            }
+        }
+
+        private static void CopyDirectoryRecursive(string sourceDir, string destinationDir)
+        {
+            // Create all directories
+            foreach (var dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
+            {
+                Directory.CreateDirectory(dirPath.Replace(sourceDir, destinationDir));
+            }
+
+            // Copy all files
+            foreach (var newPath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+            {
+                File.Copy(newPath, newPath.Replace(sourceDir, destinationDir), true);
+            }
+        }
     }
 }
