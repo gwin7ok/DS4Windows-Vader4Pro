@@ -58,7 +58,7 @@ namespace DS4WinWPF.DS4Forms
 
             // Use English labels for buttons regardless of app culture
             string skipLabel = DS4WinWPF.Translations.Strings.ResourceManager.GetString("SkipVersion", engCulture) ?? "Skip Version";
-            string openLabel = DS4WinWPF.Translations.Strings.ResourceManager.GetString("OpenReleasePageButton", engCulture) ?? "Open Release Page";
+            string openLabel = DS4WinWPF.Translations.Strings.ResourceManager.GetString("Install_LatestBtn", engCulture) ?? "Install Latest";
             string closeLabel = DS4WinWPF.Translations.Strings.ResourceManager.GetString("CloseButton", engCulture) ?? "Close";
 
             skipVersionBtn.Content = skipLabel;
@@ -68,12 +68,50 @@ namespace DS4WinWPF.DS4Forms
 
         private void YesBtn_Click(object sender, RoutedEventArgs e)
         {
-            // Open the releases page in user's browser and close
+            // Install / Launch latest updater
             try
             {
-                Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                string ds4WindowsDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
+                string ds4UpdaterDir = System.IO.Path.Combine(ds4WindowsDir, "DS4Updater");
+                string ds4UpdaterExe = System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe");
+
+                if (System.IO.File.Exists(ds4UpdaterExe))
+                {
+                    // Launch existing updater with GUI args and wait for result
+                    string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+                    var psi = new System.Diagnostics.ProcessStartInfo(ds4UpdaterExe)
+                    {
+                        UseShellExecute = false,
+                        Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\""
+                    };
+
+                    var proc = System.Diagnostics.Process.Start(psi);
+                    if (proc != null)
+                    {
+                        proc.WaitForExit();
+                        if (proc.ExitCode != 0)
+                        {
+                            // On failure, open releases page as fallback
+                            Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                        }
+                    }
+                }
+                else
+                {
+                    // Updater not present yet: ask user to open releases or cancel
+                    var mb = MessageBox.Show(DS4WinWPF.Translations.Strings.UpdaterMissing_Body + "\n\nOpen release page?",
+                        DS4WinWPF.Translations.Strings.UpdaterMissing_Title,
+                        MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    if (mb == MessageBoxResult.Yes)
+                    {
+                        Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+                    }
+                }
             }
-            catch { }
+            catch
+            {
+                try { Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest"); } catch { }
+            }
             result = MessageBoxResult.Yes;
             Close();
         }
