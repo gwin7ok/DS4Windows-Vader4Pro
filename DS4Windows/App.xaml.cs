@@ -95,10 +95,12 @@ namespace DS4WinWPF
 
             try
             {
+                AppLogger.LogDebug($"ApplyLanguageSetting requested: {cultureCode}");
                 CultureInfo culture = CultureInfo.GetCultureInfo(cultureCode);
                 DS4Windows.Global.UseLang = cultureCode;
                 DS4Windows.Global.SetCulture(cultureCode);
                 LocalizeDictionary.Instance.Culture = culture;
+                AppLogger.LogDebug($"ApplyLanguageSetting applied: LocalizeDictionary={LocalizeDictionary.Instance.Culture}, SetCurrentThreadCulture={LocalizeDictionary.Instance.SetCurrentThreadCulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, CurrentUICulture={Thread.CurrentThread.CurrentUICulture}");
             }
             catch
             {
@@ -118,6 +120,36 @@ namespace DS4WinWPF
         {
             runShutdown = true;
             skipSave = true;
+
+            try
+            {
+                // Detailed diagnostics at Debug level
+                AppLogger.LogDebug($"Startup culture: CurrentCulture={System.Globalization.CultureInfo.CurrentCulture}, CurrentUICulture={System.Globalization.CultureInfo.CurrentUICulture}");
+                AppLogger.LogDebug($"DefaultThreadCurrentCulture={System.Globalization.CultureInfo.DefaultThreadCurrentCulture}, DefaultThreadCurrentUICulture={System.Globalization.CultureInfo.DefaultThreadCurrentUICulture}");
+                AppLogger.LogDebug($"Process exe: {Process.GetCurrentProcess().MainModule?.FileName}");
+                AppLogger.LogDebug($"AppDomain BaseDirectory: {AppContext.BaseDirectory}");
+
+                // Log command-line args for Updater-related diagnostic
+                try
+                {
+                    var argsJoined = string.Join(' ', e.Args ?? Array.Empty<string>());
+                    AppLogger.LogDebug($"Startup args: {argsJoined}");
+                }
+                catch { }
+
+                string langDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Lang");
+                AppLogger.LogDebug($"Lang folder exists: {System.IO.Directory.Exists(langDir)} at {langDir}");
+                if (System.IO.Directory.Exists(langDir))
+                {
+                    try
+                    {
+                        var dirs = System.IO.Directory.GetDirectories(langDir);
+                        AppLogger.LogDebug($"Lang subdirs: {string.Join(',', System.Array.ConvertAll(dirs, d => System.IO.Path.GetFileName(d)))}");
+                    }
+                    catch (Exception ex) { AppLogger.LogError($"LangDirList exception: {ex}"); }
+                }
+            }
+            catch (Exception) { }
 
             ArgumentParser parser = new ArgumentParser();
             // Early check: handle elevated 'complete install' mode before normal startup
@@ -327,6 +359,7 @@ namespace DS4WinWPF
             // Have app use selected culture
             SetUICulture(DS4Windows.Global.UseLang);
             ApplyLanguageSetting(DS4Windows.Global.UseLang);
+            AppLogger.LogInfo($"Effective UI culture after initialization: CurrentUICulture={Thread.CurrentThread.CurrentUICulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, UseLang={DS4Windows.Global.UseLang}");
 
             DS4Windows.AppThemeChoice themeChoice = DS4Windows.Global.UseCurrentTheme;
             ChangeTheme(DS4Windows.Global.UseCurrentTheme, false);
@@ -777,6 +810,7 @@ namespace DS4WinWPF
         {
             try
             {
+                AppLogger.LogDebug($"SetUICulture requested: {culture}");
                 //CultureInfo ci = new CultureInfo("ja");
                 CultureInfo ci = CultureInfo.GetCultureInfo(culture);
                 LocalizeDictionary.Instance.SetCurrentThreadCulture = true;
@@ -787,6 +821,7 @@ namespace DS4WinWPF
                 DS4WinWPF.Properties.Resources.Culture = ci;
                 Thread.CurrentThread.CurrentCulture = ci;
                 Thread.CurrentThread.CurrentUICulture = ci;
+                AppLogger.LogDebug($"SetUICulture applied: LocalizeDictionary={LocalizeDictionary.Instance.Culture}, SetCurrentThreadCulture={LocalizeDictionary.Instance.SetCurrentThreadCulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, CurrentUICulture={Thread.CurrentThread.CurrentUICulture}");
             }
             catch (CultureNotFoundException) { /* Skip setting culture that we cannot set */ }
         }
