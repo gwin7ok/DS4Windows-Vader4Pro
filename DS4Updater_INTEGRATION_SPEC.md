@@ -32,6 +32,9 @@
   - `--ds4windows-path "<DS4Windows 実行パス>"`
   - `--ds4updater-path "<DS4Updater 実行パス>"` 
   - `-autolaunch` （更新処理後に DS4Windows を自動的に再起動したい場合に使用）
+  - `--launch-mode <admin|user>` （追加: 起動モード指定）
+    - 説明: Updater に対して更新後に DS4Windows をどの権限モードで起動するかを明示する。`admin` を指定すると Updater は管理者（昇格）で起動を試み、`user` を指定すると通常ユーザー権限で起動する。
+    - 備考: DS4Windows は Updater を起動する際、自身の現在の実行モード（管理者か通常ユーザーか）に合わせてこの引数を付与すること。
   - `--launchExe "<DS4Windows.exe の相対/絶対パス>"`（必要に応じて）
   - GUI のため `--ci` は渡さない。
 
@@ -122,7 +125,7 @@ UI 表示要素（追加済みリソースキー）
       - ユーザーが UAC をキャンセルした場合、昇格プロセスは起動しないため元のプロセスはキャンセル扱いとして手動インストール案内へ遷移すること。
   e) 昇格での移動が成功したら一時ファイルを削除し、UI に `InstallSuccess_Notification` を表示する（通知/トースト）。
   f) 移動がキャンセルまたは失敗した場合、`InstallFailed_Title` / `InstallFailed_Body` ダイアログを表示し、`InstallFailed_OpenReleaseBtn` でリリースページを開けるよう案内する。
-5. ローカル `...\\DS4Updater\\DS4Updater.exe` が用意できたら、DS4Windows はローカル Updater を起動する。
+5. ローカル `...\\DS4Updater\\DS4Updater.exe` が用意できたら、DS4Windows はローカル Updater を起動する。起動時に DS4Windows は自身の現在の実行権限を判定し、管理者で実行中であれば `--launch-mode=admin` を、通常ユーザーで実行中であれば `--launch-mode=user` を Updater に付与して起動する。
   - 渡す引数の例（GUI モード）:
     - `--ds4windows-path "<DS4Windows 実行パス>"`
     - `--ds4updater-path "<DS4Updater 実行パス>"` （明示推奨）
@@ -166,6 +169,13 @@ DS4Updater.exe 起動引数一覧と DS4Windows 側の設定
 推奨: 自動再起動を有効にするなら両方渡す。
 伝達方式 / 値の取得
 →"DS4Windows.exe"
+
+--launch-mode "<admin|user>"
+説明: Updater に対して、更新後に DS4Windows をどの権限モードで起動するかを指定する。これは DS4Windows が Updater を起動する際に自身の現在の権限モードに合わせて付与することを想定する。
+値:
+ - `admin` — Updater は管理者権限で対象の `DS4Windows.exe` を起動することを試みる。実装例: `UseShellExecute=true` と `Verb=runas` を使い、ワーキングディレクトリを DS4Windows のインストールフォルダに設定する。
+ - `user` — Updater は通常ユーザー権限で対象の `DS4Windows.exe` を起動する。実装例: エクスプローラ経由で独立したプロセスとして起動する（`StartProcessInExplorer` 相当）か、`UseShellExecute=true` を使いワーキングディレクトリを DS4Windows のフォルダに設定して起動する。
+注意: Updater は起動時にワーキングディレクトリを DS4Windows のインストールフォルダに設定し、起動されるプロセスが親子プロセスに依存せず独立して動作するようにすること。これにより言語アセンブリの発見や起動時の初期化が正しく行われる。
 
 --ds4updater-repo "<url|owner/repo>"
 説明: Updater 自身のリポジトリをオーバーライドする（テストや別ビルド向け）。

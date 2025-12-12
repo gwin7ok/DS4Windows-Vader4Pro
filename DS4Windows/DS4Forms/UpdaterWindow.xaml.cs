@@ -90,10 +90,12 @@ namespace DS4WinWPF.DS4Forms
                     }
 
                     string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+                    bool runningAsAdmin = DS4Windows.Global.IsAdministrator();
+                    string launchMode = runningAsAdmin ? "admin" : "user";
                     var psi = new System.Diagnostics.ProcessStartInfo(ds4UpdaterExe)
                     {
                         UseShellExecute = false,
-                        Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\""
+                        Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\" --launch-mode={launchMode}"
                     };
 
                     var proc = System.Diagnostics.Process.Start(psi);
@@ -219,10 +221,12 @@ namespace DS4WinWPF.DS4Forms
                                         AppLogger.LogToTray(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
                                     }
                                     string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+                                    bool runningAsAdmin2 = DS4Windows.Global.IsAdministrator();
+                                    string launchMode2 = runningAsAdmin2 ? "admin" : "user";
                                     var psi2 = new System.Diagnostics.ProcessStartInfo(System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe"))
                                     {
                                         UseShellExecute = false,
-                                        Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\""
+                                        Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\" --launch-mode={launchMode2}"
                                     };
                                     var proc2 = System.Diagnostics.Process.Start(psi2);
                                     if (proc2 != null)
