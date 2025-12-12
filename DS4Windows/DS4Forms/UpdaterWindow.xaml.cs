@@ -106,17 +106,62 @@ namespace DS4WinWPF.DS4Forms
                     Directory.CreateDirectory(tempDir);
 
                     string tempZip = System.IO.Path.Combine(tempDir, "DS4Updater_x64.zip");
-                    string downloadUrl = "https://github.com/gwin7ok/DS4Updater/releases/latest/download/DS4Updater_x64.zip";
 
                     try
                     {
+                        // Determine repo for DS4Updater (default)
+                        string updaterRepo = "gwin7ok/DS4Updater";
+
+                        // Query GitHub Releases API for latest release
+                        string apiUrl = $"https://api.github.com/repos/{updaterRepo}/releases/latest";
                         using (var client = new System.Net.Http.HttpClient())
-                        using (var resp = await client.GetAsync(downloadUrl))
                         {
-                            if (!resp.IsSuccessStatusCode) throw new Exception($"Download failed: {resp.StatusCode}");
-                            using (var fs = new System.IO.FileStream(tempZip, System.IO.FileMode.Create, System.IO.FileAccess.Write))
+                            client.DefaultRequestHeaders.UserAgent.ParseAdd("DS4Windows-Updater-Installer");
+                            var apiResp = await client.GetAsync(apiUrl);
+                            if (!apiResp.IsSuccessStatusCode) throw new Exception($"Failed to query releases: {apiResp.StatusCode}");
+
+                            using var doc = System.Text.Json.JsonDocument.Parse(await apiResp.Content.ReadAsStringAsync());
+                            var root = doc.RootElement;
+                            if (!root.TryGetProperty("assets", out var assets)) throw new Exception("No assets in latest release");
+
+                            string downloadUrl = null;
+                            long expectedSize = -1;
+                            foreach (var asset in assets.EnumerateArray())
                             {
-                                await resp.Content.CopyToAsync(fs);
+                                if (asset.TryGetProperty("name", out var nameEl))
+                                {
+                                    var name = nameEl.GetString();
+                                    if (name != null && name.Contains("x64") && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        if (asset.TryGetProperty("browser_download_url", out var urlEl))
+                                        {
+                                            downloadUrl = urlEl.GetString();
+                                        }
+                                        if (asset.TryGetProperty("size", out var sizeEl))
+                                        {
+                                            expectedSize = sizeEl.GetInt64();
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (string.IsNullOrEmpty(downloadUrl)) throw new Exception("No suitable x64 zip asset found in latest release");
+
+                            // Download asset and verify size against expectedSize when available
+                            using (var resp = await client.GetAsync(downloadUrl))
+                            {
+                                if (!resp.IsSuccessStatusCode) throw new Exception($"Download failed: {resp.StatusCode}");
+                                using (var fs = new System.IO.FileStream(tempZip, System.IO.FileMode.Create, System.IO.FileAccess.Write))
+                                {
+                                    await resp.Content.CopyToAsync(fs);
+                                }
+
+                                if (expectedSize > 0)
+                                {
+                                    var fi = new System.IO.FileInfo(tempZip);
+                                    if (fi.Length != expectedSize) throw new Exception($"Downloaded size mismatch: expected {expectedSize}, got {fi.Length}");
+                                }
                             }
                         }
 
