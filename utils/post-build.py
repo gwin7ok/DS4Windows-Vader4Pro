@@ -69,32 +69,50 @@ else:
 
 zip_name = f"DS4Windows_{version}_{arch}"
 target_zip_path = target_dir.parent / f"{zip_name}.zip"
-if target_zip_path.exists():
-    os.remove(target_zip_path)
-# Ensure the zip contains a top-level 'DS4Windows' folder.
-# Some CI runs produce different parent layouts; create a staging folder
-# so the archive root is predictable.
+
+# Ensure deterministic staging folder (clean previous runs)
 staging_dir = target_dir.parent / 'DS4Windows'
 if staging_dir.exists():
     shutil.rmtree(staging_dir)
 
-# Copy output (target_dir) into staging_dir (results in staging_dir/*)
-shutil.copytree(target_dir, staging_dir)
+# Determine actual source directory to copy from. Some publish outputs
+# produce an inner 'DS4Windows' folder (e.g. Release\DS4Windows). If so,
+# copy from that inner folder's contents to avoid creating DS4Windows/DS4Windows.
+source_dir = target_dir
+try:
+    top_dirs = [p for p in target_dir.iterdir() if p.is_dir()]
+    if len(top_dirs) == 1 and top_dirs[0].name.lower() == 'ds4windows':
+        source_dir = top_dirs[0]
+except Exception:
+    source_dir = target_dir
+
+staging_dir.mkdir(parents=True, exist_ok=True)
+for item in source_dir.iterdir():
+    dest = staging_dir / item.name
+    if item.is_dir():
+        shutil.copytree(item, dest)
+    else:
+        shutil.copy2(item, dest)
+
+print(f"Post-build: source_dir={source_dir} staging_dir={staging_dir}")
 
 # Remove any net8.0-windows subdirectory from staging to avoid duplication
-# (sometimes created even with AppendTargetFrameworkToOutputPath=false)
 net_framework_dir = staging_dir / "net8.0-windows"
 if net_framework_dir.exists():
     shutil.rmtree(net_framework_dir)
 
-# Create archive only for the staging_dir (so zip root contains DS4Windows/)
-# Use make_archive with root_dir and base_dir to avoid including other files.
-zip_dir = shutil.make_archive(zip_name, "zip", root_dir=str(staging_dir.parent), base_dir=staging_dir.name)
+# Remove any pre-existing zip in both candidate locations to avoid duplicates
+if target_zip_path.exists():
+    os.remove(target_zip_path)
+candidate_in_staging = staging_dir / f"{zip_name}.zip"
+if candidate_in_staging.exists():
+    os.remove(candidate_in_staging)
 
-# move the zip to the build directory
-shutil.move(zip_dir, target_zip_path)
+# Create archive with an explicit full path so no temporary archive is left
+# base_name for make_archive should be without the .zip suffix
+archive_base = str(target_zip_path.with_suffix(''))
+zip_path = shutil.make_archive(archive_base, "zip", root_dir=str(staging_dir.parent), base_dir=staging_dir.name)
 
-# Keep staging_dir (DS4Windows folder) for distribution
-# Do not cleanup staging - it's the final output directory
+# zip_path should equal target_zip_path; report both for diagnostics
 print(f"Build output: {staging_dir}")
-print(f"Archive created: {target_zip_path}")
+print(f"Archive created: {zip_path}")
