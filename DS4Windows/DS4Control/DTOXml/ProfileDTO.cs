@@ -49,8 +49,8 @@ namespace DS4WinWPF.DS4Control.DTOXml
             }
         }
 
-        [XmlElement("CheckWhen")]
-        public int CheckWhen { get; set; } = BackingStore.DEFAULT_CHECK_WHEN;
+        // Removed legacy CheckWhen; startup-check interval now persisted as
+        // `CheckEveryValue` and `CheckEveryUnit` in AppSettings/profile DTOs.
         public const bool SERIALIZE_HEADER_ATTRS_DEFAULT = true;
         [XmlIgnore]
         public bool SerializeAppAttrs

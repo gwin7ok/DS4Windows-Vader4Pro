@@ -1744,11 +1744,27 @@ namespace DS4Windows
             get { return m_Config.lastChecked; }
         }
 
-        public static int CheckWhen
+        // New explicit startup update-check settings
+        public static bool CheckUpdateStartupEnabled
         {
-            set { m_Config.CheckWhen = value; }
-            get { return m_Config.CheckWhen; }
+            get { return m_Config.checkUpdateStartup; }
+            set { m_Config.checkUpdateStartup = value; }
         }
+
+        public static int CheckEveryValue
+        {
+            get { return m_Config.checkEveryValue; }
+            set { m_Config.checkEveryValue = value; }
+        }
+
+        // 0 = hours, 1 = days
+        public static int CheckEveryUnit
+        {
+            get { return m_Config.checkEveryUnit; }
+            set { m_Config.checkEveryUnit = value; }
+        }
+
+        // Legacy `CheckWhen` removed. Use explicit CheckEveryValue/CheckEveryUnit instead.
 
         public static string LastVersionChecked
         {
@@ -4177,8 +4193,13 @@ namespace DS4Windows
         public string lastVersionChecked = string.Empty;
         public ulong lastVersionCheckedNum;
 
-        public const int DEFAULT_CHECK_WHEN = 24;
-        public int CheckWhen = DEFAULT_CHECK_WHEN;
+        // Legacy CheckWhen removed. Store explicit defaults for the new fields.
+        public const int DEFAULT_CHECK_EVERY_VALUE = 1;
+        public const int DEFAULT_CHECK_EVERY_UNIT = 1;
+        // New explicit startup update-check persistence fields
+        public bool checkUpdateStartup = true;
+        public int checkEveryValue = 1; // default 1 day
+        public int checkEveryUnit = 1; // 0=hours,1=days
 
         public const int DEFAULT_NOTIFICATIONS = 2;
         public int notifications = DEFAULT_NOTIFICATIONS;
@@ -8145,7 +8166,37 @@ namespace DS4Windows
 
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/LastChecked"); DateTime.TryParse(Item.InnerText, out lastChecked); }
                     catch { missingSetting = true; }
-                    try { Item = m_Xdoc.SelectSingleNode("/Profile/CheckWhen"); Int32.TryParse(Item.InnerText, out CheckWhen); }
+                    // Read new explicit startup-check fields when available. If not present,
+                    // fall back to legacy <CheckWhen> value and map it into daily/hourly values.
+                    try
+                    {
+                        XmlNode everyValNode = m_Xdoc.SelectSingleNode("/Profile/CheckEveryValue");
+                        XmlNode everyUnitNode = m_Xdoc.SelectSingleNode("/Profile/CheckEveryUnit");
+                        if (everyValNode != null)
+                        {
+                            Int32.TryParse(everyValNode.InnerText, out checkEveryValue);
+                            Int32.TryParse(everyUnitNode?.InnerText ?? "1", out checkEveryUnit);
+                        }
+                        else
+                        {
+                            // Legacy fallback: map CheckWhen (hours or days) into checkEveryValue/unit
+                            Item = m_Xdoc.SelectSingleNode("/Profile/CheckWhen");
+                            if (Item != null && Int32.TryParse(Item.InnerText, out int legacyCheckWhen))
+                            {
+                                if (legacyCheckWhen > 23)
+                                {
+                                    // stored in hours; convert to days
+                                    checkEveryValue = legacyCheckWhen / 24;
+                                    checkEveryUnit = 1; // days
+                                }
+                                else
+                                {
+                                    checkEveryValue = legacyCheckWhen;
+                                    checkEveryUnit = 0; // hours
+                                }
+                            }
+                        }
+                    }
                     catch { missingSetting = true; }
                     try
                     {
@@ -8540,7 +8591,10 @@ namespace DS4Windows
             }
 
             XmlNode xmlLastChecked = m_Xdoc.CreateNode(XmlNodeType.Element, "LastChecked", null); xmlLastChecked.InnerText = lastChecked.ToString(); rootElement.AppendChild(xmlLastChecked);
-            XmlNode xmlCheckWhen = m_Xdoc.CreateNode(XmlNodeType.Element, "CheckWhen", null); xmlCheckWhen.InnerText = CheckWhen.ToString(); rootElement.AppendChild(xmlCheckWhen);
+            // Persist new explicit startup-check settings instead of legacy CheckWhen
+            XmlNode xmlCheckUpdateStartup = m_Xdoc.CreateNode(XmlNodeType.Element, "CheckUpdateStartup", null); xmlCheckUpdateStartup.InnerText = checkUpdateStartup.ToString(); rootElement.AppendChild(xmlCheckUpdateStartup);
+            XmlNode xmlCheckEveryValue = m_Xdoc.CreateNode(XmlNodeType.Element, "CheckEveryValue", null); xmlCheckEveryValue.InnerText = checkEveryValue.ToString(); rootElement.AppendChild(xmlCheckEveryValue);
+            XmlNode xmlCheckEveryUnit = m_Xdoc.CreateNode(XmlNodeType.Element, "CheckEveryUnit", null); xmlCheckEveryUnit.InnerText = checkEveryUnit.ToString(); rootElement.AppendChild(xmlCheckEveryUnit);
             if (!string.IsNullOrEmpty(lastVersionChecked))
             {
                 XmlNode xmlLastVersionChecked = m_Xdoc.CreateNode(XmlNodeType.Element, "LastVersionChecked", null); xmlLastVersionChecked.InnerText = lastVersionChecked.ToString(); rootElement.AppendChild(xmlLastVersionChecked);

@@ -170,49 +170,46 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
         public event EventHandler AppChoiceIndexChanged;
 
-        public bool CheckForUpdates
-        {
-            get => DS4Windows.Global.CheckWhen > 0;
-            set
+        // CheckForUpdates: controls whether update checking is enabled.
+        // We represent "disabled" with -1. A value of 0 means "check every startup".
+            public bool CheckForUpdates
             {
-                DS4Windows.Global.CheckWhen = value ? 24 : 0;
-                CheckForNoUpdatesWhen();
+                get => DS4Windows.Global.CheckUpdateStartupEnabled;
+                set
+                {
+                        DS4Windows.Global.CheckUpdateStartupEnabled = value;
+                        CheckForNoUpdatesWhen();
+                        DS4Windows.Global.Save();
+                }
             }
-        }
         public event EventHandler CheckForUpdatesChanged;
 
         public int CheckEvery
         {
             get
             {
-                int temp = DS4Windows.Global.CheckWhen;
-                if (temp > 23)
-                {
-                    temp = temp / 24;
-                }
-                return temp;
+                // Use the explicit persisted numeric value. The legacy `CheckWhen`
+                // stores hours and was used before separate fields existed.
+                // Now the numeric control maps to `CheckEveryValue` directly.
+                return DS4Windows.Global.CheckEveryValue;
             }
             set
             {
-                int temp;
-                if (checkEveryUnitIdx == 0 && value < 24)
-                {
-                    temp = DS4Windows.Global.CheckWhen;
-                    if (temp != value)
+                // If update checks are disabled (represented by -1), do not modify
+                // underlying `CheckWhen` from the numeric control. This prevents
+                // the numeric binding from re-enabling checks when the checkbox
+                // is unchecked.
+                    if (!DS4Windows.Global.CheckUpdateStartupEnabled)
                     {
-                        DS4Windows.Global.CheckWhen = value;
-                        CheckForNoUpdatesWhen();
+                        return;
                     }
-                }
-                else if (checkEveryUnitIdx == 1)
-                {
-                    temp = DS4Windows.Global.CheckWhen / 24;
-                    if (temp != value)
+
+                    if (DS4Windows.Global.CheckEveryValue != value)
                     {
-                        DS4Windows.Global.CheckWhen = value * 24;
+                        DS4Windows.Global.CheckEveryValue = value;
                         CheckForNoUpdatesWhen();
+                        DS4Windows.Global.Save();
                     }
-                }
             }
         }
         public event EventHandler CheckEveryChanged;
@@ -227,8 +224,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set
             {
                 if (checkEveryUnitIdx == value) return;
+                // Persist selection immediately to the backing store so saves include it.
+                DS4Windows.Global.CheckEveryUnit = value;
                 checkEveryUnitIdx = value;
                 CheckEveryUnitChanged?.Invoke(this, EventArgs.Empty);
+                DS4Windows.Global.Save();
             }
         }
         public event EventHandler CheckEveryUnitChanged;
@@ -422,14 +422,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public SettingsViewModel()
         {
-            checkEveryUnitIdx = 1;
+            // Initialize unit index and numeric value from persistent settings
+            checkEveryUnitIdx = DS4Windows.Global.CheckEveryUnit;
+            // Ensure unit idx is valid
+            if (checkEveryUnitIdx != 0 && checkEveryUnitIdx != 1) checkEveryUnitIdx = 1;
             IsProfileChangedCheckVisible = Global.Notifications == 2 ? Visibility.Visible : Visibility.Collapsed;
-
-            int checklapse = DS4Windows.Global.CheckWhen;
-            if (checklapse < 24 && checklapse > 0)
-            {
-                checkEveryUnitIdx = 0;
-            }
+            // No longer derive from CheckWhen; numeric value is held separately
 
             CheckStartupOptions();
 
@@ -633,9 +631,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void CheckForNoUpdatesWhen()
         {
-            if (DS4Windows.Global.CheckWhen == 0)
+            // If disabled, ensure UI shows sensible units. 0 means "every startup",
+            // so only treat -1 as the explicit disabled sentinel.
+            if (!DS4Windows.Global.CheckUpdateStartupEnabled)
             {
-                checkEveryUnitIdx = 1;
+                // keep unit in sync with persisted value when disabled
+                checkEveryUnitIdx = DS4Windows.Global.CheckEveryUnit;
             }
 
             CheckForUpdatesChanged?.Invoke(this, EventArgs.Empty);

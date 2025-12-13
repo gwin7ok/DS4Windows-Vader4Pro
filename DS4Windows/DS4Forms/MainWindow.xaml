@@ -351,9 +351,9 @@
                                 IsEnabled="{Binding CheckForUpdates}">
                             <Label Content="{lex:Loc CheckEvery}" />
                             <!--<TextBox Text="0" VerticalAlignment="Center" />-->
-                            <xctk:IntegerUpDown d:IsHidden="True" Value="{Binding CheckEvery}" MinWidth="30" Margin="8,0,0,0"
+                            <xctk:IntegerUpDown d:IsHidden="True" Value="{Binding CheckEvery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" MinWidth="30" Margin="8,0,0,0"
                                             ButtonSpinnerLocation="Right" Increment="1" Maximum="30" Minimum="0" />
-                            <ComboBox SelectedIndex="{Binding CheckEveryUnit,FallbackValue=1}" Margin="8,0,0,0" Foreground="{DynamicResource ForegroundColor}" MinWidth="60">
+                            <ComboBox SelectedIndex="{Binding CheckEveryUnit, Mode=TwoWay, FallbackValue=1}" Margin="8,0,0,0" Foreground="{DynamicResource ForegroundColor}" MinWidth="60">
                                 <ComboBoxItem Content="{lex:Loc Hours}" />
                                 <ComboBoxItem Content="{lex:Loc Days}" />
                             </ComboBox>

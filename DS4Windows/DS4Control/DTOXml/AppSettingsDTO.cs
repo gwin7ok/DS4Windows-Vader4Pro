@@ -269,10 +269,31 @@ public class AppSettingsDTO
             }
         }
 
-        public int CheckWhen
+        // Removed legacy `CheckWhen`. Use `CheckEveryValue`/`CheckEveryUnit` instead.
+
+        // New separate fields for startup update checking persistence
+        [XmlIgnore]
+        public bool CheckUpdateStartup { get; private set; } = true;
+
+        [XmlElement("CheckUpdateStartup")]
+        public string CheckUpdateStartupString
         {
-            get; set;
-        } = BackingStore.DEFAULT_CHECK_WHEN;
+            get => CheckUpdateStartup.ToString();
+            set
+            {
+                if (bool.TryParse(value, out bool temp))
+                {
+                    CheckUpdateStartup = temp;
+                }
+            }
+        }
+
+        [XmlElement("CheckEveryValue")]
+        public int CheckEveryValue { get; set; } = 1;
+
+        // 0 = hours, 1 = days
+        [XmlElement("CheckEveryUnit")]
+        public int CheckEveryUnit { get; set; } = 1;
 
         public string LastVersionChecked
         {
@@ -890,7 +911,14 @@ public class AppSettingsDTO
             Controller8CurrentProfile = !string.IsNullOrEmpty(source.selectedProfile[7]) ? source.selectedProfile[7] : string.Empty;
 
             LastChecked = source.lastChecked;
-            CheckWhen = source.CheckWhen;
+            // Map legacy CheckWhen into new fields if present in source profiles.
+            // Prefer explicit fields when available (checkEveryValue/checkEveryUnit).
+            CheckEveryValue = source.checkEveryValue;
+            CheckEveryUnit = source.checkEveryUnit;
+            // Map new explicit startup-check settings when available
+            CheckUpdateStartup = source.checkUpdateStartup;
+            CheckEveryValue = source.checkEveryValue;
+            CheckEveryUnit = source.checkEveryUnit;
             LastVersionChecked = source.lastVersionChecked;
             Notifications = source.notifications;
             ProfileChangedNotification = source.profileChangedNotification;
@@ -997,6 +1025,10 @@ public class AppSettingsDTO
             destination.minToTaskbar = MinimizeToTaskbar;
             destination.processPriority = ProcessPriority;
             destination.formWidth = FormWidth;
+            // Map new explicit startup-check settings back into backing store
+            destination.checkUpdateStartup = CheckUpdateStartup;
+            destination.checkEveryValue = CheckEveryValue;
+            destination.checkEveryUnit = CheckEveryUnit;
             destination.formHeight = FormHeight;
             destination.formLocationX = FormLocationX;
             destination.formLocationY = FormLocationY;
@@ -1011,7 +1043,9 @@ public class AppSettingsDTO
             destination.profilePath[7] = destination.olderProfilePath[7] = destination.selectedProfile[7] = !string.IsNullOrEmpty(Controller8CurrentProfile) ? Controller8CurrentProfile : string.Empty;
 
             destination.lastChecked = LastChecked;
-            destination.CheckWhen = CheckWhen;
+            // Persist new explicit startup-check settings in place of legacy CheckWhen.
+            destination.checkEveryValue = CheckEveryValue;
+            destination.checkEveryUnit = CheckEveryUnit;
             destination.lastVersionChecked = LastVersionChecked;
             destination.notifications = Notifications;
             destination.profileChangedNotification = ProfileChangedNotification;

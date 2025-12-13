@@ -217,8 +217,14 @@ namespace DS4WinWPF.DS4Forms
 #if !BETA_VERSION
             tempTask = Task.Delay(100).ContinueWith(_ =>
             {
-                int checkwhen = Global.CheckWhen;
-                if (checkwhen > 0 && DateTime.Now >= Global.LastChecked + TimeSpan.FromHours(checkwhen))
+                // Use explicit startup-check settings persisted in Profiles.xml
+                if (Global.CheckUpdateStartupEnabled)
+                {
+                    int everyVal = Global.CheckEveryValue;
+                    int everyUnit = Global.CheckEveryUnit; // 0=hours, 1=days
+                    double hoursToWait = (everyUnit == 0) ? everyVal : everyVal * 24.0;
+
+                    if (everyVal == 0 || DateTime.Now >= Global.LastChecked + TimeSpan.FromHours(hoursToWait))
                 {
                     try
                     {
@@ -235,6 +241,7 @@ namespace DS4WinWPF.DS4Forms
                     }
 
                     Global.LastChecked = DateTime.Now;
+                }
                 }
 
                 // Check if main window closing was requested from app update.
