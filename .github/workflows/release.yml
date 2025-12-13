@@ -52,6 +52,22 @@ jobs:
         run: |
           dotnet publish ./DS4Windows/DS4WinWPF.csproj -c Release /p:Platform=x64 -o ./artifacts/win-x64
 
+      - name: Set TimeZone to Tokyo (Windows runner)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "Setting TimeZone to Tokyo Standard Time"
+          try { Set-TimeZone -Id 'Tokyo Standard Time' } catch { Write-Warning "Set-TimeZone failed: $_" }
+
+      - name: Normalize file timestamps to JST before packaging
+        shell: pwsh
+        run: |
+          $v = '${{ steps.get_version.outputs.version }}'
+          if (-not (Test-Path './artifacts/win-x64')) { Write-Warning './artifacts/win-x64 not found; skipping timestamp normalization' ; exit 0 }
+          $t = (Get-Date).ToLocalTime()
+          Write-Host "Normalizing LastWriteTime (local) to $t for files under ./artifacts/win-x64"
+          Get-ChildItem -Path ./artifacts/win-x64 -Recurse -File | ForEach-Object { $_.LastWriteTime = $t }
+
       - name: Package artifacts (post-build)
         shell: pwsh
         run: |
