@@ -73,5 +73,5 @@ _This README retains a short pointer — full changelog entries are maintained i
 
 ## Installation Guide / 導入ガイド
 
-- English: See the installation and setup guide: [Installation Guide (日本語/English)](導入ガイド.md)
-- 日本語: インストール手順と初回セットアップは次のガイドを参照してください: [導入ガイド](導入ガイド.md)
+- See the installation and setup guide: [Installation Guide (Japanese)](導入ガイド.md)
+- インストール手順と初回セットアップは次のガイドを参照してください: [導入ガイド](導入ガイド.md)
