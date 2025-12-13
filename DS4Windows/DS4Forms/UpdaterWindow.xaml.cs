@@ -49,7 +49,6 @@ namespace DS4WinWPF.DS4Forms
             string downloadStr = DS4WinWPF.Translations.Strings.ResourceManager.GetString("DownloadVersion", engCulture) ?? "A new version *number* has been released.";
             captionTextBlock.Text = downloadStr.Replace("*number*", newversion);
             updaterWinVM = new UpdaterWindowViewModel(newversion);
-            updaterWinVM.BlankSkippedVersion();
 
             DataContext = updaterWinVM;
 

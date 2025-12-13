@@ -228,7 +228,7 @@ namespace DS4WinWPF.DS4Forms
                 {
                     try
                     {
-                        if (Changelog.CheckNewerVersionExists(out var version, false))
+                        if (Changelog.CheckNewerVersionExists(out var version, false, true))
                         {
                             DisplayUpdaterWindow(version.ToString());
                         }
@@ -281,35 +281,42 @@ namespace DS4WinWPF.DS4Forms
                 //newversion = "2.1.3";
             }
 
-            ulong newversionNum = !string.IsNullOrEmpty(newversion) ?
-                Global.CompileVersionNumberFromString(newversion) : 0;
-
-            if (!string.IsNullOrWhiteSpace(newversion) && version.CompareTo(newversion) != 0 &&
-                lastVersionNum < newversionNum)
+            // Delegate newest-version detection (and skip handling) to Changelog helper
+            try
             {
-                MessageBoxResult result = MessageBoxResult.No;
-                Dispatcher.Invoke(() =>
+                if (!string.IsNullOrWhiteSpace(newversion) && version.CompareTo(newversion) != 0)
                 {
-                    var updaterWin = new UpdaterWindow(newversion);
-                    updaterWin.ShowDialog();
-                    result = updaterWin.Result;
-                });
-
-                if (result != MessageBoxResult.Yes)
+                    // Ensure CheckNewerVersionExists compares against the provided file version
+                    Version parsedVersion;
+                    if (Version.TryParse(newversion, out parsedVersion))
+                    {
+                        // Temporarily set cached/latest if needed - call helper allowing fresh check
+                        if (Changelog.CheckNewerVersionExists(out var latest, allowCached: false))
+                        {
+                            Dispatcher.Invoke(() => DisplayUpdaterWindow(latest.ToString()));
+                        }
+                        else
+                        {
+                            if (showstatus)
+                                Dispatcher.Invoke(() => MessageBox.Show(Properties.Resources.UpToDate, "DS4Windows Updater"));
+                        }
+                    }
+                }
+                else
                 {
-                    if (versionFileExists)
-                        File.Delete(versionFilePath);
+                    if (showstatus)
+                        Dispatcher.Invoke(() => MessageBox.Show(Properties.Resources.UpToDate, "DS4Windows Updater"));
                 }
             }
-            else
+            catch
+            {
+                if (showstatus)
+                    Dispatcher.Invoke(() => MessageBox.Show(Properties.Resources.UpToDate, "DS4Windows Updater"));
+            }
+            finally
             {
                 if (versionFileExists)
                     File.Delete(versionFilePath);
-
-                if (showstatus)
-                {
-                    Dispatcher.Invoke(() => MessageBox.Show(Properties.Resources.UpToDate, "DS4Windows Updater"));
-                }
             }
         }
 
@@ -1588,7 +1595,8 @@ Suspend support not enabled.", true);
             {
                 try
                 {
-                    if (Changelog.CheckNewerVersionExists(out var version, false))
+                    // Manual check should ignore any previously skipped version
+                    if (Changelog.CheckNewerVersionExists(out var version, false, false))
                         DisplayUpdaterWindow(version.ToString());
                     else
                         Dispatcher.Invoke(() => MessageBox.Show(Properties.Resources.UpToDate, "DS4Windows Updater"));

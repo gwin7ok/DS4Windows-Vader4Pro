@@ -3591,7 +3591,7 @@ namespace DS4Windows
         // passing a string to the function that displays the updater window.
         // I wanted to make this method async, but these can't have an out parameter and this is the signature i wanted
         // it to have
-        public static bool CheckNewerVersionExists(out Version version, bool allowCached = true)
+        public static bool CheckNewerVersionExists(out Version version, bool allowCached = true, bool respectSkip = true)
         {
             version = Version.Parse("0.0.0");
 
@@ -3613,6 +3613,33 @@ namespace DS4Windows
 
                 // if can't parse the newest version
                 if (!Version.TryParse(task.Result.TagName[1..], out version)) return false;
+
+                // If user previously skipped this (or a newer) version, treat as no newer version
+                if (respectSkip)
+                {
+                    try
+                    {
+                        // Prefer comparing Version objects parsed from stored string to avoid
+                        // ambiguous numeric compile differences when Revision/Build are missing.
+                        if (!string.IsNullOrEmpty(Global.LastVersionChecked))
+                        {
+                            if (Version.TryParse(Global.LastVersionChecked, out var skippedVer))
+                            {
+                                AppLogger.LogDebug($"[Changelog] SkippedVersion={skippedVer} LatestCandidate={version}");
+                                if (skippedVer >= version)
+                                {
+                                    _newerVersionAvailable = false;
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.LogDebug($"[Changelog] Skip-check parse error: {ex.Message}");
+                        // If anything goes wrong reading skip info, fall back to normal behavior
+                    }
+                }
 
                 // if there is a newer version available
                 if (currentVersion < version)
