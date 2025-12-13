@@ -5,9 +5,9 @@
     <WarningsAsErrors />
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Versioning: set the project's canonical version here. -->
-    <!-- Temporarily set to 3.11.4 for local testing of updater UI. -->
-    <Version>3.11.4</Version>
-    <FileVersion>3.11.4</FileVersion>
-    <AssemblyVersion>3.11.4</AssemblyVersion>
+    <!-- Canonical project version -->
+    <Version>3.11.6</Version>
+    <FileVersion>3.11.6</FileVersion>
+    <AssemblyVersion>3.11.6</AssemblyVersion>
   </PropertyGroup>
 </Project>
