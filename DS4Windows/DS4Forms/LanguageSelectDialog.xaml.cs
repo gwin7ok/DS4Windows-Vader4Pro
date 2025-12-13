@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
+using DS4Windows;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -134,8 +135,10 @@ namespace DS4WinWPF.DS4Forms
                 ChoiceMade = true;
 
                 // Apply the selected culture immediately
+                AppLogger.LogDebug($"LanguageSelectDialog: user selected culture '{SelectedCulture}'");
                 DS4Windows.Global.UseLang = SelectedCulture;
                 DS4Windows.Global.SetCulture(SelectedCulture);
+                AppLogger.LogDebug($"LanguageSelectDialog: Global.UseLang set to '{DS4Windows.Global.UseLang}'");
 
                 Close();
             }

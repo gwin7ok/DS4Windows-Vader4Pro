@@ -106,7 +106,21 @@ namespace DS4WinWPF
                 CultureInfo culture = CultureInfo.GetCultureInfo(cultureCode);
                 DS4Windows.Global.UseLang = cultureCode;
                 DS4Windows.Global.SetCulture(cultureCode);
+
+                // Ensure thread and default thread cultures are set so UI localization applies
+                try
+                {
+                    CultureInfo.DefaultThreadCurrentCulture = culture;
+                    CultureInfo.DefaultThreadCurrentUICulture = culture;
+                    Thread.CurrentThread.CurrentCulture = culture;
+                    Thread.CurrentThread.CurrentUICulture = culture;
+                }
+                catch { }
+
+                // Enable WPFLocalizeExtension to apply culture to current thread resources
+                try { LocalizeDictionary.Instance.SetCurrentThreadCulture = true; } catch { }
                 LocalizeDictionary.Instance.Culture = culture;
+
                 AppLogger.LogDebug($"ApplyLanguageSetting applied: LocalizeDictionary={LocalizeDictionary.Instance.Culture}, SetCurrentThreadCulture={LocalizeDictionary.Instance.SetCurrentThreadCulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, CurrentUICulture={Thread.CurrentThread.CurrentUICulture}");
             }
             catch

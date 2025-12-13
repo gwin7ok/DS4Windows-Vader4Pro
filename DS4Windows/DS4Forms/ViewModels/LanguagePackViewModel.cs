@@ -57,6 +57,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public void ScanForLangPacks()
         {
             string tempculture = Thread.CurrentThread.CurrentUICulture.Name;
+            AppLogger.LogDebug($"LanguagePackViewModel: ScanForLangPacks starting. Thread.CurrentUICulture='{tempculture}', Global.UseLang='{Global.UseLang}'");
             //string tempculture = new CultureInfo(Global.UseLang).Name;
             Task.Run(() =>
             {
@@ -70,6 +71,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 if (index > -1)
                 {
                     selectedIndex = index;
+                    AppLogger.LogDebug($"LanguagePackViewModel: selectedIndex set to {selectedIndex} for culture '{tempculture}'");
                 }
 
                 ScanFinished?.Invoke(this, EventArgs.Empty);
