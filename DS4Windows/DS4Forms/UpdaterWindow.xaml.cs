@@ -77,6 +77,8 @@ namespace DS4WinWPF.DS4Forms
                 string ds4UpdaterDir = System.IO.Path.Combine(ds4WindowsDir, "DS4Updater");
                 string ds4UpdaterExe = System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe");
 
+                AppLogger.LogDebug($"[UpdaterInstall] Install Latest pressed. ds4WindowsDir={ds4WindowsDir}, ds4UpdaterDir={ds4UpdaterDir}, ds4UpdaterExe={ds4UpdaterExe}");
+
                     if (System.IO.File.Exists(ds4UpdaterExe))
                 {
                     // Show notification first, then launch existing updater and monitor exit in background
@@ -99,6 +101,7 @@ namespace DS4WinWPF.DS4Forms
                     };
 
                     var proc = System.Diagnostics.Process.Start(psi);
+                    AppLogger.LogDebug($"[UpdaterInstall] ProcessStartInfo: FileName={psi.FileName} Arguments={psi.Arguments} UseShellExecute={psi.UseShellExecute} Verb={psi.Verb} WorkingDirectory={psi.WorkingDirectory}");
                     if (proc != null)
                     {
                         var _ = Task.Run(() =>
@@ -121,6 +124,7 @@ namespace DS4WinWPF.DS4Forms
                     string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "DS4Updater_tmp");
                     try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
                     Directory.CreateDirectory(tempDir);
+                    AppLogger.LogDebug($"[UpdaterInstall] Temp dir prepared: {tempDir}");
 
                     string tempZip = System.IO.Path.Combine(tempDir, "DS4Updater_x64.zip");
 
@@ -165,6 +169,8 @@ namespace DS4WinWPF.DS4Forms
 
                             if (string.IsNullOrEmpty(downloadUrl)) throw new Exception("No suitable x64 zip asset found in latest release");
 
+                            AppLogger.LogDebug($"[UpdaterInstall] Found asset: url={downloadUrl} expectedSize={expectedSize}");
+
                             // Download asset and verify size against expectedSize when available
                             using (var resp = await client.GetAsync(downloadUrl))
                             {
@@ -174,9 +180,10 @@ namespace DS4WinWPF.DS4Forms
                                     await resp.Content.CopyToAsync(fs);
                                 }
 
+                                var fi = new System.IO.FileInfo(tempZip);
+                                AppLogger.LogDebug($"[UpdaterInstall] Downloaded asset to {tempZip} (size={fi.Length})");
                                 if (expectedSize > 0)
                                 {
-                                    var fi = new System.IO.FileInfo(tempZip);
                                     if (fi.Length != expectedSize) throw new Exception($"Downloaded size mismatch: expected {expectedSize}, got {fi.Length}");
                                 }
                             }
@@ -190,22 +197,29 @@ namespace DS4WinWPF.DS4Forms
                         if (!Directory.Exists(extractDir)) throw new Exception("Extraction directory missing after unzip");
 
                         // Attempt non-elevated install of entire extracted directory into ds4UpdaterDir
+                        AppLogger.LogDebug($"[UpdaterInstall] Attempting TryInstallDirectory (non-elevated): extractDir={extractDir} target={ds4UpdaterDir}");
                         bool ok = UpdaterInstaller.TryInstallDirectory(extractDir, ds4UpdaterDir, allowElevation: false);
+                        AppLogger.LogDebug($"[UpdaterInstall] TryInstallDirectory non-elevated result: {ok}");
                         if (!ok)
                         {
                             // Need elevation - ask user
                             var elevateMb = MessageBox.Show(DS4WinWPF.Translations.Strings.Elevation_Body,
                                 DS4WinWPF.Translations.Strings.Elevation_Title,
                                 MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            AppLogger.LogDebug($"[UpdaterInstall] User elevation prompt result: {elevateMb}");
                             if (elevateMb == MessageBoxResult.Yes)
                             {
                                 // Caller permits elevation; attempt install which will perform elevation
+                                AppLogger.LogDebug($"[UpdaterInstall] Attempting TryInstallDirectory with elevation: {extractDir} -> {ds4UpdaterDir}");
                                 bool elevatedOk = UpdaterInstaller.TryInstallDirectory(extractDir, ds4UpdaterDir, allowElevation: true);
+                                AppLogger.LogDebug($"[UpdaterInstall] TryInstallDirectory with elevation result: {elevatedOk}");
                                 if (!elevatedOk)
                                 {
+                                    AppLogger.LogDebug("[UpdaterInstall] Elevation attempt failed; prompting to open release page");
                                     var failMb = MessageBox.Show(DS4WinWPF.Translations.Strings.InstallFailed_Body + "\n\nOpen release page?",
                                         DS4WinWPF.Translations.Strings.InstallFailed_Title,
                                         MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                                    AppLogger.LogDebug($"[UpdaterInstall] User chose on InstallFailed dialog: {failMb}");
                                     if (failMb == MessageBoxResult.Yes)
                                         Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
                                 }
@@ -228,6 +242,7 @@ namespace DS4WinWPF.DS4Forms
                                         UseShellExecute = false,
                                         Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\" --launch-mode={launchMode2}"
                                     };
+                                    AppLogger.LogDebug($"[UpdaterInstall] ProcessStartInfo (elevated launch): FileName={psi2.FileName} Arguments={psi2.Arguments} UseShellExecute={psi2.UseShellExecute} Verb={psi2.Verb} WorkingDirectory={psi2.WorkingDirectory}");
                                     var proc2 = System.Diagnostics.Process.Start(psi2);
                                     if (proc2 != null)
                                     {
@@ -236,12 +251,13 @@ namespace DS4WinWPF.DS4Forms
                                             try
                                             {
                                                 proc2.WaitForExit();
+                                                AppLogger.LogDebug($"[UpdaterInstall] Updater process (elevated-launch) exited with code {proc2.ExitCode}");
                                                 if (proc2.ExitCode != 0)
                                                 {
                                                     Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
                                                 }
                                             }
-                                            catch { }
+                                            catch (Exception ex) { AppLogger.LogError($"[UpdaterInstall] proc2 wait error: {ex.Message}"); }
                                         });
                                     }
                                 }
@@ -252,6 +268,7 @@ namespace DS4WinWPF.DS4Forms
                                 var mb = MessageBox.Show(DS4WinWPF.Translations.Strings.UpdaterMissing_Body + "\n\nOpen release page?",
                                     DS4WinWPF.Translations.Strings.UpdaterMissing_Title,
                                     MessageBoxButton.YesNo, MessageBoxImage.Information);
+                                AppLogger.LogDebug($"[UpdaterInstall] User declined elevation; chosen to open release page? {mb == MessageBoxResult.Yes}");
                                 if (mb == MessageBoxResult.Yes)
                                     Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
                             }
@@ -273,6 +290,7 @@ namespace DS4WinWPF.DS4Forms
                                 UseShellExecute = false,
                                 Arguments = $"--ds4windows-path \"{ds4WindowsDir}\" --ds4updater-path \"{ds4UpdaterDir}\" -autolaunch --launchExe \"{ds4WindowsExe}\""
                             };
+                            AppLogger.LogDebug($"[UpdaterInstall] ProcessStartInfo (non-elevated launch): FileName={psi2.FileName} Arguments={psi2.Arguments} UseShellExecute={psi2.UseShellExecute} Verb={psi2.Verb} WorkingDirectory={psi2.WorkingDirectory}");
                             var proc2 = System.Diagnostics.Process.Start(psi2);
                             if (proc2 != null)
                             {
@@ -281,27 +299,30 @@ namespace DS4WinWPF.DS4Forms
                                     try
                                     {
                                         proc2.WaitForExit();
+                                        AppLogger.LogDebug($"[UpdaterInstall] Updater process (non-elevated-launch) exited with code {proc2.ExitCode}");
                                         if (proc2.ExitCode != 0)
                                         {
                                             Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
                                         }
                                     }
-                                    catch { }
+                                    catch (Exception ex) { AppLogger.LogError($"[UpdaterInstall] proc2 wait error: {ex.Message}"); }
                                 });
                             }
                         }
                     }
                     catch (Exception ex)
                     {
+                        AppLogger.LogError($"[UpdaterInstall] Download/Extraction/Install error: {ex.Message}");
                         try
                         {
                             var mb = MessageBox.Show(DS4WinWPF.Translations.Strings.UpdaterMissing_Body + "\n\nOpen release page?\n\n" + ex.Message,
                                 DS4WinWPF.Translations.Strings.UpdaterMissing_Title,
                                 MessageBoxButton.YesNo, MessageBoxImage.Information);
+                            AppLogger.LogDebug($"[UpdaterInstall] User selected open release on exception dialog: {mb == MessageBoxResult.Yes}");
                             if (mb == MessageBoxResult.Yes)
                                 Util.StartProcessHelper("https://github.com/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
                         }
-                        catch { }
+                        catch (Exception ex2) { AppLogger.LogError($"[UpdaterInstall] error showing updater missing dialog: {ex2.Message}"); }
                     }
                     finally
                     {
