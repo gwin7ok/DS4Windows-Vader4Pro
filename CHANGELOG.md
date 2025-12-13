@@ -4,7 +4,19 @@ All notable changes to this project are recorded in this file.
 
 
 
+## [3.11.6] - 2025-12-14
+
+Administrator privileges
+- Starting with this release, the application always launches in administrator (elevated) mode.
+
+Update functionality
+- Customized and integrated `DS4Updater.exe` so that the updater works with this fork.
+
+Automatic update check on startup
+- Fixed behavior so that setting the interval number (days or hours) to `0` causes an update check to run on every application startup.
+
 ## [3.11.5] - 2025-12-11
+
 Features / UI
 - (a47a68e8) Split original "Selected Profile" column into "Linked Profile" and "Selected Profile" columns, separating functionality between them.
 - (49c618c4) Fix DisconnectBT action auto-check processing; activate based on profile actions.
