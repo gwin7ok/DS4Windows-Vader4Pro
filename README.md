@@ -61,6 +61,9 @@ Alternatively, you can download [`ds4w.bat`](https://raw.githubusercontent.com/g
 **Xbox Configuration Support** options in Steam
 
 ## Modifications in This Fork (gwin7ok)
+This fork's executable is configured to always run with administrator privileges via its application manifest (the manifest requests `requireAdministrator`).
+
+このフォークでは実行ファイルのアプリケーションマニフェストにより、常に管理者権限での起動を前提とする設計に変更されています。インストール、ログ出力、および設定保存は管理者コンテキストを前提とします。
 
 The detailed history of changes for this fork has been moved to `CHANGELOG.md`.
 
