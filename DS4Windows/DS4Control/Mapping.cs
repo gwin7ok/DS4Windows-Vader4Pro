@@ -109,6 +109,8 @@ namespace DS4Windows
         // private static HashSet<string> loggedInvalidActions = new HashSet<string>();
 
         static Queue<ControlToXInput>[] customMapQueue;
+        // Cache of last trigger states for Button SpecialActions to reduce logging noise.
+        private static Dictionary<string, bool> lastButtonTriggerState;
 
         // プロファイル切り替え時に呼び出すことでエラーログ抑制をリセット
         // public static void ResetLoggedInvalidActions()
@@ -2800,28 +2802,54 @@ namespace DS4Windows
                 var profileActions = getProfileActions(device);
                 if (profileActions != null)
                 {
-                    // Iterate profile action names and synchronously apply Button actions
+                    // Maintain last-known trigger state to avoid logging the same "NOT active" repeatedly.
+                    // Key: "device:actionname". Static so state persists between map ticks.
+                    // Use a lock for simple thread-safety because MapCustomAction runs on mapping thread.
+                    if (lastButtonTriggerState == null)
+                        lastButtonTriggerState = new Dictionary<string, bool>();
+
+                    bool anyButtonTriggered = false;
                     foreach (string actionname in profileActions)
                     {
                         SpecialAction sa = GetProfileAction(device, actionname);
                         if (sa == null) continue;
                         if (sa.typeID != SpecialAction.ActionTypeId.Button) continue;
 
-                        AppLogger.LogTrace($"Checking Button SA '{actionname}' for device {device}");
-
-                        // If trigger conditions are met now, set output mapping immediately
-                        if (IsSpecialActionTriggered(sa, device, cState, eState, tp, fieldMapping))
+                        string key = device + ":" + actionname;
+                        bool prevState = false;
+                        lock (lastButtonTriggerState)
                         {
-                            AppLogger.LogTrace($"Trigger detected for Button SA '{actionname}' on device {device}");
+                            if (!lastButtonTriggerState.TryGetValue(key, out prevState))
+                                lastButtonTriggerState[key] = false;
+                        }
+
+                        bool triggered = IsSpecialActionTriggered(sa, device, cState, eState, tp, fieldMapping);
+
+                        // Log only on state change (reduce noise) and avoid building strings when trace disabled
+                        if (AppLogger.IsTraceEnabled && triggered != prevState)
+                        {
+                            if (triggered)
+                                AppLogger.LogTrace($"Trigger detected for Button SA '{actionname}' on device {device}");
+                            else
+                                AppLogger.LogTrace($"Trigger no longer active for Button SA '{actionname}' on device {device}");
+                        }
+
+                        if (triggered)
+                        {
+                            anyButtonTriggered = true;
                             if (int.TryParse(sa.details, out int btnVal))
                             {
                                 X360Controls xboxControl = (X360Controls)btnVal;
-                                AppLogger.LogTrace($"Button SA '{actionname}' maps to X360Controls {xboxControl} ({btnVal})");
+
+                                if (AppLogger.IsTraceEnabled)
+                                {
+                                    AppLogger.LogTrace($"Button SA '{actionname}' maps to X360Controls {xboxControl} ({btnVal})");
+                                }
 
                                 if (xboxControl == X360Controls.TouchpadClick)
                                 {
                                     outputfieldMapping.outputTouchButton = true;
-                                    AppLogger.LogTrace($"Set outputTouchButton = true for SA '{actionname}'");
+                                    if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Set outputTouchButton = true for SA '{actionname}'");
                                 }
                                 else if (xboxControl >= X360Controls.LeftMouse && xboxControl <= X360Controls.WDOWN)
                                 {
@@ -2830,31 +2858,31 @@ namespace DS4Windows
                                     {
                                         case X360Controls.LeftMouse:
                                             deviceState.currentClicks.leftCount++;
-                                            AppLogger.LogTrace($"Incremented leftCount for SA '{actionname}'");
+                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented leftCount for SA '{actionname}'");
                                             break;
                                         case X360Controls.RightMouse:
                                             deviceState.currentClicks.rightCount++;
-                                            AppLogger.LogTrace($"Incremented rightCount for SA '{actionname}'");
+                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented rightCount for SA '{actionname}'");
                                             break;
                                         case X360Controls.MiddleMouse:
                                             deviceState.currentClicks.middleCount++;
-                                            AppLogger.LogTrace($"Incremented middleCount for SA '{actionname}'");
+                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented middleCount for SA '{actionname}'");
                                             break;
                                         case X360Controls.FourthMouse:
                                             deviceState.currentClicks.fourthCount++;
-                                            AppLogger.LogTrace($"Incremented fourthCount for SA '{actionname}'");
+                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented fourthCount for SA '{actionname}'");
                                             break;
                                         case X360Controls.FifthMouse:
                                             deviceState.currentClicks.fifthCount++;
-                                            AppLogger.LogTrace($"Incremented fifthCount for SA '{actionname}'");
+                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented fifthCount for SA '{actionname}'");
                                             break;
                                         case X360Controls.WUP:
                                             deviceState.currentClicks.wUpCount++;
-                                            AppLogger.LogTrace($"Incremented wUpCount for SA '{actionname}'");
+                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented wUpCount for SA '{actionname}'");
                                             break;
                                         case X360Controls.WDOWN:
                                             deviceState.currentClicks.wDownCount++;
-                                            AppLogger.LogTrace($"Incremented wDownCount for SA '{actionname}'");
+                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented wDownCount for SA '{actionname}'");
                                             break;
                                     }
                                 }
@@ -2863,14 +2891,53 @@ namespace DS4Windows
                                     if ((int)xboxControl < outputfieldMapping.buttons.Length && xboxControl != X360Controls.None)
                                     {
                                         outputfieldMapping.buttons[(int)xboxControl] = true;
-                                        AppLogger.LogTrace($"Set outputfieldMapping.buttons[{(int)xboxControl}] = true for SA '{actionname}'");
+                                        if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Set outputfieldMapping.buttons[{(int)xboxControl}] = true for SA '{actionname}'");
                                     }
                                 }
+                            // Log the current output button combination for this SA trigger
+                            if (AppLogger.IsTraceEnabled)
+                            {
+                                try
+                                {
+                                    var parts = new List<string>();
+
+                                    if (outputfieldMapping.outputTouchButton)
+                                        parts.Add("TouchpadClick");
+
+                                    // mouse click counters
+                                    if (deviceState.currentClicks.leftCount > 0) parts.Add($"LeftMouse({deviceState.currentClicks.leftCount})");
+                                    if (deviceState.currentClicks.rightCount > 0) parts.Add($"RightMouse({deviceState.currentClicks.rightCount})");
+                                    if (deviceState.currentClicks.middleCount > 0) parts.Add($"MiddleMouse({deviceState.currentClicks.middleCount})");
+                                    if (deviceState.currentClicks.fourthCount > 0) parts.Add($"FourthMouse({deviceState.currentClicks.fourthCount})");
+                                    if (deviceState.currentClicks.fifthCount > 0) parts.Add($"FifthMouse({deviceState.currentClicks.fifthCount})");
+                                    if (deviceState.currentClicks.wUpCount > 0) parts.Add($"WUP({deviceState.currentClicks.wUpCount})");
+                                    if (deviceState.currentClicks.wDownCount > 0) parts.Add($"WDOWN({deviceState.currentClicks.wDownCount})");
+
+                                    // buttons array
+                                    for (int bi = 0; bi < outputfieldMapping.buttons.Length; bi++)
+                                    {
+                                        if (outputfieldMapping.buttons[bi])
+                                        {
+                                            var ctrl = (X360Controls)bi;
+                                            parts.Add($"{ctrl}({bi})");
+                                        }
+                                    }
+
+                                    string combo = parts.Count > 0 ? string.Join(", ", parts) : "<none>";
+                                    AppLogger.LogTrace($"SA '{actionname}' output combo: {combo}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    AppLogger.LogTrace($"Failed to build output combo log for SA '{actionname}': {ex}");
+                                }
+                            }
                             }
                         }
-                        else
+
+                        // update stored state
+                        lock (lastButtonTriggerState)
                         {
-                            AppLogger.LogTrace($"Trigger NOT active for Button SA '{actionname}' on device {device}");
+                            lastButtonTriggerState[key] = triggered;
                         }
                     }
                 }
@@ -2884,12 +2951,15 @@ namespace DS4Windows
 
             try
             {
-                // Log mapped state for common assigned buttons (e.g., R3)
-                AppLogger.LogTrace($"MappedState.R3={MappedState.R3}, L3={MappedState.L3}, R1={MappedState.R1}, L1={MappedState.L1}");
+                // Only log mapped-state summary when a Button SpecialAction fired this tick
+                if (AppLogger.IsTraceEnabled && anyButtonTriggered)
+                {
+                    AppLogger.LogTrace($"MappedState.R3={MappedState.R3}, L3={MappedState.L3}, R1={MappedState.R1}, L1={MappedState.L1}");
+                }
             }
             catch (Exception ex)
             {
-                AppLogger.LogTrace($"Failed to log MappedState after PopulateState: {ex}");
+                if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Failed to log MappedState after PopulateState: {ex}");
             }
 
             if (macroCount > 0)

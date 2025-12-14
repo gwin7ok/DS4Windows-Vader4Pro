@@ -50,6 +50,9 @@ namespace DS4Windows
             Logger.Trace(data);
         }
 
+        // Expose trace-enabled flag to avoid expensive string formatting when trace is off
+        public static bool IsTraceEnabled => Logger.IsTraceEnabled;
+
         // Errorレベルログ専用メソッド（エラー情報用）
         public static void LogError(string data)
         {
