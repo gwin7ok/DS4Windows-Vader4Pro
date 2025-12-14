@@ -544,7 +544,7 @@ namespace DS4WinWPF.DS4Forms
         {
             DS4Windows.DS4ControlSettings settings = pressKeyVM.PrepareSettings();
             BindingWindow window = new BindingWindow(specialActVM.DeviceNum, settings,
-                BindingWindow.ExposeMode.Full);
+                BindingWindow.ExposeMode.ForPressToggle);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             pressKeyVM.ReadSettings(settings, specialActVM.DeviceNum);

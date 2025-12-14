@@ -54,6 +54,7 @@ namespace DS4WinWPF.DS4Forms
         public enum ExposeMode : uint
         {
             Full,
+            ForPressToggle,
             Keyboard,
         }
 
@@ -78,8 +79,9 @@ namespace DS4WinWPF.DS4Forms
             highlightImg.Visibility = Visibility.Hidden;
             highlightLb.Visibility = Visibility.Hidden;
 
-            if (expose == ExposeMode.Full)
+            if (expose == ExposeMode.Full || expose == ExposeMode.ForPressToggle)
             {
+                // Initialize controller/button bindings for full and press/toggle modes
                 InitButtonBindings();
             }
 
@@ -97,9 +99,23 @@ namespace DS4WinWPF.DS4Forms
                 regBindRadio.IsChecked = !bindingVM.ShowShift;
                 shiftBindRadio.IsChecked = bindingVM.ShowShift;
             }
-            else
+            else if (expose == ExposeMode.ForPressToggle)
             {
-                //topGrid.Visibility = Visibility.Collapsed;
+                // For Press/Toggle selection: show keyboard, mouse and controller areas,
+                // but hide auxiliary UI panels (mode panel, record macro and extras).
+                modePanel.Visibility = Visibility.Collapsed;
+                recordMacroBtn.Visibility = Visibility.Collapsed;
+                extrasSidePanel.Visibility = Visibility.Collapsed;
+                // Keep main layout size but reduce right-hand grid column for extras
+                try
+                {
+                    mainBindGrid.ColumnDefinitions[2].Width = new GridLength(0);
+                }
+                catch { }
+            }
+            else if (expose == ExposeMode.Keyboard)
+            {
+                // Legacy Keyboard-only mode: hide many UI elements to present a compact view
                 topGrid.ColumnDefinitions.RemoveAt(3);
                 keyMouseTopTxt.Visibility = Visibility.Collapsed;
                 macroOnLb.Visibility = Visibility.Collapsed;
@@ -107,8 +123,11 @@ namespace DS4WinWPF.DS4Forms
                 mouseCanvas.Visibility = Visibility.Collapsed;
                 bottomPanel.Visibility = Visibility.Collapsed;
                 extrasSidePanel.Visibility = Visibility.Collapsed;
-                mouseGridColumn.Width = new GridLength(0);
-                //otherKeysMouseGrid.Columns = 2;
+                try
+                {
+                    mainBindGrid.ColumnDefinitions[2].Width = new GridLength(0);
+                }
+                catch { }
                 Width = 950;
                 Height = 300;
             }

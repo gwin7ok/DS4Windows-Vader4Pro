@@ -11,12 +11,27 @@
         xmlns:local="clr-namespace:DS4WinWPF.DS4Forms"
         mc:Ignorable="d"
         Title="Select action" Height="540" Width="1020" Closing="Window_Closing"
-        Style="{DynamicResource WindowStyle}">
+        Style="{DynamicResource WindowStyle}" FontSize="10">
     <Window.Resources>
         <local:BindingWinResourcePaths x:Key="resourcePaths" />
         <local:IntToBoolConverter x:Key="IntToBoolConverter" />
+        <!-- Exceptions: input controls should remain at readable size -->
+        <Style TargetType="TextBox">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style TargetType="xctk:IntegerUpDown">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
     </Window.Resources>
-    <DockPanel x:Name="fullPanel" Margin="4">
+        <!-- Reduce overall font size for this window's content (except inputs)
+            Inputs are restored to readable size by styles above. -->
+        <DockPanel x:Name="fullPanel" Margin="4">
         <StackPanel x:Name="extrasSidePanel" Width="160" Orientation="Vertical" DockPanel.Dock="Right">
             <StackPanel.Resources>
                 <Thickness x:Key="spaceMargin" Bottom="8" />
@@ -220,16 +235,24 @@
                                 <Button x:Name="recordMacroBtn" Content="{lex:Loc BindingWin.RecordAMacro}" Click="RecordMacroBtn_Click" />
                             </StackPanel>
                         </Grid>
-                        <Grid DockPanel.Dock="Top">
+                            <Grid x:Name="mainBindGrid" DockPanel.Dock="Top">
                             <Grid.RowDefinitions>
                                 <RowDefinition />
                             </Grid.RowDefinitions>
 
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.2*" />
-                                <ColumnDefinition />
+                                <!-- Left: 文字キー、Middle: カーソル/Home/テンキー、Right: マウス -->
+                                <ColumnDefinition Width="0.99*" />
+                                <ColumnDefinition Width="0.71*" />
+                                <ColumnDefinition Width="0.3*" MinWidth="140" />
                             </Grid.ColumnDefinitions>
                             <UniformGrid Columns="1" Grid.Column="0">
+                                <UniformGrid.Resources>
+                                    <!-- Reduce keyboard button font size to ~0.8x for better fit -->
+                                    <Style TargetType="Button">
+                                        <Setter Property="FontSize" Value="10" />
+                                    </Style>
+                                </UniformGrid.Resources>
                                 <Grid Margin="0,0,0,6">
                                     <Grid.RowDefinitions>
                                         <RowDefinition/>
@@ -465,34 +488,68 @@
                                     <Button x:Name="rctrlBtn" Content="RCtrl" Grid.Column="6" Style="{StaticResource midMargin}"/>
                                 </Grid>
                             </UniformGrid>
-                            <Grid x:Name="otherKeysMouseGrid" Grid.Column="1">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width=".85*" />
-                                    <ColumnDefinition />
-                                    <ColumnDefinition x:Name="mouseGridColumn" Width=".9*" />
-                                </Grid.ColumnDefinitions>
-                                <DockPanel LastChildFill="False" Grid.Column="0" Margin="6,0">
-                                    <UniformGrid Rows="3" Columns="3" Margin="2,0" MinHeight="104" DockPanel.Dock="Top">
-                                        <UniformGrid.Resources>
-                                            <Style x:Key="btnMargin" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
-                                                <Setter Property="Margin" Value="3,0,3,6"/>
-                                            </Style>
-                                        </UniformGrid.Resources>
-                                        <Button x:Name="prtBtn" Content="Prt" Style="{StaticResource btnMargin}" />
-                                        <Button x:Name="sclBtn" Content="Scl" Style="{StaticResource btnMargin}" />
-                                        <Button x:Name="brkBtn" Content="Brk" Style="{StaticResource btnMargin}" />
+                            <Grid x:Name="middleKeysGrid" Grid.Column="1" HorizontalAlignment="Left">
+                                <Grid.Resources>
+                                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Width" Value="36" />
+                                        <Setter Property="MinWidth" Value="32" />
+                                        <Setter Property="FontSize" Value="10" />
+                                        <Setter Property="Margin" Value="2,0,2,4" />
+                                    </Style>
+                                </Grid.Resources>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition />
+                                </Grid.RowDefinitions>
+                                <Grid x:Name="middleInnerGrid" HorizontalAlignment="Left">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
 
-                                        <Button x:Name="insBtn" Content="Ins" Style="{StaticResource btnMargin}" />
-                                        <Button x:Name="homeBtn" Content="Home" Style="{StaticResource btnMargin}" />
-                                        <Button x:Name="pgupBtn" Content="PgUp" Style="{StaticResource btnMargin}" />
+                                    <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Left" Margin="6,0">
+                                        <UniformGrid Rows="3" Columns="3" Margin="0,0,2,0" MinHeight="104" HorizontalAlignment="Left">
+                                            <UniformGrid.Resources>
+                                                <Style x:Key="btnMargin" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Setter Property="Margin" Value="3,0,3,6"/>
+                                                </Style>
+                                            </UniformGrid.Resources>
+                                            <Button x:Name="prtBtn" Content="Prt" Style="{StaticResource btnMargin}" />
+                                            <Button x:Name="sclBtn" Content="Scl" Style="{StaticResource btnMargin}" />
+                                            <Button x:Name="brkBtn" Content="Brk" Style="{StaticResource btnMargin}" />
 
-                                        <Button x:Name="delBtn" Content="Del" Style="{StaticResource btnMargin}" />
-                                        <Button x:Name="endBtn" Content="End" Style="{StaticResource btnMargin}" />
-                                        <Button x:Name="pgdwBtn" Content="PgDown" Style="{StaticResource btnMargin}" />
-                                    </UniformGrid>
+                                            <Button x:Name="insBtn" Content="Ins" Style="{StaticResource btnMargin}" />
+                                            <Button x:Name="homeBtn" Content="Home" Style="{StaticResource btnMargin}" />
+                                            <Button x:Name="pgupBtn" Content="PgUp" Style="{StaticResource btnMargin}" />
 
-                                    <Grid DockPanel.Dock="Bottom" MinHeight="60" Margin="2,0">
+                                            <Button x:Name="delBtn" Content="Del" Style="{StaticResource btnMargin}" />
+                                            <Button x:Name="endBtn" Content="End" Style="{StaticResource btnMargin}" />
+                                            <Button x:Name="pgdwBtn" Content="PgDown" Style="{StaticResource btnMargin}" />
+                                        </UniformGrid>
+
+                                        <Grid MinHeight="60" Margin="2,0" HorizontalAlignment="Left">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition/>
+                                                <ColumnDefinition/>
+                                                <ColumnDefinition/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Button x:Name="uarrowBtn" Content="↑ U" Grid.Row="0" Grid.Column="1" Margin="6,0,0,6" />
+                                            <Button x:Name="larrowBtn" Content="← L" Grid.Row="1" Grid.Column="0" Margin="6,0,0,6" />
+                                            <Button x:Name="darrowBtn" Content="↓ D" Grid.Row="1" Grid.Column="1" Margin="6,0,0,6" />
+                                            <Button x:Name="rarrowBtn" Content="R →" Grid.Row="1" Grid.Column="2" Margin="6,0,0,6" />
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Grid Grid.Column="1" Margin="0,0,0,6" HorizontalAlignment="Left">
                                         <Grid.RowDefinitions>
+                                            <RowDefinition/>
+                                            <RowDefinition/>
+                                            <RowDefinition/>
+                                            <RowDefinition/>
                                             <RowDefinition/>
                                             <RowDefinition/>
                                         </Grid.RowDefinitions>
@@ -500,72 +557,52 @@
                                             <ColumnDefinition/>
                                             <ColumnDefinition/>
                                             <ColumnDefinition/>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="1.25*"/>
                                         </Grid.ColumnDefinitions>
+                                        <Grid.Resources>
+                                            <Style TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+                                                <Setter Property="Margin" Value="2" />
+                                            </Style>
+                                        </Grid.Resources>
 
-                                        <Button x:Name="uarrowBtn" Content="↑ U" Grid.Row="0" Grid.Column="1" Margin="6,0,0,6" />
-                                        <Button x:Name="larrowBtn" Content="← L" Grid.Row="1" Grid.Column="0" Margin="6,0,0,6" />
-                                        <Button x:Name="darrowBtn" Content="↓ D" Grid.Row="1" Grid.Column="1" Margin="6,0,0,6" />
-                                        <Button x:Name="rarrowBtn" Content="R →" Grid.Row="1" Grid.Column="2" Margin="6,0,0,6" />
+                                        <Button x:Name="prevTrackBtn" Content="9" FontFamily="Webdings" />
+                                        <Button x:Name="stopBtn" Content="&lt;" FontFamily="Webdings" Grid.Column="1" />
+                                        <Button x:Name="playBtn" Content="4" FontFamily="Webdings" Grid.Column="2" />
+                                        <Button x:Name="nextTrackBtn" Content=":" FontFamily="Webdings" Grid.Column="3" />
+                                        <Button x:Name="volupBtn" Content="↑ Vol" Grid.Column="4" FontSize="10" />
+
+                                        <Button x:Name="numlockBtn" Content="NumLk" Grid.Row="1" Grid.Column="0" />
+                                        <Button x:Name="numdivideBtn" Content="/" Grid.Row="1" Grid.Column="1" />
+                                        <Button x:Name="nummultiBtn" Content="*" Grid.Row="1" Grid.Column="2" />
+                                        <Button x:Name="numminusBtn" Content="-" Grid.Row="1" Grid.Column="3" />
+                                        <Button x:Name="voldownBtn" Content="↓ Vol" Grid.Row="1" Grid.Column="4" FontSize="10" />
+
+                                        <Button x:Name="num7Btn" Content="7" Grid.Row="2" Grid.Column="0" />
+                                        <Button x:Name="num8Btn" Content="8" Grid.Row="2" Grid.Column="1" />
+                                        <Button x:Name="num9Btn" Content="9" Grid.Row="2" Grid.Column="2" />
+                                        <Button x:Name="numplusBtn" Content="+" Grid.Row="2" Grid.Column="3" Grid.RowSpan="2" />
+                                        <Button x:Name="volmuteBtn" Content="Mute" Grid.Row="2" Grid.Column="4" FontSize="10" />
+
+                                        <Button x:Name="num4Btn" Content="4" Grid.Row="3" Grid.Column="0" />
+                                        <Button x:Name="num5Btn" Content="5" Grid.Row="3" Grid.Column="1" />
+                                        <Button x:Name="num6Btn" Content="6" Grid.Row="3" Grid.Column="2" />
+
+                                        <Button x:Name="num1Btn" Content="1" Grid.Row="4" Grid.Column="0" />
+                                        <Button x:Name="num2Btn" Content="2" Grid.Row="4" Grid.Column="1" />
+                                        <Button x:Name="num3Btn" Content="3" Grid.Row="4" Grid.Column="2" />
+                                        <Button x:Name="numEnterBtn" Grid.Row="4" Grid.Column="3" Grid.RowSpan="2">
+                                            <Button.Content>
+                                                <TextBlock Text="Enter" TextWrapping="Wrap"/>
+                                            </Button.Content>
+                                        </Button>
+
+                                        <Button x:Name="num0Btn" Content="0" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" />
+                                        <Button x:Name="numPeriodBtn" Content="." Grid.Row="5" Grid.Column="2" />
                                     </Grid>
-                                </DockPanel>
-
-                                <Grid Margin="0,0,0,6" Grid.Column="1">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition/>
-                                        <RowDefinition/>
-                                        <RowDefinition/>
-                                        <RowDefinition/>
-                                        <RowDefinition/>
-                                        <RowDefinition/>
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition Width="1.25*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.Resources>
-                                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
-                                            <Setter Property="Margin" Value="2" />
-                                        </Style>
-                                    </Grid.Resources>
-
-                                    <Button x:Name="prevTrackBtn" Content="9" FontFamily="Webdings" />
-                                    <Button x:Name="stopBtn" Content="&lt;" FontFamily="Webdings" Grid.Column="1" />
-                                    <Button x:Name="playBtn" Content="4" FontFamily="Webdings" Grid.Column="2" />
-                                    <Button x:Name="nextTrackBtn" Content=":" FontFamily="Webdings" Grid.Column="3" />
-                                    <Button x:Name="volupBtn" Content="↑ Vol" Grid.Column="4" FontSize="10" />
-
-                                    <Button x:Name="numlockBtn" Content="NumLk" Grid.Row="1" Grid.Column="0" />
-                                    <Button x:Name="numdivideBtn" Content="/" Grid.Row="1" Grid.Column="1" />
-                                    <Button x:Name="nummultiBtn" Content="*" Grid.Row="1" Grid.Column="2" />
-                                    <Button x:Name="numminusBtn" Content="-" Grid.Row="1" Grid.Column="3" />
-                                    <Button x:Name="voldownBtn" Content="↓ Vol" Grid.Row="1" Grid.Column="4" FontSize="10" />
-
-                                    <Button x:Name="num7Btn" Content="7" Grid.Row="2" Grid.Column="0" />
-                                    <Button x:Name="num8Btn" Content="8" Grid.Row="2" Grid.Column="1" />
-                                    <Button x:Name="num9Btn" Content="9" Grid.Row="2" Grid.Column="2" />
-                                    <Button x:Name="numplusBtn" Content="+" Grid.Row="2" Grid.Column="3" Grid.RowSpan="2" />
-                                    <Button x:Name="volmuteBtn" Content="Mute" Grid.Row="2" Grid.Column="4" FontSize="10" />
-
-                                    <Button x:Name="num4Btn" Content="4" Grid.Row="3" Grid.Column="0" />
-                                    <Button x:Name="num5Btn" Content="5" Grid.Row="3" Grid.Column="1" />
-                                    <Button x:Name="num6Btn" Content="6" Grid.Row="3" Grid.Column="2" />
-
-                                    <Button x:Name="num1Btn" Content="1" Grid.Row="4" Grid.Column="0" />
-                                    <Button x:Name="num2Btn" Content="2" Grid.Row="4" Grid.Column="1" />
-                                    <Button x:Name="num3Btn" Content="3" Grid.Row="4" Grid.Column="2" />
-                                    <Button x:Name="numEnterBtn" Grid.Row="4" Grid.Column="3" Grid.RowSpan="2">
-                                        <Button.Content>
-                                            <TextBlock Text="Enter" TextWrapping="Wrap"/>
-                                        </Button.Content>
-                                    </Button>
-
-                                    <Button x:Name="num0Btn" Content="0" Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" />
-                                    <Button x:Name="numPeriodBtn" Content="." Grid.Row="5" Grid.Column="2" />
                                 </Grid>
-                                <Canvas x:Name="mouseCanvas" Width="120" Height="170" Grid.Column="2">
+                            </Grid>
+                            <Canvas x:Name="mouseCanvas" Width="120" Height="170" Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Top">
                                     <StackPanel Width="120">
                                         <Image Source="{Binding Source={StaticResource resourcePaths}, Path=MousePNG}" Stretch="Uniform"
                                Width="100" Height="{Binding Path=Height, ElementName=mouseCanvas}" HorizontalAlignment="Center" />
@@ -586,7 +623,6 @@
                                     <Button x:Name="mouseWheelUBtn" Content="↑" Width="20" Height="20" Canvas.Left="50" Canvas.Top="28" />
                                     <Button x:Name="mouseWheelDBtn" Content="↓" Width="20" Height="20" Canvas.Left="50" Canvas.Top="76" />
                                 </Canvas>
-                            </Grid>
                         </Grid>
                     </DockPanel>
                 </TabItem>
