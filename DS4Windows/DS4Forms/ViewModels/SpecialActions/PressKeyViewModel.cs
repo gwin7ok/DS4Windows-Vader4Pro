@@ -203,6 +203,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             keyType = settings.keyType;
             lastActionType = DS4ControlSettings.ActionType.Key;
             lastActionBtn = -1;
+            // Update the describe text so the UI immediately reflects the key binding
+            UpdateDescribeText();
         }
 
         public void SaveAction(SpecialAction action, bool edit = false)
