@@ -542,8 +542,7 @@ namespace DS4WinWPF.DS4Forms
                 BindingWindow.ExposeMode.Full);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
-            pressKeyVM.ReadSettings(settings);
-            pressKeyVM.UpdateDescribeText();
+            pressKeyVM.ReadSettings(settings, specialActVM.DeviceNum);
             pressKeyVM.UpdateToggleControls();
         }
 

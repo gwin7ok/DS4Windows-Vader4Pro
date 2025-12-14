@@ -108,8 +108,38 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             return settings;
         }
 
-        public void ReadSettings(DS4ControlSettings settings)
+        public void ReadSettings(DS4ControlSettings settings, int deviceNum = -1)
         {
+            // If the binding produced a Button action, show the button name
+            if (settings.actionType == DS4ControlSettings.ActionType.Button)
+            {
+                // Try to use device-specific output type when available
+                string btnName;
+                try
+                {
+                    if (deviceNum >= 0)
+                    {
+                        btnName = Global.getX360ControlString((X360Controls)settings.action.actionBtn, Global.outDevTypeTemp[deviceNum]);
+                    }
+                    else
+                    {
+                        btnName = Global.getX360ControlString((X360Controls)settings.action.actionBtn);
+                    }
+                }
+                catch
+                {
+                    btnName = Global.getX360ControlString((X360Controls)settings.action.actionBtn);
+                }
+
+                describeText = btnName;
+                // clear numeric key value since this is a button mapping
+                value = 0;
+                keyType = 0;
+                DescribeTextChanged?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            // Default: treat as a key action
             value = (int)settings.action.actionKey;
             keyType = settings.keyType;
         }
