@@ -224,6 +224,16 @@ public class SpecialActionsListViewModel
                 displayName = KeyInterop.KeyFromVirtualKey(int.Parse(action.details)).ToString() +
                      (action.keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : "");
                 break;
+            case SpecialAction.ActionTypeId.Button:
+                try
+                {
+                    displayName = Global.getX360ControlString((X360Controls)int.Parse(action.details));
+                }
+                catch
+                {
+                    displayName = Properties.Resources.Unassigned;
+                }
+                break;
             case SpecialAction.ActionTypeId.BatteryCheck:
                 displayName = Properties.Resources.CheckBattery;
                 break;

@@ -30,6 +30,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
 {
     public class PressKeyViewModel : NotifyDataErrorBase
     {
+        private DS4ControlSettings.ActionType lastActionType = DS4ControlSettings.ActionType.Key;
+        private int lastActionBtn = -1;
         private string describeText;
         private DS4KeyType keyType;
         private int value;
@@ -73,7 +75,24 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
         public void LoadAction(SpecialAction action)
         {
             keyType = action.keyType;
-            int.TryParse(action.details, out value);
+            // If action is Button, details contains button id
+            if (action.typeID == SpecialAction.ActionTypeId.Button)
+            {
+                lastActionType = DS4ControlSettings.ActionType.Button;
+                int.TryParse(action.details, out lastActionBtn);
+                try
+                {
+                    describeText = Global.getX360ControlString((X360Controls)lastActionBtn);
+                }
+                catch { describeText = string.Empty; }
+                value = 0;
+            }
+            else
+            {
+                int.TryParse(action.details, out value);
+                lastActionType = DS4ControlSettings.ActionType.Key;
+                lastActionBtn = -1;
+            }
 
             if (action.pressRelease)
             {
@@ -113,6 +132,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             // If the binding produced a Button action, show the button name
             if (settings.actionType == DS4ControlSettings.ActionType.Button)
             {
+                lastActionType = DS4ControlSettings.ActionType.Button;
+                lastActionBtn = (int)settings.action.actionBtn;
                 // Try to use device-specific output type when available
                 string btnName;
                 try
@@ -142,10 +163,19 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             // Default: treat as a key action
             value = (int)settings.action.actionKey;
             keyType = settings.keyType;
+            lastActionType = DS4ControlSettings.ActionType.Key;
+            lastActionBtn = -1;
         }
 
         public void SaveAction(SpecialAction action, bool edit = false)
         {
+            // If last binding was a Button, save as Button type
+            if (lastActionType == DS4ControlSettings.ActionType.Button && lastActionBtn >= 0)
+            {
+                Global.SaveAction(action.name, action.controls, 10, lastActionBtn.ToString(), edit);
+                return;
+            }
+
             string uaction = null;
             if (keyType.HasFlag(DS4KeyType.Toggle))
             {
@@ -169,11 +199,23 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             List<string> valueErrors = new List<string>();
             List<string> toggleErrors = new List<string>();
 
-            if (value == 0)
+            if (lastActionType == DS4ControlSettings.ActionType.Key)
             {
-                valueErrors.Add("No key defined");
-                errors["Value"] = valueErrors;
-                RaiseErrorsChanged("Value");
+                if (value == 0)
+                {
+                    valueErrors.Add("No key defined");
+                    errors["Value"] = valueErrors;
+                    RaiseErrorsChanged("Value");
+                }
+            }
+            else if (lastActionType == DS4ControlSettings.ActionType.Button)
+            {
+                if (lastActionBtn < 0)
+                {
+                    valueErrors.Add("No button defined");
+                    errors["Value"] = valueErrors;
+                    RaiseErrorsChanged("Value");
+                }
             }
             if (keyType.HasFlag(DS4KeyType.Toggle) && string.IsNullOrEmpty(action.ucontrols))
             {

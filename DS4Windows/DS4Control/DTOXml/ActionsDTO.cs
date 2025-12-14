@@ -80,6 +80,13 @@ namespace DS4WinWPF.DS4Control.DTOXml
 
                         break;
 
+                    case SpecialAction.ActionTypeId.Button:
+                        actionSerializer.Name = action.name;
+                        actionSerializer.Trigger = action.controls;
+                        actionSerializer.TypeString = "Button";
+                        actionSerializer.Details = action.details;
+                        break;
+
                     case SpecialAction.ActionTypeId.DisconnectBT:
                     case SpecialAction.ActionTypeId.BatteryCheck:
                     case SpecialAction.ActionTypeId.MultiAction:
@@ -158,6 +165,11 @@ namespace DS4WinWPF.DS4Control.DTOXml
                         }
 
                         break;
+                        case "Button":
+                            tempAction = new SpecialAction(actionSerializer.Name,
+                                actionSerializer.Trigger, actionSerializer.TypeString,
+                                actionSerializer.Details);
+                            break;
                     case "DisconnectBT":
                         {
                             double delayTime = actionSerializer.Delay;

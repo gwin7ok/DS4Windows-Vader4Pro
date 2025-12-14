@@ -8918,6 +8918,10 @@ namespace DS4Windows
                 case 4:
                     tempAction = new SpecialAction(name, controls, "Key", details, extras: extras);
                     break;
+                case 10:
+                    // Button mapping for SpecialAction
+                    tempAction = new SpecialAction(name, controls, "Button", details, extras: extras);
+                    break;
                 case 5:
                     tempAction = new SpecialAction(name, controls, "DisconnectBT", details, delayTime);
                     break;
@@ -9010,6 +9014,11 @@ namespace DS4Windows
                         el.AppendChild(m_Xdoc.CreateElement("UnloadTrigger")).InnerText = exts[1];
                         el.AppendChild(m_Xdoc.CreateElement("UnloadStyle")).InnerText = exts[0];
                     }
+                    break;
+                case 10:
+                    // Button mapping
+                    el.AppendChild(m_Xdoc.CreateElement("Type")).InnerText = "Button";
+                    el.AppendChild(m_Xdoc.CreateElement("Details")).InnerText = details;
                     break;
                 case 5:
                     el.AppendChild(m_Xdoc.CreateElement("Type")).InnerText = "DisconnectBT";
@@ -10625,7 +10634,7 @@ namespace DS4Windows
 
     public class SpecialAction
     {
-        public enum ActionTypeId { None, Key, Program, Profile, Macro, DisconnectBT, BatteryCheck, MultiAction, XboxGameDVR, SASteeringWheelEmulationCalibrate, GyroCalibrate }
+        public enum ActionTypeId { None, Key, Program, Profile, Macro, DisconnectBT, BatteryCheck, MultiAction, XboxGameDVR, SASteeringWheelEmulationCalibrate, GyroCalibrate, Button }
 
         public string name;
         public List<DS4Controls> trigger = new List<DS4Controls>();
@@ -10693,6 +10702,11 @@ namespace DS4Windows
 
                 if (details.Contains("Scan Code"))
                     keyType |= DS4KeyType.ScanCode;
+            }
+            else if (type == "Button")
+            {
+                typeID = ActionTypeId.Button;
+                this.details = details; // store button id as details
             }
             else if (type == "Program")
             {
