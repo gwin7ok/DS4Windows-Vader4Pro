@@ -42,12 +42,13 @@ namespace DS4WinWPF
             var wrapTarget = configuration.FindTargetByName<WrapperTargetBase>("logfile") as WrapperTargetBase;
             var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
             fileTarget.FileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log.txt";
-            fileTarget.ArchiveFileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log_{{#}}.txt";
-            
-            // Configure archive settings
+
+            // Disable NLog automatic archiving by default. Manual startup rotator performs deterministic
+            // archive moves; ArchiveOldFileOnStartup must remain false to avoid double-rotation.
+            fileTarget.ArchiveFileName = null;
             fileTarget.ArchiveNumbering = NLog.Targets.ArchiveNumberingMode.DateAndSequence;
             fileTarget.ArchiveDateFormat = "yyyyMMdd";
-            fileTarget.ArchiveOldFileOnStartup = true; // Keep true as default
+            fileTarget.ArchiveOldFileOnStartup = false; // Always false per manual-rotation policy
             
             // Apply log settings from Profiles.xml (includes MaxArchiveFiles)
             ApplyLogSettings(fileTarget);
@@ -114,7 +115,7 @@ namespace DS4WinWPF
             var wrapTarget = configuration.FindTargetByName<WrapperTargetBase>("logfile") as WrapperTargetBase;
             var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
             
-            // Temporarily disable archive to prevent rotation during reconfiguration
+            // Ensure archive remains disabled during reconfiguration
             fileTarget.ArchiveOldFileOnStartup = false;
             
             ApplyLogSettings(fileTarget);
@@ -134,7 +135,8 @@ namespace DS4WinWPF
             var configuration = LogManager.Configuration;
             var wrapTarget = configuration.FindTargetByName<WrapperTargetBase>("logfile") as WrapperTargetBase;
             var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
-            fileTarget.ArchiveOldFileOnStartup = true;
+            // Keep archive disabled; do not re-enable automatic startup archive.
+            fileTarget.ArchiveOldFileOnStartup = false;
         }
         
         /// <summary>
