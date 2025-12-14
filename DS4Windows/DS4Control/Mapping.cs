@@ -4493,6 +4493,7 @@ namespace DS4Windows
                                         action.firstTouch = true;
                                 }
                             }
+                            // NOTE: Button special-action runtime handling removed (reverted).
                             else if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 actionFound = true;
