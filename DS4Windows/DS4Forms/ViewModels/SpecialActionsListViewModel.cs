@@ -227,7 +227,32 @@ public class SpecialActionsListViewModel
             case SpecialAction.ActionTypeId.Button:
                 try
                 {
-                    displayName = Global.getX360ControlString((X360Controls)int.Parse(action.details));
+                    // Use device-specific emulated controller type when available
+                    int btnId = int.Parse(action.details);
+                    if (deviceNum >= 0)
+                    {
+                        // Global.OutContType is backed by the config output device type array
+                        try
+                        {
+                            var outTypes = Global.OutContType;
+                            if (outTypes != null && deviceNum < outTypes.Length)
+                            {
+                                displayName = Global.getX360ControlString((X360Controls)btnId, outTypes[deviceNum]);
+                            }
+                            else
+                            {
+                                displayName = Global.getX360ControlString((X360Controls)btnId);
+                            }
+                        }
+                        catch
+                        {
+                            displayName = Global.getX360ControlString((X360Controls)btnId);
+                        }
+                    }
+                    else
+                    {
+                        displayName = Global.getX360ControlString((X360Controls)btnId);
+                    }
                 }
                 catch
                 {
