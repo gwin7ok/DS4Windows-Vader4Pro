@@ -168,32 +168,35 @@ namespace DS4Windows
                     AppLogger.LogTrace($"Trigger keys for SA '{actionName}': {triggers}");
                 }
 
-                // Output combo (per-tick visibility)
-                try
+                // Output combo: emit only on rising edge to avoid per-tick noise
+                if (risingEdge)
                 {
-                    var parts = new List<string>();
-                    var ds = deviceStates?[device];
-                    if (outputfieldMapping.outputTouchButton) parts.Add("TouchpadClick");
-                    if (ds != null)
+                    try
                     {
-                        if (ds.currentClicks.leftCount > 0) parts.Add($"LeftMouse({ds.currentClicks.leftCount})");
-                        if (ds.currentClicks.rightCount > 0) parts.Add($"RightMouse({ds.currentClicks.rightCount})");
-                        if (ds.currentClicks.middleCount > 0) parts.Add($"MiddleMouse({ds.currentClicks.middleCount})");
-                        if (ds.currentClicks.fourthCount > 0) parts.Add($"FourthMouse({ds.currentClicks.fourthCount})");
-                        if (ds.currentClicks.fifthCount > 0) parts.Add($"FifthMouse({ds.currentClicks.fifthCount})");
-                        if (ds.currentClicks.wUpCount > 0) parts.Add($"WUP({ds.currentClicks.wUpCount})");
-                        if (ds.currentClicks.wDownCount > 0) parts.Add($"WDOWN({ds.currentClicks.wDownCount})");
-                    }
+                        var parts = new List<string>();
+                        var ds = deviceStates?[device];
+                        if (outputfieldMapping.outputTouchButton) parts.Add("TouchpadClick");
+                        if (ds != null)
+                        {
+                            if (ds.currentClicks.leftCount > 0) parts.Add($"LeftMouse({ds.currentClicks.leftCount})");
+                            if (ds.currentClicks.rightCount > 0) parts.Add($"RightMouse({ds.currentClicks.rightCount})");
+                            if (ds.currentClicks.middleCount > 0) parts.Add($"MiddleMouse({ds.currentClicks.middleCount})");
+                            if (ds.currentClicks.fourthCount > 0) parts.Add($"FourthMouse({ds.currentClicks.fourthCount})");
+                            if (ds.currentClicks.fifthCount > 0) parts.Add($"FifthMouse({ds.currentClicks.fifthCount})");
+                            if (ds.currentClicks.wUpCount > 0) parts.Add($"WUP({ds.currentClicks.wUpCount})");
+                            if (ds.currentClicks.wDownCount > 0) parts.Add($"WDOWN({ds.currentClicks.wDownCount})");
+                        }
 
-                    for (int bi = 0; bi < outputfieldMapping.buttons.Length; bi++)
-                    {
-                        if (outputfieldMapping.buttons[bi]) parts.Add($"{((X360Controls)bi)}({bi})");
-                    }
+                        for (int bi = 0; bi < outputfieldMapping.buttons.Length; bi++)
+                        {
+                            if (outputfieldMapping.buttons[bi]) parts.Add($"{((X360Controls)bi)}({bi})");
+                        }
 
-                    string combo = parts.Count > 0 ? string.Join(", ", parts) : "<none>";
-                    AppLogger.LogTrace($"SA '{actionName}' output combo: {combo}");
+                        string combo = parts.Count > 0 ? string.Join(", ", parts) : "<none>";
+                        AppLogger.LogTrace($"SA '{actionName}' output combo: {combo}");
+                    }
+                    catch { }
                 }
-                catch { }
             }
             catch { }
         }
@@ -4527,6 +4530,17 @@ namespace DS4Windows
                         bool actionFound = false;
                         if (triggeractivated)
                         {
+                            // Emit rising-edge trace for non-Button SpecialActions.
+                            try
+                            {
+                                bool risingEdge = false;
+                                if (index >= 0 && index < actionDone.Count)
+                                    risingEdge = !actionDone[index].dev[device];
+
+                                if (action.typeID != SpecialAction.ActionTypeId.Button)
+                                    LogSpecialActionTrace(actionname, action, device, risingEdge, outputfieldMapping, Mapping.deviceState);
+                            }
+                            catch { }
                             for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                             {
                                 DS4Controls dc = action.trigger[i];
