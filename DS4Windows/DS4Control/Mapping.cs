@@ -2794,7 +2794,103 @@ namespace DS4Windows
                 }
             }
 
+            // --- Stage3: Synchronous Button SpecialAction handling ---
+            try
+            {
+                var profileActions = getProfileActions(device);
+                if (profileActions != null)
+                {
+                    // Iterate profile action names and synchronously apply Button actions
+                    foreach (string actionname in profileActions)
+                    {
+                        SpecialAction sa = GetProfileAction(device, actionname);
+                        if (sa == null) continue;
+                        if (sa.typeID != SpecialAction.ActionTypeId.Button) continue;
+
+                        AppLogger.LogTrace($"Checking Button SA '{actionname}' for device {device}");
+
+                        // If trigger conditions are met now, set output mapping immediately
+                        if (IsSpecialActionTriggered(sa, device, cState, eState, tp, fieldMapping))
+                        {
+                            AppLogger.LogTrace($"Trigger detected for Button SA '{actionname}' on device {device}");
+                            if (int.TryParse(sa.details, out int btnVal))
+                            {
+                                X360Controls xboxControl = (X360Controls)btnVal;
+                                AppLogger.LogTrace($"Button SA '{actionname}' maps to X360Controls {xboxControl} ({btnVal})");
+
+                                if (xboxControl == X360Controls.TouchpadClick)
+                                {
+                                    outputfieldMapping.outputTouchButton = true;
+                                    AppLogger.LogTrace($"Set outputTouchButton = true for SA '{actionname}'");
+                                }
+                                else if (xboxControl >= X360Controls.LeftMouse && xboxControl <= X360Controls.WDOWN)
+                                {
+                                    // mouse-like outputs: increment currentClicks on deviceState
+                                    switch (xboxControl)
+                                    {
+                                        case X360Controls.LeftMouse:
+                                            deviceState.currentClicks.leftCount++;
+                                            AppLogger.LogTrace($"Incremented leftCount for SA '{actionname}'");
+                                            break;
+                                        case X360Controls.RightMouse:
+                                            deviceState.currentClicks.rightCount++;
+                                            AppLogger.LogTrace($"Incremented rightCount for SA '{actionname}'");
+                                            break;
+                                        case X360Controls.MiddleMouse:
+                                            deviceState.currentClicks.middleCount++;
+                                            AppLogger.LogTrace($"Incremented middleCount for SA '{actionname}'");
+                                            break;
+                                        case X360Controls.FourthMouse:
+                                            deviceState.currentClicks.fourthCount++;
+                                            AppLogger.LogTrace($"Incremented fourthCount for SA '{actionname}'");
+                                            break;
+                                        case X360Controls.FifthMouse:
+                                            deviceState.currentClicks.fifthCount++;
+                                            AppLogger.LogTrace($"Incremented fifthCount for SA '{actionname}'");
+                                            break;
+                                        case X360Controls.WUP:
+                                            deviceState.currentClicks.wUpCount++;
+                                            AppLogger.LogTrace($"Incremented wUpCount for SA '{actionname}'");
+                                            break;
+                                        case X360Controls.WDOWN:
+                                            deviceState.currentClicks.wDownCount++;
+                                            AppLogger.LogTrace($"Incremented wDownCount for SA '{actionname}'");
+                                            break;
+                                    }
+                                }
+                                else
+                                {
+                                    if ((int)xboxControl < outputfieldMapping.buttons.Length && xboxControl != X360Controls.None)
+                                    {
+                                        outputfieldMapping.buttons[(int)xboxControl] = true;
+                                        AppLogger.LogTrace($"Set outputfieldMapping.buttons[{(int)xboxControl}] = true for SA '{actionname}'");
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            AppLogger.LogTrace($"Trigger NOT active for Button SA '{actionname}' on device {device}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"Synchronous Button SA handling error: {ex}", true);
+            }
+
             outputfieldMapping.PopulateState(MappedState);
+
+            try
+            {
+                // Log mapped state for common assigned buttons (e.g., R3)
+                AppLogger.LogTrace($"MappedState.R3={MappedState.R3}, L3={MappedState.L3}, R1={MappedState.R1}, L1={MappedState.L1}");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"Failed to log MappedState after PopulateState: {ex}");
+            }
 
             if (macroCount > 0)
             {
