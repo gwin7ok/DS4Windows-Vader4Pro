@@ -129,6 +129,75 @@ namespace DS4Windows
             };
         }
 
+        // Centralized logging helper for SpecialActions. Keeps TRACE formatting and expensive work guarded.
+        private static void LogSpecialActionTrace(string actionName, SpecialAction sa, int device, bool risingEdge,
+            DS4StateFieldMapping outputfieldMapping, SyntheticState[] deviceStates)
+        {
+            if (!AppLogger.IsTraceEnabled) return;
+
+            try
+            {
+                if (risingEdge)
+                {
+                    AppLogger.LogTrace($"Trigger detected for SA '{actionName}' on device {device}");
+
+                    string mapping;
+                    if (sa.typeID == SpecialAction.ActionTypeId.Button && int.TryParse(sa.details, out int vb))
+                        mapping = $"X360Controls {((X360Controls)vb).ToString()} ({vb})";
+                    else
+                        mapping = $"Type:{sa.type} Details:{sa.details}";
+
+                    AppLogger.LogTrace($"SA '{actionName}' maps to {mapping}");
+
+                    // Build trigger key list
+                    var triggerParts = new List<string>();
+                    if (sa.trigger != null)
+                    {
+                        foreach (DS4Controls trg in sa.trigger)
+                        {
+                            try
+                            {
+                                if (getBoolSpecialActionMapping(device, trg, null, null, null, null))
+                                    triggerParts.Add(trg.ToString());
+                            }
+                            catch { }
+                        }
+                    }
+
+                    string triggers = triggerParts.Count > 0 ? string.Join(", ", triggerParts) : "<none>";
+                    AppLogger.LogTrace($"Trigger keys for SA '{actionName}': {triggers}");
+                }
+
+                // Output combo (per-tick visibility)
+                try
+                {
+                    var parts = new List<string>();
+                    var ds = deviceStates?[device];
+                    if (outputfieldMapping.outputTouchButton) parts.Add("TouchpadClick");
+                    if (ds != null)
+                    {
+                        if (ds.currentClicks.leftCount > 0) parts.Add($"LeftMouse({ds.currentClicks.leftCount})");
+                        if (ds.currentClicks.rightCount > 0) parts.Add($"RightMouse({ds.currentClicks.rightCount})");
+                        if (ds.currentClicks.middleCount > 0) parts.Add($"MiddleMouse({ds.currentClicks.middleCount})");
+                        if (ds.currentClicks.fourthCount > 0) parts.Add($"FourthMouse({ds.currentClicks.fourthCount})");
+                        if (ds.currentClicks.fifthCount > 0) parts.Add($"FifthMouse({ds.currentClicks.fifthCount})");
+                        if (ds.currentClicks.wUpCount > 0) parts.Add($"WUP({ds.currentClicks.wUpCount})");
+                        if (ds.currentClicks.wDownCount > 0) parts.Add($"WDOWN({ds.currentClicks.wDownCount})");
+                    }
+
+                    for (int bi = 0; bi < outputfieldMapping.buttons.Length; bi++)
+                    {
+                        if (outputfieldMapping.buttons[bi]) parts.Add($"{((X360Controls)bi)}({bi})");
+                    }
+
+                    string combo = parts.Count > 0 ? string.Join(", ", parts) : "<none>";
+                    AppLogger.LogTrace($"SA '{actionName}' output combo: {combo}");
+                }
+                catch { }
+            }
+            catch { }
+        }
+
 
         struct DS4Vector2
         {
@@ -2839,41 +2908,12 @@ namespace DS4Windows
                             {
                                 X360Controls xboxControl = (X360Controls)btnVal;
 
-                                // Only log mapping info on the rising edge (first tick the SA becomes triggered)
-                                if (AppLogger.IsTraceEnabled && triggered && !prevState)
-                                {
-                                    AppLogger.LogTrace($"Button SA '{actionname}' maps to X360Controls {xboxControl} ({btnVal})");
-
-                                    try
-                                    {
-                                        // Build a list of which trigger controls are currently active
-                                        var triggerParts = new List<string>();
-                                        if (sa.trigger != null)
-                                        {
-                                            foreach (DS4Controls trg in sa.trigger)
-                                            {
-                                                try
-                                                {
-                                                    if (getBoolSpecialActionMapping(device, trg, cState, eState, tp, fieldMapping))
-                                                        triggerParts.Add(trg.ToString());
-                                                }
-                                                catch { /* ignore per-control errors */ }
-                                            }
-                                        }
-
-                                        string triggers = triggerParts.Count > 0 ? string.Join(", ", triggerParts) : "<none>";
-                                        AppLogger.LogTrace($"Trigger keys for SA '{actionname}': {triggers}");
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        AppLogger.LogTrace($"Failed to build trigger-keys log for SA '{actionname}': {ex}");
-                                    }
-                                }
+                                // rising-edge mapping/logging is handled by LogSpecialActionTrace
 
                                 if (xboxControl == X360Controls.TouchpadClick)
                                 {
                                     outputfieldMapping.outputTouchButton = true;
-                                    if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Set outputTouchButton = true for SA '{actionname}'");
+                                    
                                 }
                                 else if (xboxControl >= X360Controls.LeftMouse && xboxControl <= X360Controls.WDOWN)
                                 {
@@ -2882,31 +2922,31 @@ namespace DS4Windows
                                     {
                                         case X360Controls.LeftMouse:
                                             deviceState.currentClicks.leftCount++;
-                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented leftCount for SA '{actionname}'");
+                                            
                                             break;
                                         case X360Controls.RightMouse:
                                             deviceState.currentClicks.rightCount++;
-                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented rightCount for SA '{actionname}'");
+                                            
                                             break;
                                         case X360Controls.MiddleMouse:
                                             deviceState.currentClicks.middleCount++;
-                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented middleCount for SA '{actionname}'");
+                                            
                                             break;
                                         case X360Controls.FourthMouse:
                                             deviceState.currentClicks.fourthCount++;
-                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented fourthCount for SA '{actionname}'");
+                                            
                                             break;
                                         case X360Controls.FifthMouse:
                                             deviceState.currentClicks.fifthCount++;
-                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented fifthCount for SA '{actionname}'");
+                                            
                                             break;
                                         case X360Controls.WUP:
                                             deviceState.currentClicks.wUpCount++;
-                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented wUpCount for SA '{actionname}'");
+                                            
                                             break;
                                         case X360Controls.WDOWN:
                                             deviceState.currentClicks.wDownCount++;
-                                            if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Incremented wDownCount for SA '{actionname}'");
+                                            
                                             break;
                                     }
                                 }
@@ -2916,7 +2956,7 @@ namespace DS4Windows
                                     {
                                         outputfieldMapping.buttons[(int)xboxControl] = true;
                                         // Log the setting only on rising edge to avoid per-poll noise
-                                        if (AppLogger.IsTraceEnabled && triggered && !prevState) AppLogger.LogTrace($"Set outputfieldMapping.buttons[{(int)xboxControl}] = true for SA '{actionname}'");
+                                            
                                     }
                                 }
                             // Log the current output button combination for this SA trigger
@@ -2958,6 +2998,13 @@ namespace DS4Windows
                             }
                             }
                         }
+
+                        // Centralized SA trace (rising-edge info and per-tick output combo)
+                        try
+                        {
+                            LogSpecialActionTrace(actionname, sa, device, triggered && !prevState, outputfieldMapping, Mapping.deviceState);
+                        }
+                        catch { }
 
                         // update stored state
                         lock (lastButtonTriggerState)
