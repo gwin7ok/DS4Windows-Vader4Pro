@@ -104,6 +104,19 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     break;
                 }
             }
+            // If action.typeID is Button but Button is not in typeAssoc (UI combines Key and Button into the "Press Key" tab),
+            // map Button to the same index as Key so the Press Key tab is selected.
+            if (action.typeID == SpecialAction.ActionTypeId.Button && actionTypeIndex == 0)
+            {
+                for (int i = 0; i < typeAssoc.Length; i++)
+                {
+                    if (typeAssoc[i] == SpecialAction.ActionTypeId.Key)
+                    {
+                        actionTypeIndex = i;
+                        break;
+                    }
+                }
+            }
         }
 
         public void SetAction(SpecialAction action)

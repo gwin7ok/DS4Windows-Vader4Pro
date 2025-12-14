@@ -105,9 +105,24 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
 
         public void UpdateDescribeText()
         {
-            describeText = KeyInterop.KeyFromVirtualKey(value).ToString() +
-                (keyType.HasFlag(DS4KeyType.ScanCode) ? " (SC)" : "") +
-                (keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : "");
+            // If last binding was a Button, prefer showing the button name.
+            if (lastActionType == DS4ControlSettings.ActionType.Button && lastActionBtn >= 0)
+            {
+                try
+                {
+                    describeText = Global.getX360ControlString((X360Controls)lastActionBtn);
+                }
+                catch
+                {
+                    describeText = Properties.Resources.Unassigned;
+                }
+            }
+            else
+            {
+                describeText = KeyInterop.KeyFromVirtualKey(value).ToString() +
+                    (keyType.HasFlag(DS4KeyType.ScanCode) ? " (SC)" : "") +
+                    (keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : "");
+            }
 
             DescribeTextChanged?.Invoke(this, EventArgs.Empty);
         }

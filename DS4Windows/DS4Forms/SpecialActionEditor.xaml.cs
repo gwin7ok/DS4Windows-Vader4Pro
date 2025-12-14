@@ -212,6 +212,10 @@ namespace DS4WinWPF.DS4Forms
                 case DS4Windows.SpecialAction.ActionTypeId.Key:
                     pressKeyVM.LoadAction(specialAction);
                     break;
+                case DS4Windows.SpecialAction.ActionTypeId.Button:
+                    // Button special actions use the same editor as Key (Press Key tab)
+                    pressKeyVM.LoadAction(specialAction);
+                    break;
                 case DS4Windows.SpecialAction.ActionTypeId.DisconnectBT:
                     disconnectBtVM.LoadAction(specialAction);
                     break;
