@@ -142,6 +142,14 @@ namespace DS4WinWPF
             runShutdown = true;
             skipSave = true;
 
+            // Locate config location and perform startup log rotation as early as possible
+            try
+            {
+                DS4Windows.Global.FindConfigLocation();
+                LogRotator.PerformStartupRotation(DS4Windows.Global.appdatapath, DS4Windows.Global.LogMaxArchiveFiles);
+            }
+            catch { }
+
             try
             {
                 // Detailed diagnostics at Debug level
@@ -268,7 +276,7 @@ namespace DS4WinWPF
             CreateControlService(parser);
             RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
-            DS4Windows.Global.FindConfigLocation();
+            // FindConfigLocation was already called earlier to enable rotation as early as possible
             bool firstRun = DS4Windows.Global.firstRun;
             string selectedLanguage = null;
 
