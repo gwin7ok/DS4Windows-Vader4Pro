@@ -402,12 +402,16 @@ namespace DS4WinWPF
 
             DS4Windows.AppThemeChoice themeChoice = DS4Windows.Global.UseCurrentTheme;
             ChangeTheme(DS4Windows.Global.UseCurrentTheme, false);
+            // Diagnostic: log culture state after applying theme to detect theme-induced localization regressions
+            AppLogger.LogDebug($"Post-ChangeTheme: LocalizeDictionary={LocalizeDictionary.Instance.Culture}, SetCurrentThreadCulture={LocalizeDictionary.Instance.SetCurrentThreadCulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, CurrentUICulture={Thread.CurrentThread.CurrentUICulture}");
 
             DS4Windows.Global.LoadLinkedProfiles();
             DS4Forms.MainWindow window = new DS4Forms.MainWindow(parser);
             MainWindow = window;
             window.IsInitialShow = true;
             window.Show();
+            // Diagnostic: verify culture remains applied after window shown
+            AppLogger.LogDebug($"After Show(): LocalizeDictionary={LocalizeDictionary.Instance.Culture}, SetCurrentThreadCulture={LocalizeDictionary.Instance.SetCurrentThreadCulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, CurrentUICulture={Thread.CurrentThread.CurrentUICulture}");
             window.IsInitialShow = false;
 
             // Set up hooks for IPC command calls
