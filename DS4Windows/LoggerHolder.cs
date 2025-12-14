@@ -64,6 +64,48 @@ namespace DS4WinWPF
         }
 
         /// <summary>
+        /// Apply a bootstrap minimum log level immediately to the loaded NLog configuration.
+        /// This is used early in startup (before LoggerHolder is instantiated) so that
+        /// initial debug/info writes respect the configured minimum.
+        /// </summary>
+        public static void ApplyBootstrapMinLogLevel(string level)
+        {
+            try
+            {
+                var configuration = LogManager.Configuration;
+                if (configuration == null) return;
+
+                var minLevel = ParseLogLevelStatic(level);
+
+                foreach (var rule in configuration.LoggingRules)
+                {
+                    if (rule.Targets.Any(t => t.Name == "logfile" || (t is WrapperTargetBase wrapper && wrapper.WrappedTarget?.Name == "logfile")))
+                    {
+                        rule.DisableLoggingForLevels(LogLevel.Trace, LogLevel.Fatal);
+                        rule.EnableLoggingForLevels(minLevel, LogLevel.Fatal);
+                    }
+                }
+
+                LogManager.ReconfigExistingLoggers();
+            }
+            catch { }
+        }
+
+        private static LogLevel ParseLogLevelStatic(string level)
+        {
+            return level?.ToLower() switch
+            {
+                "trace" => LogLevel.Trace,
+                "debug" => LogLevel.Debug,
+                "info" => LogLevel.Info,
+                "warn" => LogLevel.Warn,
+                "error" => LogLevel.Error,
+                "fatal" => LogLevel.Fatal,
+                _ => LogLevel.Debug
+            };
+        }
+
+        /// <summary>
         /// Apply log settings from Profiles.xml to NLog configuration
         /// </summary>
         private void ApplyLogSettings(NLog.Targets.FileTarget fileTarget)

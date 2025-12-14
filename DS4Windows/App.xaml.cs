@@ -146,7 +146,16 @@ namespace DS4WinWPF
             try
             {
                 DS4Windows.Global.FindConfigLocation();
+
+                // Perform deterministic startup rotation as early as possible
                 LogRotator.PerformStartupRotation(DS4Windows.Global.appdatapath, DS4Windows.Global.LogMaxArchiveFiles);
+
+                // Immediately apply bootstrap minimum log level so early logging honors user-configured min level
+                try
+                {
+                    DS4WinWPF.LoggerHolder.ApplyBootstrapMinLogLevel(DS4Windows.Global.LogMinLevel);
+                }
+                catch { }
             }
             catch { }
 
