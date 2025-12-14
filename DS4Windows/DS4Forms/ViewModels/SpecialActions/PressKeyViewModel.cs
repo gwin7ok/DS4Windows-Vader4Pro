@@ -30,6 +30,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
 {
     public class PressKeyViewModel : NotifyDataErrorBase
     {
+        private int editorDeviceNum = -1;
         private DS4ControlSettings.ActionType lastActionType = DS4ControlSettings.ActionType.Key;
         private int lastActionBtn = -1;
         private string describeText;
@@ -74,6 +75,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
 
         public void LoadAction(SpecialAction action)
         {
+            // device number may be set by the editor so we can pick the proper
+            // emulated controller type for label strings (X360 vs DS4)
             keyType = action.keyType;
             // If action is Button, details contains button id
             if (action.typeID == SpecialAction.ActionTypeId.Button)
@@ -82,7 +85,15 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
                 int.TryParse(action.details, out lastActionBtn);
                 try
                 {
-                    describeText = Global.getX360ControlString((X360Controls)lastActionBtn);
+                    // Prefer using editor's device-specific output type when available
+                    if (editorDeviceNum >= 0 && editorDeviceNum < Global.OutContType.Length)
+                    {
+                        describeText = Global.getX360ControlString((X360Controls)lastActionBtn, Global.OutContType[editorDeviceNum]);
+                    }
+                    else
+                    {
+                        describeText = Global.getX360ControlString((X360Controls)lastActionBtn);
+                    }
                 }
                 catch { describeText = string.Empty; }
                 value = 0;
@@ -110,7 +121,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             {
                 try
                 {
-                    describeText = Global.getX360ControlString((X360Controls)lastActionBtn);
+                    if (editorDeviceNum >= 0 && editorDeviceNum < Global.OutContType.Length)
+                    {
+                        describeText = Global.getX360ControlString((X360Controls)lastActionBtn, Global.OutContType[editorDeviceNum]);
+                    }
+                    else
+                    {
+                        describeText = Global.getX360ControlString((X360Controls)lastActionBtn);
+                    }
                 }
                 catch
                 {
@@ -131,6 +149,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
         {
             IsToggleChanged?.Invoke(this, EventArgs.Empty);
             ShowToggleControlsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void SetDeviceNum(int deviceNum)
+        {
+            editorDeviceNum = deviceNum;
         }
 
         public DS4ControlSettings PrepareSettings()

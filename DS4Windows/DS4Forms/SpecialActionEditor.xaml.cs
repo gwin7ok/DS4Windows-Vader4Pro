@@ -91,6 +91,7 @@ namespace DS4WinWPF.DS4Forms
             launchProgVM = new LaunchProgramViewModel();
             loadProfileVM = new LoadProfileViewModel(profileList);
             pressKeyVM = new PressKeyViewModel();
+            pressKeyVM.SetDeviceNum(deviceNum);
             disconnectBtVM = new SpecialActionViewModel(5);
             checkBatteryVM = new CheckBatteryViewModel();
             multiActButtonVM = new MultiActButtonViewModel();
