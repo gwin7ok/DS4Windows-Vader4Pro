@@ -39,8 +39,26 @@ namespace DS4WinWPF
         public LoggerHolder(DS4Windows.ControlService service)
         {
             var configuration = LogManager.Configuration;
+            if (configuration == null)
+                throw new InvalidOperationException("NLog configuration is not loaded");
+
+            // Support both async wrapper target and direct file target.
+            NLog.Targets.FileTarget fileTarget = null;
             var wrapTarget = configuration.FindTargetByName<WrapperTargetBase>("logfile") as WrapperTargetBase;
-            var fileTarget = wrapTarget.WrappedTarget as NLog.Targets.FileTarget;
+            if (wrapTarget != null && wrapTarget.WrappedTarget is NLog.Targets.FileTarget ft)
+            {
+                fileTarget = ft;
+            }
+            else
+            {
+                // Try to find a direct FileTarget named 'logfile'
+                var direct = configuration.FindTargetByName("logfile");
+                fileTarget = direct as NLog.Targets.FileTarget;
+            }
+
+            if (fileTarget == null)
+                throw new InvalidOperationException("logfile target (FileTarget) not found in NLog configuration");
+
             fileTarget.FileName = $@"{DS4Windows.Global.appdatapath}\Logs\ds4windows_log.txt";
 
             // Disable NLog automatic archiving by default. Manual startup rotator performs deterministic
@@ -112,6 +130,14 @@ namespace DS4WinWPF
         {
             // Set maxArchiveFiles
             fileTarget.MaxArchiveFiles = DS4Windows.Global.LogMaxArchiveFiles;
+            // Reduce internal buffering and avoid keeping the file open to force more immediate writes
+            try
+            {
+                fileTarget.KeepFileOpen = false;
+                fileTarget.BufferSize = 0;
+                fileTarget.ConcurrentWrites = false;
+            }
+            catch { /* best-effort: older NLog versions may not expose these properties */ }
             
             // Set minlevel for all logging rules that target "logfile"
             var configuration = LogManager.Configuration;

@@ -2808,7 +2808,6 @@ namespace DS4Windows
                     if (lastButtonTriggerState == null)
                         lastButtonTriggerState = new Dictionary<string, bool>();
 
-                    bool anyButtonTriggered = false;
                     foreach (string actionname in profileActions)
                     {
                         SpecialAction sa = GetProfileAction(device, actionname);
@@ -2836,14 +2835,39 @@ namespace DS4Windows
 
                         if (triggered)
                         {
-                            anyButtonTriggered = true;
                             if (int.TryParse(sa.details, out int btnVal))
                             {
                                 X360Controls xboxControl = (X360Controls)btnVal;
 
-                                if (AppLogger.IsTraceEnabled)
+                                // Only log mapping info on the rising edge (first tick the SA becomes triggered)
+                                if (AppLogger.IsTraceEnabled && triggered && !prevState)
                                 {
                                     AppLogger.LogTrace($"Button SA '{actionname}' maps to X360Controls {xboxControl} ({btnVal})");
+
+                                    try
+                                    {
+                                        // Build a list of which trigger controls are currently active
+                                        var triggerParts = new List<string>();
+                                        if (sa.trigger != null)
+                                        {
+                                            foreach (DS4Controls trg in sa.trigger)
+                                            {
+                                                try
+                                                {
+                                                    if (getBoolSpecialActionMapping(device, trg, cState, eState, tp, fieldMapping))
+                                                        triggerParts.Add(trg.ToString());
+                                                }
+                                                catch { /* ignore per-control errors */ }
+                                            }
+                                        }
+
+                                        string triggers = triggerParts.Count > 0 ? string.Join(", ", triggerParts) : "<none>";
+                                        AppLogger.LogTrace($"Trigger keys for SA '{actionname}': {triggers}");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppLogger.LogTrace($"Failed to build trigger-keys log for SA '{actionname}': {ex}");
+                                    }
                                 }
 
                                 if (xboxControl == X360Controls.TouchpadClick)
@@ -2891,7 +2915,8 @@ namespace DS4Windows
                                     if ((int)xboxControl < outputfieldMapping.buttons.Length && xboxControl != X360Controls.None)
                                     {
                                         outputfieldMapping.buttons[(int)xboxControl] = true;
-                                        if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Set outputfieldMapping.buttons[{(int)xboxControl}] = true for SA '{actionname}'");
+                                        // Log the setting only on rising edge to avoid per-poll noise
+                                        if (AppLogger.IsTraceEnabled && triggered && !prevState) AppLogger.LogTrace($"Set outputfieldMapping.buttons[{(int)xboxControl}] = true for SA '{actionname}'");
                                     }
                                 }
                             // Log the current output button combination for this SA trigger
@@ -2918,8 +2943,8 @@ namespace DS4Windows
                                     {
                                         if (outputfieldMapping.buttons[bi])
                                         {
-                                            var ctrl = (X360Controls)bi;
-                                            parts.Add($"{ctrl}({bi})");
+                                            var controlEnum = (X360Controls)bi;
+                                            parts.Add($"{controlEnum}({bi})");
                                         }
                                     }
 
@@ -2949,18 +2974,7 @@ namespace DS4Windows
 
             outputfieldMapping.PopulateState(MappedState);
 
-            try
-            {
-                // Only log mapped-state summary when a Button SpecialAction fired this tick
-                if (AppLogger.IsTraceEnabled && anyButtonTriggered)
-                {
-                    AppLogger.LogTrace($"MappedState.R3={MappedState.R3}, L3={MappedState.L3}, R1={MappedState.R1}, L1={MappedState.L1}");
-                }
-            }
-            catch (Exception ex)
-            {
-                if (AppLogger.IsTraceEnabled) AppLogger.LogTrace($"Failed to log MappedState after PopulateState: {ex}");
-            }
+            // MappedState summary TRACE removed as requested.
 
             if (macroCount > 0)
             {
