@@ -4493,7 +4493,63 @@ namespace DS4Windows
                                         action.firstTouch = true;
                                 }
                             }
-                            // NOTE: Button special-action runtime handling removed (reverted).
+                            else if (action.typeID == SpecialAction.ActionTypeId.Button)
+                            {
+                                actionFound = true;
+                                try
+                                {
+                                    // SpecialAction of type Button stores the X360Controls id in action.details
+                                    if (int.TryParse(action.details, out int btnVal))
+                                    {
+                                        X360Controls xboxControl = (X360Controls)btnVal;
+
+                                        // Touchpad click
+                                        if (xboxControl == X360Controls.TouchpadClick)
+                                        {
+                                            outputfieldMapping.outputTouchButton = true;
+                                        }
+                                        // Mouse-like outputs
+                                        else if (xboxControl >= X360Controls.LeftMouse && xboxControl <= X360Controls.WDOWN)
+                                        {
+                                            var sState = Mapping.deviceState[device];
+                                            switch (xboxControl)
+                                            {
+                                                case X360Controls.LeftMouse:
+                                                    sState.currentClicks.leftCount++;
+                                                    break;
+                                                case X360Controls.RightMouse:
+                                                    sState.currentClicks.rightCount++;
+                                                    break;
+                                                case X360Controls.MiddleMouse:
+                                                    sState.currentClicks.middleCount++;
+                                                    break;
+                                                case X360Controls.FourthMouse:
+                                                    sState.currentClicks.fourthCount++;
+                                                    break;
+                                                case X360Controls.FifthMouse:
+                                                    sState.currentClicks.fifthCount++;
+                                                    break;
+                                                case X360Controls.WUP:
+                                                    sState.currentClicks.wUpCount++;
+                                                    break;
+                                                case X360Controls.WDOWN:
+                                                    sState.currentClicks.wDownCount++;
+                                                    break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            // Normal gamepad buttons (LB..Start, X/Y/A/B etc.)
+                                            if ((int)xboxControl < outputfieldMapping.buttons.Length && xboxControl != X360Controls.None)
+                                                outputfieldMapping.buttons[(int)xboxControl] = true;
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    AppLogger.LogToGui($"Button SpecialAction execution error: {ex}", true);
+                                }
+                            }
                             else if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 actionFound = true;
