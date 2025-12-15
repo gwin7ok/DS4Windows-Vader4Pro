@@ -4512,6 +4512,12 @@ namespace DS4Windows
 
                         bool utriggeractivated = true;
                         int uTriggerCount = action.uTrigger.Count;
+                        // For Key-type SpecialActions, prefer single-trigger toggle mode.
+                        // Ignore any configured uTrigger/unload keys so toggling is handled by the same trigger key.
+                        if (action.typeID == SpecialAction.ActionTypeId.Key)
+                        {
+                            uTriggerCount = 0;
+                        }
                         if (action.typeID == SpecialAction.ActionTypeId.Key && uTriggerCount > 0)
                         {
                             //foreach (DS4Controls dc in action.uTrigger)
@@ -4802,6 +4808,8 @@ namespace DS4Windows
                                 {
                                     actionDone[index].dev[device] = true;
                                     untriggerindex[device] = index;
+                                    // For Key actions we keep single-trigger toggle behavior only;
+                                    // do not register an untrigger action here.
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
                                     AppLogger.LogDebug($"SpecialAction KEY triggered: name={action.name}, device={device}, key={key}");
