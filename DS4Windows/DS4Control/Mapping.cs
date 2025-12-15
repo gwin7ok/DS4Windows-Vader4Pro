@@ -820,6 +820,10 @@ namespace DS4Windows
 
         //mapcustom
         public static bool[] pressedonce = new bool[2400], macrodone = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
+        // debounce for SpecialAction toggle (milliseconds)
+        private const int ToggleDebounceMs = 30;
+        // hold pressedonce clear for a short window after toggle to avoid rapid reset during bouncy inputs
+        private const int ToggleReleaseHoldMs = 200;
         static bool[] macroControl = new bool[26];
         static uint macroCount = 0;
         static Dictionary<string, Task>[] macroTaskQueue = new Dictionary<string, Task>[Global.MAX_DS4_CONTROLLER_COUNT] { new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>() };
@@ -838,6 +842,26 @@ namespace DS4Windows
         // Rate-limit logging for ActionDone size mismatch to avoid log flood
         private static DateTime lastActionDoneMismatchLog = DateTime.MinValue;
         private static readonly TimeSpan actionDoneMismatchLogInterval = TimeSpan.FromSeconds(1);
+
+        // Determine whether it's safe to clear the pressedonce flag for given device/key.
+        private static bool ShouldClearPressedOnce(int device, ushort key)
+        {
+            try
+            {
+                if (pressedonce == null) return true;
+                if (deviceState == null || device < 0 || device >= deviceState.Length) return true;
+                if (deviceState[device].keyPresses == null) return true;
+                if (deviceState[device].keyPresses.TryGetValue(key, out SyntheticState.KeyPresses kp))
+                {
+                    long last = kp.current.lastToggleTimeUtcTicks;
+                    if (last == 0) return true;
+                    long delta = DateTime.UtcNow.Ticks - last;
+                    return delta > TimeSpan.FromMilliseconds(ToggleReleaseHoldMs).Ticks;
+                }
+            }
+            catch { }
+            return true;
+        }
         public static DateTime[] nowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
         public static DateTime[] oldnowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
         public static int[] untriggerindex = new int[Global.MAX_DS4_CONTROLLER_COUNT] { -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -957,11 +981,9 @@ namespace DS4Windows
 
             if (globalState.currentClicks.toggleCount != 0 && globalState.previousClicks.toggleCount == 0 && globalState.currentClicks.toggle)
             {
-                if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
-                {
-                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
-                }
+                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
+                outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+            
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
                 {
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
@@ -3997,7 +4019,10 @@ namespace DS4Windows
                         kp.current.repeatCount++;
                     }
                     else
-                        pressedonce[value] = false;
+                    {
+                        if (ShouldClearPressedOnce(device, value))
+                            pressedonce[value] = false;
+                    }
 
                     // erase default mappings for things that are remapped
                     ResetToDefaultValue(dcs.control, MappedState, outputfieldMapping);
@@ -4236,7 +4261,8 @@ namespace DS4Windows
                         }
                         else
                         {
-                            pressedonce[keyvalue] = false;
+                            if (ShouldClearPressedOnce(device, (ushort)keyvalue))
+                                pressedonce[keyvalue] = false;
                         }
                     }
 
@@ -4958,12 +4984,22 @@ namespace DS4Windows
                                         {
                                             if (!pressedonce[key])
                                             {
-                                                kp.current.toggle = !kp.current.toggle;
-                                                kp.current.pending = true;
-                                                kp.current.lastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
-                                                pressedonce[key] = true;
-                                                kp.current.toggleCount++;
-                                                AppLogger.LogDebug($"SpecialAction KEY toggle-flipped: name={action.name}, device={device}, key={key}, toggle={kp.current.toggle}");
+                                                // Debounce rapid toggle flips (ignore toggles within ToggleDebounceMs)
+                                                long nowTicks = DateTime.UtcNow.Ticks;
+                                                long deltaTicks = nowTicks - kp.current.lastToggleTimeUtcTicks;
+                                                if (kp.current.lastToggleTimeUtcTicks == 0 || deltaTicks > TimeSpan.FromMilliseconds(ToggleDebounceMs).Ticks)
+                                                {
+                                                    kp.current.toggle = !kp.current.toggle;
+                                                    kp.current.pending = true;
+                                                    kp.current.lastToggleTimeUtcTicks = nowTicks;
+                                                    pressedonce[key] = true;
+                                                    kp.current.toggleCount++;
+                                                    AppLogger.LogDebug($"SpecialAction KEY toggle-flipped: name={action.name}, device={device}, key={key}, toggle={kp.current.toggle}, debounce_ms={(double)deltaTicks / TimeSpan.TicksPerMillisecond}");
+                                                }
+                                                else
+                                                {
+                                                    AppLogger.LogTrace($"SpecialAction KEY toggle ignored by debounce: name={action.name}, device={device}, key={key}, delta_ms={(double)deltaTicks / TimeSpan.TicksPerMillisecond}");
+                                                }
                                             }
                                         }
                                         else
@@ -5131,7 +5167,10 @@ namespace DS4Windows
                         {
                             ushort keyToClear;
                             if (ushort.TryParse(action.details, out keyToClear))
-                                pressedonce[keyToClear] = false;
+                            {
+                                if (ShouldClearPressedOnce(device, keyToClear))
+                                    pressedonce[keyToClear] = false;
+                            }
                         }
 
                         if (!actionFound)
