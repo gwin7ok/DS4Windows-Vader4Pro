@@ -4810,10 +4810,23 @@ namespace DS4Windows
                                             deviceState[device].nativeKeyAlias[key] = (ushort)Global.outputKBMMapping.GetRealEventKey(key);
                                         }
 
-                                        if (action.keyType.HasFlag(DS4KeyType.ScanCode))
-                                            kp.current.scanCodeCount++;
+                                        // Respect Toggle flag for SpecialAction keys even when no uTrigger is defined.
+                                        if (action.keyType.HasFlag(DS4KeyType.Toggle))
+                                        {
+                                            if (!pressedonce[key])
+                                            {
+                                                kp.current.toggle = !kp.current.toggle;
+                                                pressedonce[key] = true;
+                                                kp.current.toggleCount++;
+                                            }
+                                        }
                                         else
-                                            kp.current.vkCount++;
+                                        {
+                                            if (action.keyType.HasFlag(DS4KeyType.ScanCode))
+                                                kp.current.scanCodeCount++;
+                                            else
+                                                kp.current.vkCount++;
+                                        }
 
                                         kp.current.repeatCount++;
                                     }
@@ -4954,6 +4967,15 @@ namespace DS4Windows
                                 actionFound = true;
                                 actionDone[index].dev[device] = false;
                             }
+                        }
+
+                        // If trigger is not active for a Key-type special action that relied on Toggle without uTrigger,
+                        // reset pressedonce so subsequent presses will flip the toggle again.
+                        if (!triggeractivated && action.typeID == SpecialAction.ActionTypeId.Key && action.uTrigger.Count == 0)
+                        {
+                            ushort keyToClear;
+                            if (ushort.TryParse(action.details, out keyToClear))
+                                pressedonce[keyToClear] = false;
                         }
 
                         if (!actionFound)
@@ -5234,6 +5256,8 @@ namespace DS4Windows
                 {
                     actionDone[index].dev[device] = false;
                 }
+
+                // (moved) reset of pressedonce handled in main action loop
             }
         }
 
