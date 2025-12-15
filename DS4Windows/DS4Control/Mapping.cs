@@ -4984,9 +4984,9 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (untriggerindex[device] > -1 && !actionDone[index].dev[device])
+                                if (untriggerindex[device] > -1 && actionDone[index].dev[device])
                                 {
-                                    actionDone[index].dev[device] = true;
+                                    actionDone[index].dev[device] = false;
                                     untriggerindex[device] = -1;
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
