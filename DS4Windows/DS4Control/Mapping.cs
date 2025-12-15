@@ -985,26 +985,31 @@ namespace DS4Windows
 
             if (globalState.currentClicks.toggleCount != 0 && globalState.previousClicks.toggleCount == 0 && globalState.currentClicks.toggle)
             {
+                AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftDown");
                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
                 outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
             
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
                 }
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
                 }
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
                 }
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
                 }
@@ -1027,61 +1032,72 @@ namespace DS4Windows
             {
                 if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
                 }
                 else if (globalState.currentClicks.leftCount == 0 && globalState.previousClicks.leftCount != 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftUp");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
                 }
 
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
                 }
                 else if (globalState.currentClicks.middleCount == 0 && globalState.previousClicks.middleCount != 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleUp");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
                 }
 
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
                 }
                 else if (globalState.currentClicks.rightCount == 0 && globalState.previousClicks.rightCount != 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightUp");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
                 }
 
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
                 }
                 else if (globalState.currentClicks.fourthCount == 0 && globalState.previousClicks.fourthCount != 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonUp btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=1");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
                 }
 
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
                 }
                 else if (globalState.currentClicks.fifthCount == 0 && globalState.previousClicks.fifthCount != 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonUp btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=2");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
                 }
 
                 if (globalState.currentClicks.wUpCount != 0 && globalState.previousClicks.wUpCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseWheelUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelUp");
                     outputKBMHandler.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_UP, 0);
                     oldnow = DateTime.UtcNow;
@@ -1092,6 +1108,7 @@ namespace DS4Windows
 
                 if (globalState.currentClicks.wDownCount != 0 && globalState.previousClicks.wDownCount == 0)
                 {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseWheelDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelDown");
                     outputKBMHandler.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_DOWN, 0);
                     oldnow = DateTime.UtcNow;
@@ -1154,17 +1171,21 @@ namespace DS4Windows
                     {
                         if (gkp.current.scanCodeCount != 0)
                         {
+                            AppLogger.LogTrace($"SYNTHETIC TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt");
                             AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt");
                             outputKBMHandler.PerformKeyPressAlt(nativeKey);
                         }
                         else
                         {
+                            AppLogger.LogTrace($"SYNTHETIC TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress");
                             AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress");
                             outputKBMHandler.PerformKeyPress(nativeKey);
                         }
                         // Clear pending after honoring it and mark last send time
                         gkp.current.pending = false;
                         gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                        // Also clear device-level pending to avoid re-propagation in next merge
+                        try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
                     }
                     else
                     {
@@ -1179,10 +1200,27 @@ namespace DS4Windows
                             long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
                             if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                             {
+                                long _nowTicksDbg = DateTime.UtcNow.Ticks;
+                                long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
+                                AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
                                 outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
-                                gkp.current.pending = false;
-                                gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                    // Mark pending cleared and update last send time
+                                    gkp.current.pending = false;
+                                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                    // Also clear device-level pending to avoid re-propagation in next merge
+                                    try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
+                                    // Ensure current and previous state reflect released to avoid repeated release sends
+                                    gkp.current.vkCount = 0;
+                                    gkp.current.scanCodeCount = 0;
+                                    gkp.current.repeatCount = 0;
+                                    gkp.current.toggleCount = 0;
+                                    gkp.current.toggle = false;
+                                    gkp.previous.vkCount = 0;
+                                    gkp.previous.scanCodeCount = 0;
+                                    gkp.previous.repeatCount = 0;
+                                    gkp.previous.toggleCount = 0;
+                                    gkp.previous.toggle = false;
                             }
                             else
                             {
@@ -1195,10 +1233,33 @@ namespace DS4Windows
                             long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
                             if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                             {
+                                AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending}");
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
                                 outputKBMHandler.PerformKeyRelease(nativeKey);
-                                gkp.current.pending = false;
-                                gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                    // Mark pending cleared and update last send time
+                                    gkp.current.pending = false;
+                                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                    // Also clear device-level pending and counts to avoid re-propagation
+                                    try {
+                                        kvpValue.current.pending = false;
+                                        kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                        kvpValue.current.vkCount = 0;
+                                        kvpValue.current.scanCodeCount = 0;
+                                        kvpValue.current.repeatCount = 0;
+                                        kvpValue.current.toggleCount = 0;
+                                        kvpValue.current.toggle = false;
+                                    } catch { }
+                                    // Ensure current and previous state reflect released to avoid repeated release sends
+                                    gkp.current.vkCount = 0;
+                                    gkp.current.scanCodeCount = 0;
+                                    gkp.current.repeatCount = 0;
+                                    gkp.current.toggleCount = 0;
+                                    gkp.current.toggle = false;
+                                    gkp.previous.vkCount = 0;
+                                    gkp.previous.scanCodeCount = 0;
+                                    gkp.previous.repeatCount = 0;
+                                    gkp.previous.toggleCount = 0;
+                                    gkp.previous.toggle = false;
                             }
                             else
                             {
@@ -1303,14 +1364,33 @@ namespace DS4Windows
                 {
                         if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
                         {
+                            long nowTicksSend = DateTime.UtcNow.Ticks;
+                            long _nowTicksDbg = DateTime.UtcNow.Ticks;
+                            long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
+                            AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
                             AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
                             outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
+                            // update last send and clear previous pressed counts to avoid repeats
+                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            gkp.previous.vkCount = 0;
+                            gkp.previous.scanCodeCount = 0;
+                            gkp.previous.repeatCount = 0;
+                            gkp.previous.toggleCount = 0;
+                            gkp.previous.toggle = false;
                             pressagain = false;
                         }
                     else
                         {
+                            long nowTicksSend = DateTime.UtcNow.Ticks;
                             AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
                             outputKBMHandler.PerformKeyRelease(nativeKey);
+                            // update last send and clear previous pressed counts to avoid repeats
+                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            gkp.previous.vkCount = 0;
+                            gkp.previous.scanCodeCount = 0;
+                            gkp.previous.repeatCount = 0;
+                            gkp.previous.toggleCount = 0;
+                            gkp.previous.toggle = false;
                             pressagain = false;
                         }
                 }
@@ -5796,11 +5876,17 @@ namespace DS4Windows
 
                             if (keyType.HasFlag(DS4KeyType.ScanCode))
                             {
+                                long _nowTicksDbg = DateTime.UtcNow.Ticks;
+                                long _deltaSendDbg = 0; // inline macro release: lastSyntheticSend not tracked here
+                                AppLogger.LogTrace($"INLINE RELEASE TRACE device={device} macroCode={macroCodeValue} native={eventMacroCode} lastSendDeltaMs={_deltaSendDbg}");
                                 AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyReleaseAlt native={eventMacroCode}");
                                 outputKBMHandler.PerformKeyReleaseAlt(eventMacroCode);
                             }
                             else
                             {
+                                long _nowTicksDbg = DateTime.UtcNow.Ticks;
+                                long _deltaSendDbg = 0;
+                                AppLogger.LogTrace($"INLINE RELEASE TRACE device={device} macroCode={macroCodeValue} native={eventMacroCode} lastSendDeltaMs={_deltaSendDbg}");
                                 AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyRelease native={eventMacroCode}");
                                 outputKBMHandler.PerformKeyRelease(eventMacroCode);
                             }
