@@ -59,6 +59,10 @@ namespace DS4Windows
             {
                 public int vkCount, scanCodeCount, repeatCount, toggleCount; // repeat takes priority over non-, and scancode takes priority over non-
                 public bool toggle;
+                // pending: indicates a toggle occurred and should be prioritized when committing
+                public bool pending;
+                // timestamp of last toggle (UTC ticks)
+                public long lastToggleTimeUtcTicks;
             }
             public class KeyPresses
             {
@@ -1101,6 +1105,12 @@ namespace DS4Windows
                     gkp.current.repeatCount += kvpValue.current.repeatCount - kvpValue.previous.repeatCount;
                     gkp.current.toggle = kvpValue.current.toggle;
                     gkp.current.toggleCount += kvpValue.current.toggleCount - kvpValue.previous.toggleCount;
+                    // propagate pending/timestamp from device state so Commit can honor pending toggles
+                    if (kvpValue.current.pending)
+                    {
+                        gkp.current.pending = true;
+                        gkp.current.lastToggleTimeUtcTicks = kvpValue.current.lastToggleTimeUtcTicks;
+                    }
                 }
                 else
                 {
@@ -1110,30 +1120,36 @@ namespace DS4Windows
                 }
 
                 uint nativeKey = state.nativeKeyAlias[kvpKey];
-                if (gkp.current.toggleCount != 0 && gkp.previous.toggleCount == 0 && gkp.current.toggle)
+                if ((gkp.current.toggleCount != 0 || gkp.current.pending) && gkp.previous.toggleCount == 0 && gkp.current.toggle)
                 {
                     if (gkp.current.scanCodeCount != 0)
                     {
                         AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt");
                         outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                        // Clear pending after honoring it
+                        gkp.current.pending = false;
                     }
                     else
                     {
                         AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress");
                         outputKBMHandler.PerformKeyPress(nativeKey);
+                        // Clear pending after honoring it
+                        gkp.current.pending = false;
                     }
                 }
-                else if (gkp.current.toggleCount != 0 && gkp.previous.toggleCount == 0 && !gkp.current.toggle)
+                else if ((gkp.current.toggleCount != 0 || gkp.current.pending) && gkp.previous.toggleCount == 0 && !gkp.current.toggle)
                 {
                         if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
                         {
                             AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
                             outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
+                            gkp.current.pending = false;
                         }
                     else
                         {
                             AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
                             outputKBMHandler.PerformKeyRelease(nativeKey);
+                            gkp.current.pending = false;
                         }
                 }
                 else if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
@@ -3972,6 +3988,8 @@ namespace DS4Windows
                             if (!pressedonce[value])
                             {
                                 kp.current.toggle = !kp.current.toggle;
+                                kp.current.pending = true;
+                                kp.current.lastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
                                 pressedonce[value] = true;
                             }
                             kp.current.toggleCount++;
@@ -4374,8 +4392,6 @@ namespace DS4Windows
         /// 動作フロー：
         /// 1. 完了チェック：10msごとに初期化完了を確認
         /// 2. 完了確認時：スペシャルアクション実行のためループを抜ける
-        /// 3. 500msタイムアウト時：強制初期化を実行して先頭へループ
-        /// 4. 最大3回リトライ後：スペシャルアクション実行せず安全終了
         /// </summary>
         private static async Task<bool> EnsureActionDoneInitialized()
         {
@@ -4943,6 +4959,8 @@ namespace DS4Windows
                                             if (!pressedonce[key])
                                             {
                                                 kp.current.toggle = !kp.current.toggle;
+                                                kp.current.pending = true;
+                                                kp.current.lastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
                                                 pressedonce[key] = true;
                                                 kp.current.toggleCount++;
                                                 AppLogger.LogDebug($"SpecialAction KEY toggle-flipped: name={action.name}, device={device}, key={key}, toggle={kp.current.toggle}");
