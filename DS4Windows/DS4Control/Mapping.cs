@@ -4528,6 +4528,8 @@ namespace DS4Windows
                         }
 
                         bool actionFound = false;
+                        // Trigger evaluation is frequent; avoid unconditional per-tick debug logging to prevent log flooding.
+
                         if (triggeractivated)
                         {
                             // Emit rising-edge trace for non-Button SpecialActions.
@@ -4794,6 +4796,7 @@ namespace DS4Windows
                             else if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 actionFound = true;
+                                AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={untriggerindex[device]}, actionDone={actionDone[index].dev[device]}");
 
                                 if (uTriggerCount == 0 || (uTriggerCount > 0 && untriggerindex[device] == -1 && !actionDone[index].dev[device]))
                                 {
@@ -4801,6 +4804,7 @@ namespace DS4Windows
                                     untriggerindex[device] = index;
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
+                                    AppLogger.LogDebug($"SpecialAction KEY triggered: name={action.name}, device={device}, key={key}");
                                     if (uTriggerCount == 0)
                                     {
                                         SyntheticState.KeyPresses kp;
@@ -4818,6 +4822,7 @@ namespace DS4Windows
                                                 kp.current.toggle = !kp.current.toggle;
                                                 pressedonce[key] = true;
                                                 kp.current.toggleCount++;
+                                                AppLogger.LogDebug($"SpecialAction KEY toggle-flipped: name={action.name}, device={device}, key={key}, toggle={kp.current.toggle}");
                                             }
                                         }
                                         else
@@ -4826,14 +4831,21 @@ namespace DS4Windows
                                                 kp.current.scanCodeCount++;
                                             else
                                                 kp.current.vkCount++;
+                                            AppLogger.LogDebug($"SpecialAction KEY synthetic-press queued: name={action.name}, device={device}, key={key}, vkCount={kp.current.vkCount}, scCount={kp.current.scanCodeCount}");
                                         }
 
                                         kp.current.repeatCount++;
                                     }
                                     else if (action.keyType.HasFlag(DS4KeyType.ScanCode))
+                                    {
+                                        AppLogger.LogDebug($"SpecialAction KEY direct PerformKeyPressAlt: name={action.name}, device={device}, key={key}");
                                         outputKBMHandler.PerformKeyPressAlt(key);
+                                    }
                                     else
+                                    {
+                                        AppLogger.LogDebug($"SpecialAction KEY direct PerformKeyPress: name={action.name}, device={device}, key={key}");
                                         outputKBMHandler.PerformKeyPress(key);
+                                    }
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.DisconnectBT)
@@ -5170,6 +5182,8 @@ namespace DS4Windows
                 SpecialAction action = untriggeraction[device];
                 int index = untriggerindex[device];
                 bool utriggeractivated;
+
+                AppLogger.LogDebug($"SpecialAction UNTRIGGER check: device={device}, untriggeraction={(action!=null?action.name:"null")}, untriggerindex={index}");
 
                 if (!action.automaticUntrigger)
                 {
