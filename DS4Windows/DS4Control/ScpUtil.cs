@@ -4446,19 +4446,22 @@ namespace DS4Windows
 
         public void EstablishDefaultSpecialActions(int idx)
         {
-            profileActions[idx] = new List<string>();
-            
-            // Find first DisconnectBT action by name (ascending order)
-            var disconnectAction = actions
-                .Where(a => a.typeID == SpecialAction.ActionTypeId.DisconnectBT)
-                .OrderBy(a => a.name, StringComparer.CurrentCultureIgnoreCase)
-                .FirstOrDefault();
-            
-            if (disconnectAction != null)
+            // Do not overwrite an existing profileActions list. Only seed a default
+            // when the list is missing (null). This ensures we only add the default
+            // Disconnect action for truly new/unspecified profiles and won't force-enable
+            // it for existing profiles on startup.
+            if (profileActions[idx] != null)
             {
-                profileActions[idx].Add(disconnectAction.name);
+                profileActionCount[idx] = profileActions[idx].Count;
+                return;
             }
-            
+
+            // Initialize to an empty list for unspecified profiles but do NOT
+            // automatically add any Disconnect action. That behavior caused
+            // unwanted enabling of Disconnect for profiles that simply had no
+            // <ProfileActions> element; users should be able to intentionally
+            // leave it empty.
+            profileActions[idx] = new List<string>();
             profileActionCount[idx] = profileActions[idx].Count;
         }
 
@@ -5073,14 +5076,12 @@ namespace DS4Windows
                 XmlNode xmlGyroSwipeDelayTime = m_Xdoc.CreateNode(XmlNodeType.Element, "DelayTime", null); xmlGyroSwipeDelayTime.InnerText = gyroSwipeInfo[device].delayTime.ToString(); xmlGyroSwipeSettingsElement.AppendChild(xmlGyroSwipeDelayTime);
                 rootElement.AppendChild(xmlGyroSwipeSettingsElement);
 
-                // Ensure profileActions list exists and contains the Disconnect Controller
+                // Ensure profileActions list exists. Do NOT auto-add "Disconnect Controller"
+                // here — respect the stored list so users can intentionally disable
+                // the Bluetooth-disconnect special action for an existing profile.
                 if (profileActions[device] == null)
                 {
                     profileActions[device] = new List<string>();
-                }
-                if (!profileActions[device].Contains("Disconnect Controller"))
-                {
-                    profileActions[device].Add("Disconnect Controller");
                 }
                 XmlNode xmlProfileActions = m_Xdoc.CreateNode(XmlNodeType.Element, "ProfileActions", null);
                 xmlProfileActions.InnerText = string.Join("/", profileActions[device]); rootElement.AppendChild(xmlProfileActions);
