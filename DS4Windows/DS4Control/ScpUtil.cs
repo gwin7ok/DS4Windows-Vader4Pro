@@ -3483,8 +3483,7 @@ namespace DS4Windows
             {
                 try
                 {
-                    outputKBMHandler.fakeKeyRepeat = false;
-                    AppLogger.LogDebug($"Output KBM handler fakeKeyRepeat disabled for testing: {outputKBMHandler.GetIdentifier()}");
+                    AppLogger.LogDebug($"Output KBM handler fakeKeyRepeat={outputKBMHandler.fakeKeyRepeat} for {outputKBMHandler.GetIdentifier()}");
                 }
                 catch (Exception)
                 {
