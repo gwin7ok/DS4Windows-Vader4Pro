@@ -2979,7 +2979,9 @@ namespace DS4Windows
             m_Config.SaveActionNew(name, controls, mode, details, edit, delayTime, extras);
             //m_Config.SaveAction(name, controls, mode, details, edit, extras);
             //m_Config.SaveActions();
-            Mapping.InitializeActionDoneList();
+
+            // Reload actions from file and verify counts to avoid duplicated in-memory entries.
+            ReloadActionsAndVerify("SaveAction");
         }
 
         public static void SaveActions()
@@ -2994,7 +2996,9 @@ namespace DS4Windows
             catch { }
 
             m_Config.SaveActions();
-            Mapping.InitializeActionDoneList();
+
+            // After saving, reload to ensure in-memory list matches file contents.
+            ReloadActionsAndVerify("SaveActions");
         }
 
         public static void RemoveAction(string name)
@@ -3009,7 +3013,54 @@ namespace DS4Windows
             catch { }
 
             m_Config.RemoveAction(name);
-            Mapping.InitializeActionDoneList();
+
+            // After removal, reload to ensure consistency between file and memory.
+            ReloadActionsAndVerify("RemoveAction");
+        }
+
+        // Reload Actions.xml into the backing store and verify that the in-memory
+        // `actions` count matches the number of <Action> elements in the file.
+        private static void ReloadActionsAndVerify(string caller)
+        {
+            try
+            {
+                // Attempt to reload from the canonical file
+                bool loaded = m_Config.LoadActions();
+
+                int memCount = m_Config.actions?.Count ?? 0;
+                int fileCount = -1;
+                try
+                {
+                    XmlDocument xd = new XmlDocument();
+                    xd.Load(m_Config.m_Actions);
+                    XmlNodeList nodes = xd.SelectNodes("/Actions/Action");
+                    fileCount = nodes?.Count ?? 0;
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogToGui($"Could not count Actions.xml entries: {ex.Message}", false);
+                }
+
+                if (fileCount >= 0)
+                {
+                    if (memCount != fileCount)
+                    {
+                        AppLogger.LogToGui($"Warning: action count mismatch after {caller}: memory={memCount} file={fileCount}", true);
+                    }
+                    else
+                    {
+                        AppLogger.LogToGui($"Action list reloaded ({memCount} entries) after {caller}.", false);
+                    }
+                }
+                else
+                {
+                    AppLogger.LogToGui($"Action list reloaded ({memCount} entries) after {caller}. (file count unknown)", false);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"Error reloading Actions.xml after {caller}: {ex.Message}", true);
+            }
         }
 
         public static bool LoadActions() => m_Config.LoadActions();

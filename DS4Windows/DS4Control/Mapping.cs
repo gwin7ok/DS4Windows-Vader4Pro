@@ -4258,6 +4258,20 @@ namespace DS4Windows
             }
         }
 
+        // ログ用ヘルパー: スペシャルアクションのトリガー成立時に現在の actionDone エントリ数を出力
+        private static void LogActionDoneCountOnTrigger(int index, SpecialAction action, int device, string context = "TRIGGER")
+        {
+            try
+            {
+                int count = actionDone?.Count ?? 0;
+                DS4Windows.AppLogger.LogDebug($"SpecialAction {context}: device={device}, name={(action != null ? action.name : "(null)" )}, index={index}, ActionDoneEntries={count}");
+            }
+            catch
+            {
+                // ログは補助的な情報なので例外は無視
+            }
+        }
+
         /// <summary>
         /// アクションリスト初期化完了待機メソッド
         ///
@@ -4561,6 +4575,7 @@ namespace DS4Windows
 
                                 if (!actionDone[index].dev[device])
                                 {
+                                    LogActionDoneCountOnTrigger(index, action, device, "Program");
                                     actionDone[index].dev[device] = true;
                                     if (!string.IsNullOrEmpty(action.extra))
                                     {
@@ -4625,6 +4640,7 @@ namespace DS4Windows
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: actionDone={actionDone[index].dev[device]}, useTempProfile={useTempProfile[device]}");
                                     
+                                    LogActionDoneCountOnTrigger(index, action, device, "Profile");
                                     actionDone[index].dev[device] = true;
                                     // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
                                     if (action.uTrigger.Count > 0 || action.automaticUntrigger)
@@ -4702,6 +4718,7 @@ namespace DS4Windows
                                     if (!actionDone[index].dev[device])
                                     {
                                         DS4KeyType keyType = action.keyType;
+                                        LogActionDoneCountOnTrigger(index, action, device, "Macro");
                                         actionDone[index].dev[device] = true;
                                         /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                                         {
@@ -4727,6 +4744,7 @@ namespace DS4Windows
                                         if (!actionDone[index].dev[device])
                                         {
                                             DS4KeyType keyType = action.keyType;
+                                            LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
                                             actionDone[index].dev[device] = true;
                                             /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                                             {
@@ -4806,6 +4824,7 @@ namespace DS4Windows
 
                                 if (uTriggerCount == 0 || (uTriggerCount > 0 && untriggerindex[device] == -1 && !actionDone[index].dev[device]))
                                 {
+                                    LogActionDoneCountOnTrigger(index, action, device, "Key");
                                     actionDone[index].dev[device] = true;
                                     untriggerindex[device] = index;
                                     // For Key actions we keep single-trigger toggle behavior only;
@@ -4904,6 +4923,8 @@ namespace DS4Windows
                                     if (fadetimer[device] < 100)
                                         DS4LightBar.forcedColor[device] = getTransitionedColor(ref lastColor[device], ref trans, fadetimer[device] += 2);
                                 }
+                                LogActionDoneCountOnTrigger(index, action, device, "BatteryCheck");
+                                LogActionDoneCountOnTrigger(index, action, device, "WheelRecalibrate");
                                 actionDone[index].dev[device] = true;
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.SASteeringWheelEmulationCalibrate)
@@ -4940,6 +4961,7 @@ namespace DS4Windows
                                         tempDev?.SixAxis.ResetContinuousCalibration();
                                     }
 
+                                    LogActionDoneCountOnTrigger(index, action, device, "GyroCalibrate");
                                     actionDone[index].dev[device] = true;
                                 }
                             }
@@ -5233,9 +5255,10 @@ namespace DS4Windows
                         if (useTempProfile[device])
                         {
                             //foreach (DS4Controls dc in action.uTrigger)
-                            for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
-                            {
+                                for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
+                                {
                                 DS4Controls dc = action.uTrigger[i];
+                                LogActionDoneCountOnTrigger(index, action, device, "UntriggerProfile");
                                 actionDone[index].dev[device] = true;
                                 DS4ControlSettings dcs = GetDS4CSetting(device, dc);
                                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
