@@ -33,12 +33,27 @@
             "label": "Publish: (Release win-x64)",
             "dependsOrder": "sequence",
             "dependsOn": [
+                "Remove bin",
                 "Release win-x64",
                 "post-build-x64"
             ],
             "group": {
                 "kind": "build",
                 "isDefault": true
+            }
+        }
+        ,
+        {
+            "label": "Remove bin",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                "./scripts/Remove bin.bat"
+            ],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
             }
         }
         ,

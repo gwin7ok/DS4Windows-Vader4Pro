@@ -117,7 +117,7 @@ namespace DS4Windows
 
             private static readonly Dictionary<string, Entry> entries = new Dictionary<string, Entry>();
             // timings
-            private const int InitialDelayMs = 500; // delay before repeats start
+            private const int InitialDelayMs = 100; // delay before repeats start (reduced from 500ms)
             private const int RepeatIntervalMs = 25; // interval between repeats
 
             private static string MakeKey(int device, ushort kvpKey) => device + ":" + kvpKey;
@@ -5183,7 +5183,9 @@ namespace DS4Windows
                             else if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 actionFound = true;
-                                AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={untriggerindex[device]}, actionDone={actionDone[index].dev[device]}");
+                                bool prevActionDone = actionDone[index].dev[device];
+                                if (!prevActionDone)
+                                    AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={untriggerindex[device]}, actionDone={actionDone[index].dev[device]}");
 
                                 if (uTriggerCount == 0 || (uTriggerCount > 0 && untriggerindex[device] == -1 && !actionDone[index].dev[device]))
                                 {
@@ -5194,7 +5196,8 @@ namespace DS4Windows
                                     // do not register an untrigger action here.
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
-                                    AppLogger.LogDebug($"SpecialAction KEY triggered: name={action.name}, device={device}, key={key}");
+                                    if (!prevActionDone)
+                                        AppLogger.LogDebug($"SpecialAction KEY triggered: name={action.name}, device={device}, key={key}");
                                     if (uTriggerCount == 0)
                                     {
                                         SyntheticState.KeyPresses kp;
