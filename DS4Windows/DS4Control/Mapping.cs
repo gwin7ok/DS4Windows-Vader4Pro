@@ -4314,6 +4314,37 @@ namespace DS4Windows
                     actionDoneInitialized = true;
 
                     AppLogger.LogToGui($"ActionDone list initialized with {totalActionCount} entries", false);
+
+                    // 同期的にランタイム上の合成イベント状態も初期化する。
+                    // これにより、スペシャルアクションの切替（保存）時に古い合成キューや
+                    // 押下フラグが残って二重送出される問題を防止する。
+                    try
+                    {
+                        // グローバル合成状態を新規インスタンスへ差し替え
+                        globalState = new SyntheticState();
+
+                        // デバイスごとの合成状態を再生成
+                        for (int d = 0; d < deviceState.Length; d++)
+                        {
+                            deviceState[d] = new SyntheticState();
+                        }
+
+                        // 押下済みフラグ等を全クリア
+                        if (pressedonce != null)
+                        {
+                            for (int i = 0; i < pressedonce.Length; i++) pressedonce[i] = false;
+                        }
+                        if (macrodone != null)
+                        {
+                            for (int i = 0; i < macrodone.Length; i++) macrodone[i] = false;
+                        }
+
+                        AppLogger.LogToGui("Runtime synthetic state reset after ActionDone initialization", false);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.LogToGui($"Failed to reset runtime state during ActionDone init: {ex.Message}", true);
+                    }
                 }
                 catch (Exception ex)
                 {
