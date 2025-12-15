@@ -3477,6 +3477,20 @@ namespace DS4Windows
         public static void InitOutputKBMHandler(string identifier)
         {
             outputKBMHandler = VirtualKBMFactory.DetermineHandler(identifier);
+            // For testing: disable fake key repeat to isolate whether repeated synthetic sends
+            // are due to fakeKeyRepeat logic. Re-enable or remove this for normal builds.
+            if (outputKBMHandler != null)
+            {
+                try
+                {
+                    outputKBMHandler.fakeKeyRepeat = false;
+                    AppLogger.LogDebug($"Output KBM handler fakeKeyRepeat disabled for testing: {outputKBMHandler.GetIdentifier()}");
+                }
+                catch (Exception)
+                {
+                    // ignore - defensive in case handler implementation restricts setting
+                }
+            }
         }
 
         public static void InitOutputKBMMapping(string identifier)

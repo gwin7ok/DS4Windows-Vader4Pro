@@ -63,6 +63,8 @@ namespace DS4Windows
                 public bool pending;
                 // timestamp of last toggle (UTC ticks)
                 public long lastToggleTimeUtcTicks;
+                // timestamp of last synthetic send (UTC ticks) used to throttle excessive sends
+                public long lastSyntheticSendUtcTicks;
             }
             public class KeyPresses
             {
@@ -824,6 +826,8 @@ namespace DS4Windows
         private const int ToggleDebounceMs = 30;
         // hold pressedonce clear for a short window after toggle to avoid rapid reset during bouncy inputs
         private const int ToggleReleaseHoldMs = 200;
+        // throttle synthetic sends per key (milliseconds)
+        private const int SyntheticSendThrottleMs = 30;
         static bool[] macroControl = new bool[26];
         static uint macroCount = 0;
         static Dictionary<string, Task>[] macroTaskQueue = new Dictionary<string, Task>[Global.MAX_DS4_CONTROLLER_COUNT] { new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>() };
@@ -1144,51 +1148,99 @@ namespace DS4Windows
                 uint nativeKey = state.nativeKeyAlias[kvpKey];
                 if ((gkp.current.toggleCount != 0 || gkp.current.pending) && gkp.previous.toggleCount == 0 && gkp.current.toggle)
                 {
-                    if (gkp.current.scanCodeCount != 0)
+                    long nowTicksSend = DateTime.UtcNow.Ticks;
+                    long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                    if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                     {
-                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt");
-                        outputKBMHandler.PerformKeyPressAlt(nativeKey);
-                        // Clear pending after honoring it
+                        if (gkp.current.scanCodeCount != 0)
+                        {
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt");
+                            outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                        }
+                        else
+                        {
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress");
+                            outputKBMHandler.PerformKeyPress(nativeKey);
+                        }
+                        // Clear pending after honoring it and mark last send time
                         gkp.current.pending = false;
+                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                     }
                     else
                     {
-                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress");
-                        outputKBMHandler.PerformKeyPress(nativeKey);
-                        // Clear pending after honoring it
-                        gkp.current.pending = false;
+                        AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
                     }
                 }
                 else if ((gkp.current.toggleCount != 0 || gkp.current.pending) && gkp.previous.toggleCount == 0 && !gkp.current.toggle)
                 {
                         if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
                         {
-                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
-                            outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
-                            gkp.current.pending = false;
+                            long nowTicksSend = DateTime.UtcNow.Ticks;
+                            long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                            if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
+                                outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
+                                gkp.current.pending = false;
+                                gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            }
+                            else
+                            {
+                                AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                            }
                         }
                     else
                         {
-                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-                            outputKBMHandler.PerformKeyRelease(nativeKey);
-                            gkp.current.pending = false;
+                            long nowTicksSend = DateTime.UtcNow.Ticks;
+                            long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                            if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
+                                outputKBMHandler.PerformKeyRelease(nativeKey);
+                                gkp.current.pending = false;
+                                gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            }
+                            else
+                            {
+                                AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                            }
                         }
                 }
                 else if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
                 {
                         if (gkp.current.scanCodeCount != 0)
                         {
+                            long nowTicksSend = DateTime.UtcNow.Ticks;
+                            long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
                             oldnow = DateTime.UtcNow;
-                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
-                            outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                            if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
+                                outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                                gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            }
+                            else
+                            {
+                                AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                            }
                             pressagain = false;
                             keyshelddown = kvpKey;
                         }
                     else
                     {
+                        long nowTicksSend = DateTime.UtcNow.Ticks;
+                        long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
                         oldnow = DateTime.UtcNow;
-                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
-                        outputKBMHandler.PerformKeyPress(nativeKey);
+                        if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                        {
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
+                            outputKBMHandler.PerformKeyPress(nativeKey);
+                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                        }
+                        else
+                        {
+                            AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                        }
                         pressagain = false;
                         keyshelddown = kvpKey;
                     }
@@ -1209,20 +1261,40 @@ namespace DS4Windows
                             now = DateTime.UtcNow;
                             if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
                             {
-                                oldnow = now;
-                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
-                                outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                                    oldnow = now;
+                                    long nowTicksSend = DateTime.UtcNow.Ticks;
+                                    long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                                    if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                                    {
+                                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
+                                        outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                    }
+                                    else
+                                    {
+                                        AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                                    }
                             }
                         }
                         else if (pressagain)
                         {
                             now = DateTime.UtcNow;
-                            if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
-                            {
-                                oldnow = now;
-                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
-                                outputKBMHandler.PerformKeyPress(nativeKey);
-                            }
+                                if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
+                                {
+                                    oldnow = now;
+                                    long nowTicksSend = DateTime.UtcNow.Ticks;
+                                    long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                                    if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                                    {
+                                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
+                                        outputKBMHandler.PerformKeyPress(nativeKey);
+                                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                    }
+                                    else
+                                    {
+                                        AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                                    }
+                                }
                         }
                     }
                 }
