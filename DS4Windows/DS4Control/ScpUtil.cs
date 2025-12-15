@@ -9012,8 +9012,9 @@ namespace DS4Windows
                     if (!string.IsNullOrEmpty(extras))
                     {
                         string[] exts = extras.Split('\n');
-                        el.AppendChild(m_Xdoc.CreateElement("UnloadTrigger")).InnerText = exts[1];
-                        el.AppendChild(m_Xdoc.CreateElement("UnloadStyle")).InnerText = exts[0];
+                        el.AppendChild(m_Xdoc.CreateElement("UnloadTrigger")).InnerText = exts.Length > 1 ? exts[1] : string.Empty;
+                        // New element name: SwitchMode. Values: "Press" or "Toggle". Keep compatibility with older UnloadStyle.
+                        el.AppendChild(m_Xdoc.CreateElement("SwitchMode")).InnerText = exts.Length > 0 ? exts[0] : string.Empty;
                     }
                     break;
                 case 10:
@@ -10680,19 +10681,14 @@ namespace DS4Windows
                 {
                     extra = extras;
                     string[] exts = extras.Split('\n');
-                    pressRelease = exts[0] == "Release";
-                    HashSet<string> knownUnloadStyles = new HashSet<string>()
-                    {
-                        "Press", "Release",
-                    };
-
-                    if (!string.IsNullOrEmpty(exts[0]) &&
-                        knownUnloadStyles.Contains(exts[0]))
+                    // exts[0] is the SwitchMode value (new). Expected values: "Press" or "Toggle".
+                    string switchMode = exts.Length > 0 ? exts[0] : string.Empty;
+                    if (!string.IsNullOrEmpty(switchMode) && switchMode.Equals("Toggle", StringComparison.OrdinalIgnoreCase))
                     {
                         keyType |= DS4KeyType.Toggle;
                     }
 
-                    if (!string.IsNullOrEmpty(exts[1]))
+                    if (exts.Length > 1 && !string.IsNullOrEmpty(exts[1]))
                     {
                         this.ucontrols = exts[1];
                         string[] uctrls = exts[1].Split('/');

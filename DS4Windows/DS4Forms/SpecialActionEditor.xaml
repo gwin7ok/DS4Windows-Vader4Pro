@@ -437,8 +437,6 @@
                                         </CompositeCollection>
                                     </ComboBox.ItemsSource>
                                 </ComboBox>
-                                <Button x:Name="loadProfUnloadBtn" Content="{lex:Loc SpecialActionEdit.SetUnloadTrigger}" Margin="{StaticResource spaceMargin}"
-                                        IsEnabled="{Binding UnloadEnabled}" Click="LoadProfUnloadBtn_Click" />
                                 <CheckBox Content="{lex:Loc SpecialActionEdit.UnloadTriggerRelease}" Margin="{StaticResource spaceMargin}" IsChecked="{Binding AutoUntrigger}" />
                             </StackPanel>
                         </TabItem>
@@ -446,18 +444,7 @@
                             <StackPanel Margin="{StaticResource spaceMargin}">
                                 <Button x:Name="pressKeySelectBtn" Content="{Binding DescribeText,FallbackValue={lex:Loc SpecialActionEdit.SelectKey}}"
                                         Margin="{StaticResource spaceMargin}" Click="PressKeySelectBtn_Click" />
-                                <Button x:Name="pressKeyToggleTriggerBtn" Content="{lex:Loc SpecialActionEdit.SetUnloadTrigger}"
-                                        Tag="{Binding UnloadError,ValidatesOnNotifyDataErrors=True}"
-                                        Visibility="{Binding ShowToggleControls}"
-                                        Margin="{StaticResource spaceMargin}" Click="PressKeyToggleTriggerBtn_Click" />
-
-                                <StackPanel Margin="{StaticResource spaceMargin}" Visibility="{Binding ShowToggleControls}">
-                                    <Label Content="{lex:Loc SpecialActionEdit.UntoggleKeyBy}" />
-                                    <ComboBox x:Name="pressReleaseKeyCombo" SelectedIndex="{Binding PressReleaseIndex}">
-                                        <ComboBoxItem Content="{lex:Loc SpecialActionEdit.PressingUnloadTrigger}" />
-                                        <ComboBoxItem Content="{lex:Loc SpecialActionEdit.ReleasingUnloadTrigger}" />
-                                    </ComboBox>
-                                </StackPanel>
+                                <!-- Unload trigger UI removed: Key-type SpecialActions now use single-trigger toggle by design -->
                             </StackPanel>
                         </TabItem>
                         <TabItem x:Name="disconnectBTTab" Header="DisBT">

@@ -79,23 +79,27 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             // emulated controller type for label strings (X360 vs DS4)
             keyType = action.keyType;
             // If action is Button, details contains button id
-            if (action.typeID == SpecialAction.ActionTypeId.Button)
+                if (action.typeID == SpecialAction.ActionTypeId.Button)
             {
                 lastActionType = DS4ControlSettings.ActionType.Button;
                 int.TryParse(action.details, out lastActionBtn);
-                try
-                {
-                    // Prefer using editor's device-specific output type when available
-                    if (editorDeviceNum >= 0 && editorDeviceNum < Global.OutContType.Length)
+                    try
                     {
-                        describeText = Global.getX360ControlString((X360Controls)lastActionBtn, Global.OutContType[editorDeviceNum]);
+                        // Prefer using editor's device-specific output type when available
+                        string btnName;
+                        if (editorDeviceNum >= 0 && editorDeviceNum < Global.OutContType.Length)
+                        {
+                            btnName = Global.getX360ControlString((X360Controls)lastActionBtn, Global.OutContType[editorDeviceNum]);
+                        }
+                        else
+                        {
+                            btnName = Global.getX360ControlString((X360Controls)lastActionBtn);
+                        }
+
+                        // Display mode suffix: (Toggle) or (Press)
+                        describeText = btnName + (action.keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : " (Press)");
                     }
-                    else
-                    {
-                        describeText = Global.getX360ControlString((X360Controls)lastActionBtn);
-                    }
-                }
-                catch { describeText = string.Empty; }
+                    catch { describeText = string.Empty; }
                 value = 0;
             }
             else
@@ -139,7 +143,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             {
                 describeText = KeyInterop.KeyFromVirtualKey(value).ToString() +
                     (keyType.HasFlag(DS4KeyType.ScanCode) ? " (SC)" : "") +
-                    (keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : "");
+                    (keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : " (Press)");
             }
 
             DescribeTextChanged?.Invoke(this, EventArgs.Empty);
@@ -216,19 +220,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
                 return;
             }
 
-            string uaction = null;
-            if (keyType.HasFlag(DS4KeyType.Toggle))
-            {
-                uaction = "Press";
-                if (pressReleaseIndex == 1)
-                {
-                    uaction = "Release";
-                }
-            }
-
+            // Determine SwitchMode to save: explicit 'Toggle' when keyType indicates toggle, otherwise 'Press'.
+            string switchMode = keyType.HasFlag(DS4KeyType.Toggle) ? "Toggle" : "Press";
             Global.SaveAction(action.name, action.controls, 4,
                 $"{value}{(keyType.HasFlag(DS4KeyType.ScanCode) ? " Scan Code" : "")}", edit,
-                extras: !string.IsNullOrEmpty(uaction) ? $"{uaction}\n{action.ucontrols}" : "");
+                extras: $"{switchMode}\n{action.ucontrols}");
         }
 
         public override bool IsValid(SpecialAction action)

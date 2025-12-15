@@ -416,39 +416,7 @@ namespace DS4WinWPF.DS4Forms
             recordWin.ShowDialog();
         }
 
-        private void PressKeyToggleTriggerBtn_Click(object sender, RoutedEventArgs e)
-        {
-            bool normalTrigger = pressKeyVM.NormalTrigger = !pressKeyVM.NormalTrigger;
-            if (normalTrigger)
-            {
-                pressKeyToggleTriggerBtn.Content = "Set Unload Trigger";
-                triggersListView.Visibility = Visibility.Visible;
-                unloadTriggersListView.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                pressKeyToggleTriggerBtn.Content = "Set Regular Trigger";
-                triggersListView.Visibility = Visibility.Collapsed;
-                unloadTriggersListView.Visibility = Visibility.Visible;
-            }
-        }
-
-        private void LoadProfUnloadBtn_Click(object sender, RoutedEventArgs e)
-        {
-            bool normalTrigger = loadProfileVM.NormalTrigger = !loadProfileVM.NormalTrigger;
-            if (normalTrigger)
-            {
-                loadProfUnloadBtn.Content = "Set Unload Trigger";
-                triggersListView.Visibility = Visibility.Visible;
-                unloadTriggersListView.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                loadProfUnloadBtn.Content = "Set Regular Trigger";
-                triggersListView.Visibility = Visibility.Collapsed;
-                unloadTriggersListView.Visibility = Visibility.Visible;
-            }
-        }
+        // Unload trigger toggle buttons and handlers removed: Key-type SpecialActions use single-trigger toggle mode.
 
         private void BatteryEmptyColorBtn_Click(object sender, RoutedEventArgs e)
         {

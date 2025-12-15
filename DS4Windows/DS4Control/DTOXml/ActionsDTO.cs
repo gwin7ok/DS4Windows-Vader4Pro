@@ -74,8 +74,9 @@ namespace DS4WinWPF.DS4Control.DTOXml
                         if (!string.IsNullOrEmpty(action.extra))
                         {
                             string[] exts = action.extra.Split('\n');
-                            actionSerializer.UnloadStyle = exts[0];
-                            actionSerializer.UnloadTrigger = exts[1];
+                            // New name: SwitchMode (values: Press/Toggle). Keep compatibility by storing in SwitchMode.
+                            actionSerializer.SwitchMode = exts.Length > 0 ? exts[0] : string.Empty;
+                            actionSerializer.UnloadTrigger = exts.Length > 1 ? exts[1] : string.Empty;
                         }
 
                         break;
@@ -153,10 +154,19 @@ namespace DS4WinWPF.DS4Control.DTOXml
                     case "Key":
                         {
                             string tempExtras = string.Empty;
-                            if (!string.IsNullOrEmpty(actionSerializer.UnloadStyle) ||
-                                !string.IsNullOrEmpty(actionSerializer.UnloadTrigger))
+                            // Prefer new SwitchMode if present.
+                            // For legacy files where only UnloadStyle exists, treat that as the old toggle-style marker
+                            // (map legacy UnloadStyle -> "Toggle" to preserve previous behavior).
+                            string mode;
+                            if (!string.IsNullOrEmpty(actionSerializer.SwitchMode))
+                                mode = actionSerializer.SwitchMode;
+                            else if (!string.IsNullOrEmpty(actionSerializer.UnloadStyle))
+                                mode = "Toggle"; // legacy UnloadStyle indicates toggle behavior
+                            else
+                                mode = "Press"; // default to Press when neither SwitchMode nor legacy UnloadStyle present
+                            if (!string.IsNullOrEmpty(mode) || !string.IsNullOrEmpty(actionSerializer.UnloadTrigger))
                             {
-                                tempExtras = $"{actionSerializer.UnloadStyle}\n{actionSerializer.UnloadTrigger}";
+                                tempExtras = $"{mode}\n{actionSerializer.UnloadTrigger}";
                             }
 
                             tempAction = new SpecialAction(actionSerializer.Name,
@@ -326,7 +336,15 @@ namespace DS4WinWPF.DS4Control.DTOXml
         } = string.Empty;
         public bool ShouldSerializeUnloadStyle()
         {
-            return TypeString == "Key" && !string.IsNullOrEmpty(UnloadStyle);
+            // Legacy element; serialize only if SwitchMode is not present to preserve existing files when necessary.
+            return TypeString == "Key" && string.IsNullOrEmpty(SwitchMode) && !string.IsNullOrEmpty(UnloadStyle);
+        }
+
+        [XmlElement("SwitchMode")]
+        public string SwitchMode { get; set; } = string.Empty;
+        public bool ShouldSerializeSwitchMode()
+        {
+            return TypeString == "Key" && !string.IsNullOrEmpty(SwitchMode);
         }
     }
 }
