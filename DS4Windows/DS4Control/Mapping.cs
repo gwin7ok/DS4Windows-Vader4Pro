@@ -954,15 +954,30 @@ namespace DS4Windows
             if (globalState.currentClicks.toggleCount != 0 && globalState.previousClicks.toggleCount == 0 && globalState.currentClicks.toggle)
             {
                 if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                }
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                }
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                }
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                }
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                }
             }
             else if (globalState.currentClicks.toggleCount != 0 && globalState.previousClicks.toggleCount == 0 && !globalState.currentClicks.toggle)
             {
@@ -981,32 +996,63 @@ namespace DS4Windows
             if (globalState.currentClicks.toggleCount == 0 && globalState.previousClicks.toggleCount == 0)
             {
                 if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                }
                 else if (globalState.currentClicks.leftCount == 0 && globalState.previousClicks.leftCount != 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftUp");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                }
 
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                }
                 else if (globalState.currentClicks.middleCount == 0 && globalState.previousClicks.middleCount != 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleUp");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                }
 
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                }
                 else if (globalState.currentClicks.rightCount == 0 && globalState.previousClicks.rightCount != 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightUp");
                     outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                }
 
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                }
                 else if (globalState.currentClicks.fourthCount == 0 && globalState.previousClicks.fourthCount != 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=1");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                }
 
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                }
                 else if (globalState.currentClicks.fifthCount == 0 && globalState.previousClicks.fifthCount != 0)
+                {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=2");
                     outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                }
 
                 if (globalState.currentClicks.wUpCount != 0 && globalState.previousClicks.wUpCount == 0)
                 {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelUp");
                     outputKBMHandler.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_UP, 0);
                     oldnow = DateTime.UtcNow;
                     wheel = outputKBMMapping.WHEEL_TICK_UP;
@@ -1016,6 +1062,7 @@ namespace DS4Windows
 
                 if (globalState.currentClicks.wDownCount != 0 && globalState.previousClicks.wDownCount == 0)
                 {
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelDown");
                     outputKBMHandler.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_DOWN, 0);
                     oldnow = DateTime.UtcNow;
                     wheel = outputKBMMapping.WHEEL_TICK_DOWN;
@@ -1066,29 +1113,43 @@ namespace DS4Windows
                 if (gkp.current.toggleCount != 0 && gkp.previous.toggleCount == 0 && gkp.current.toggle)
                 {
                     if (gkp.current.scanCodeCount != 0)
-                        outputKBMHandler.PerformKeyPressAlt(nativeKey);
-                    else
-                        outputKBMHandler.PerformKeyPress(nativeKey);
-                }
-                else if (gkp.current.toggleCount != 0 && gkp.previous.toggleCount == 0 && !gkp.current.toggle)
-                {
-                    if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
-                        outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
-                    else
-                        outputKBMHandler.PerformKeyRelease(nativeKey);
-                }
-                else if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
-                {
-                    if (gkp.current.scanCodeCount != 0)
                     {
-                        oldnow = DateTime.UtcNow;
+                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt");
                         outputKBMHandler.PerformKeyPressAlt(nativeKey);
-                        pressagain = false;
-                        keyshelddown = kvpKey;
                     }
                     else
                     {
+                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress");
+                        outputKBMHandler.PerformKeyPress(nativeKey);
+                    }
+                }
+                else if (gkp.current.toggleCount != 0 && gkp.previous.toggleCount == 0 && !gkp.current.toggle)
+                {
+                        if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
+                        {
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
+                            outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
+                        }
+                    else
+                        {
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
+                            outputKBMHandler.PerformKeyRelease(nativeKey);
+                        }
+                }
+                else if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
+                {
+                        if (gkp.current.scanCodeCount != 0)
+                        {
+                            oldnow = DateTime.UtcNow;
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
+                            outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                            pressagain = false;
+                            keyshelddown = kvpKey;
+                        }
+                    else
+                    {
                         oldnow = DateTime.UtcNow;
+                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
                         outputKBMHandler.PerformKeyPress(nativeKey);
                         pressagain = false;
                         keyshelddown = kvpKey;
@@ -1111,6 +1172,7 @@ namespace DS4Windows
                             if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
                             {
                                 oldnow = now;
+                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
                                 outputKBMHandler.PerformKeyPressAlt(nativeKey);
                             }
                         }
@@ -1120,6 +1182,7 @@ namespace DS4Windows
                             if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
                             {
                                 oldnow = now;
+                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
                                 outputKBMHandler.PerformKeyPress(nativeKey);
                             }
                         }
@@ -1128,16 +1191,18 @@ namespace DS4Windows
 
                 if ((gkp.current.toggleCount == 0 && gkp.previous.toggleCount == 0) && gkp.current.vkCount + gkp.current.scanCodeCount == 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount != 0)
                 {
-                    if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
-                    {
-                        outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
-                        pressagain = false;
-                    }
+                        if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
+                        {
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
+                            outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
+                            pressagain = false;
+                        }
                     else
-                    {
-                        outputKBMHandler.PerformKeyRelease(nativeKey);
-                        pressagain = false;
-                    }
+                        {
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
+                            outputKBMHandler.PerformKeyRelease(nativeKey);
+                            pressagain = false;
+                        }
                 }
             }
 
@@ -5470,18 +5535,41 @@ namespace DS4Windows
                     switch (macroCodeValue)
                     {
                         //anything above 255 is not a keyvalue
-                        case 256: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN); break;
-                        case 257: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN); break;
-                        case 258: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN); break;
-                        case 259: outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1); break;
-                        case 260: outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2); break;
+                        case 256:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseLeftDown");
+                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                            break;
+                        case 257:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseRightDown");
+                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                            break;
+                        case 258:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseMiddleDown");
+                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                            break;
+                        case 259:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonDown btn=1");
+                            outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                            break;
+                        case 260:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonDown btn=2");
+                            outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                            break;
 
                         default:
                             uint eventMacroCode = !outputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
                                 outputKBMMapping.GetRealEventKey((uint)macroCodeValue);
 
-                            if (keyType.HasFlag(DS4KeyType.ScanCode)) outputKBMHandler.PerformKeyPressAlt(eventMacroCode);
-                            else outputKBMHandler.PerformKeyPress(eventMacroCode);
+                            if (keyType.HasFlag(DS4KeyType.ScanCode))
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyPressAlt native={eventMacroCode}");
+                                outputKBMHandler.PerformKeyPressAlt(eventMacroCode);
+                            }
+                            else
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyPress native={eventMacroCode}");
+                                outputKBMHandler.PerformKeyPress(eventMacroCode);
+                            }
                             break;
                     }
                     keydown[macroCodeValue] = true;
@@ -5491,18 +5579,41 @@ namespace DS4Windows
                     switch (macroCodeValue)
                     {
                         //anything above 255 is not a keyvalue
-                        case 256: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP); break;
-                        case 257: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP); break;
-                        case 258: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP); break;
-                        case 259: outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1); break;
-                        case 260: outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2); break;
+                        case 256:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseLeftUp");
+                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                            break;
+                        case 257:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseRightUp");
+                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                            break;
+                        case 258:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseMiddleUp");
+                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                            break;
+                        case 259:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonUp btn=1");
+                            outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                            break;
+                        case 260:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonUp btn=2");
+                            outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                            break;
 
                         default:
                             uint eventMacroCode = !outputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
                                 outputKBMMapping.GetRealEventKey((uint)macroCodeValue);
 
-                            if (keyType.HasFlag(DS4KeyType.ScanCode)) outputKBMHandler.PerformKeyReleaseAlt(eventMacroCode);
-                            else outputKBMHandler.PerformKeyRelease(eventMacroCode);
+                            if (keyType.HasFlag(DS4KeyType.ScanCode))
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyReleaseAlt native={eventMacroCode}");
+                                outputKBMHandler.PerformKeyReleaseAlt(eventMacroCode);
+                            }
+                            else
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyRelease native={eventMacroCode}");
+                                outputKBMHandler.PerformKeyRelease(eventMacroCode);
+                            }
                             break;
                     }
                     keydown[macroCodeValue] = false;
@@ -5580,6 +5691,7 @@ namespace DS4Windows
             if (altTabDone)
             {
                 altTabDone = false;
+                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyPress TAB");
                 outputKBMHandler.PerformKeyPress(outputKBMMapping.KEY_TAB);
             }
             else
@@ -5588,7 +5700,9 @@ namespace DS4Windows
                 if (altTabNow >= oldAltTabNow + TimeSpan.FromMilliseconds(wait))
                 {
                     oldAltTabNow = altTabNow;
+                    AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyPress TAB");
                     outputKBMHandler.PerformKeyPress(outputKBMMapping.KEY_TAB);
+                    AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyRelease TAB");
                     outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_TAB);
                 }
             }
@@ -5599,7 +5713,9 @@ namespace DS4Windows
             if (altTabNow < DateTime.UtcNow - TimeSpan.FromMilliseconds(10)) //in case multiple controls are mapped to alt+tab
             {
                 altTabDone = true;
+                AppLogger.LogDebug($"EVENT SENT [INLINE] event=AltTab KeyRelease TAB");
                 outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_TAB);
+                AppLogger.LogDebug($"EVENT SENT [INLINE] event=AltTab KeyRelease LALT");
                 outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_LALT);
                 altTabNow = DateTime.UtcNow;
                 oldAltTabNow = DateTime.UtcNow - TimeSpan.FromDays(1);
