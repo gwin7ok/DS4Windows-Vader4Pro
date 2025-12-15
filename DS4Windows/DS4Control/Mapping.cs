@@ -166,6 +166,8 @@ namespace DS4Windows
                 foreach (var e in toSend)
                 {
                     if (e.handler == null) continue;
+                    AppLogger.LogTrace($"SYNTHETIC TRACE toggle-repeat device={e.device} kvpKey={e.kvpKey} nativeKey={e.nativeKey} event=KeyPress(repeat)");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] toggle-repeat device={e.device} kvpKey={e.kvpKey} nativeKey={e.nativeKey} event=KeyPress(repeat)");
                     if (e.useScanCode) e.handler.PerformKeyPressAlt(e.nativeKey); else e.handler.PerformKeyPress(e.nativeKey);
                     e.lastRepeatUtcTicks = DateTime.UtcNow.Ticks;
                 }
