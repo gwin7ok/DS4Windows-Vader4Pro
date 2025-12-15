@@ -2982,6 +2982,19 @@ namespace DS4Windows
 
             // Reload actions from file and verify counts to avoid duplicated in-memory entries.
             ReloadActionsAndVerify("SaveAction");
+
+            // If saving a Key-type SpecialAction (mode==4), clear runtime state related to that key only.
+            try
+            {
+                if (mode == 4)
+                {
+                    if (ushort.TryParse(details, out ushort savedKey))
+                    {
+                        Mapping.ResetRuntimeStateForKey(savedKey);
+                    }
+                }
+            }
+            catch { }
         }
 
         public static void SaveActions()

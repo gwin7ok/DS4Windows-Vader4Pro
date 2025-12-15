@@ -5429,6 +5429,36 @@ namespace DS4Windows
             }
         }
 
+        // 指定したキーに関連するランタイム上の合成状態を全デバイス分クリアする。
+        // 呼び出しタイミング: 保存直後など、当該キーの設定が変更された直後に呼ぶことで
+        // 古い合成キューや押下フラグが残るのを防止する。
+        public static void ResetRuntimeStateForKey(ushort key)
+        {
+            try
+            {
+                for (int d = 0; d < deviceState.Length; d++)
+                {
+                    // keyPresses から該当キーを削除
+                    if (deviceState[d].keyPresses.ContainsKey(key))
+                        deviceState[d].keyPresses.Remove(key);
+
+                    // native alias も削除
+                    if (deviceState[d].nativeKeyAlias.ContainsKey(key))
+                        deviceState[d].nativeKeyAlias.Remove(key);
+                }
+
+                // 押下済みフラグをクリア
+                if (pressedonce != null && key < pressedonce.Length)
+                    pressedonce[key] = false;
+
+                AppLogger.LogToGui($"Runtime state for key {key} cleared on all devices.", false);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"Failed to reset runtime key state for {key}: {ex.Message}", true);
+            }
+        }
+
         // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
         // Macro steps are defined either as macrostr string value, macroLst list<int> object or as macroArr integer array. Only one of these should have a valid macro definition when this method is called.
         // If the macro definition is a macroStr string value then it will be converted as integer array on the fl. If steps are already defined as list or array of integers then there is no need to do type cast conversion.
