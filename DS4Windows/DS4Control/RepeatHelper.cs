@@ -18,7 +18,9 @@ namespace DS4Windows.DS4Control
         private int disposed;
 
         // intervalMillis: repeat period in milliseconds (50ms typical)
-        public RepeatHelper(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler, int intervalMillis = 50)
+        // sendFirstImmediate: if true, send one immediate KeyPress now and then start periodic sends
+        //                     if false, first KeyPress will be issued after intervalMillis
+        public RepeatHelper(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler, int intervalMillis = 50, bool sendFirstImmediate = true)
         {
             this.device = device;
             this.kvpKey = kvpKey;
@@ -26,8 +28,17 @@ namespace DS4Windows.DS4Control
             this.useScanCode = useScanCode;
             this.handler = handler;
 
-            // Start timer immediately: dueTime = 0, period = intervalMillis
-            timer = new Timer(TimerCallback, null, 0, intervalMillis);
+            if (sendFirstImmediate)
+            {
+                try { SyntheticDispatcher.SendPress(device, kvpKey, nativeKey, useScanCode, handler); } catch { }
+                // start periodic sends after intervalMillis
+                timer = new Timer(TimerCallback, null, intervalMillis, intervalMillis);
+            }
+            else
+            {
+                // start periodic sends with first due after intervalMillis
+                timer = new Timer(TimerCallback, null, intervalMillis, intervalMillis);
+            }
         }
 
         private void TimerCallback(object state)

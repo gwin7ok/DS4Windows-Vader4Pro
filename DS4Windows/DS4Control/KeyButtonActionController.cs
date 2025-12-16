@@ -86,10 +86,11 @@ namespace DS4Windows
                 {
                     // Toggle on: record state, send initial press and start repeating immediately
                     states.Add(kvpKey);
-                    try { SyntheticDispatcher.SendPress(device, kvpKey, nativeKey, useScanCode, handler); } catch { }
                     try
                     {
-                        var rep = new RepeatHelper(device, kvpKey, nativeKey == 0 ? SyntheticDispatcher.ResolveNativeKey(kvpKey) : nativeKey, useScanCode, handler);
+                        // do not send initial press here; RepeatHelper will send the initial press
+                        var nat = nativeKey == 0 ? SyntheticDispatcher.ResolveNativeKey(kvpKey) : nativeKey;
+                        var rep = new RepeatHelper(device, kvpKey, nat, useScanCode, handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
                         repeaters[kvpKey] = rep;
                     }
                     catch { }
@@ -162,7 +163,13 @@ namespace DS4Windows
                 {
                     if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
                     e.isPressed = true;
-                    try { SyntheticDispatcher.SendPress(device, kvpKey, e.nativeKey, e.useScanCode, e.handler); } catch { }
+                    try
+                    {
+                        // Primary behavior: send one immediate press then release for the main action
+                        SyntheticDispatcher.SendPress(device, kvpKey, e.nativeKey, e.useScanCode, e.handler);
+                        SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey, e.useScanCode, e.handler);
+                    }
+                    catch { }
 
                     // Start delayed creation of repeater after 100ms for press-repeat semantics
                     try
@@ -173,10 +180,10 @@ namespace DS4Windows
                         {
                             try
                             {
-                                await Task.Delay(100, localEntry.delayCts.Token).ConfigureAwait(false);
+                                    await Task.Delay(DS4Windows.KeyboardSettings.InitialRepeatDelayMs, localEntry.delayCts.Token).ConfigureAwait(false);
                                 if (localEntry.delayCts.IsCancellationRequested) return;
-                                // create repeater that starts immediate repeating at 50ms
-                                localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler);
+                                // create repeater that starts immediate repeating (send first immediate press)
+                                localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
                             }
                             catch (OperationCanceledException) { }
                             catch { }
@@ -200,10 +207,7 @@ namespace DS4Windows
                             e.repeater.Stop();
                             e.repeater = null;
                         }
-                        else
-                        {
-                            SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey != 0 ? e.nativeKey : nativeKey, useScanCode, handler);
-                        }
+                        // else: initial immediate press+release already sent, no additional release needed here
                     }
                     catch { }
                     entries.Remove(kvpKey);

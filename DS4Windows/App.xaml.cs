@@ -275,6 +275,14 @@ namespace DS4WinWPF
             // Allow sleep time durations less than 16 ms
             DS4Windows.Util.timeBeginPeriod(1);
 
+            // Load keyboard repeat settings from user registry so synthetic repeat matches OS behaviour
+            try
+            {
+                DS4Windows.KeyboardSettings.LoadFromRegistry();
+                AppLogger.LogDebug($"Keyboard settings loaded: InitialRepeatDelayMs={DS4Windows.KeyboardSettings.InitialRepeatDelayMs}, RepeatIntervalMs={DS4Windows.KeyboardSettings.RepeatIntervalMs}");
+            }
+            catch { }
+
             // Retrieve info about installed ViGEmBus device if found
             DS4Windows.Global.RefreshViGEmBusInfo();
 
