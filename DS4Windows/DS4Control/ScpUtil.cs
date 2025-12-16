@@ -2934,23 +2934,8 @@ namespace DS4Windows
                         }
                     }
 
-                    if (foundToggle)
-                    {
-                        ToggleActionController.SetActive(device, true);
-                        PressActionController.SetActive(device, false);
-                    }
-                    else if (foundPress)
-                    {
-                        ToggleActionController.SetActive(device, false);
-                        PressActionController.SetActive(device, true);
-                    }
-                    else
-                    {
-                        ToggleActionController.SetActive(device, false);
-                        PressActionController.SetActive(device, false);
-                    }
-
-                    AppLogger.LogDebug($"ApplyProfile: Controller activation set ToggleHasAny={ToggleActionController.HasAnyActive()} PressHasAny={PressActionController.HasAnyActive()}");
+                    // Controller activation is managed per SpecialAction via KeyButtonActionController
+                    AppLogger.LogDebug("ApplyProfile: Controller activation handled per-SpecialAction SwitchMode");
                 }
                 catch (Exception ex)
                 {

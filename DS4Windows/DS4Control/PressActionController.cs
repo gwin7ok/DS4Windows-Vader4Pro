@@ -97,7 +97,6 @@ namespace DS4Windows
 
         public static void Update()
         {
-            if (!HasAnyActive()) return;
             if (entries.Count == 0) return;
             var now = DateTime.UtcNow.Ticks;
             var toRepeat = new List<Entry>();
@@ -129,8 +128,6 @@ namespace DS4Windows
         private static readonly HashSet<int> activeDevices = new HashSet<int>();
 
         public static bool IsActive(int device) => activeDevices.Contains(device);
-
-        public static bool HasAnyActive() => activeDevices.Count > 0;
 
         public static void SetActive(int device, bool active)
         {

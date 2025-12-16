@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace DS4Windows
 {
@@ -30,6 +31,7 @@ namespace DS4Windows
                 impl = new ToggleImpl(device);
             else
                 impl = new PressImpl(device);
+
         }
 
         // New constructor: determine mode from SpecialAction info (KeyButtonSwitchMode or keyType flags)
@@ -56,6 +58,7 @@ namespace DS4Windows
                 impl = new ToggleImpl(device);
             else
                 impl = new PressImpl(device);
+
         }
 
         // Internal interface for per-mode controllers
@@ -66,37 +69,87 @@ namespace DS4Windows
             void Clear(ushort kvpKey);
         }
 
-        // Toggle implementation delegates to existing ToggleActionController
+        // Toggle implementation: per-instance management of toggle state and repeat (minimal)
         private class ToggleImpl : IKeyController
         {
             private readonly int device;
+            private readonly Dictionary<ushort, bool> states = new Dictionary<ushort, bool>();
             public ToggleImpl(int device) { this.device = device; }
+
             public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
             {
-                DS4Windows.ToggleActionController.OnToggleOn(device, kvpKey, nativeKey, useScanCode, handler);
+                if (!states.TryGetValue(kvpKey, out bool isOn) || !isOn)
+                {
+                    // Toggle on
+                    states[kvpKey] = true;
+                    try { SyntheticDispatcher.SendPress(device, kvpKey, nativeKey, useScanCode, handler); } catch { }
+                }
             }
+
             public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
             {
-                DS4Windows.ToggleActionController.OnToggleOff(device, kvpKey, nativeKey, useScanCode, handler);
+                if (states.TryGetValue(kvpKey, out bool isOn) && isOn)
+                {
+                    try { SyntheticDispatcher.SendRelease(device, kvpKey, nativeKey, useScanCode, handler); } catch { }
+                    states[kvpKey] = false;
+                }
             }
-            public void Clear(ushort kvpKey) { DS4Windows.ToggleActionController.ClearKeyEntries(kvpKey); }
+
+            public void Clear(ushort kvpKey)
+            {
+                if (states.ContainsKey(kvpKey)) states.Remove(kvpKey);
+                try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
+            }
         }
 
-        // Press implementation delegates to existing PressActionController
+        // Press implementation: per-instance management of press state and optional repeat (minimal)
         private class PressImpl : IKeyController
         {
             private readonly int device;
+            private class Entry
+            {
+                public bool isPressed;
+                public uint nativeKey;
+                public bool useScanCode;
+                public DS4Windows.DS4Control.VirtualKBMBase handler;
+            }
+            private readonly Dictionary<ushort, Entry> entries = new Dictionary<ushort, Entry>();
+
             public PressImpl(int device) { this.device = device; }
+
             public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
             {
-                try { DS4Windows.ToggleActionController.ClearKeyEntries(kvpKey); } catch { }
-                DS4Windows.PressActionController.OnPressDown(device, kvpKey, nativeKey, useScanCode, handler, isSpecialAction);
+                if (!entries.TryGetValue(kvpKey, out Entry e))
+                {
+                    e = new Entry() { isPressed = false, nativeKey = nativeKey, useScanCode = useScanCode, handler = handler };
+                    entries[kvpKey] = e;
+                }
+                if (!e.isPressed)
+                {
+                    if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
+                    e.isPressed = true;
+                    try { SyntheticDispatcher.SendPress(device, kvpKey, e.nativeKey, e.useScanCode, e.handler); } catch { }
+                }
             }
+
             public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
             {
-                DS4Windows.PressActionController.OnPressUp(device, kvpKey, nativeKey, useScanCode, handler);
+                if (entries.TryGetValue(kvpKey, out Entry e) && e.isPressed)
+                {
+                    try { SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey != 0 ? e.nativeKey : nativeKey, useScanCode, handler); } catch { }
+                    entries.Remove(kvpKey);
+                }
+                else
+                {
+                    try { SyntheticDispatcher.ResetKeyTiming(device, kvpKey); } catch { }
+                }
             }
-            public void Clear(ushort kvpKey) { DS4Windows.PressActionController.ClearKeyEntries(kvpKey); }
+
+            public void Clear(ushort kvpKey)
+            {
+                if (entries.ContainsKey(kvpKey)) entries.Remove(kvpKey);
+                try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
+            }
         }
 
         // New, clearer API names reflecting Mapping-trigger notifications

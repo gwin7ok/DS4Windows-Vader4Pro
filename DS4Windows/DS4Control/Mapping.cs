@@ -213,9 +213,15 @@ namespace DS4Windows
             };
         }
 
-        // Per-device Key/Button SpecialAction controller instances (lazy-created).
+        // Per-device×SpecialAction Key/Button controller instances (lazy-created).
+        // Key format: "{device}:{actionName}". If actionName is null use "{device}:<default>" to preserve device-only fallbacks.
         private static readonly object keyButtonControllerLock = new object();
-        private static readonly Dictionary<int, KeyButtonActionController> keyButtonControllers = new Dictionary<int, KeyButtonActionController>();
+        private static readonly Dictionary<string, KeyButtonActionController> keyButtonControllers = new Dictionary<string, KeyButtonActionController>();
+
+        private static string MakeKbcDictKey(int device, string actionName)
+        {
+            return device + ":" + (string.IsNullOrEmpty(actionName) ? "<default>" : actionName);
+        }
 
         private static KeyButtonActionController GetOrCreateKeyButtonController(int device, KeyButtonActionController.Mode mode, string actionName = null)
         {
@@ -223,10 +229,11 @@ namespace DS4Windows
             {
                 lock (keyButtonControllerLock)
                 {
-                    if (!keyButtonControllers.TryGetValue(device, out KeyButtonActionController inst) || inst == null)
+                    string dictKey = MakeKbcDictKey(device, actionName ?? "<mapping>");
+                    if (!keyButtonControllers.TryGetValue(dictKey, out KeyButtonActionController inst) || inst == null)
                     {
                         inst = new KeyButtonActionController(device, mode, actionName ?? "<mapping>");
-                        keyButtonControllers[device] = inst;
+                        keyButtonControllers[dictKey] = inst;
                     }
                     return inst;
                 }
@@ -240,10 +247,12 @@ namespace DS4Windows
             {
                 lock (keyButtonControllerLock)
                 {
-                    if (!keyButtonControllers.TryGetValue(device, out KeyButtonActionController inst) || inst == null)
+                    string name = sa?.name ?? "<sa>";
+                    string dictKey = MakeKbcDictKey(device, name);
+                    if (!keyButtonControllers.TryGetValue(dictKey, out KeyButtonActionController inst) || inst == null)
                     {
-                        inst = new KeyButtonActionController(device, sa, sa?.name ?? "<sa>");
-                        keyButtonControllers[device] = inst;
+                        inst = new KeyButtonActionController(device, sa, name);
+                        keyButtonControllers[dictKey] = inst;
                     }
                     return inst;
                 }
@@ -3730,6 +3739,60 @@ namespace DS4Windows
             }
         }
 
+        // Helper: Dispatch SpecialAction trigger established via KeyButtonActionController if available.
+        // If a fallback action is provided it will be executed when no controller exists.
+        private static bool TryDispatchSATriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler, Action fallback = null)
+        {
+            try
+            {
+                var kbc = GetOrCreateKeyButtonController(device, action);
+                if (kbc != null)
+                {
+                    kbc.OnSATriggerEstablished(logicalValue, nativeValue, useScanCode, outputKBMHandler, true);
+                    return true;
+                }
+                else
+                {
+                    fallback?.Invoke();
+                    if (fallback == null)
+                        AppLogger.LogTrace($"SpecialAction {(action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch: no KeyButtonActionController available for device={device}, action={action.name}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"SpecialAction {(action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch failed: {ex}");
+                return false;
+            }
+        }
+
+        // Helper: Dispatch SpecialAction trigger release via KeyButtonActionController if available.
+        // If a fallback action is provided it will be executed when no controller exists.
+        private static bool TryDispatchSATriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler, Action fallback = null)
+        {
+            try
+            {
+                var kbc = GetOrCreateKeyButtonController(device, action);
+                if (kbc != null)
+                {
+                    kbc.OnSATriggerReleased(logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                    return true;
+                }
+                else
+                {
+                    fallback?.Invoke();
+                    if (fallback == null)
+                        AppLogger.LogTrace($"SpecialAction {(action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch: no KeyButtonActionController available for device={device}, action={action.name}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"SpecialAction {(action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch failed: {ex}");
+                return false;
+            }
+        }
+
         private static void ProcessTwoStageTrigger(int device, DS4State cState, byte triggerValue, byte triggerRawValue,
             ref DS4ControlSettings inputSoftPull, ref DS4ControlSettings inputFullPull, TriggerOutputSettings outputSettings,
             TwoStageTriggerMappingData twoStageData, out DS4ControlSettings outputSoftPull, out DS4ControlSettings outputFullPull)
@@ -5214,11 +5277,7 @@ namespace DS4Windows
                                             {
                                                 try
                                                 {
-                                                    var kbc = GetOrCreateKeyButtonController(device, action);
-                                                    if (kbc != null)
-                                                        kbc.OnSATriggerEstablished((ushort)btnVal, (uint)btnVal, false, outputKBMHandler, true);
-                                                    else
-                                                        outputfieldMapping.buttons[(int)xboxControl] = true;
+                                                    TryDispatchSATriggerEstablished(action, device, (ushort)btnVal, (uint)btnVal, false, outputKBMHandler, () => outputfieldMapping.buttons[(int)xboxControl] = true);
                                                 }
                                                 catch
                                                 {
@@ -5276,25 +5335,10 @@ namespace DS4Windows
                                                     pressedonce[key] = true;
                                                     kp.current.toggleCount++;
                                                     AppLogger.LogDebug($"SpecialAction KEY toggle-flipped: name={action.name}, device={device}, key={key}, toggle={kp.current.toggle}, debounce_ms={(double)deltaTicks / TimeSpan.TicksPerMillisecond}");
-                                                    try
-                                                    {
-                                                        var kbc = GetOrCreateKeyButtonController(device, action);
-                                                        if (kbc != null)
-                                                        {
-                                                            if (kp.current.toggle)
-                                                                kbc.OnSATriggerEstablished(key, deviceState[device].nativeKeyAlias[key], kp.current.scanCodeCount != 0, outputKBMHandler, true);
-                                                            else
-                                                                kbc.OnSATriggerReleased(key, deviceState[device].nativeKeyAlias[key], kp.current.scanCodeCount != 0, outputKBMHandler);
-                                                        }
-                                                        else
-                                                        {
-                                                            AppLogger.LogTrace($"SpecialAction KEY toggle dispatch: no KeyButtonActionController available for device={device}, action={action.name}");
-                                                        }
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        AppLogger.LogTrace($"SpecialAction KEY toggle dispatch failed: {ex}");
-                                                    }
+                                                    if (kp.current.toggle)
+                                                        TryDispatchSATriggerEstablished(action, device, key, deviceState[device].nativeKeyAlias[key], kp.current.scanCodeCount != 0, outputKBMHandler);
+                                                    else
+                                                        TryDispatchSATriggerReleased(action, device, key, deviceState[device].nativeKeyAlias[key], kp.current.scanCodeCount != 0, outputKBMHandler);
                                                 }
                                                 else
                                                 {
@@ -5309,11 +5353,7 @@ namespace DS4Windows
                                             {
                                                 uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
                                                 bool useScan = action.keyType.HasFlag(DS4KeyType.ScanCode);
-                                                var kbc = GetOrCreateKeyButtonController(device, action);
-                                                if (kbc != null)
-                                                    kbc.OnSATriggerEstablished(key, nativeKeyToUse, useScan, outputKBMHandler, true);
-                                                else
-                                                    AppLogger.LogTrace($"SpecialAction KEY press dispatch: no KeyButtonActionController available for device={device}, action={action.name}");
+                                                TryDispatchSATriggerEstablished(action, device, key, nativeKeyToUse, useScan, outputKBMHandler);
                                                 AppLogger.LogDebug($"SpecialAction KEY synthetic-press delegated to KeyButtonActionController: name={action.name}, device={device}, key={key}");
                                             }
                                             catch (Exception ex)
@@ -5430,6 +5470,31 @@ namespace DS4Windows
                         }
                         else
                         {
+                            // Handle Key-type (no uTrigger) release here so Press-mode keys
+                            // receive an explicit release call via KeyButtonActionController.
+                            if (action.typeID == SpecialAction.ActionTypeId.Key)
+                            {
+                                // Only handle single-trigger Key special actions (no uTrigger entries)
+                                if (action.uTrigger.Count == 0 && actionDone[index].dev[device] && untriggerindex[device] == index)
+                                {
+                                    actionFound = true;
+                                    actionDone[index].dev[device] = false;
+                                    untriggerindex[device] = -1;
+                                    ushort key;
+                                    ushort.TryParse(action.details, out key);
+                                    try
+                                    {
+                                        uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
+                                        bool useScanRel = action.keyType.HasFlag(DS4KeyType.ScanCode);
+                                        TryDispatchSATriggerReleased(action, device, key, nativeKeyToUse, useScanRel, outputKBMHandler);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppLogger.LogTrace($"SpecialAction KEY untrigger dispatch failed: {ex}");
+                                    }
+                                }
+                            }
+
                             if (action.typeID == SpecialAction.ActionTypeId.BatteryCheck)
                             {
                                 actionFound = true;
@@ -5503,11 +5568,7 @@ namespace DS4Windows
                                         {
                                             uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
                                             bool useScanRel = action.keyType.HasFlag(DS4KeyType.ScanCode);
-                                            var kbc = GetOrCreateKeyButtonController(device, action);
-                                            if (kbc != null)
-                                                kbc.OnSATriggerReleased(key, nativeKeyToUse, useScanRel, outputKBMHandler);
-                                            else
-                                                AppLogger.LogTrace($"SpecialAction KEY release dispatch: no KeyButtonActionController available for device={device}, action={action.name}");
+                                            TryDispatchSATriggerReleased(action, device, key, nativeKeyToUse, useScanRel, outputKBMHandler);
                                         }
                                         catch (Exception ex)
                                         {
@@ -5522,11 +5583,7 @@ namespace DS4Windows
                                             {
                                                 try
                                                 {
-                                                    var kbc = GetOrCreateKeyButtonController(device, action);
-                                                    if (kbc != null)
-                                                        kbc.OnSATriggerReleased((ushort)btnVal2, (uint)btnVal2, false, outputKBMHandler);
-                                                    else
-                                                        AppLogger.LogTrace($"SpecialAction BUTTON untrigger dispatch: no KeyButtonActionController available for device={device}, action={action.name}");
+                                                    TryDispatchSATriggerReleased(action, device, (ushort)btnVal2, (uint)btnVal2, false, outputKBMHandler);
                                                 }
                                                 catch (Exception ex)
                                                 {
