@@ -5232,13 +5232,21 @@ namespace DS4Windows
                                         }
                                         else
                                         {
-                                            if (action.keyType.HasFlag(DS4KeyType.ScanCode))
-                                                kp.current.scanCodeCount++;
-                                            else
-                                                kp.current.vkCount++;
-                                            AppLogger.LogDebug($"SpecialAction KEY synthetic-press queued: name={action.name}, device={device}, key={key}, vkCount={kp.current.vkCount}, scCount={kp.current.scanCodeCount}");
+                                            // Delegate Press-mode synthetic sends to PressActionController (minimal, preserve behavior)
+                                            try
+                                            {
+                                                uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
+                                                bool useScan = action.keyType.HasFlag(DS4KeyType.ScanCode);
+                                                PressActionController.OnTriggerOn(device, key, nativeKeyToUse, useScan, outputKBMHandler, true);
+                                                AppLogger.LogDebug($"SpecialAction KEY synthetic-press delegated to PressActionController: name={action.name}, device={device}, key={key}");
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                AppLogger.LogTrace($"PressActionController.OnTriggerOn failed: {ex}");
+                                            }
                                         }
 
+                                        // keep repeatCount for compatibility with existing logic
                                         kp.current.repeatCount++;
                                     }
                                     else if (action.keyType.HasFlag(DS4KeyType.ScanCode))
@@ -5413,10 +5421,16 @@ namespace DS4Windows
                                     untriggerindex[device] = -1;
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
-                                    if (action.keyType.HasFlag(DS4KeyType.ScanCode))
-                                        outputKBMHandler.PerformKeyReleaseAlt(key);
-                                    else
-                                        outputKBMHandler.PerformKeyRelease(key);
+                                    try
+                                    {
+                                        uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
+                                        bool useScanRel = action.keyType.HasFlag(DS4KeyType.ScanCode);
+                                        PressActionController.OnTriggerOff(device, key, nativeKeyToUse, useScanRel, outputKBMHandler);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppLogger.LogTrace($"PressActionController.OnTriggerOff failed: {ex}");
+                                    }
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.XboxGameDVR || action.typeID == SpecialAction.ActionTypeId.MultiAction)
