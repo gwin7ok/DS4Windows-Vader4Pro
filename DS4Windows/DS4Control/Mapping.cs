@@ -1251,7 +1251,7 @@ namespace DS4Windows
                                 // Use ToggleRepeatController for deterministic toggle-driven press+repeat
                                 AppLogger.LogTrace($"SYNTHETIC TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
-                                ToggleRepeatController.OnToggleOn(device, kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                ToggleActionController.OnToggleOn(device, kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
                                 // Clear pending after honoring it and mark last send time
                                 gkp.current.pending = false;
                                 gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
@@ -1275,7 +1275,7 @@ namespace DS4Windows
                                 long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
                                 AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
-                                ToggleRepeatController.OnToggleOff(device, kvpKey, nativeKey, true, outputKBMHandler);
+                                ToggleActionController.OnToggleOff(device, kvpKey, nativeKey, true, outputKBMHandler);
                                     // Mark pending cleared and update last send time
                                     gkp.current.pending = false;
                                     gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
@@ -1306,7 +1306,7 @@ namespace DS4Windows
                             {
                                 AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending}");
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-                                ToggleRepeatController.OnToggleOff(device, kvpKey, nativeKey, false, outputKBMHandler);
+                                ToggleActionController.OnToggleOff(device, kvpKey, nativeKey, false, outputKBMHandler);
                                     // Mark pending cleared and update last send time
                                     gkp.current.pending = false;
                                     gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
@@ -1475,7 +1475,7 @@ namespace DS4Windows
             // Send possible virtual events to system. Only used for FakerInput atm.
             // SendInput version does nothing
             // Update toggle-driven repeat controller so it can emit repeats using stored handlers
-            ToggleRepeatController.Update();
+            ToggleActionController.Update();
             outputKBMHandler.Sync();
         }
 
