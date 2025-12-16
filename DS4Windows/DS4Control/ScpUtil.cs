@@ -2899,6 +2899,63 @@ namespace DS4Windows
                 // UI更新通知
                 AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");
                 RaiseSelectedProfileChanged(device, profileName);
+
+                // Set controller activation flags based on profile SpecialAction settings.
+                try
+                {
+                    bool foundToggle = false;
+                    bool foundPress = false;
+                    var profileActionNames = getProfileActions(device);
+                    if (profileActionNames != null)
+                    {
+                        foreach (var actionName in profileActionNames)
+                        {
+                            try
+                            {
+                                var sa = GetProfileAction(device, actionName);
+                                if (sa == null) continue;
+                                if (sa.typeID == SpecialAction.ActionTypeId.Key || sa.typeID == SpecialAction.ActionTypeId.Button)
+                                {
+                                    if (sa.KeyButtonSwitchMode.HasValue)
+                                    {
+                                        if (sa.KeyButtonSwitchMode.Value == SpecialAction.KeyButtonSwitchModeEnum.Toggle) foundToggle = true; else foundPress = true;
+                                    }
+                                    else
+                                    {
+                                        // fall back to existing heuristic: keyType flag then default to Press
+                                        bool isToggle = false;
+                                        try { isToggle = sa.keyType.HasFlag(DS4KeyType.Toggle); } catch { }
+                                        if (isToggle) foundToggle = true; else foundPress = true;
+                                    }
+                                }
+                            }
+                            catch { }
+                            if (foundToggle && foundPress) break;
+                        }
+                    }
+
+                    if (foundToggle)
+                    {
+                        ToggleActionController.SetActive(device, true);
+                        PressActionController.SetActive(device, false);
+                    }
+                    else if (foundPress)
+                    {
+                        ToggleActionController.SetActive(device, false);
+                        PressActionController.SetActive(device, true);
+                    }
+                    else
+                    {
+                        ToggleActionController.SetActive(device, false);
+                        PressActionController.SetActive(device, false);
+                    }
+
+                    AppLogger.LogDebug($"ApplyProfile: Controller activation set ToggleHasAny={ToggleActionController.HasAnyActive()} PressHasAny={PressActionController.HasAnyActive()}");
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogTrace($"ApplyProfile: Controller activation check failed: {ex}");
+                }
             }
             else
             {
@@ -10715,6 +10772,8 @@ namespace DS4Windows
     {
         public enum ActionTypeId { None, Key, Program, Profile, Macro, DisconnectBT, BatteryCheck, MultiAction, XboxGameDVR, SASteeringWheelEmulationCalibrate, GyroCalibrate, Button }
 
+        public enum KeyButtonSwitchModeEnum { Press, Toggle }
+
         public string name;
         public List<DS4Controls> trigger = new List<DS4Controls>();
         public string type;
@@ -10726,6 +10785,8 @@ namespace DS4Windows
         public string ucontrols;
         public double delayTime = 0;
         public string extra;
+        // null when not applicable (type != Key && type != Button) or not set
+        public KeyButtonSwitchModeEnum? KeyButtonSwitchMode = null;
         public bool pressRelease = false;
         public DS4KeyType keyType;
         public bool tappedOnce = false;
@@ -10760,9 +10821,17 @@ namespace DS4Windows
                     string[] exts = extras.Split('\n');
                     // exts[0] is the SwitchMode value (new). Expected values: "Press" or "Toggle".
                     string switchMode = exts.Length > 0 ? exts[0] : string.Empty;
-                    if (!string.IsNullOrEmpty(switchMode) && switchMode.Equals("Toggle", StringComparison.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(switchMode))
                     {
-                        keyType |= DS4KeyType.Toggle;
+                        if (switchMode.Equals("Toggle", StringComparison.OrdinalIgnoreCase))
+                        {
+                            KeyButtonSwitchMode = KeyButtonSwitchModeEnum.Toggle;
+                            keyType |= DS4KeyType.Toggle;
+                        }
+                        else if (switchMode.Equals("Press", StringComparison.OrdinalIgnoreCase))
+                        {
+                            KeyButtonSwitchMode = KeyButtonSwitchModeEnum.Press;
+                        }
                     }
 
                     if (exts.Length > 1 && !string.IsNullOrEmpty(exts[1]))
@@ -10781,6 +10850,20 @@ namespace DS4Windows
             {
                 typeID = ActionTypeId.Button;
                 this.details = details; // store button id as details
+                // Button may also carry SwitchMode in extras first line
+                if (!string.IsNullOrEmpty(extras))
+                {
+                    extra = extras;
+                    string[] exts = extras.Split('\n');
+                    string switchMode = exts.Length > 0 ? exts[0] : string.Empty;
+                    if (!string.IsNullOrEmpty(switchMode))
+                    {
+                        if (switchMode.Equals("Toggle", StringComparison.OrdinalIgnoreCase))
+                            KeyButtonSwitchMode = KeyButtonSwitchModeEnum.Toggle;
+                        else if (switchMode.Equals("Press", StringComparison.OrdinalIgnoreCase))
+                            KeyButtonSwitchMode = KeyButtonSwitchModeEnum.Press;
+                    }
+                }
             }
             else if (type == "Program")
             {

@@ -354,6 +354,27 @@ namespace DS4WinWPF
             AppLogger.LogInfo($"System Architecture: {(Environment.Is64BitOperatingSystem ? "x64" : "x86")}");
             AppLogger.LogInfo("Logger created");
 
+            // Startup summary: read from latest_build_summary.txt in the executable folder
+            try
+            {
+                string fp = Path.Combine(AppContext.BaseDirectory, "latest_build_summary.txt");
+                fp = Path.GetFullPath(fp);
+                if (File.Exists(fp))
+                {
+                    string summary = File.ReadAllText(fp).Trim();
+                    string single = summary.Replace(Environment.NewLine, " ").Replace('\n', ' ');
+                    AppLogger.LogDebug($"Startup summary: {single}");
+                }
+                else
+                {
+                    AppLogger.LogDebug("Startup summary: (no summary file found in executable folder)");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"Startup summary read failed: {ex}");
+            }
+
             if (!firstRun && !readAppConfig)
             {
                 AppLogger.LogInfo($@"Profiles.xml not read at location ${DS4Windows.Global.appdatapath}\Profiles.xml. Using default app settings");

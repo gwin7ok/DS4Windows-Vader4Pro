@@ -442,6 +442,13 @@
                         </TabItem>
                         <TabItem x:Name="pressKetActTab" Header="Press Key">
                             <StackPanel Margin="{StaticResource spaceMargin}">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6" VerticalAlignment="Center">
+                                    <Label Content="Switch Mode:" VerticalAlignment="Center" />
+                                    <ComboBox Width="120" Margin="8,0,0,0" SelectedValue="{Binding SwitchMode, Mode=TwoWay}" SelectedValuePath="Content">
+                                        <ComboBoxItem Content="Press" />
+                                        <ComboBoxItem Content="Toggle" />
+                                    </ComboBox>
+                                </StackPanel>
                                 <Button x:Name="pressKeySelectBtn" Content="{Binding DescribeText,FallbackValue={lex:Loc SpecialActionEdit.SelectKey}}"
                                         Margin="{StaticResource spaceMargin}" Click="PressKeySelectBtn_Click" />
                                 <!-- Unload trigger UI removed: Key-type SpecialActions now use single-trigger toggle by design -->

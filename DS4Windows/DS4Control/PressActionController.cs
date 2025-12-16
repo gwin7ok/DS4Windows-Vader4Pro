@@ -5,7 +5,7 @@ using DS4Windows.DS4Control;
 namespace DS4Windows
 {
     // Minimal PressActionController: manage Press-mode lifecycle and optional repeat.
-    // OnTriggerOn -> send press immediately; OnTriggerOff -> send release.
+    // OnPressDown -> send press immediately; OnPressUp -> send release.
     // Update() handles optional repeat when enableRepeat==true.
     public static class PressActionController
     {
@@ -30,8 +30,13 @@ namespace DS4Windows
 
         private static string MakeKey(int device, ushort kvpKey) => device + ":" + kvpKey;
 
-        public static void OnTriggerOn(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler, bool enableRepeat = false)
+        public static void OnPressDown(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler, bool enableRepeat = false)
         {
+            if (!IsActive(device))
+            {
+                AppLogger.LogTrace($"PressActionController ignored OnPressDown device={device} kvpKey={kvpKey} (controller inactive)");
+                return;
+            }
             var key = MakeKey(device, kvpKey);
             var now = DateTime.UtcNow.Ticks;
             if (!entries.TryGetValue(key, out Entry e))
@@ -56,10 +61,16 @@ namespace DS4Windows
                 }
             }
             e.enableRepeat = enableRepeat;
+            // Do not change IsActive here; activation is controlled by profile application.
         }
 
-        public static void OnTriggerOff(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)
+        public static void OnPressUp(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)
         {
+            if (!IsActive(device))
+            {
+                AppLogger.LogTrace($"PressActionController ignored OnPressUp device={device} kvpKey={kvpKey} (controller inactive)");
+                return;
+            }
             var key = MakeKey(device, kvpKey);
             if (entries.TryGetValue(key, out Entry e))
             {
@@ -81,16 +92,19 @@ namespace DS4Windows
                 // Ensure any lingering timing is reset
                 try { SyntheticDispatcher.ResetKeyTiming(device, kvpKey); } catch { }
             }
+                // Do not change IsActive here; activation is controlled by profile application.
         }
 
         public static void Update()
         {
+            if (!HasAnyActive()) return;
             if (entries.Count == 0) return;
             var now = DateTime.UtcNow.Ticks;
             var toRepeat = new List<Entry>();
             foreach (var kv in entries)
             {
                 var e = kv.Value;
+                if (!IsActive(e.device)) continue;
                 if (!e.isPressed) continue;
                 if (!e.enableRepeat) continue;
                 long sinceFirstMs = (now - e.firstPressUtcTicks) / TimeSpan.TicksPerMillisecond;
@@ -112,6 +126,16 @@ namespace DS4Windows
             }
         }
 
+        private static readonly HashSet<int> activeDevices = new HashSet<int>();
+
+        public static bool IsActive(int device) => activeDevices.Contains(device);
+
+        public static bool HasAnyActive() => activeDevices.Count > 0;
+
+        public static void SetActive(int device, bool active)
+        {
+            if (active) activeDevices.Add(device); else activeDevices.Remove(device);
+        }
         public static void ClearKeyEntries(ushort kvpKey)
         {
             var remove = new List<string>();
@@ -122,6 +146,8 @@ namespace DS4Windows
             foreach (var k in remove) entries.Remove(k);
             // Reset timing in global/device states as well
             try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
+            // Update active flag
+            // Do not change IsActive here; activation is controlled by profile application.
         }
     }
 }

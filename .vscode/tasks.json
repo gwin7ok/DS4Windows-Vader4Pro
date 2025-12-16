@@ -39,7 +39,6 @@
             ],
             "group": {
                 "kind": "build",
-                "isDefault": true
             }
         }
         ,
@@ -88,6 +87,23 @@
                 "reveal": "always",
                 "panel": "shared"
             }
+        },
+                {
+            "label": "Build Debug",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "./DS4Windows/DS4WinWPF.csproj",
+                "-c", "Debug",
+                "/p:platform=x64",
+                "-o", "./DS4Windows/bin/x64/Debug"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
+
     ]
 }

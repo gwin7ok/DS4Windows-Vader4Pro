@@ -28,6 +28,11 @@ namespace DS4Windows
 
         public static void OnToggleOn(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)
         {
+            if (!IsActive(device))
+            {
+                AppLogger.LogTrace($"ToggleActionController ignored OnToggleOn device={device} kvpKey={kvpKey} (controller inactive)");
+                return;
+            }
             var key = MakeKey(device, kvpKey);
             var now = DateTime.UtcNow.Ticks;
             if (!entries.TryGetValue(key, out Entry e))
@@ -45,20 +50,28 @@ namespace DS4Windows
 
         public static void OnToggleOff(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)
         {
+            if (!IsActive(device))
+            {
+                AppLogger.LogTrace($"ToggleActionController ignored OnToggleOff device={device} kvpKey={kvpKey} (controller inactive)");
+                return;
+            }
             var key = MakeKey(device, kvpKey);
             // send single release via dispatcher
             SyntheticDispatcher.SendRelease(device, kvpKey, nativeKey, useScanCode, handler);
             entries.Remove(key);
+            // Do not change IsActive here; activation controlled by profile application.
         }
 
         public static void Update()
         {
+            if (!HasAnyActive()) return;
             if (entries.Count == 0) return;
             var now = DateTime.UtcNow.Ticks;
             var toSend = new List<Entry>();
             foreach (var kv in entries)
             {
                 var e = kv.Value;
+                if (!IsActive(e.device)) continue;
                 long sinceFirstMs = (now - e.firstPressUtcTicks) / TimeSpan.TicksPerMillisecond;
                 long sinceLastMs = (now - e.lastRepeatUtcTicks) / TimeSpan.TicksPerMillisecond;
                 if (sinceFirstMs >= InitialDelayMs && sinceLastMs >= RepeatIntervalMs)
@@ -82,6 +95,18 @@ namespace DS4Windows
             }
             foreach (var k in remove) entries.Remove(k);
             try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
+            // Do not change IsActive here; activation controlled by profile application.
+        }
+
+        private static readonly HashSet<int> activeDevices = new HashSet<int>();
+
+        public static bool IsActive(int device) => activeDevices.Contains(device);
+
+        public static bool HasAnyActive() => activeDevices.Count > 0;
+
+        public static void SetActive(int device, bool active)
+        {
+            if (active) activeDevices.Add(device); else activeDevices.Remove(device);
         }
     }
 }

@@ -22,16 +22,16 @@
 - `ToggleActionController`（旧 `ToggleRepeatController` の拡張）
   - 役割: Toggle モードのライフサイクル（トリガ成立 → ON/OFF）管理と、ON 時の繰り返し送出を担当する。
   - API:
-    - `OnTriggerOn(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)`
-    - `OnTriggerOff(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)`
+    - `OnToggleOn(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)`
+    - `OnToggleOff(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)`
     - `Update()` — 主ループから周期的に呼ぶ（繰り返し送出）。
     - `ClearKeyEntries(ushort kvpKey)` — キーに紐づく内部エントリを消去。
 
 - `PressActionController`（新設）
   - 役割: Press モードのトリガ成立中の送出（初回押下、オプションでの長押し繰り返し）を管理する。Toggle と異なり「トリガが押されている間」を基準に動作する。
   - API（Toggle と整合）:
-    - `OnTriggerOn(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler, bool enableRepeat)`
-    - `OnTriggerOff(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)`
+    - `OnPressDown(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler, bool enableRepeat)`
+    - `OnPressUp(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)`
     - `Update()` — 主ループから周期的に呼ぶ。
     - `ClearKeyEntries(ushort kvpKey)`
 
@@ -52,16 +52,30 @@
 
 ## 動作仕様（要点）
 - Mapping（トリガ判定）は、該当 SpecialAction の mode を見て以下を呼ぶ:
-  - Toggle: `ToggleActionController.OnTriggerOn/Off`
-  - Press: `PressActionController.OnTriggerOn/Off`
+  - Toggle: `ToggleActionController.OnToggleOn/OnToggleOff`
+  - Press: `PressActionController.OnPressDown/OnPressUp`
 - Controller は送出タイミングを判断し、実際の送出は `SyntheticDispatcher` に委譲する。
 - Toggle ON 状態では `ToggleActionController` が `SyntheticDispatcher.SendPress` を継続的に呼ぶ（内部で初期遅延と繰り返し間隔を管理）。
 - Press モードでは `PressActionController` がトリガ押下中に SendPress を行い、必要であれば独自のリピート（InitialDelay/RepeatInterval）を行う。
 - 両者とも `ClearKeyEntries` を提供し、外部から既存のエントリ／タイミングを強制リセットできる。
 
+## 排他性と実装ガイドライン
+
+設計上、同一キーに対して同時に複数のコントローラが継続的送信（長押し／トグル繰り返し）を行ってはならない。以下を実装ルールとして採用します。
+
+- **排他決定は Mapping が行う**: トリガ判定時に SpecialAction の `mode`（Toggle または Press）を見て、どちらのコントローラを起動するかを決定する。Mapping は常に一方のコントローラのみを呼ぶ。
+- **コントローラ間での呼び出し禁止**: `PressActionController` が `ToggleActionController` の継続送信処理を呼ぶこと、またはその逆は行わない。各コントローラは独立して `SyntheticDispatcher.SendPress/SendRelease` を呼ぶ責務を持つ。
+- **外部強制リセット**: Mapping はモード切替やトリガ状態変化の際に、選択しなかった側のコントローラに対して `ClearKeyEntries(kvpKey)` を呼び、残存エントリやタイミングを必ずクリアする。
+- **SyntheticDispatcher は中立的**: `SyntheticDispatcher` は単純な送出とタイミング更新を行い、どのコントローラが呼んだかを考慮しない。排他ロジックはコントローラ/Mapping 側に置く。
+
+実装のヒント:
+- Mapping の呼び出し直前で `ToggleActionController.ClearKeyEntries(kvpKey)` と `PressActionController.ClearKeyEntries(kvpKey)` の双方を呼ぶのではなく、"選択された" コントローラだけを呼ぶ前に**未選択側だけを**クリアする。これにより race 条件や二重送信を防げる。
+- オプションとしてランタイム検査を入れることもできる（デバッグビルドのみ、キーごとの現在のコントローラ所有者を追跡して不整合をログ出力）。ただし常時トラッキングは複雑化するため最小限に留めること。
+
+
 ## 移行計画（段階的）
 1. `SyntheticDispatcher` の最小実装を追加（ラッパ: SendPress/SendRelease/ResetKeyTiming）。
-2. `PressActionController` を最小実装（OnTriggerOn→即時 SendPress、OnTriggerOff→SendRelease、Update no-op）として Mapping の Press パスへ差し替える。
+2. `PressActionController` を最小実装（OnPressDown→即時 SendPress、OnPressUp→SendRelease、Update no-op）として Mapping の Press パスへ差し替える。
 3. `ToggleActionController` を既存コードから移行し、API を整える。
 4. deviceState をモード別に分離し、`Commit()` のマージロジックを段階的に簡素化する。
 5. `pressedonce` を per-action timestamp に置き換え、`ShouldClearPressedOnce` を簡潔化。
