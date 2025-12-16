@@ -5303,7 +5303,12 @@ namespace DS4Windows
                                 {
                                     LogActionDoneCountOnTrigger(index, action, device, "Key");
                                     actionDone[index].dev[device] = true;
-                                    untriggerindex[device] = index;
+                                    // For Toggle-type SpecialAction keys we do NOT register an untriggerindex here
+                                    // because toggle off/on is driven by successive triggers, not by physical release.
+                                    if (!action.keyType.HasFlag(DS4KeyType.Toggle))
+                                        untriggerindex[device] = index;
+                                    else
+                                        untriggerindex[device] = -1;
                                     // For Key actions we keep single-trigger toggle behavior only;
                                     // do not register an untrigger action here.
                                     ushort key;

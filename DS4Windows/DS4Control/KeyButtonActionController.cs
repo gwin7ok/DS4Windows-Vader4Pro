@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using DS4Windows.DS4Control;
 
 namespace DS4Windows
 {
@@ -69,35 +72,64 @@ namespace DS4Windows
             void Clear(ushort kvpKey);
         }
 
-        // Toggle implementation: per-instance management of toggle state and repeat (minimal)
+        // Toggle implementation: per-instance management of toggle state and repeat using RepeatHelper
         private class ToggleImpl : IKeyController
         {
             private readonly int device;
-            private readonly Dictionary<ushort, bool> states = new Dictionary<ushort, bool>();
+            private readonly Dictionary<ushort, RepeatHelper> repeaters = new Dictionary<ushort, RepeatHelper>();
+            private readonly HashSet<ushort> states = new HashSet<ushort>();
             public ToggleImpl(int device) { this.device = device; }
 
             public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
             {
-                if (!states.TryGetValue(kvpKey, out bool isOn) || !isOn)
+                if (!states.Contains(kvpKey))
                 {
-                    // Toggle on
-                    states[kvpKey] = true;
+                    // Toggle on: record state, send initial press and start repeating immediately
+                    states.Add(kvpKey);
                     try { SyntheticDispatcher.SendPress(device, kvpKey, nativeKey, useScanCode, handler); } catch { }
+                    try
+                    {
+                        var rep = new RepeatHelper(device, kvpKey, nativeKey == 0 ? SyntheticDispatcher.ResolveNativeKey(kvpKey) : nativeKey, useScanCode, handler);
+                        repeaters[kvpKey] = rep;
+                    }
+                    catch { }
                 }
             }
 
             public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
             {
-                if (states.TryGetValue(kvpKey, out bool isOn) && isOn)
+                if (states.Contains(kvpKey))
                 {
-                    try { SyntheticDispatcher.SendRelease(device, kvpKey, nativeKey, useScanCode, handler); } catch { }
-                    states[kvpKey] = false;
+                    // Stop repeating and send single release
+                    try
+                    {
+                        if (repeaters.TryGetValue(kvpKey, out RepeatHelper rep))
+                        {
+                            rep.Stop();
+                            repeaters.Remove(kvpKey);
+                        }
+                        else
+                        {
+                            SyntheticDispatcher.SendRelease(device, kvpKey, nativeKey, useScanCode, handler);
+                        }
+                    }
+                    catch { }
+                    states.Remove(kvpKey);
                 }
             }
 
             public void Clear(ushort kvpKey)
             {
-                if (states.ContainsKey(kvpKey)) states.Remove(kvpKey);
+                if (states.Contains(kvpKey)) states.Remove(kvpKey);
+                try
+                {
+                    if (repeaters.TryGetValue(kvpKey, out RepeatHelper rep))
+                    {
+                        rep.Stop();
+                        repeaters.Remove(kvpKey);
+                    }
+                }
+                catch { }
                 try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
             }
         }
@@ -112,6 +144,8 @@ namespace DS4Windows
                 public uint nativeKey;
                 public bool useScanCode;
                 public DS4Windows.DS4Control.VirtualKBMBase handler;
+                public RepeatHelper repeater;
+                public CancellationTokenSource delayCts;
             }
             private readonly Dictionary<ushort, Entry> entries = new Dictionary<ushort, Entry>();
 
@@ -129,6 +163,26 @@ namespace DS4Windows
                     if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
                     e.isPressed = true;
                     try { SyntheticDispatcher.SendPress(device, kvpKey, e.nativeKey, e.useScanCode, e.handler); } catch { }
+
+                    // Start delayed creation of repeater after 100ms for press-repeat semantics
+                    try
+                    {
+                        e.delayCts = new CancellationTokenSource();
+                        var localEntry = e;
+                        Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await Task.Delay(100, localEntry.delayCts.Token).ConfigureAwait(false);
+                                if (localEntry.delayCts.IsCancellationRequested) return;
+                                // create repeater that starts immediate repeating at 50ms
+                                localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler);
+                            }
+                            catch (OperationCanceledException) { }
+                            catch { }
+                        });
+                    }
+                    catch { }
                 }
             }
 
@@ -136,7 +190,22 @@ namespace DS4Windows
             {
                 if (entries.TryGetValue(kvpKey, out Entry e) && e.isPressed)
                 {
-                    try { SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey != 0 ? e.nativeKey : nativeKey, useScanCode, handler); } catch { }
+                    try
+                    {
+                        // cancel pending delayed repeater creation
+                        try { e.delayCts?.Cancel(); } catch { }
+                        // stop repeater if running; Stop() sends single release
+                        if (e.repeater != null)
+                        {
+                            e.repeater.Stop();
+                            e.repeater = null;
+                        }
+                        else
+                        {
+                            SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey != 0 ? e.nativeKey : nativeKey, useScanCode, handler);
+                        }
+                    }
+                    catch { }
                     entries.Remove(kvpKey);
                 }
                 else
@@ -147,7 +216,12 @@ namespace DS4Windows
 
             public void Clear(ushort kvpKey)
             {
-                if (entries.ContainsKey(kvpKey)) entries.Remove(kvpKey);
+                if (entries.TryGetValue(kvpKey, out Entry e))
+                {
+                    try { e.delayCts?.Cancel(); } catch { }
+                    try { e.repeater?.Stop(); } catch { }
+                    entries.Remove(kvpKey);
+                }
                 try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
             }
         }

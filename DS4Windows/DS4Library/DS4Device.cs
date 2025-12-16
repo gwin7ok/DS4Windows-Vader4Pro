@@ -170,6 +170,9 @@ namespace DS4Windows
 
     public class DS4Device
     {
+        // Indicates PostInit completed and output buffers (etc.) are initialized
+        protected volatile bool postInitDone = false;
+
         public class GyroMouseSens
         {
             public double mouseOffset = 0.2;
@@ -734,6 +737,9 @@ namespace DS4Windows
             //}
 
             sendOutputReport(true, true, false); // initialize the output report (don't force disconnect the gamepad on initialization even if writeData fails because some fake DS4 gamepads don't support writeData over BT)
+
+            // Mark PostInit complete so StartUpdate won't race with uninitialized buffers
+            postInitDone = true;
         }
 
         // TODO: Possibly remove method
@@ -844,6 +850,15 @@ namespace DS4Windows
         public virtual void StartUpdate()
         {
             this.inputReportErrorCount = 0;
+
+            // Ensure PostInit finished; wait briefly if needed to avoid race where StartUpdate
+            // runs before output buffers are initialized in PostInit.
+            int waited = 0;
+            while (!postInitDone && waited < 500)
+            {
+                Thread.Sleep(25);
+                waited += 25;
+            }
 
             if (ds4Input == null)
             {
@@ -1632,6 +1647,14 @@ namespace DS4Windows
             bool quitOutputThread = false;
             bool usingBT = conType == ConnectionType.BT;
 
+            // Defensive: output buffers should be initialized in PostInit.
+            // If they are not yet initialized (race or early call), log and skip to avoid NRE.
+            if (outputReport == null || outReportBuffer == null)
+            {
+                AppLogger.LogToGui($"sendOutputReport: output buffers not initialized (outputReport={(outputReport==null)}, outReportBuffer={(outReportBuffer==null)})", false);
+                return;
+            }
+
             // Some gamepads don't support lightbar and rumble, so no need to write out anything (writeOut always fails, so DS4Windows would accidentally force quit the gamepad connection).
             // If noOutputData featureSet flag is set then don't try to write out anything to the gamepad device.
             if ((this.featureSet & VidPidFeatureSet.NoOutputData) != 0)
@@ -1751,6 +1774,13 @@ namespace DS4Windows
             {
                 while (!exitOutputThread)
                 {
+                    // Defensive: if buffers are not initialized, wait briefly and retry
+                    if (outReportBuffer == null || outputReport == null)
+                    {
+                        Thread.Sleep(50);
+                        continue;
+                    }
+
                     lock (outReportBuffer)
                     {
                         outReportBuffer.CopyTo(outputReport, 0);
