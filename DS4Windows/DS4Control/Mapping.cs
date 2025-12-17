@@ -185,6 +185,15 @@ namespace DS4Windows
             catch { return null; }
         }
 
+            // Compatibility shims for legacy ActionDone initialization logic.
+            // These are intentionally simple wrappers that delegate to the new
+            // ActionManager-based model so callers that still reference the
+            // legacy symbols will build during the migration.
+            public static List<ActionState> actionDone = new List<ActionState>();
+            public static bool actionDoneInitialized = true;
+            public static readonly object actionDoneLock = new object();
+            public static int actionDoneCount { get { return GetActions()?.Count ?? 0; } }
+
         // Remove and destroy all per-device KeyButtonActionController instances for given device
         public static void ClearKeyButtonControllersForDevice(int device)
         {
@@ -915,14 +924,15 @@ namespace DS4Windows
         public static int[] fadetimer = new int[Global.MAX_DS4_CONTROLLER_COUNT] { 0, 0, 0, 0, 0, 0, 0, 0 };
         public static int[] prevFadetimer = new int[Global.MAX_DS4_CONTROLLER_COUNT] { 0, 0, 0, 0, 0, 0, 0, 0 };
         public static DS4Color[] lastColor = new DS4Color[Global.MAX_DS4_CONTROLLER_COUNT];
-        public static List<ActionState> actionDone = new List<ActionState>();
-        public static SpecialAction[] untriggeraction = new SpecialAction[Global.MAX_DS4_CONTROLLER_COUNT];
+        // Legacy `actionDone` list removed — per-action state now lives in ActionManager/ActionInstanceState.
+        // Per-device runtime state replacing legacy `untriggeraction`/`untriggerindex` globals
+        public static DeviceRuntimeState[] deviceRuntime = new DeviceRuntimeState[Global.MAX_DS4_CONTROLLER_COUNT]
+        {
+            new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState(),
+            new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState()
+        };
 
-        // ★新規追加: actionDone初期化状態管理
-        public static volatile bool actionDoneInitialized = false;
-        public static readonly object actionDoneLock = new object();
-        
-        // Helper: migrate actionDone usage to ActionManager-backed per-action state when available.
+        // Helper: query/set per-action `ActionDone` through ActionManager-backed per-action state.
         private static bool GetActionDone(int index, SpecialAction action, int device)
         {
             try
@@ -932,8 +942,6 @@ namespace DS4Windows
             }
             catch { }
 
-            if (index >= 0 && index < actionDone.Count && device >= 0 && device < Global.MAX_DS4_CONTROLLER_COUNT)
-                return actionDone[index].dev[device];
             return false;
         }
 
@@ -942,16 +950,10 @@ namespace DS4Windows
             try
             {
                 var st = ActionManager.GetStateFor(action, device);
-                if (st != null) { st.ActionDone = value; return; }
+                if (st != null) { st.ActionDone = value; }
             }
             catch { }
-
-            if (index >= 0 && index < actionDone.Count && device >= 0 && device < Global.MAX_DS4_CONTROLLER_COUNT)
-                actionDone[index].dev[device] = value;
         }
-        // Rate-limit logging for ActionDone size mismatch to avoid log flood
-        private static DateTime lastActionDoneMismatchLog = DateTime.MinValue;
-        private static readonly TimeSpan actionDoneMismatchLogInterval = TimeSpan.FromSeconds(1);
 
         // Determine whether it's safe to clear the pressedonce flag for given device/key.
         private static bool ShouldClearPressedOnce(int device, ushort key)
@@ -974,7 +976,7 @@ namespace DS4Windows
         }
         public static DateTime[] nowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
         public static DateTime[] oldnowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
-        public static int[] untriggerindex = new int[Global.MAX_DS4_CONTROLLER_COUNT] { -1, -1, -1, -1, -1, -1, -1, -1 };
+        // legacy `untriggerindex` removed; use `deviceRuntime[device].UntriggerIndex`
         public static DateTime[] oldnowKeyAct = new DateTime[Global.MAX_DS4_CONTROLLER_COUNT] { DateTime.MinValue,
             DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
 
@@ -4772,8 +4774,8 @@ namespace DS4Windows
         {
             try
             {
-                int count = actionDone?.Count ?? 0;
-                DS4Windows.AppLogger.LogDebug($"SpecialAction {context}: device={device}, name={(action != null ? action.name : "(null)" )}, index={index}, ActionDoneEntries={count}");
+                int count = GetActions()?.Count ?? 0;
+                DS4Windows.AppLogger.LogDebug($"SpecialAction {context}: device={device}, name={(action != null ? action.name : "(null)" )}, index={index}, ActionEntries={count}");
             }
             catch
             {
@@ -4788,74 +4790,12 @@ namespace DS4Windows
         /// 1. 完了チェック：10msごとに初期化完了を確認
         /// 2. 完了確認時：スペシャルアクション実行のためループを抜ける
         /// </summary>
-        private static async Task<bool> EnsureActionDoneInitialized()
+        private static Task<bool> EnsureActionDoneInitialized()
         {
-            const int maxRetries = 3;        // 最大3回リトライループ
-            const int maxWaitTimeMs = 500;   // 各回最大500ms待機
-            const int checkIntervalMs = 10;  // 10msごとに完了チェック
-
-            for (int retry = 0; retry < maxRetries; retry++)
-            {
-                // ★Step A: 完了チェック（ループ先頭での確認）
-                if (actionDoneInitialized)
-                {
-                    if (retry > 0)
-                        AppLogger.LogToGui($"ActionDone initialization confirmed on retry {retry}", false);
-                    return true; // ★完了確認→スペシャルアクション実行へ
-                }
-
-                if (retry == 0)
-                {
-                    AppLogger.LogToGui("Waiting for ActionDone list initialization to complete...", false);
-                }
-                else
-                {
-                    AppLogger.LogToGui($"ActionDone initialization retry {retry}/{maxRetries}...", false);
-                }
-
-                // ★Step B: 10msごとの完了チェック（最大1秒間）
-                int elapsedMs = 0;
-                while (elapsedMs < maxWaitTimeMs)
-                {
-                    lock (actionDoneLock)
-                    {
-                        if (actionDoneInitialized)
-                        {
-                            AppLogger.LogToGui($"ActionDone initialization completed after {elapsedMs}ms wait (retry {retry})", false);
-                            return true; // ★完了確認→スペシャルアクション実行へ
-                        }
-                    }
-
-                    await Task.Delay(checkIntervalMs); // 10ms待機
-                    elapsedMs += checkIntervalMs;
-                }
-
-                // ★Step C: 500msタイムアウト→強制初期化実行
-                AppLogger.LogToGui($"ActionDone initialization timeout ({maxWaitTimeMs}ms). Attempting forced initialization (retry {retry + 1}/{maxRetries})...", false);
-
-                try
-                {
-                    InitializeActionDoneList(); // 強制初期化実行
-
-                    if (actionDoneInitialized)
-                    {
-                        AppLogger.LogToGui($"Forced ActionDone initialization succeeded (retry {retry + 1})", false);
-                        // ★Step D: 先頭へループ（次の回で再度完了チェック）
-                    }
-                    else
-                    {
-                        AppLogger.LogToGui($"Forced ActionDone initialization failed (retry {retry + 1})", false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogToGui($"Failed to force ActionDone initialization (retry {retry + 1}): {ex.Message}", true);
-                }
-            }
-
-            // ★Step E: 3回リトライ完了→スペシャルアクション実行せず安全終了
-            AppLogger.LogToGui($"ActionDone initialization failed after {maxRetries} retries. Special Actions will be skipped for safety.", true);
-            return false;
+            // Compatibility: legacy callers expect an initialization wait mechanism.
+            // The new ActionManager-based model is ready at this point, so simply
+            // return success immediately to keep behavior safe during migration.
+            return Task.FromResult(true);
         }
 
         private static async void MapCustomAction(int device, DS4State cState, DS4State MappedState,
@@ -4885,27 +4825,7 @@ namespace DS4Windows
                 // (for example due to data races with profile editing) is logged and doesn't
                 // bring down the process. MapCustomAction is an async void method, so
                 // unhandled exceptions would otherwise be fatal.
-                int actionDoneCount = actionDone.Count;
                 int totalActionCount = GetActions().Count;
-
-                // ★新規追加: サイズチェック（安全確認）
-                if (actionDoneCount != totalActionCount)
-                {
-                    // 想定外の状態：ログ出力して処理をスキップ
-                    // Rate-limit the log to avoid flooding UI/OS when this occurs
-                    try
-                    {
-                        var now = DateTime.UtcNow;
-                        if ((now - lastActionDoneMismatchLog) >= actionDoneMismatchLogInterval)
-                        {
-                            AppLogger.LogToGui($"ActionDone list size mismatch. Expected: {totalActionCount}, Actual: {actionDoneCount}", false);
-                            lastActionDoneMismatchLog = now;
-                        }
-                    }
-                    catch { }
-
-                    return;
-                }
 
                 DS4StateFieldMapping previousFieldMapping = null;
 
@@ -5142,7 +5062,7 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!GetActionDone(index, action, device) && (!useTempProfile[device] || untriggeraction[device] == null || untriggeraction[device].typeID != SpecialAction.ActionTypeId.Profile))
+                                if (!GetActionDone(index, action, device) && (!useTempProfile[device] || deviceRuntime[device].UntriggerAction == null || deviceRuntime[device].UntriggerAction.typeID != SpecialAction.ActionTypeId.Profile))
                                 {
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: actionDone={GetActionDone(index, action, device)}, useTempProfile={useTempProfile[device]}");
@@ -5152,11 +5072,12 @@ namespace DS4Windows
                                     // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
                                     if (action.uTrigger.Count > 0 || action.automaticUntrigger)
                                     {
-                                        untriggeraction[device] = action;
-                                        untriggerindex[device] = index;
+
+                                        deviceRuntime[device].UntriggerAction = action;
+                                        deviceRuntime[device].UntriggerIndex = index;
 
                                         // If the existing profile is a temp profile then store its name, because automaticUntrigger needs to know where to go back (empty name goes back to default regular profile)
-                                        untriggeraction[device].prevProfileName = (useTempProfile[device] ? tempprofilename[device] : string.Empty);
+                                        deviceRuntime[device].UntriggerAction.prevProfileName = (useTempProfile[device] ? tempprofilename[device] : string.Empty);
                                     }
                                     //foreach (DS4Controls dc in action.trigger)
                                     for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
@@ -5338,9 +5259,9 @@ namespace DS4Windows
                                 actionFound = true;
                                 bool prevActionDone = GetActionDone(index, action, device);
                                 if (!prevActionDone)
-                                    AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={untriggerindex[device]}, actionDone={GetActionDone(index, action, device)}");
+                                    AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={deviceRuntime[device].UntriggerIndex}, actionDone={GetActionDone(index, action, device)}");
 
-                                if (uTriggerCount == 0 || (uTriggerCount > 0 && untriggerindex[device] == -1 && !GetActionDone(index, action, device)))
+                                if (uTriggerCount == 0 || (uTriggerCount > 0 && deviceRuntime[device].UntriggerIndex == -1 && !GetActionDone(index, action, device)))
                                 {
                                     if (!prevActionDone)
                                     {
@@ -5355,10 +5276,10 @@ namespace DS4Windows
                                     SetActionDone(index, action, device, true);
                                     // For Toggle-type SpecialAction keys we do NOT register an untriggerindex here
                                     // because toggle off/on is driven by successive triggers, not by physical release.
-                                    if (!action.keyType.HasFlag(DS4KeyType.Toggle))
-                                        untriggerindex[device] = index;
-                                    else
-                                        untriggerindex[device] = -1;
+                                        if (!action.keyType.HasFlag(DS4KeyType.Toggle))
+                                            deviceRuntime[device].UntriggerIndex = index;
+                                        else
+                                            deviceRuntime[device].UntriggerIndex = -1;
                                     // For Key actions we keep single-trigger toggle behavior only;
                                     // do not register an untrigger action here.
                                     ushort key;
@@ -5535,11 +5456,11 @@ namespace DS4Windows
                             if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 // Only handle single-trigger Key special actions (no uTrigger entries)
-                                if (action.uTrigger.Count == 0 && GetActionDone(index, action, device) && untriggerindex[device] == index)
+                                if (action.uTrigger.Count == 0 && GetActionDone(index, action, device) && deviceRuntime[device].UntriggerIndex == index)
                                 {
                                     actionFound = true;
                                     SetActionDone(index, action, device, false);
-                                    untriggerindex[device] = -1;
+                                    deviceRuntime[device].UntriggerIndex = -1;
                                         LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
                                         try
                                         {
@@ -5652,10 +5573,10 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (untriggerindex[device] > -1 && GetActionDone(index, action, device))
+                                if (deviceRuntime[device].UntriggerIndex > -1 && GetActionDone(index, action, device))
                                 {
                                     SetActionDone(index, action, device, false);
-                                    untriggerindex[device] = -1;
+                                    deviceRuntime[device].UntriggerIndex = -1;
                                     LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
                                     if (action.typeID == SpecialAction.ActionTypeId.Key)
                                     {
@@ -5864,10 +5785,10 @@ namespace DS4Windows
                 return;
             }
 
-            if (untriggeraction[device] != null)
+            if (deviceRuntime[device].UntriggerAction != null)
             {
-                SpecialAction action = untriggeraction[device];
-                int index = untriggerindex[device];
+                SpecialAction action = deviceRuntime[device].UntriggerAction;
+                int index = deviceRuntime[device].UntriggerIndex;
                 bool utriggeractivated;
 
                 AppLogger.LogDebug($"SpecialAction UNTRIGGER check: device={device}, untriggeraction={(action!=null?action.name:"null")}, untriggerindex={index}");
@@ -5931,7 +5852,7 @@ namespace DS4Windows
                                 }
                             }
 
-                            string profileName = untriggeraction[device].prevProfileName;
+                            string profileName = deviceRuntime[device].UntriggerAction.prevProfileName;
                             DS4Device d = ctrl.DS4Controllers[device];
                             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                                 (device + 1).ToString(), (profileName == string.Empty ? ProfilePath[device] : profileName), $"{d.Battery}");
@@ -5945,7 +5866,7 @@ namespace DS4Windows
                             }
                             catch { }
 
-                            untriggeraction[device] = null;
+                            deviceRuntime[device].UntriggerAction = null;
 
                             if (profileName == string.Empty)
                                 LoadProfile(device, false, ctrl); // Previous profile was a regular default profile of a controller

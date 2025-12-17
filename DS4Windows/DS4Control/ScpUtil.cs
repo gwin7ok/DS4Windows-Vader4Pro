@@ -9212,7 +9212,7 @@ namespace DS4Windows
             bool loaded = true;
 
             actions.Clear();
-            Mapping.actionDone.Clear();
+            try { ActionManager.ClearAllEntries(); } catch { }
 
             //string configFile = Path.Combine(Global.appdatapath, "Actions.xml");
             if (!File.Exists(m_Actions))
@@ -9220,11 +9220,30 @@ namespace DS4Windows
                 actions.Add(new SpecialAction("Disconnect Controller", "PS/Options", "DisconnectBT", "0"));
                 loaded = SaveActions();
 
-                // ★新規追加: デフォルトアクション用のactionDone初期化
-                if (loaded)
-                {
-                    Mapping.InitializeActionDoneList();
-                }
+                // Reset runtime synthetic state and ActionManager entries after creating defaults
+                    if (loaded)
+                    {
+                        try
+                        {
+                            try { ActionManager.ClearAllEntries(); } catch { }
+                            Mapping.globalState = new DS4Windows.Mapping.SyntheticState();
+                            for (int d = 0; d < Mapping.deviceState.Length; d++)
+                            {
+                                Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
+                            }
+                            if (Mapping.pressedonce != null)
+                            {
+                                for (int i = 0; i < Mapping.pressedonce.Length; i++) Mapping.pressedonce[i] = false;
+                            }
+                            try { ActionManager.ClearAllPressedOnce(); } catch { }
+                            if (Mapping.macrodone != null)
+                            {
+                                for (int i = 0; i < Mapping.macrodone.Length; i++) Mapping.macrodone[i] = false;
+                            }
+                            AppLogger.LogToGui("Runtime synthetic state reset after Actions load", false);
+                        }
+                        catch { }
+                    }
 
                 return loaded;
             }
@@ -9247,10 +9266,29 @@ namespace DS4Windows
                 loaded = false;
             }
 
-            // ★新規追加: XMLからの読み込み完了後にactionDone初期化
+            // After loading actions, clear ActionManager entries and reset runtime state
             if (loaded)
             {
-                Mapping.InitializeActionDoneList();
+                try
+                {
+                    try { ActionManager.ClearAllEntries(); } catch { }
+                    Mapping.globalState = new DS4Windows.Mapping.SyntheticState();
+                    for (int d = 0; d < Mapping.deviceState.Length; d++)
+                    {
+                        Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
+                    }
+                    if (Mapping.pressedonce != null)
+                    {
+                        for (int i = 0; i < Mapping.pressedonce.Length; i++) Mapping.pressedonce[i] = false;
+                    }
+                    try { ActionManager.ClearAllPressedOnce(); } catch { }
+                    if (Mapping.macrodone != null)
+                    {
+                        for (int i = 0; i < Mapping.macrodone.Length; i++) Mapping.macrodone[i] = false;
+                    }
+                    AppLogger.LogToGui("Runtime synthetic state reset after Actions load", false);
+                }
+                catch { }
             }
 
             return loaded;

@@ -114,6 +114,19 @@ namespace DS4Windows
             catch { }
         }
 
+        // Clear all registered Action entries. Used during profile reload / actions reparse.
+        public static void ClearAllEntries()
+        {
+            try
+            {
+                lock (actions)
+                {
+                    actions.Clear();
+                }
+            }
+            catch { }
+        }
+
         // Clear per-device ActionEntry state and controllers
         public static void ClearDeviceState(int device)
         {
