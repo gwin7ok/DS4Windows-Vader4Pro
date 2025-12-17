@@ -225,6 +225,16 @@ namespace DS4Windows
                             {
                                 var inst = keyButtonControllers[k];
                                 try { inst?.Dispose(); } catch { }
+                                try
+                                {
+                                    var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                                    if (sp != null)
+                                    {
+                                        var reg = sp.GetService(typeof(DS4Windows.Actions.IControllerRegistry)) as DS4Windows.Actions.IControllerRegistry;
+                                        if (reg != null) reg.Unregister(k);
+                                    }
+                                }
+                                catch { }
                                 keyButtonControllers.Remove(k);
                             }
                             catch { }
