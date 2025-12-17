@@ -270,4 +270,25 @@ sequenceDiagram
     K-->>A: Confirm
 ```
 
+**Class Summary (簡潔)**
+- `Action` : 抽象基底。`OnTrigger`/`OnRelease`/`ResetDeviceState` を定義し、共通プロパティを持つ。
+- `SpecialActionBase` : SpecialAction 共通ロジック（`ActionInstanceState[]` の管理・ユーティリティ）。
+- `KeyAction` : Key 型の実装。`KeyId` を保持し、トグル／プレス判定を行い `KeyButtonActionController` に委譲する。
+- `ButtonAction` : コントローラ／マウス出力用。ボタンID を扱い、必要に応じて `KeyButtonActionController` を利用する。
+- `MacroAction` : マクロ再生を管理するアクション。`KeepKeyState` や `PressRelease` を尊重する。
+- `ProfileAction` / `ProgramAction` / `DisconnectBTAction` : 専用の副作用（プロファイル切替・外部プログラム実行・切断）を行う実装。
+- `ActionInstanceState` : 各アクションがデバイス単位で保持する状態（`PressedOnce` など）。
+- `ActionManager` : Action インスタンスのライフサイクル管理（遅延生成、検索、破棄）を提供。
+- `ActionFactory` : `SpecialAction` から適切な `Action` インスタンスを生成する責務を持つ。
+- `MappingContext` : Mapping から渡されるランタイム情報（`OutputKBMHandler` など）をまとめる軽量構造。
+- `KeyButtonActionController` : 合成キー送出と `RepeatHelper` の利用を担うコントローラ（コントローラごとにインスタンス化）。
+- `RepeatHelper` : 連続キー送出のユーティリティ。コントローラが起動・停止・破棄を行う。
+
+**ライフサイクル（簡潔）**
+- プロファイル適用後、最初にそのアクションが実行されたタイミングで `ActionManager` が `Action` インスタンスを遅延生成する。
+- 以降は同一インスタンスを再利用し、状態は `ActionInstanceState` に格納する。
+- プロファイルの再適用またはコントローラ切断時に `ActionManager` が関連インスタンスを破棄し、次回実行時に再生成する。
+
+この節は設計上の「要点」を短くまとめたものです。詳細なシーケンスや図が必要なら追加します。
+
 ````
