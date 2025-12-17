@@ -3782,8 +3782,27 @@ namespace DS4Windows
                     catch { }
                     try
                     {
-                        // Also notify new ActionManager migration path in parallel (no-op for now)
+                        // Also notify new ActionManager migration path in parallel
                         ActionManager.NotifyTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                    }
+                    catch { }
+                    try
+                    {
+                        // New API: if an Action instance exists, invoke its OnTrigger path in parallel (non-destructive)
+                        var act = ActionManager.GetActionByName(action?.name);
+                        if (act != null)
+                        {
+                            var ctx = new DS4Windows.Actions.MappingContext
+                            {
+                                LogicalValue = logicalValue,
+                                NativeValue = nativeValue,
+                                UseScanCode = useScanCode,
+                                OutputHandler = outputKBMHandler,
+                                ActionDef = action,
+                                Index = -1
+                            };
+                            try { act.OnTrigger(device, ctx); } catch { }
+                        }
                     }
                     catch { }
                     return true;
@@ -3827,8 +3846,27 @@ namespace DS4Windows
                     catch { }
                     try
                     {
-                        // Also notify new ActionManager migration path in parallel (no-op for now)
+                        // Also notify new ActionManager migration path in parallel
                         ActionManager.NotifyTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                    }
+                    catch { }
+                    try
+                    {
+                        // New API: if an Action instance exists, invoke its OnRelease path in parallel
+                        var act = ActionManager.GetActionByName(action?.name);
+                        if (act != null)
+                        {
+                            var ctx = new DS4Windows.Actions.MappingContext
+                            {
+                                LogicalValue = logicalValue,
+                                NativeValue = nativeValue,
+                                UseScanCode = useScanCode,
+                                OutputHandler = outputKBMHandler,
+                                ActionDef = action,
+                                Index = -1
+                            };
+                            try { act.OnRelease(device, ctx); } catch { }
+                        }
                     }
                     catch { }
                     return true;
