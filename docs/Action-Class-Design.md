@@ -18,7 +18,7 @@
 - ExecuteTrigger / OnTrigger の振る舞い:
   - `SwitchMode == Toggle` のとき: `PressedOnce` と `LastToggleTimeUtcTicks` を用いたデバウンス + トグル反転を行い、`KeyButtonActionController` に合成送出委譲。
   - `SwitchMode == Press` のとき: `SendPress` を呼び、リリースは `OnRelease` で送る。
-  - `Repeat` / `Macro` 等のフラグに応じて `RepeatHelper` を起動（開始は Action、停止は Action の責任）。
+  - 決定: `RepeatHelper` の利用はコントローラ側（例: `KeyButtonActionController`）に統一します。`Action` 側は合成送出をコントローラに委譲し、連続送信の開始/停止やライフサイクル管理（Stop/Dispose）はコントローラが責任を持ちます。アクション実装側で独自にリピータを実装しないことで、重複実装を避けます。
 - ExecuteRelease / OnRelease: `SendRelease`（必要に応じ）・`PressedOnce` 解除ロジック（`ShouldClearPressedOnce` 判定）
 
 ### `ButtonAction` (ActionTypeId.Button)
