@@ -4780,11 +4780,11 @@ namespace DS4Windows
                         }
 
                         // 押下済みフラグ等を全クリア
+                        try { ActionManager.ClearAllPressedOnce(); } catch { }
                         if (pressedonce != null)
                         {
-                            for (int i = 0; i < pressedonce.Length; i++) pressedonce[i] = false;
+                            Array.Clear(pressedonce, 0, pressedonce.Length);
                         }
-                        try { ActionManager.ClearAllPressedOnce(); } catch { }
                         if (macrodone != null)
                         {
                             for (int i = 0; i < macrodone.Length; i++) macrodone[i] = false;
@@ -5965,11 +5965,10 @@ namespace DS4Windows
                         deviceState[d].nativeKeyAlias.Remove(key);
                 }
 
-                // 押下済みフラグをクリア
+                // 押下済みフラグをクリア（ActionManager優先、legacy配列はフォールバック）
+                try { ActionManager.ClearPressedOnceForKey(key); } catch { }
                 if (pressedonce != null && key < pressedonce.Length)
                     pressedonce[key] = false;
-
-                try { ActionManager.ClearPressedOnceForKey(key); } catch { }
 
                 AppLogger.LogToGui($"Runtime state for key {key} cleared on all devices.", false);
             }
