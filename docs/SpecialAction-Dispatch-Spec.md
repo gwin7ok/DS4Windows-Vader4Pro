@@ -43,6 +43,23 @@
     - `ResetKeyTiming(int device, ushort kvpKey)`
     - `ResolveNativeKey(ushort kvpKey)`
 
+### 現状の実装（2025-12-16 以降の反映）
+- `KeyButtonActionController`（実装上の中核）
+  - 役割: デバイス毎に生成される SpecialAction 用コントローラ。Toggle / Press のいずれのモードでも Mapping が選択して該当する挙動を `KeyButtonActionController` 経由で処理する設計になっています。これによりグローバルな静的コントローラは廃止され、デバイス独立のライフサイクル管理が可能になりました。
+  - 特徴:
+    - デバイス単位で `KeyButtonActionController` インスタンスを生成/保持する（`Mapping.GetOrCreateKeyButtonController(device, mode)` 相当）。
+    - 各キーごとに内部で `RepeatHelper` を保持し、トリガ成立／解除に応じて `Start()` / `Stop()` を呼ぶ。
+    - プロファイル適用時に `Mapping.ClearKeyButtonControllersForDevice(device)` を呼んで当該デバイスのコントローラを破棄し、その際に `RepeatHelper.Dispose()` を実行してリソースを解放する。
+
+- `RepeatHelper`（合成繰り返しユーティリティ）
+  - 役割: 合成キーの繰り返し送出を行う小さな再利用可能コンポーネント。
+  - 現状のセマンティクス:
+    - `Start()`：初回送出／タイマー開始（内部で InitialDelay を考慮）
+    - `Stop()`：繰り返しを停止し、必要に応じて一度だけ Release を送るが、インスタンス自体は破棄しない（再利用可能）。
+    - `Dispose()`：完全破棄とリソース解放。主にプロファイル適用時のクリーンアップで呼ばれる。
+
+注: 上記により、従来設計で想定されていたグローバルな `ToggleActionController` / `PressActionController` の `Update()` を常に主ループで呼ぶ方式は廃止されつつあります。各 `KeyButtonActionController` は必要に応じて内部でタイマーや `RepeatHelper` を用いるため、グローバルな周期呼び出しによる制御から脱却しています。
+
 ## データ構造（変更案）
 - deviceState 内のキー管理をモード別に分離する（段階的移行を推奨）:
   - `deviceState.toggleKeyPresses: Dictionary<ushort, KeyPresses>`
