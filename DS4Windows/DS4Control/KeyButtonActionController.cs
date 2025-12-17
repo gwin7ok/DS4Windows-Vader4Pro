@@ -8,7 +8,7 @@ namespace DS4Windows
 {
     // Lightweight per-device wrapper that delegates to existing static controllers
     // Mode is fixed at construction time (Press or Toggle).
-    public class KeyButtonActionController
+    public class KeyButtonActionController : IDisposable
     {
         public enum Mode { Press, Toggle }
 
@@ -319,14 +319,23 @@ namespace DS4Windows
             impl.Clear(kvpKey);
         }
 
-        public void Destroy()
+        private bool disposed = false;
+
+        public void Dispose()
         {
+            if (disposed) return;
+            disposed = true;
             try
             {
                 impl.ClearAll();
             }
             catch { }
             try { AppLogger.LogTrace($"KeyButtonActionController destroyed: device={device} assignedAction={this.assignedActionName}"); } catch { }
+        }
+
+        public void Destroy()
+        {
+            try { Dispose(); } catch { }
         }
     }
 }

@@ -224,7 +224,7 @@ namespace DS4Windows
                             try
                             {
                                 var inst = keyButtonControllers[k];
-                                try { inst?.Destroy(); } catch { }
+                                try { inst?.Dispose(); } catch { }
                                 keyButtonControllers.Remove(k);
                             }
                             catch { }
