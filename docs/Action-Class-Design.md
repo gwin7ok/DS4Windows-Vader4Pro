@@ -270,6 +270,43 @@ sequenceDiagram
     K-->>A: Confirm
 ```
 
+```mermaid
+sequenceDiagram
+  participant Device as InputDevice
+  participant M as Mapping
+  participant AM as ActionManager
+  participant A as Action
+  participant K as KeyButtonActionController
+  participant R as RepeatHelper
+  participant S as SyntheticDispatcher
+
+  Note over Device,M: デバイスのボタン押下が届く
+  Device->>M: Report/Trigger detected (device, control)
+  M->>AM: GetActionByIndex(index)
+  AM-->>M: Action instance (lazy-created if needed)
+  M->>A: OnTrigger(device, ctx)
+  A->>A: Update ActionInstanceState(device) (PressedOnce etc.)
+  A->>K: OnSATriggerEstablished(kvpKey, nativeKey, useScan, handler, isSpecialAction)
+  alt Controller starts repeat
+    K->>R: Create/Start RepeatHelper
+    R->>S: SendPress (repeated) [async at interval]
+  else Controller only single press
+    K->>S: SendPress (single)
+  end
+  Note right of S: OS/Virtual KBM receives press events
+
+  %% Release flow
+  Device->>M: Release detected
+  M->>A: OnRelease(device, ctx)
+  A->>K: OnSATriggerReleased(kvpKey, nativeKey, useScan, handler)
+  K->>R: Stop/Dispose RepeatHelper (if running)
+  K->>S: SendRelease (ensure key up sent)
+  S-->>K: Ack
+  K-->>A: Confirm release handled
+
+  Note over AM,A: ActionInstanceState persists until profile change or disconnect
+```
+
 **Class Summary (簡潔)**
 - `Action` : 抽象基底。`OnTrigger`/`OnRelease`/`ResetDeviceState` を定義し、共通プロパティを持つ。
 - `SpecialActionBase` : SpecialAction 共通ロジック（`ActionInstanceState[]` の管理・ユーティリティ）。
