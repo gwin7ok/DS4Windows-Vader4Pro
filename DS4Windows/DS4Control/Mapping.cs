@@ -3731,6 +3731,12 @@ namespace DS4Windows
                         }
                     }
                     catch { }
+                    try
+                    {
+                        // Also notify new ActionManager migration path in parallel (no-op for now)
+                        ActionManager.NotifyTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                    }
+                    catch { }
                     return true;
                 }
                 else
@@ -3768,6 +3774,12 @@ namespace DS4Windows
                         {
                             AppLogger.LogDebug($"SpecialAction {(action!=null && action.typeID==SpecialAction.ActionTypeId.Button?"BUTTON":"KEY")} release delegated to KeyButtonActionController: name={(action!=null?action.name:"(null)" )}, device={device}, value={logicalValue}");
                         }
+                    }
+                    catch { }
+                    try
+                    {
+                        // Also notify new ActionManager migration path in parallel (no-op for now)
+                        ActionManager.NotifyTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
                     }
                     catch { }
                     return true;
