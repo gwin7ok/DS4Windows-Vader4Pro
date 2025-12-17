@@ -5142,13 +5142,13 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!actionDone[index].dev[device] && (!useTempProfile[device] || untriggeraction[device] == null || untriggeraction[device].typeID != SpecialAction.ActionTypeId.Profile))
+                                if (!GetActionDone(index, action, device) && (!useTempProfile[device] || untriggeraction[device] == null || untriggeraction[device].typeID != SpecialAction.ActionTypeId.Profile))
                                 {
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
-                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: actionDone={actionDone[index].dev[device]}, useTempProfile={useTempProfile[device]}");
+                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: actionDone={GetActionDone(index, action, device)}, useTempProfile={useTempProfile[device]}");
                                     
                                     LogActionDoneCountOnTrigger(index, action, device, "Profile");
-                                    actionDone[index].dev[device] = true;
+                                    SetActionDone(index, action, device, true);
                                     // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
                                     if (action.uTrigger.Count > 0 || action.automaticUntrigger)
                                     {
@@ -5207,7 +5207,7 @@ namespace DS4Windows
                                                     int indexNext = GetProfileActionIndexOf(device, actionnameNext);
 
                                                     if (actionNext.controls == action.controls)
-                                                        actionDone[indexNext].dev[device] = true;
+                                                        SetActionDone(indexNext, actionNext, device, true);
                                                 }
                                             }
                                         });
@@ -5248,11 +5248,11 @@ namespace DS4Windows
                                     if (action.firstTouch)
                                     {
                                         action.firstTouch = false;
-                                        if (!actionDone[index].dev[device])
+                                        if (!GetActionDone(index, action, device))
                                         {
                                             DS4KeyType keyType = action.keyType;
                                             LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
-                                            actionDone[index].dev[device] = true;
+                                            SetActionDone(index, action, device, true);
                                             /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                                             {
                                                 DS4Controls dc = action.trigger[i];
@@ -5336,11 +5336,11 @@ namespace DS4Windows
                             else if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 actionFound = true;
-                                bool prevActionDone = actionDone[index].dev[device];
+                                bool prevActionDone = GetActionDone(index, action, device);
                                 if (!prevActionDone)
-                                    AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={untriggerindex[device]}, actionDone={actionDone[index].dev[device]}");
+                                    AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={untriggerindex[device]}, actionDone={GetActionDone(index, action, device)}");
 
-                                if (uTriggerCount == 0 || (uTriggerCount > 0 && untriggerindex[device] == -1 && !actionDone[index].dev[device]))
+                                if (uTriggerCount == 0 || (uTriggerCount > 0 && untriggerindex[device] == -1 && !GetActionDone(index, action, device)))
                                 {
                                     if (!prevActionDone)
                                     {
@@ -5352,7 +5352,7 @@ namespace DS4Windows
                                         }
                                         catch { }
                                     }
-                                    actionDone[index].dev[device] = true;
+                                    SetActionDone(index, action, device, true);
                                     // For Toggle-type SpecialAction keys we do NOT register an untriggerindex here
                                     // because toggle off/on is driven by successive triggers, not by physical release.
                                     if (!action.keyType.HasFlag(DS4KeyType.Toggle))
@@ -5466,7 +5466,7 @@ namespace DS4Windows
                                 string[] dets = action.details.Split('|');
                                 if (dets.Length == 1)
                                     dets = action.details.Split(',');
-                                if (bool.Parse(dets[1]) && !actionDone[index].dev[device])
+                                if (bool.Parse(dets[1]) && !GetActionDone(index, action, device))
                                 {
                                     AppLogger.LogToTray("Controller " + (device + 1) + ": " +
                                         ctrl.GetDS4Battery(device), true);
@@ -5474,7 +5474,7 @@ namespace DS4Windows
                                 if (bool.Parse(dets[2]))
                                 {
                                     DS4Device d = ctrl.DS4Controllers[device];
-                                    if (!actionDone[index].dev[device])
+                                    if (!GetActionDone(index, action, device))
                                     {
                                         lastColor[device] = d.LightBarColor;
                                         DS4LightBar.forcelight[device] = true;
@@ -5487,7 +5487,7 @@ namespace DS4Windows
                                 }
                                 LogActionDoneCountOnTrigger(index, action, device, "BatteryCheck");
                                 LogActionDoneCountOnTrigger(index, action, device, "WheelRecalibrate");
-                                actionDone[index].dev[device] = true;
+                                SetActionDone(index, action, device, true);
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.SASteeringWheelEmulationCalibrate)
                             {
@@ -5506,13 +5506,13 @@ namespace DS4Windows
                                     d.WheelRecalibrateActiveState = 3;  // Complete calibration process
                                 }
 
-                                actionDone[index].dev[device] = true;
+                                SetActionDone(index, action, device, true);
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.GyroCalibrate)
                             {
                                 actionFound = true;
 
-                                if (!actionDone[index].dev[device])
+                                if (!GetActionDone(index, action, device))
                                 {
                                     var d = ctrl.DS4Controllers[device];
 
@@ -5524,7 +5524,7 @@ namespace DS4Windows
                                     }
 
                                     LogActionDoneCountOnTrigger(index, action, device, "GyroCalibrate");
-                                    actionDone[index].dev[device] = true;
+                                    SetActionDone(index, action, device, true);
                                 }
                             }
                         }
@@ -5535,10 +5535,10 @@ namespace DS4Windows
                             if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 // Only handle single-trigger Key special actions (no uTrigger entries)
-                                if (action.uTrigger.Count == 0 && actionDone[index].dev[device] && untriggerindex[device] == index)
+                                if (action.uTrigger.Count == 0 && GetActionDone(index, action, device) && untriggerindex[device] == index)
                                 {
                                     actionFound = true;
-                                    actionDone[index].dev[device] = false;
+                                    SetActionDone(index, action, device, false);
                                     untriggerindex[device] = -1;
                                         LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
                                         try
@@ -5591,7 +5591,7 @@ namespace DS4Windows
                             if (action.typeID == SpecialAction.ActionTypeId.BatteryCheck)
                             {
                                 actionFound = true;
-                                if (actionDone[index].dev[device])
+                                if (GetActionDone(index, action, device))
                                 {
                                     fadetimer[device] = 0;
                                     /*if (prevFadetimer[device] == fadetimer[device])
@@ -5602,7 +5602,7 @@ namespace DS4Windows
                                     else
                                         prevFadetimer[device] = fadetimer[device];*/
                                     DS4LightBar.forcelight[device] = false;
-                                    actionDone[index].dev[device] = false;
+                                    SetActionDone(index, action, device, false);
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.DisconnectBT && action.pressRelease)
@@ -5616,7 +5616,7 @@ namespace DS4Windows
                                     {
                                         d.DisconnectDongle();
                                         ReleaseActionKeys(action, device);
-                                        actionDone[index].dev[device] = false;
+                                        SetActionDone(index, action, device, false);
                                         action.pressRelease = false;
                                     }
                                 }
@@ -5627,7 +5627,7 @@ namespace DS4Windows
                             {
                                 // Ignore
                                 actionFound = true;
-                                actionDone[index].dev[device] = false;
+                                SetActionDone(index, action, device, false);
                             }
                         }
 
@@ -5652,9 +5652,9 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (untriggerindex[device] > -1 && actionDone[index].dev[device])
+                                if (untriggerindex[device] > -1 && GetActionDone(index, action, device))
                                 {
-                                    actionDone[index].dev[device] = false;
+                                    SetActionDone(index, action, device, false);
                                     untriggerindex[device] = -1;
                                     LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
                                     if (action.typeID == SpecialAction.ActionTypeId.Key)
@@ -5846,7 +5846,7 @@ namespace DS4Windows
                             }
                             else
                             {
-                                actionDone[index].dev[device] = false;
+                                SetActionDone(index, action, device, false);
                             }
                         }
                     }
@@ -5906,7 +5906,7 @@ namespace DS4Windows
 
                 if (utriggeractivated && action.typeID == SpecialAction.ActionTypeId.Profile)
                 {
-                    if ((action.controls == action.ucontrols && !actionDone[index].dev[device]) || //if trigger and end trigger are the same
+                    if ((action.controls == action.ucontrols && !GetActionDone(index, action, device)) || //if trigger and end trigger are the same
                     action.controls != action.ucontrols)
                     {
                         if (useTempProfile[device])
@@ -5916,7 +5916,7 @@ namespace DS4Windows
                                 {
                                 DS4Controls dc = action.uTrigger[i];
                                 LogActionDoneCountOnTrigger(index, action, device, "UntriggerProfile");
-                                actionDone[index].dev[device] = true;
+                                SetActionDone(index, action, device, true);
                                 DS4ControlSettings dcs = GetDS4CSetting(device, dc);
                                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                                 {
@@ -5956,7 +5956,7 @@ namespace DS4Windows
                 }
                 else
                 {
-                    actionDone[index].dev[device] = false;
+                    SetActionDone(index, action, device, false);
                 }
 
                 // (moved) reset of pressedonce handled in main action loop
