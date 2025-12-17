@@ -2905,7 +2905,8 @@ namespace DS4Windows
                 try
                 {
                     DS4Windows.Mapping.ClearKeyButtonControllersForDevice(device);
-                    AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers for device {device}");
+                    try { DS4Windows.ActionManager.ClearDeviceState(device); } catch { }
+                    AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers and ActionManager state for device {device}");
                 }
                 catch (Exception ex)
                 {

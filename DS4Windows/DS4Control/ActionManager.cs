@@ -9,6 +9,8 @@ namespace DS4Windows
     {
         public bool PressedOnce = false;
         public long LastToggleTimeUtcTicks = 0;
+        public bool FirstTouch = false;
+        public bool ActionDone = false;
     }
 
     internal class ActionEntry
@@ -100,6 +102,33 @@ namespace DS4Windows
                         catch { }
                     }
                 }
+            }
+            catch { }
+        }
+
+        // Clear per-device ActionEntry state and controllers
+        public static void ClearDeviceState(int device)
+        {
+            try
+            {
+                lock (actions)
+                {
+                    foreach (var ent in actions.Values)
+                    {
+                        try
+                        {
+                            if (ent?.States == null) continue;
+                            if (device >= 0 && device < ent.States.Length)
+                            {
+                                ent.States[device] = new ActionInstanceState();
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                // Also clear Mapping's per-device controllers
+                try { Mapping.ClearKeyButtonControllersForDevice(device); } catch { }
             }
             catch { }
         }
