@@ -3024,10 +3024,7 @@ namespace DS4Windows
             // the window where MapCustomAction can observe an inconsistent size.
             try
             {
-                lock (Mapping.actionDoneLock)
-                {
-                    Mapping.actionDoneInitialized = false;
-                }
+                try { ActionManager.ClearAllEntries(); } catch { }
             }
             catch { }
 
@@ -3056,10 +3053,7 @@ namespace DS4Windows
         {
             try
             {
-                lock (Mapping.actionDoneLock)
-                {
-                    Mapping.actionDoneInitialized = false;
-                }
+                try { ActionManager.ClearAllEntries(); } catch { }
             }
             catch { }
 
@@ -3073,10 +3067,7 @@ namespace DS4Windows
         {
             try
             {
-                lock (Mapping.actionDoneLock)
-                {
-                    Mapping.actionDoneInitialized = false;
-                }
+                try { ActionManager.ClearAllEntries(); } catch { }
             }
             catch { }
 

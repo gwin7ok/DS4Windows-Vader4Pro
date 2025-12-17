@@ -4753,13 +4753,11 @@ namespace DS4Windows
                     var actions = GetActions();
                     int totalActionCount = actions.Count;
 
-                    // actionDoneリストをクリアして適切なサイズで初期化
-                    actionDone.Clear();
+                    // Delegate to ActionManager and keep legacy compatibility list in sync.
+                    try { ActionManager.ClearAllEntries(); } catch { }
 
-                    for (int i = 0; i < totalActionCount; i++)
-                    {
-                        actionDone.Add(new ActionState());
-                    }
+                    actionDone.Clear();
+                    for (int i = 0; i < totalActionCount; i++) actionDone.Add(new ActionState());
 
                     actionDoneInitialized = true;
 
