@@ -99,10 +99,7 @@ namespace DS4Windows
 
         // ToggleRepeatController removed — replaced by ToggleActionController and per-device controllers.
 
-        public class ActionState
-        {
-            public bool[] dev = new bool[Global.MAX_DS4_CONTROLLER_COUNT];
-        }
+        // Legacy ActionState removed; per-action state lives in ActionManager/ActionInstanceState.
 
         struct ControlToXInput
         {
@@ -185,14 +182,7 @@ namespace DS4Windows
             catch { return null; }
         }
 
-            // Compatibility shims for legacy ActionDone initialization logic.
-            // These are intentionally simple wrappers that delegate to the new
-            // ActionManager-based model so callers that still reference the
-            // legacy symbols will build during the migration.
-            public static List<ActionState> actionDone = new List<ActionState>();
-            public static bool actionDoneInitialized = true;
-            public static readonly object actionDoneLock = new object();
-            public static int actionDoneCount { get { return GetActions()?.Count ?? 0; } }
+            // Legacy actionDone compatibility removed — use ActionManager and ActionInstanceState.
 
         // Remove and destroy all per-device KeyButtonActionController instances for given device
         public static void ClearKeyButtonControllersForDevice(int device)
@@ -4735,73 +4725,7 @@ namespace DS4Windows
             return shift ? false : GetDS4CSetting(device, dc).actionType == DS4ControlSettings.ActionType.Default;
         }
 
-        /// <summary>
-        /// ★新規追加: actionDone配列を適切なサイズで初期化
-        /// Special Actions実行前に必ず呼び出す必要がある
-        /// </summary>
-        public static void InitializeActionDoneList()
-        {
-            lock (actionDoneLock)
-            {
-                if (actionDoneInitialized)
-                {
-                    return; // 既に初期化済み
-                }
-
-                try
-                {
-                    var actions = GetActions();
-                    int totalActionCount = actions.Count;
-
-                    // Delegate to ActionManager and keep legacy compatibility list in sync.
-                    try { ActionManager.ClearAllEntries(); } catch { }
-
-                    actionDone.Clear();
-                    for (int i = 0; i < totalActionCount; i++) actionDone.Add(new ActionState());
-
-                    actionDoneInitialized = true;
-
-                    AppLogger.LogToGui($"ActionDone list initialized with {totalActionCount} entries", false);
-
-                    // 同期的にランタイム上の合成イベント状態も初期化する。
-                    // これにより、スペシャルアクションの切替（保存）時に古い合成キューや
-                    // 押下フラグが残って二重送出される問題を防止する。
-                    try
-                    {
-                        // グローバル合成状態を新規インスタンスへ差し替え
-                        globalState = new SyntheticState();
-
-                        // デバイスごとの合成状態を再生成
-                        for (int d = 0; d < deviceState.Length; d++)
-                        {
-                            deviceState[d] = new SyntheticState();
-                        }
-
-                        // 押下済みフラグ等を全クリア
-                        try { ActionManager.ClearAllPressedOnce(); } catch { }
-                        if (pressedonce != null)
-                        {
-                            Array.Clear(pressedonce, 0, pressedonce.Length);
-                        }
-                        if (macrodone != null)
-                        {
-                            for (int i = 0; i < macrodone.Length; i++) macrodone[i] = false;
-                        }
-
-                        AppLogger.LogToGui("Runtime synthetic state reset after ActionDone initialization", false);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.LogToGui($"Failed to reset runtime state during ActionDone init: {ex.Message}", true);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogToGui($"Failed to initialize actionDone list: {ex.Message}", true);
-                    actionDoneInitialized = false;
-                }
-            }
-        }
+        // InitializeActionDoneList removed — ActionManager owns per-action state initialization.
 
         // ログ用ヘルパー: スペシャルアクションのトリガー成立時に現在の actionDone エントリ数を出力
         private static void LogActionDoneCountOnTrigger(int index, SpecialAction action, int device, string context = "TRIGGER")
@@ -4881,7 +4805,7 @@ namespace DS4Windows
 
                     // ★削除: 動的拡張処理を除去（事前初期化により不要）
                     // 安全チェックのみ実行
-                    if (index < 0 || index >= actionDoneCount)
+                    if (index < 0 || index >= totalActionCount)
                     {
                         // プロファイル読み込み時に一度だけログ出力済み。実行時はスキップのみ。
                         continue;
@@ -5979,7 +5903,7 @@ namespace DS4Windows
         // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
         // Macro steps are defined either as macrostr string value, macroLst list<int> object or as macroArr integer array. Only one of these should have a valid macro definition when this method is called.
         // If the macro definition is a macroStr string value then it will be converted as integer array on the fl. If steps are already defined as list or array of integers then there is no need to do type cast conversion.
-        private static void PlayMacro(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action = null, ActionState actionDoneState = null)
+        private static void PlayMacro(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action = null, ActionInstanceState actionDoneState = null)
         {
             if (action != null && action.synchronized)
             {
@@ -5996,7 +5920,7 @@ namespace DS4Windows
         }
 
         // Play through a macro. The macro steps are defined either as string, List or Array object (always only one of those parameters is set to a valid value)
-        private static void PlayMacroTask(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action, ActionState actionDoneState)
+        private static void PlayMacroTask(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action, ActionInstanceState actionDoneState)
         {
             if (!String.IsNullOrEmpty(macroStr))
             {
@@ -6085,7 +6009,7 @@ namespace DS4Windows
 
             // If a special action type of Macro has "Repeat while held" option and actionDoneState object is defined then reset the action back to "not done" status in order to re-fire it if the trigger key is still held down
             if (actionDoneState != null && keyType.HasFlag(DS4KeyType.RepeatMacro))
-                actionDoneState.dev[device] = false;
+                actionDoneState.ActionDone = false;
         }
 
         private static bool PlayMacroCodeValue(int device, bool[] macrocontrol, DS4KeyType keyType, int macroCodeValue, bool[] keydown)
