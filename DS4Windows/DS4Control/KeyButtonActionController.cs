@@ -77,22 +77,30 @@ namespace DS4Windows
         private class ToggleImpl : IKeyController
         {
             private readonly int device;
-            private readonly Dictionary<ushort, RepeatHelper> repeaters = new Dictionary<ushort, RepeatHelper>();
-            private readonly HashSet<ushort> states = new HashSet<ushort>();
+            private class Entry
+            {
+                public uint nativeKey;
+                public bool useScanCode;
+                public DS4Windows.DS4Control.VirtualKBMBase handler;
+                public RepeatHelper repeater;
+            }
+            private readonly Dictionary<ushort, Entry> entries = new Dictionary<ushort, Entry>();
             public ToggleImpl(int device) { this.device = device; }
 
             public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
             {
-                if (!states.Contains(kvpKey))
+                if (!entries.TryGetValue(kvpKey, out Entry e))
                 {
-                    // Toggle on: record state, send initial press and start repeating immediately
-                    states.Add(kvpKey);
+                    e = new Entry() { nativeKey = nativeKey, useScanCode = useScanCode, handler = handler };
+                    entries[kvpKey] = e;
+                }
+                if (e.repeater == null)
+                {
+                    if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
                     try
                     {
-                        // do not send initial press here; RepeatHelper will send the initial press
-                        var nat = nativeKey == 0 ? SyntheticDispatcher.ResolveNativeKey(kvpKey) : nativeKey;
-                        var rep = new RepeatHelper(device, kvpKey, nat, useScanCode, handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
-                        repeaters[kvpKey] = rep;
+                        // Start repeating immediately for toggle-on semantics
+                        e.repeater = new RepeatHelper(device, kvpKey, e.nativeKey, e.useScanCode, e.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
                     }
                     catch { }
                 }
@@ -100,62 +108,52 @@ namespace DS4Windows
 
             public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
             {
-                if (states.Contains(kvpKey))
+                if (entries.TryGetValue(kvpKey, out Entry e) && e.repeater != null)
                 {
-                    // Stop repeating and send single release
                     try
                     {
-                        if (repeaters.TryGetValue(kvpKey, out RepeatHelper rep))
-                        {
-                            rep.Stop();
-                            repeaters.Remove(kvpKey);
-                        }
-                        else
-                        {
-                            SyntheticDispatcher.SendRelease(device, kvpKey, nativeKey, useScanCode, handler);
-                        }
+                        // Stop repeater; Stop() sends single release
+                        try { e.repeater.Stop(); } catch { }
+                        e.repeater = null;
                     }
                     catch { }
-                    states.Remove(kvpKey);
+                    entries.Remove(kvpKey);
+                }
+                else
+                {
+                    try { SyntheticDispatcher.ResetKeyTiming(device, kvpKey); } catch { }
                 }
             }
 
             public void Clear(ushort kvpKey)
             {
-                if (states.Contains(kvpKey)) states.Remove(kvpKey);
+                if (entries.TryGetValue(kvpKey, out Entry e))
+                {
+                    try { e.repeater?.Stop(); } catch { }
+                    entries.Remove(kvpKey);
+                }
+                try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
+            }
+
+            public void ClearAll()
+            {
                 try
                 {
-                    if (repeaters.TryGetValue(kvpKey, out RepeatHelper rep))
+                    var keys = new List<ushort>(entries.Keys);
+                    foreach (var k in keys)
                     {
-                        rep.Stop();
-                        repeaters.Remove(kvpKey);
+                        try
+                        {
+                            var e = entries[k];
+                            try { e.repeater?.Stop(); } catch { }
+                            entries.Remove(k);
+                            try { SyntheticDispatcher.ResetKeyTiming(0, k); } catch { }
+                        }
+                        catch { }
                     }
                 }
                 catch { }
-                try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
             }
-                public void ClearAll()
-                {
-                    try
-                    {
-                        var keys = new List<ushort>(repeaters.Keys);
-                        foreach (var k in keys)
-                        {
-                            try
-                            {
-                                if (repeaters.TryGetValue(k, out RepeatHelper rep))
-                                {
-                                    rep.Stop();
-                                    repeaters.Remove(k);
-                                }
-                                try { SyntheticDispatcher.ResetKeyTiming(0, k); } catch { }
-                            }
-                            catch { }
-                        }
-                        states.Clear();
-                    }
-                    catch { }
-                }
         }
 
         // Press implementation: per-instance management of press state and optional repeat (minimal)
