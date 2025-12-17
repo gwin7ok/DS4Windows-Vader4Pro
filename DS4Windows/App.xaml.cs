@@ -34,6 +34,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using WPFLocalizeExtension.Engine;
 using DS4Windows;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DS4WinWPF
 {
@@ -286,6 +287,20 @@ namespace DS4WinWPF
             // Create the Event handle
             threadComEvent = new EventWaitHandle(false, EventResetMode.ManualReset, SingleAppComEventName);
             CreateTempWorkerThread();
+
+            // Initialize DI container and register core services (ActionFactory, etc.)
+            try
+            {
+                var services = new ServiceCollection();
+                services.AddSingleton<DS4Windows.Actions.IActionFactory, DS4Windows.Actions.DefaultActionFactory>();
+                // Register other services here as needed in future (ActionManager, Loggers, etc.)
+                var sp = services.BuildServiceProvider();
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(sp);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"DI initialization failed: {ex}");
+            }
 
             CreateControlService(parser);
             RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
