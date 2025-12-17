@@ -97,82 +97,7 @@ namespace DS4Windows
             }
         }
 
-        // Simple controller to manage toggle-driven repeat sending.
-        // Behaviour:
-        // - OnToggleOn: send one KeyPress immediately and start repeat timer (initial delay then periodic repeats)
-        // - OnToggleOff: send one KeyRelease and stop repeats
-        // - Update must be called periodically from the main loop to emit repeats
-        private static class ToggleRepeatController
-        {
-            private class Entry
-            {
-                public int device;
-                public ushort kvpKey;
-                public uint nativeKey;
-                public bool useScanCode;
-                public long firstPressUtcTicks;
-                public long lastRepeatUtcTicks;
-                public VirtualKBMBase handler;
-            }
-
-            private static readonly Dictionary<string, Entry> entries = new Dictionary<string, Entry>();
-            // timings
-            private const int InitialDelayMs = 100; // delay before repeats start (reduced from 500ms)
-            private const int RepeatIntervalMs = 25; // interval between repeats
-
-            private static string MakeKey(int device, ushort kvpKey) => device + ":" + kvpKey;
-
-            public static void OnToggleOn(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)
-            {
-                var key = MakeKey(device, kvpKey);
-                var now = DateTime.UtcNow.Ticks;
-                // create or update entry
-                if (!entries.TryGetValue(key, out Entry e))
-                {
-                    e = new Entry() { device = device, kvpKey = kvpKey, nativeKey = nativeKey, useScanCode = useScanCode };
-                    entries[key] = e;
-                }
-                e.firstPressUtcTicks = now;
-                e.lastRepeatUtcTicks = now;
-                e.handler = handler;
-
-                // immediate press
-                if (useScanCode) handler.PerformKeyPressAlt(nativeKey); else handler.PerformKeyPress(nativeKey);
-            }
-
-            public static void OnToggleOff(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler)
-            {
-                var key = MakeKey(device, kvpKey);
-                // send single release and stop repeats
-                if (useScanCode) handler.PerformKeyReleaseAlt(nativeKey); else handler.PerformKeyRelease(nativeKey);
-                entries.Remove(key);
-            }
-
-            public static void Update()
-            {
-                if (entries.Count == 0) return;
-                var now = DateTime.UtcNow.Ticks;
-                var toSend = new List<Entry>();
-                foreach (var kv in entries)
-                {
-                    var e = kv.Value;
-                    long sinceFirstMs = (now - e.firstPressUtcTicks) / TimeSpan.TicksPerMillisecond;
-                    long sinceLastMs = (now - e.lastRepeatUtcTicks) / TimeSpan.TicksPerMillisecond;
-                    if (sinceFirstMs >= InitialDelayMs && sinceLastMs >= RepeatIntervalMs)
-                    {
-                        toSend.Add(e);
-                    }
-                }
-                foreach (var e in toSend)
-                {
-                    if (e.handler == null) continue;
-                    AppLogger.LogTrace($"SYNTHETIC TRACE toggle-repeat device={e.device} kvpKey={e.kvpKey} nativeKey={e.nativeKey} event=KeyPress(repeat)");
-                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] toggle-repeat device={e.device} kvpKey={e.kvpKey} nativeKey={e.nativeKey} event=KeyPress(repeat)");
-                    if (e.useScanCode) e.handler.PerformKeyPressAlt(e.nativeKey); else e.handler.PerformKeyPress(e.nativeKey);
-                    e.lastRepeatUtcTicks = DateTime.UtcNow.Ticks;
-                }
-            }
-        }
+        // ToggleRepeatController removed — replaced by ToggleActionController and per-device controllers.
 
         public class ActionState
         {
@@ -258,6 +183,33 @@ namespace DS4Windows
                 }
             }
             catch { return null; }
+        }
+
+        // Remove and destroy all per-device KeyButtonActionController instances for given device
+        public static void ClearKeyButtonControllersForDevice(int device)
+        {
+            try
+            {
+                lock (keyButtonControllerLock)
+                {
+                    var prefix = device + ":";
+                    var keys = new List<string>(keyButtonControllers.Keys);
+                    foreach (var k in keys)
+                    {
+                        if (k.StartsWith(prefix))
+                        {
+                            try
+                            {
+                                var inst = keyButtonControllers[k];
+                                try { inst?.Destroy(); } catch { }
+                                keyButtonControllers.Remove(k);
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         // Centralized logging helper for SpecialActions. Keeps TRACE formatting and expensive work guarded.

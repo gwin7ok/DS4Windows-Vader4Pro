@@ -2900,6 +2900,18 @@ namespace DS4Windows
                 AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");
                 RaiseSelectedProfileChanged(device, profileName);
 
+                // Clear any per-device SpecialAction controllers so new profile's SpecialAction settings
+                // will cause fresh controllers to be created with updated mode/behavior.
+                try
+                {
+                    DS4Windows.Mapping.ClearKeyButtonControllersForDevice(device);
+                    AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers for device {device}");
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogTrace($"ApplyProfile: Failed to clear per-device controllers: {ex}");
+                }
+
                 // Set controller activation flags based on profile SpecialAction settings.
                 try
                 {

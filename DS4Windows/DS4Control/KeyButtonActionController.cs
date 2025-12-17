@@ -69,7 +69,8 @@ namespace DS4Windows
         {
             void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction);
             void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler);
-            void Clear(ushort kvpKey);
+                void Clear(ushort kvpKey);
+                void ClearAll();
         }
 
         // Toggle implementation: per-instance management of toggle state and repeat using RepeatHelper
@@ -133,6 +134,28 @@ namespace DS4Windows
                 catch { }
                 try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
             }
+                public void ClearAll()
+                {
+                    try
+                    {
+                        var keys = new List<ushort>(repeaters.Keys);
+                        foreach (var k in keys)
+                        {
+                            try
+                            {
+                                if (repeaters.TryGetValue(k, out RepeatHelper rep))
+                                {
+                                    rep.Stop();
+                                    repeaters.Remove(k);
+                                }
+                                try { SyntheticDispatcher.ResetKeyTiming(0, k); } catch { }
+                            }
+                            catch { }
+                        }
+                        states.Clear();
+                    }
+                    catch { }
+                }
         }
 
         // Press implementation: per-instance management of press state and optional repeat (minimal)
@@ -171,7 +194,7 @@ namespace DS4Windows
                     }
                     catch { }
 
-                    // Start delayed creation of repeater after 100ms for press-repeat semantics
+                    // Start delayed creation of repeater after InitialRepeatDelayMs for press-repeat semantics
                     try
                     {
                         e.delayCts = new CancellationTokenSource();
@@ -180,7 +203,7 @@ namespace DS4Windows
                         {
                             try
                             {
-                                    await Task.Delay(DS4Windows.KeyboardSettings.InitialRepeatDelayMs, localEntry.delayCts.Token).ConfigureAwait(false);
+                                await Task.Delay(DS4Windows.KeyboardSettings.InitialRepeatDelayMs, localEntry.delayCts.Token).ConfigureAwait(false);
                                 if (localEntry.delayCts.IsCancellationRequested) return;
                                 // create repeater that starts immediate repeating (send first immediate press)
                                 localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
@@ -191,6 +214,7 @@ namespace DS4Windows
                     }
                     catch { }
                 }
+
             }
 
             public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
@@ -228,6 +252,26 @@ namespace DS4Windows
                 }
                 try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
             }
+                public void ClearAll()
+                {
+                    try
+                    {
+                        var keys = new List<ushort>(entries.Keys);
+                        foreach (var k in keys)
+                        {
+                            try
+                            {
+                                var e = entries[k];
+                                try { e.delayCts?.Cancel(); } catch { }
+                                try { e.repeater?.Stop(); } catch { }
+                                entries.Remove(k);
+                                try { SyntheticDispatcher.ResetKeyTiming(0, k); } catch { }
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
+                }
         }
 
         // New, clearer API names reflecting Mapping-trigger notifications
@@ -246,6 +290,16 @@ namespace DS4Windows
         public void ClearKeyEntries(ushort kvpKey)
         {
             impl.Clear(kvpKey);
+        }
+
+        public void Destroy()
+        {
+            try
+            {
+                impl.ClearAll();
+            }
+            catch { }
+            try { AppLogger.LogTrace($"KeyButtonActionController destroyed: device={device} assignedAction={this.assignedActionName}"); } catch { }
         }
     }
 }
