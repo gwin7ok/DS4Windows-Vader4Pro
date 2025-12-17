@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DS4Windows.DS4Control;
+using DS4Windows.Actions;
 
 namespace DS4Windows
 {
@@ -39,6 +40,8 @@ namespace DS4Windows
     // Manages Action instances and provides access to per-device state.
     public static class ActionManager
     {
+        // Cache of created Action instances by SpecialAction index (lazy-created via ActionFactory)
+        private static readonly Dictionary<int, Actions.Action> actionInstances = new Dictionary<int, Actions.Action>();
         private static readonly Dictionary<string, ActionEntry> actions = new Dictionary<string, ActionEntry>(StringComparer.OrdinalIgnoreCase);
         private const int ToggleReleaseHoldMsLocal = 200;
 
@@ -53,6 +56,64 @@ namespace DS4Windows
                     actions[action.name] = ent;
                 }
                 return ent;
+            }
+        }
+
+        // Return an Action instance for given SpecialAction index (lazy-created via ActionFactory)
+        public static Actions.Action GetActionByIndex(int index)
+        {
+            try
+            {
+                var sa = ActionRegistry.GetByIndex(index);
+                if (sa == null) return null;
+                lock (actions)
+                {
+                    if (!actionInstances.TryGetValue(index, out Actions.Action act) || act == null)
+                    {
+                        act = ActionFactory.CreateFrom(sa, index);
+                        actionInstances[index] = act;
+                    }
+                    return act;
+                }
+            }
+            catch { return null; }
+        }
+
+        public static Actions.Action GetActionByName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            try
+            {
+                // Find index from registry
+                int idx = -1;
+                int i = 0;
+                foreach (var sa in ActionRegistry.AllActions())
+                {
+                    if (sa != null && string.Equals(sa.name, name, StringComparison.OrdinalIgnoreCase)) { idx = i; break; }
+                    i++;
+                }
+                if (idx == -1) return null;
+                return GetActionByIndex(idx);
+            }
+            catch { return null; }
+        }
+
+        public static IReadOnlyList<Actions.Action> Actions
+        {
+            get
+            {
+                try
+                {
+                    var list = new List<Actions.Action>();
+                    int count = ActionRegistry.Count;
+                    for (int i = 0; i < count; ++i)
+                    {
+                        var a = GetActionByIndex(i);
+                        list.Add(a);
+                    }
+                    return list.AsReadOnly();
+                }
+                catch { return Array.Empty<Actions.Action>(); }
             }
         }
 
