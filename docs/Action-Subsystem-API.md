@@ -10,6 +10,8 @@
 - トグル制御（`ToggleController`）: Toggle デバウンスと PressedOnce ロジック。
 - リリースポリシー（`ReleasePolicy`）: uTrigger/untrigger の評価ロジック。
 
+重要: legacy のグローバル `actionDone` 配列は削除され、各アクションの完了フラグは `ActionInstanceState.ActionDone` に移行しました。既存コードから状態へアクセスする場合は必ず `ActionManager.GetStateFor(action, device)` を使ってください。移行中の互換ラッパ（`GetActionDone`/`SetActionDone`）は段階的に削除予定です。
+
 ファイルと主要 API
 
 1) `ActionManager.cs`

@@ -2,6 +2,8 @@
 
 以下は現状の実装で提供されている全ての SpecialAction 型を新しい `Action` クラス構造で再現するための詳細仕様です。各項は実装時に `SpecialAction` (ScpUtil.SpecialAction) から `ActionFactory` を通じて変換されることを想定します。
 
+注: このリポジトリではグローバルな `actionDone` 配列は削除済みです。各アクションの完了フラグは `ActionInstanceState.ActionDone` に移行し、アクセスは `ActionManager.GetStateFor(action, device)` 経由で行ってください。古いグローバル状態は段階的に取り除かれ、現在のコードは `ActionManager` ベースの実装を前提としています。
+
 ### 共通（`Action` / `SpecialActionBase`）
 - プロパティ（必須）: `string Name`, `SpecialAction.ActionTypeId TypeId`, `string Details`, `string Extra`, `List<DS4Controls> Trigger`, `List<DS4Controls> UTrigger`, `double DelayTime`, `bool PressRelease`
 - 状態: `ActionInstanceState[] states` (長さ = `Global.MAX_DS4_CONTROLLER_COUNT`)
