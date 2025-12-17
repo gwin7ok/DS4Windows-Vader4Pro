@@ -16,6 +16,7 @@ namespace DS4Windows.DS4Control
         private readonly VirtualKBMBase handler;
         private readonly Timer timer;
         private int disposed;
+        private volatile bool isRunning;
         // public exposure of configured interval
         public int IntervalMs { get; }
         public bool SendFirstImmediate { get; }
@@ -33,16 +34,13 @@ namespace DS4Windows.DS4Control
             this.IntervalMs = intervalMillis;
             this.SendFirstImmediate = sendFirstImmediate;
 
+            // Create timer but do not start it until Start() is called. This allows Stop() to pause
+            // repeating without disposing the instance so it can be reused.
+            timer = new Timer(TimerCallback, null, Timeout.Infinite, Timeout.Infinite);
+            isRunning = false;
             if (sendFirstImmediate)
             {
-                try { SyntheticDispatcher.SendPress(device, kvpKey, nativeKey, useScanCode, handler); } catch { }
-                // start periodic sends after intervalMillis
-                timer = new Timer(TimerCallback, null, intervalMillis, intervalMillis);
-            }
-            else
-            {
-                // start periodic sends with first due after intervalMillis
-                timer = new Timer(TimerCallback, null, intervalMillis, intervalMillis);
+                Start();
             }
         }
 
@@ -61,15 +59,36 @@ namespace DS4Windows.DS4Control
             catch { }
         }
 
-        // Stop repeating and send a single KeyRelease. Safe to call multiple times.
+        // Start repeating. If configured to send first immediate, this will issue a press immediately
+        // and then begin periodic sends. Safe to call multiple times.
+        public void Start()
+        {
+            if (Interlocked.CompareExchange(ref disposed, 0, 0) == 1) return;
+            if (isRunning) return;
+
+            try
+            {
+                if (SendFirstImmediate)
+                {
+                    try { SyntheticDispatcher.SendPress(device, kvpKey, nativeKey, useScanCode, handler); } catch { }
+                }
+                timer.Change(IntervalMs, IntervalMs);
+                isRunning = true;
+            }
+            catch { }
+        }
+
+        // Stop repeating and send a single KeyRelease. Safe to call multiple times. Does not dispose
+        // the underlying timer so the instance can be restarted by calling Start().
         public void Stop()
         {
-            if (Interlocked.Exchange(ref disposed, 1) == 1) return;
+            if (Interlocked.CompareExchange(ref disposed, 0, 0) == 1) return;
+            if (!isRunning) return;
 
             try
             {
                 timer.Change(Timeout.Infinite, Timeout.Infinite);
-                timer.Dispose();
+                isRunning = false;
             }
             catch { }
 
@@ -82,7 +101,19 @@ namespace DS4Windows.DS4Control
 
         public void Dispose()
         {
-            Stop();
+            if (Interlocked.Exchange(ref disposed, 1) == 1) return;
+            try
+            {
+                try { timer.Change(Timeout.Infinite, Timeout.Infinite); } catch { }
+                try { timer.Dispose(); } catch { }
+            }
+            catch { }
+            try
+            {
+                if (isRunning) SyntheticDispatcher.SendRelease(device, kvpKey, nativeKey, useScanCode, handler);
+            }
+            catch { }
+            isRunning = false;
         }
     }
 }

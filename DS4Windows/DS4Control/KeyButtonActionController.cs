@@ -99,10 +99,14 @@ namespace DS4Windows
                     if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
                     try
                     {
-                        // Start repeating immediately for toggle-on semantics
+                        // Create repeater and start it immediately for toggle-on semantics
                         e.repeater = new RepeatHelper(device, kvpKey, e.nativeKey, e.useScanCode, e.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
                     }
                     catch { }
+                }
+                else
+                {
+                    try { e.repeater.Start(); } catch { }
                 }
             }
 
@@ -112,12 +116,10 @@ namespace DS4Windows
                 {
                     try
                     {
-                        // Stop repeater; Stop() sends single release
+                        // Stop repeater; Stop() sends single release but keep instance for reuse
                         try { e.repeater.Stop(); } catch { }
-                        e.repeater = null;
                     }
                     catch { }
-                    entries.Remove(kvpKey);
                 }
                 else
                 {
@@ -130,7 +132,7 @@ namespace DS4Windows
                 if (entries.TryGetValue(kvpKey, out Entry e))
                 {
                     try { e.repeater?.Stop(); } catch { }
-                    entries.Remove(kvpKey);
+                    // keep entry for reuse; do not dispose here
                 }
                 try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
             }
@@ -145,7 +147,7 @@ namespace DS4Windows
                         try
                         {
                             var e = entries[k];
-                            try { e.repeater?.Stop(); } catch { }
+                            try { e.repeater?.Dispose(); } catch { }
                             entries.Remove(k);
                             try { SyntheticDispatcher.ResetKeyTiming(0, k); } catch { }
                         }
@@ -199,13 +201,20 @@ namespace DS4Windows
                         var localEntry = e;
                         Task.Run(async () =>
                         {
-                            try
-                            {
-                                await Task.Delay(DS4Windows.KeyboardSettings.InitialRepeatDelayMs, localEntry.delayCts.Token).ConfigureAwait(false);
-                                if (localEntry.delayCts.IsCancellationRequested) return;
-                                // create repeater that starts immediate repeating (send first immediate press)
-                                localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
-                            }
+                                try
+                                {
+                                    await Task.Delay(DS4Windows.KeyboardSettings.InitialRepeatDelayMs, localEntry.delayCts.Token).ConfigureAwait(false);
+                                    if (localEntry.delayCts.IsCancellationRequested) return;
+                                    // create or start repeater that begins immediate repeating (send first immediate press)
+                                    if (localEntry.repeater == null)
+                                    {
+                                        localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
+                                    }
+                                    else
+                                    {
+                                        try { localEntry.repeater.Start(); } catch { }
+                                    }
+                                }
                             catch (OperationCanceledException) { }
                             catch { }
                         });
@@ -223,16 +232,15 @@ namespace DS4Windows
                     {
                         // cancel pending delayed repeater creation
                         try { e.delayCts?.Cancel(); } catch { }
-                        // stop repeater if running; Stop() sends single release
+                        // stop repeater if running; Stop() sends single release. Keep instance for reuse.
                         if (e.repeater != null)
                         {
-                            e.repeater.Stop();
-                            e.repeater = null;
+                            try { e.repeater.Stop(); } catch { }
                         }
                         // else: initial immediate press+release already sent, no additional release needed here
+                        e.isPressed = false;
                     }
                     catch { }
-                    entries.Remove(kvpKey);
                 }
                 else
                 {
@@ -246,7 +254,7 @@ namespace DS4Windows
                 {
                     try { e.delayCts?.Cancel(); } catch { }
                     try { e.repeater?.Stop(); } catch { }
-                    entries.Remove(kvpKey);
+                    // keep entry for reuse; do not dispose here
                 }
                 try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
             }
@@ -261,7 +269,7 @@ namespace DS4Windows
                             {
                                 var e = entries[k];
                                 try { e.delayCts?.Cancel(); } catch { }
-                                try { e.repeater?.Stop(); } catch { }
+                                try { e.repeater?.Dispose(); } catch { }
                                 entries.Remove(k);
                                 try { SyntheticDispatcher.ResetKeyTiming(0, k); } catch { }
                             }
