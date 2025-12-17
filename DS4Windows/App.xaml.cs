@@ -164,9 +164,6 @@ namespace DS4WinWPF
                 // Detailed diagnostics at Debug level
                 AppLogger.LogDebug($"Startup culture: CurrentCulture={System.Globalization.CultureInfo.CurrentCulture}, CurrentUICulture={System.Globalization.CultureInfo.CurrentUICulture}");
                 AppLogger.LogDebug($"DefaultThreadCurrentCulture={System.Globalization.CultureInfo.DefaultThreadCurrentCulture}, DefaultThreadCurrentUICulture={System.Globalization.CultureInfo.DefaultThreadCurrentUICulture}");
-                AppLogger.LogDebug($"Process exe: {Process.GetCurrentProcess().MainModule?.FileName}");
-                AppLogger.LogDebug($"AppDomain BaseDirectory: {AppContext.BaseDirectory}");
-                AppLogger.LogDebug($"Current working directory: {Environment.CurrentDirectory}");
 
                 // Log command-line args for Updater-related diagnostic
                 try
@@ -353,6 +350,10 @@ namespace DS4WinWPF
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             string version = DS4Windows.Global.exeversion;
+            // Log process and path information at INFO level now that logger is configured
+            try { AppLogger.LogInfo($"Process exe: {Process.GetCurrentProcess().MainModule?.FileName}"); } catch { }
+            try { AppLogger.LogInfo($"AppDomain BaseDirectory: {AppContext.BaseDirectory}"); } catch { }
+            try { AppLogger.LogInfo($"Current working directory: {Environment.CurrentDirectory}"); } catch { }
             AppLogger.LogInfo($"DS4Windows version {version}");
             AppLogger.LogInfo($"DS4Windows exe file: {DS4Windows.Global.exeFileName}");
             AppLogger.LogInfo($"DS4Windows Assembly Architecture: {(Environment.Is64BitProcess ? "x64" : "x86")}");
