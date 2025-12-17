@@ -25,13 +25,13 @@ namespace DS4Windows
     internal class ActionEntry
     {
         public SpecialAction ActionDef;
-        public KeyAction ActionImpl;
+        public Actions.Action ActionImpl;
         public ActionInstanceState[] States;
 
         public ActionEntry(SpecialAction action)
         {
             ActionDef = action;
-            ActionImpl = new KeyAction(action, -1);
+            ActionImpl = ActionFactory.CreateFrom(action, -1);
             States = new ActionInstanceState[Global.MAX_DS4_CONTROLLER_COUNT];
             for (int i = 0; i < States.Length; ++i) States[i] = new ActionInstanceState();
         }

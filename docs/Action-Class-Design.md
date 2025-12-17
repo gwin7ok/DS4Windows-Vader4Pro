@@ -4,6 +4,8 @@
 
 注: このリポジトリではグローバルな `actionDone` 配列は削除済みです。各アクションの完了フラグは `ActionInstanceState.ActionDone` に移行し、アクセスは `ActionManager.GetStateFor(action, device)` 経由で行ってください。古いグローバル状態は段階的に取り除かれ、現在のコードは `ActionManager` ベースの実装を前提としています。
 
+追記 (DI): プロジェクトは依存性注入（`Microsoft.Extensions.DependencyInjection`）を導入しており、`ActionFactory` / `IActionFactory` と `IManagedActionManager` の実装は DI コンテナに登録されます。既存の静的 `ActionFactory`/`ActionManager` は DI による実装があればそれを優先して利用するフォールバックを備えています。新しいアクション実装は可能なら `IActionFactory` 経由で生成し、`IManagedActionManager` を通じて状態管理・検索を行ってください。
+
 ### 共通（`Action` / `SpecialActionBase`）
 - プロパティ（必須）: `string Name`, `SpecialAction.ActionTypeId TypeId`, `string Details`, `string Extra`, `List<DS4Controls> Trigger`, `List<DS4Controls> UTrigger`, `double DelayTime`, `bool PressRelease`
 - 状態: `ActionInstanceState[] states` (長さ = `Global.MAX_DS4_CONTROLLER_COUNT`)
