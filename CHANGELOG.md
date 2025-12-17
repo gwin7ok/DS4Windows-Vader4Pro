@@ -3,6 +3,14 @@
 All notable changes to this project are recorded in this file.
 
 
+## [Unreleased]
+
+Migration: replace legacy global action runtime flags with `ActionManager` and `ActionInstanceState`.
+- Remove `actionDone` and `pressedonce` global arrays; centralize per-action×device state in `ActionManager`.
+- Update `Mapping.cs`, `ScpUtil.cs`, tests and docs to use the new API.
+
+
+
 
 ## [3.11.6] - 2025-12-14
 
