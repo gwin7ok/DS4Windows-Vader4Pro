@@ -9,11 +9,7 @@ namespace DS4Windows
         private readonly SpecialAction action;
         private readonly int index;
 
-        public KeyAction(SpecialAction action, int index)
-        {
-            this.action = action;
-            this.index = index;
-        }
+        // Detailed constructor below initializes parsed key/native values.
 
         private bool IsToggle()
         {
@@ -27,7 +23,23 @@ namespace DS4Windows
             catch { return false; }
         }
 
-        public void OnTrigger(int device, ushort logicalValue, uint nativeValue, bool useScanCode)
+        private readonly ushort keyId;
+        private readonly uint nativeKey;
+        private readonly bool useScan;
+
+        public KeyAction(SpecialAction action, int index)
+        {
+            this.action = action;
+            this.index = index;
+            ushort k = 0;
+            if (action != null && !string.IsNullOrEmpty(action.details))
+                ushort.TryParse(action.details, out k);
+            keyId = k;
+            try { nativeKey = SyntheticDispatcher.ResolveNativeKey(k); } catch { nativeKey = 0; }
+            useScan = action != null && action.keyType.HasFlag(DS4KeyType.ScanCode);
+        }
+
+        public void OnTrigger(int device, ushort logicalValue, uint nativeValue, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
         {
             try
             {
@@ -37,7 +49,7 @@ namespace DS4Windows
                 {
                     if (!state.PressedOnce)
                     {
-                        kbc?.OnSATriggerEstablished(logicalValue, nativeValue, useScanCode, null, true);
+                        kbc?.OnSATriggerEstablished(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler, true);
                         state.PressedOnce = true;
                         state.LastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
                         AppLogger.LogTrace($"KeyAction: toggled ON name={action?.name} device={device} key={logicalValue}");
@@ -49,7 +61,7 @@ namespace DS4Windows
                 }
                 else
                 {
-                    kbc?.OnSATriggerEstablished(logicalValue, nativeValue, useScanCode, null, true);
+                    kbc?.OnSATriggerEstablished(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler, true);
                     AppLogger.LogTrace($"KeyAction: press sent name={action?.name} device={device} key={logicalValue}");
                 }
             }
@@ -59,15 +71,15 @@ namespace DS4Windows
             }
         }
 
-        public void OnRelease(int device, ushort logicalValue, uint nativeValue, bool useScanCode)
+        public void OnRelease(int device, ushort logicalValue, uint nativeValue, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
         {
             try
             {
                 var state = ActionManager.GetStateFor(action, device);
                 var kbc = Mapping.GetOrCreateKeyButtonControllerForAction(device, action);
-                kbc?.OnSATriggerReleased(logicalValue, nativeValue, useScanCode, null);
+                kbc?.OnSATriggerReleased(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler);
 
-                if (IsToggle() && state.PressedOnce)
+                if (IsToggle() && state != null && state.PressedOnce)
                 {
                     long delta = DateTime.UtcNow.Ticks - state.LastToggleTimeUtcTicks;
                     if (delta > TimeSpan.FromMilliseconds(200).Ticks)

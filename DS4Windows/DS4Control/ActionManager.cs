@@ -59,13 +59,58 @@ namespace DS4Windows
             catch { return null; }
         }
 
+        // Clear pressed-once flag for actions that map to given native key
+        public static void ClearPressedOnceForKey(ushort key)
+        {
+            try
+            {
+                lock (actions)
+                {
+                    foreach (var ent in actions.Values)
+                    {
+                        try
+                        {
+                            if (ent?.ActionDef == null) continue;
+                            if (ushort.TryParse(ent.ActionDef.details, out ushort k) && k == key)
+                            {
+                                for (int d = 0; d < ent.States.Length; d++) ent.States[d].PressedOnce = false;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Clear pressed-once flags for all known actions
+        public static void ClearAllPressedOnce()
+        {
+            try
+            {
+                lock (actions)
+                {
+                    foreach (var ent in actions.Values)
+                    {
+                        try
+                        {
+                            if (ent?.States == null) continue;
+                            for (int d = 0; d < ent.States.Length; d++) ent.States[d].PressedOnce = false;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+        }
+
         // Notify ActionImpl and let the Action handle controller delegation / state changes.
         public static void NotifyTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
         {
             try
             {
                 var ent = GetOrCreateEntry(action);
-                ent?.ActionImpl?.OnTrigger(device, logicalValue, nativeValue, useScanCode);
+                ent?.ActionImpl?.OnTrigger(device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
             }
             catch (Exception ex)
             {
@@ -78,7 +123,7 @@ namespace DS4Windows
             try
             {
                 var ent = GetOrCreateEntry(action);
-                ent?.ActionImpl?.OnRelease(device, logicalValue, nativeValue, useScanCode);
+                ent?.ActionImpl?.OnRelease(device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
             }
             catch (Exception ex)
             {

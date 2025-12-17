@@ -4718,6 +4718,7 @@ namespace DS4Windows
                         {
                             for (int i = 0; i < pressedonce.Length; i++) pressedonce[i] = false;
                         }
+                        try { ActionManager.ClearAllPressedOnce(); } catch { }
                         if (macrodone != null)
                         {
                             for (int i = 0; i < macrodone.Length; i++) macrodone[i] = false;
@@ -5346,19 +5347,20 @@ namespace DS4Windows
                                         }
 
                                         // Respect Toggle flag for SpecialAction keys even when no uTrigger is defined.
-                                        if (action.keyType.HasFlag(DS4KeyType.Toggle))
-                                        {
-                                            if (!pressedonce[key])
-                                            {
-                                                // Debounce rapid toggle flips (ignore toggles within ToggleDebounceMs)
-                                                long nowTicks = DateTime.UtcNow.Ticks;
-                                                long deltaTicks = nowTicks - kp.current.lastToggleTimeUtcTicks;
-                                                if (kp.current.lastToggleTimeUtcTicks == 0 || deltaTicks > TimeSpan.FromMilliseconds(ToggleDebounceMs).Ticks)
-                                                {
-                                                    // flip stored toggle state
-                                                    kp.current.toggle = !kp.current.toggle;
-                                                    kp.current.lastToggleTimeUtcTicks = nowTicks;
-                                                    pressedonce[key] = true;
+                                                        if (action.keyType.HasFlag(DS4KeyType.Toggle))
+                                                        {
+                                                            var st = ActionManager.GetStateFor(action, device);
+                                                            if (st != null && !st.PressedOnce)
+                                                            {
+                                                                // Debounce rapid toggle flips (ignore toggles within ToggleDebounceMs)
+                                                                long nowTicks = DateTime.UtcNow.Ticks;
+                                                                long deltaTicks = nowTicks - kp.current.lastToggleTimeUtcTicks;
+                                                                if (kp.current.lastToggleTimeUtcTicks == 0 || deltaTicks > TimeSpan.FromMilliseconds(ToggleDebounceMs).Ticks)
+                                                                {
+                                                                    // flip stored toggle state
+                                                                    kp.current.toggle = !kp.current.toggle;
+                                                                    kp.current.lastToggleTimeUtcTicks = nowTicks;
+                                                    if (st != null) st.PressedOnce = true;
                                                     kp.current.toggleCount++;
                                                     AppLogger.LogDebug($"SpecialAction KEY toggle-flipped: name={action.name}, device={device}, key={key}, toggle={kp.current.toggle}, debounce_ms={(double)deltaTicks / TimeSpan.TicksPerMillisecond}");
                                                     if (kp.current.toggle)
@@ -5609,7 +5611,10 @@ namespace DS4Windows
                             if (ushort.TryParse(action.details, out keyToClear))
                             {
                                 if (ShouldClearPressedOnce(device, keyToClear))
-                                    pressedonce[keyToClear] = false;
+                                {
+                                    var st = ActionManager.GetStateFor(action, device);
+                                    if (st != null) st.PressedOnce = false;
+                                }
                             }
                         }
 
@@ -5978,6 +5983,8 @@ namespace DS4Windows
                 // 押下済みフラグをクリア
                 if (pressedonce != null && key < pressedonce.Length)
                     pressedonce[key] = false;
+
+                try { ActionManager.ClearPressedOnceForKey(key); } catch { }
 
                 AppLogger.LogToGui($"Runtime state for key {key} cleared on all devices.", false);
             }
