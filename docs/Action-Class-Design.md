@@ -1,3 +1,69 @@
+## 具体的な Action クラス仕様（各型のプロパティ／メソッド詳細）
+
+以下は現状の実装で提供されている全ての SpecialAction 型を新しい `Action` クラス構造で再現するための詳細仕様です。各項は実装時に `SpecialAction` (ScpUtil.SpecialAction) から `ActionFactory` を通じて変換されることを想定します。
+
+### 共通（`Action` / `SpecialActionBase`）
+- プロパティ（必須）: `string Name`, `SpecialAction.ActionTypeId TypeId`, `string Details`, `string Extra`, `List<DS4Controls> Trigger`, `List<DS4Controls> UTrigger`, `double DelayTime`, `bool PressRelease`
+- 状態: `ActionInstanceState[] states` (長さ = `Global.MAX_DS4_CONTROLLER_COUNT`)
+- メソッド（必須）: `void OnTrigger(int device, MappingContext ctx)`, `void OnRelease(int device, MappingContext ctx)`, `void ResetDeviceState(int device)`, `ActionInstanceState GetState(int device)`
+
+### `BasicAction`（既存の基本マップ: outputfieldMapping を直接操作）
+- 追加プロパティ: `X360Controls? OutputControl`, `MouseMapping? MouseOutput`, `bool OutputTouchpad` 等
+- OnTrigger: `ctx.OutputFieldMapping` を直接更新して出力を設定
+- OnRelease: 出力を元に戻す（必要な場合のみ）
+
+### `KeyAction` (ActionTypeId.Key)
+- プロパティ: `ushort KeyId`, `DS4KeyType KeyFlags`（ScanCode/Repeat/Toggle）、`KeyButtonSwitchModeEnum SwitchMode`（Press|Toggle）、`bool FirstTouchBehavior`, `bool KeepKeyState`
+- `ActionInstanceState` 内フィールド: `bool PressedOnce`, `long LastToggleTimeUtcTicks`, `SyntheticState.KeyPresses KeyState`
+- ExecuteTrigger / OnTrigger の振る舞い:
+  - `SwitchMode == Toggle` のとき: `PressedOnce` と `LastToggleTimeUtcTicks` を用いたデバウンス + トグル反転を行い、`KeyButtonActionController` に合成送出委譲。
+  - `SwitchMode == Press` のとき: `SendPress` を呼び、リリースは `OnRelease` で送る。
+  - `Repeat` / `Macro` 等のフラグに応じて `RepeatHelper` を起動（開始は Action、停止は Action の責任）。
+- ExecuteRelease / OnRelease: `SendRelease`（必要に応じ）・`PressedOnce` 解除ロジック（`ShouldClearPressedOnce` 判定）
+
+### `ButtonAction` (ActionTypeId.Button)
+- プロパティ: `int ButtonId`（details）、`KeyButtonSwitchModeEnum SwitchMode`
+- 動作:
+  - 基本は `ctx.OutputFieldMapping.buttons[ButtonId]` を更新して X360 出力を行う。
+  - `KeyButtonActionController` を使う合成パスが現行コードに存在するため、Action は必要なら委譲する。
+  - Toggle/Press の扱いは `KeyAction` と同様に `PressedOnce` を持てる。
+
+### `MacroAction` (ActionTypeId.Macro)
+- プロパティ: `List<int> MacroIds`, `bool PressRelease`, `bool Synchronized`, `bool KeepKeyState`, `bool RepeatMacro`
+- 状態: `bool MacroPlaying`, `int CurrentStep` 等
+- 実行:
+  - ExecuteTrigger: マクロ再生を開始（`Synchronized` がある場合は再生完了を待つ）。`PressRelease` と `firstTouch` の組合せは既存の条件に一致させる。
+  - ExecuteRelease: `PressRelease` の場合はリリース側のマクロを実行。
+  - Abort/Reset: 中断や完了後のキー解放（`KeepKeyState` に注意）
+
+### `ProfileAction` (ActionTypeId.Profile)
+- プロパティ: `string ProfileName`, `bool UseTempProfile`, `bool AutomaticUntrigger`, `string PrevProfileName`
+- ExecuteTrigger: `ProfileManager.ApplyProfile(ProfileName, device, UseTempProfile)` を呼ぶ（既存の ApplyProfile ロジックを利用）。
+- ExecuteRelease: `AutomaticUntrigger` が真なら元のプロファイルに戻す等の処理。
+
+### `ProgramAction` (ActionTypeId.Program)
+- プロパティ: `string ProgramPath`, `string Arguments`, `bool RunOnRelease`（extras）
+- 実行: `Process.Start` で起動。Release 発生時に起動する挙動は `RunOnRelease` で制御。
+
+### `DisconnectBTAction` (ActionTypeId.DisconnectBT)
+- プロパティ: `string Details`（必要に応じデバイス識別）
+- 実行: 既存の切断 API を呼び出す。`pressRelease` に依存する場合は release タイミングで実行。
+
+### `BatteryCheckAction` (ActionTypeId.BatteryCheck)
+- プロパティ: `string[] Parameters`（閾値や表示オプション）
+- 実行: バッテリチェックルーチン呼び出し／ログ出力。UI 表示がある場合は Dispatcher 経由で処理。
+
+### `MultiAction` / `XboxGameDVR`（複合アクション）
+- プロパティ: `List<ActionDescriptor>`（内部で実行する複数アクションの記述）
+- 実行: 内部列のアクションを順次（あるいは並列）実行。`XboxGameDVR` は `MultiAction` に変換して扱う。
+
+### `SASteeringWheelEmulationCalibrate` / `GyroCalibrate`
+- 小規模専用アクションで、デバイス較正ルーチンを呼び出す。例: `CalibrateSteeringWheel(device)`。
+
+---
+
+この追記により、既存の `SpecialAction` が表現している全振る舞いを新しい `Action` 系で再現できることを文書化しました。ソースへの移植を行う場合、次は `ActionFactory.CreateFrom(SpecialAction sa)` と `KeyAction` の最小スタブ実装および `Mapping` 側の並列呼び出しパスを作成するのが自然な第一歩です。
+
 # Action クラス設計仕様書
 
 目的
