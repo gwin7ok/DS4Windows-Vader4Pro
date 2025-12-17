@@ -51,6 +51,7 @@ namespace DS4Windows
                     int interval = (int)Math.Round(1000.0 / Math.Max(1.0, RepeatCharsPerSec));
                     // clamp to reasonable bounds
                     RepeatIntervalMs = Math.Max(30, Math.Min(400, interval));
+                    try { AppLogger.LogInfo($"Keyboard settings loaded: KeyboardDelay[{DelayIndex}:{InitialRepeatDelayMs}ms], KeyboardSpeed[{SpeedValue}:{RepeatIntervalMs}ms interval]"); } catch { }
                 }
             }
             catch (Exception ex)
