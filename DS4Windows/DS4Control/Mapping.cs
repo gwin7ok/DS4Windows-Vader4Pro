@@ -5909,6 +5909,11 @@ namespace DS4Windows
         // Play through a macro. The macro steps are defined either as string, List or Array object (always only one of those parameters is set to a valid value)
         private static void PlayMacroTask(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action, ActionInstanceState actionDoneState)
         {
+            // Ensure we have the per-action state from ActionManager if not provided by caller
+            if (actionDoneState == null && action != null)
+            {
+                try { actionDoneState = ActionManager.GetStateFor(action, device); } catch { }
+            }
             if (!String.IsNullOrEmpty(macroStr))
             {
                 string[] skeys;
