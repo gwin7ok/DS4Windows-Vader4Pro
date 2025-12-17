@@ -194,6 +194,15 @@ Mapping との連携（呼び出しフロー）
 
 これらのルールを守ることで、責務の分離が明確になり、重複実装やグローバル状態による副作用を避けられます。
 
+### ライフサイクルと破棄（Dispose）
+
+- コントローラの破棄は標準的な `IDisposable.Dispose()` を優先して行います。特に `KeyButtonActionController` は `IDisposable` を実装し、`Dispose()` が内部リソース（`RepeatHelper` など）を確実に解放します。
+- 既存の `Destroy()` メソッドは後方互換のため残しますが、実装は `Dispose()` を呼ぶラッパーとします。新しいコードは `Dispose()` を直接呼ぶか、DI コンテナのスコープ破棄に委ねてください。
+- `Mapping.ClearKeyButtonControllersForDevice(device)` のようなオーナー側でコントローラの登録解除と `Dispose()` 呼び出しを行い、例外が発生しても他のコントローラの破棄処理に影響を与えないように実装してください（現在の変更ではこの点を考慮した実装になっています）。
+- DI を用いる場合、コンテナがコントローラのライフサイクル（Scoped/Singleton）を管理する設計に移行することが可能です。その場合はファクトリ／登録機構（`IControllerRegistry` 等）を検討してください。
+
+これにより、using ブロックやコンテナ破棄で確実にリソースが解放され、GC に依存しない安定したクリーンアップが可能になります。
+
 付録: 主要 API シグネチャ（サンプル）
 ```csharp
 public abstract class Action
