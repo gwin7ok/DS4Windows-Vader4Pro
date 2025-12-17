@@ -64,6 +64,13 @@ namespace DS4Windows
         {
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) return mgr.GetActionByIndex(index);
+                }
+
                 var sa = ActionRegistry.GetByIndex(index);
                 if (sa == null) return null;
                 lock (actions)
@@ -81,9 +88,17 @@ namespace DS4Windows
 
         public static Actions.Action GetActionByName(string name)
         {
-            if (string.IsNullOrEmpty(name)) return null;
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) return mgr.GetActionByName(name);
+                }
+
+                if (string.IsNullOrEmpty(name)) return null;
+
                 // Find index from registry
                 int idx = -1;
                 int i = 0;
@@ -104,6 +119,13 @@ namespace DS4Windows
             {
                 try
                 {
+                    var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                    if (sp != null)
+                    {
+                        var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                        if (mgr != null) return mgr.Actions;
+                    }
+
                     var list = new List<Actions.Action>();
                     int count = ActionRegistry.Count;
                     for (int i = 0; i < count; ++i)
@@ -122,6 +144,13 @@ namespace DS4Windows
         {
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) return mgr.GetStateFor(action, device);
+                }
+
                 var ent = GetOrCreateEntry(action);
                 if (ent == null) return null;
                 if (device < 0 || device >= ent.States.Length) return null;
@@ -135,6 +164,13 @@ namespace DS4Windows
         {
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) { mgr.ClearPressedOnceForKey(key); return; }
+                }
+
                 lock (actions)
                 {
                     foreach (var ent in actions.Values)
@@ -159,6 +195,13 @@ namespace DS4Windows
         {
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) { mgr.ClearAllPressedOnce(); return; }
+                }
+
                 lock (actions)
                 {
                     foreach (var ent in actions.Values)
@@ -180,6 +223,13 @@ namespace DS4Windows
         {
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) { mgr.ClearAllEntries(); return; }
+                }
+
                 lock (actions)
                 {
                     actions.Clear();
@@ -193,6 +243,13 @@ namespace DS4Windows
         {
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) { mgr.ClearDeviceState(device); return; }
+                }
+
                 lock (actions)
                 {
                     foreach (var ent in actions.Values)
@@ -209,7 +266,6 @@ namespace DS4Windows
                     }
                 }
 
-                // Also clear Mapping's per-device controllers
                 try { Mapping.ClearKeyButtonControllersForDevice(device); } catch { }
             }
             catch { }
@@ -220,6 +276,13 @@ namespace DS4Windows
         {
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) { mgr.NotifyTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); return; }
+                }
+
                 var ent = GetOrCreateEntry(action);
                 ent?.ActionImpl?.OnTrigger(device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
             }
@@ -233,6 +296,13 @@ namespace DS4Windows
         {
             try
             {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) { mgr.NotifyTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); return; }
+                }
+
                 var ent = GetOrCreateEntry(action);
                 ent?.ActionImpl?.OnRelease(device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
             }

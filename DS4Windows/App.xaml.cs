@@ -293,6 +293,7 @@ namespace DS4WinWPF
             {
                 var services = new ServiceCollection();
                 services.AddSingleton<DS4Windows.Actions.IActionFactory, DS4Windows.Actions.DefaultActionFactory>();
+                services.AddSingleton<DS4Windows.Actions.IManagedActionManager, DS4Windows.Actions.DefaultActionManager>();
                 // Register other services here as needed in future (ActionManager, Loggers, etc.)
                 var sp = services.BuildServiceProvider();
                 DS4Windows.DI.ServiceProviderHolder.SetProvider(sp);
