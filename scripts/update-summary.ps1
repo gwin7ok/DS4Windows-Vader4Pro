@@ -4,7 +4,7 @@ param(
 )
 
 if ([string]::IsNullOrEmpty($FilePath)) {
-    $FilePath = Join-Path $PSScriptRoot "..\DS4Windows\latest_build_summary.txt"
+    $FilePath = Join-Path $PSScriptRoot "..\DS4Windows\build_timestamp.txt"
     $FilePath = [System.IO.Path]::GetFullPath($FilePath)
 }
 

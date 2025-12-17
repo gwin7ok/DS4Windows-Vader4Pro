@@ -5271,7 +5271,16 @@ namespace DS4Windows
 
                                 if (uTriggerCount == 0 || (uTriggerCount > 0 && untriggerindex[device] == -1 && !actionDone[index].dev[device]))
                                 {
-                                    LogActionDoneCountOnTrigger(index, action, device, "Key");
+                                    if (!prevActionDone)
+                                    {
+                                        LogActionDoneCountOnTrigger(index, action, device, "KeyTriggered");
+                                        try
+                                        {
+                                            string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
+                                            AppLogger.LogDebug($"SpecialAction KeyTriggered: device={device}, name={action.name}, trigger={triggerCombo}, index={index}");
+                                        }
+                                        catch { }
+                                    }
                                     actionDone[index].dev[device] = true;
                                     // For Toggle-type SpecialAction keys we do NOT register an untriggerindex here
                                     // because toggle off/on is driven by successive triggers, not by physical release.
@@ -5455,6 +5464,69 @@ namespace DS4Windows
                                     actionFound = true;
                                     actionDone[index].dev[device] = false;
                                     untriggerindex[device] = -1;
+                                        LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
+                                        try
+                                        {
+                                            string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
+                                            string released = "(unknown)";
+                                            if (action.trigger != null)
+                                            {
+                                                for (int ti = 0; ti < action.trigger.Count; ti++)
+                                                {
+                                                    var dc = action.trigger[ti];
+                                                    if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
+                                                    {
+                                                        released = dc.ToString();
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            if (released == "(unknown)" && action.uTrigger != null)
+                                            {
+                                                for (int ui = 0; ui < action.uTrigger.Count; ui++)
+                                                {
+                                                    var udc = action.uTrigger[ui];
+                                                    if (!getBoolSpecialActionMapping(device, udc, cState, eState, tp, fieldMapping))
+                                                    {
+                                                        released = udc.ToString();
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            AppLogger.LogDebug($"SpecialAction KeyReleased: device={device}, name={action.name}, trigger={triggerCombo}, released={released}, index={index}");
+                                        }
+                                        catch { }
+                                    try
+                                    {
+                                        string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
+                                        string released = "(unknown)";
+                                        if (action.trigger != null)
+                                        {
+                                            for (int ti = 0; ti < action.trigger.Count; ti++)
+                                            {
+                                                var dc = action.trigger[ti];
+                                                if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
+                                                {
+                                                    released = dc.ToString();
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (released == "(unknown)" && action.uTrigger != null)
+                                        {
+                                            for (int ui = 0; ui < action.uTrigger.Count; ui++)
+                                            {
+                                                var udc = action.uTrigger[ui];
+                                                if (!getBoolSpecialActionMapping(device, udc, cState, eState, tp, fieldMapping))
+                                                {
+                                                    released = udc.ToString();
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        AppLogger.LogDebug($"SpecialAction KeyReleased: device={device}, name={action.name}, trigger={triggerCombo}, released={released}, index={index}");
+                                    }
+                                    catch { }
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
                                     try
@@ -5535,6 +5607,7 @@ namespace DS4Windows
                                 {
                                     actionDone[index].dev[device] = false;
                                     untriggerindex[device] = -1;
+                                    LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
                                     if (action.typeID == SpecialAction.ActionTypeId.Key)
                                     {
                                         ushort key;

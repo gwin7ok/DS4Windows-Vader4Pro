@@ -27,6 +27,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
@@ -362,20 +363,33 @@ namespace DS4WinWPF
             AppLogger.LogInfo($"System Architecture: {(Environment.Is64BitOperatingSystem ? "x64" : "x86")}");
             AppLogger.LogInfo("Logger created");
 
-            // Startup summary: read from latest_build_summary.txt in the executable folder
+            // Startup summary: read from build_timestamp.txt in the executable folder
             try
             {
-                string fp = Path.Combine(AppContext.BaseDirectory, "latest_build_summary.txt");
+                string fp = Path.Combine(AppContext.BaseDirectory, "build_timestamp.txt");
                 fp = Path.GetFullPath(fp);
                 if (File.Exists(fp))
                 {
                     string summary = File.ReadAllText(fp).Trim();
                     string single = summary.Replace(Environment.NewLine, " ").Replace('\n', ' ');
-                    AppLogger.LogDebug($"Startup summary: {single}");
+                    // English message: try to extract an ISO-like timestamp from the summary and display it in English
+                    try
+                    {
+                        var m = Regex.Match(single, @"(?<date>\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})");
+                        if (m.Success)
+                        {
+                            AppLogger.LogInfo($"This binary was built at {m.Groups["date"].Value}");
+                        }
+                        else
+                        {
+                            AppLogger.LogInfo($"This binary was built: {single}");
+                        }
+                    }
+                    catch { }
                 }
                 else
                 {
-                    AppLogger.LogDebug("Startup summary: (no summary file found in executable folder)");
+                    try { AppLogger.LogInfo("Build summary file not found in the executable folder"); } catch { }
                 }
             }
             catch (Exception ex)
