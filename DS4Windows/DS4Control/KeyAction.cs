@@ -26,6 +26,7 @@ namespace DS4Windows
         private readonly ushort keyId;
         private readonly uint nativeKey;
         private readonly bool useScan;
+        // No per-action repeater here; RepeatHelper should be used only by controllers.
 
         public KeyAction(SpecialAction action, int index)
         {
@@ -37,6 +38,7 @@ namespace DS4Windows
             keyId = k;
             try { nativeKey = SyntheticDispatcher.ResolveNativeKey(k); } catch { nativeKey = 0; }
             useScan = action != null && action.keyType.HasFlag(DS4KeyType.ScanCode);
+            // Do not parse repeater options here; controllers handle repeat behavior.
         }
 
         public void OnTrigger(int device, ushort logicalValue, uint nativeValue, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
