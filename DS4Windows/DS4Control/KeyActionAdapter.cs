@@ -10,7 +10,19 @@ namespace DS4Windows.Actions
 
         public KeyActionAdapter(SpecialAction sa, int index) : base(sa, index)
         {
-            inner = new KeyAction(sa, index);
+            KeyAction temp = null;
+            try
+            {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var creator = sp.GetService(typeof(DS4Windows.Actions.IKeyActionCreator)) as DS4Windows.Actions.IKeyActionCreator;
+                    if (creator != null) temp = creator.CreateKeyAction(sa, index);
+                }
+            }
+            catch { }
+
+            inner = temp ?? new KeyAction(sa, index);
         }
 
         public override void OnTrigger(int device, MappingContext ctx)
