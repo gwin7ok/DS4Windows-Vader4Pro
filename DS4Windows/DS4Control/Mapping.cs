@@ -3709,6 +3709,12 @@ namespace DS4Windows
             }
         }
 
+        // Public wrapper so Action/KeyAction code can reuse Mapping's cached controllers.
+        public static KeyButtonActionController GetOrCreateKeyButtonControllerForAction(int device, SpecialAction sa)
+        {
+            return GetOrCreateKeyButtonController(device, sa);
+        }
+
         // Helper: Dispatch SpecialAction trigger established via KeyButtonActionController if available.
         // If a fallback action is provided it will be executed when no controller exists.
         private static bool TryDispatchSATriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler, Action fallback = null)
