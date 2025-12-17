@@ -3719,6 +3719,18 @@ namespace DS4Windows
                 if (kbc != null)
                 {
                     kbc.OnSATriggerEstablished(logicalValue, nativeValue, useScanCode, outputKBMHandler, true);
+                    try
+                    {
+                        if (action != null && action.typeID == SpecialAction.ActionTypeId.Key)
+                        {
+                            AppLogger.LogDebug($"SpecialAction KEY synthetic-press delegated to KeyButtonActionController: name={action.name}, device={device}, key={logicalValue}");
+                        }
+                        else
+                        {
+                            AppLogger.LogDebug($"SpecialAction {(action!=null && action.typeID==SpecialAction.ActionTypeId.Button?"BUTTON":"KEY")} press delegated to KeyButtonActionController: name={(action!=null?action.name:"(null)" )}, device={device}, value={logicalValue}");
+                        }
+                    }
+                    catch { }
                     return true;
                 }
                 else
@@ -3746,6 +3758,18 @@ namespace DS4Windows
                 if (kbc != null)
                 {
                     kbc.OnSATriggerReleased(logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                    try
+                    {
+                        if (action != null && action.typeID == SpecialAction.ActionTypeId.Key)
+                        {
+                            AppLogger.LogDebug($"SpecialAction KEY synthetic-release delegated to KeyButtonActionController: name={action.name}, device={device}, key={logicalValue}");
+                        }
+                        else
+                        {
+                            AppLogger.LogDebug($"SpecialAction {(action!=null && action.typeID==SpecialAction.ActionTypeId.Button?"BUTTON":"KEY")} release delegated to KeyButtonActionController: name={(action!=null?action.name:"(null)" )}, device={device}, value={logicalValue}");
+                        }
+                    }
+                    catch { }
                     return true;
                 }
                 else
@@ -5332,17 +5356,21 @@ namespace DS4Windows
                                         }
                                         else
                                         {
-                                            // Delegate Press-mode synthetic sends via KeyButtonActionController (preserve behavior)
-                                            try
+                                            // Delegate Press-mode synthetic sends via KeyButtonActionController
+                                            // Only dispatch on rising edge (first tick when actionDone was false) to avoid
+                                            // repeated per-tick delegations while trigger remains active.
+                                            if (!prevActionDone)
                                             {
-                                                uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
-                                                bool useScan = action.keyType.HasFlag(DS4KeyType.ScanCode);
-                                                TryDispatchSATriggerEstablished(action, device, key, nativeKeyToUse, useScan, outputKBMHandler);
-                                                AppLogger.LogDebug($"SpecialAction KEY synthetic-press delegated to KeyButtonActionController: name={action.name}, device={device}, key={key}");
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                AppLogger.LogTrace($"PressActionController.OnTriggerOn failed: {ex}");
+                                                try
+                                                {
+                                                    uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
+                                                    bool useScan = action.keyType.HasFlag(DS4KeyType.ScanCode);
+                                                    TryDispatchSATriggerEstablished(action, device, key, nativeKeyToUse, useScan, outputKBMHandler);
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    AppLogger.LogTrace($"PressActionController.OnTriggerOn failed: {ex}");
+                                                }
                                             }
                                         }
 
@@ -5496,37 +5524,7 @@ namespace DS4Windows
                                             AppLogger.LogDebug($"SpecialAction KeyReleased: device={device}, name={action.name}, trigger={triggerCombo}, released={released}, index={index}");
                                         }
                                         catch { }
-                                    try
-                                    {
-                                        string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
-                                        string released = "(unknown)";
-                                        if (action.trigger != null)
-                                        {
-                                            for (int ti = 0; ti < action.trigger.Count; ti++)
-                                            {
-                                                var dc = action.trigger[ti];
-                                                if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
-                                                {
-                                                    released = dc.ToString();
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        if (released == "(unknown)" && action.uTrigger != null)
-                                        {
-                                            for (int ui = 0; ui < action.uTrigger.Count; ui++)
-                                            {
-                                                var udc = action.uTrigger[ui];
-                                                if (!getBoolSpecialActionMapping(device, udc, cState, eState, tp, fieldMapping))
-                                                {
-                                                    released = udc.ToString();
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        AppLogger.LogDebug($"SpecialAction KeyReleased: device={device}, name={action.name}, trigger={triggerCombo}, released={released}, index={index}");
-                                    }
-                                    catch { }
+                                    // (Duplicate KeyReleased logging removed — preserved single log above)
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
                                     try
