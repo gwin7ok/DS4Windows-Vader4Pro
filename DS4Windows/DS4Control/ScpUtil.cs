@@ -9222,10 +9222,6 @@ namespace DS4Windows
                             {
                                 Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
                             }
-                            if (Mapping.pressedonce != null)
-                            {
-                                for (int i = 0; i < Mapping.pressedonce.Length; i++) Mapping.pressedonce[i] = false;
-                            }
                             try { ActionManager.ClearAllPressedOnce(); } catch { }
                             if (Mapping.macrodone != null)
                             {
@@ -9267,10 +9263,6 @@ namespace DS4Windows
                     for (int d = 0; d < Mapping.deviceState.Length; d++)
                     {
                         Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
-                    }
-                    if (Mapping.pressedonce != null)
-                    {
-                        for (int i = 0; i < Mapping.pressedonce.Length; i++) Mapping.pressedonce[i] = false;
                     }
                     try { ActionManager.ClearAllPressedOnce(); } catch { }
                     if (Mapping.macrodone != null)

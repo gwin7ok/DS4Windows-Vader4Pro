@@ -897,7 +897,7 @@ namespace DS4Windows
         private static bool stickWheelDownDir = false;
 
         //mapcustom
-        public static bool[] pressedonce = new bool[2400], macrodone = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
+        public static bool[] macrodone = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
         // debounce for SpecialAction toggle (milliseconds)
         private const int ToggleDebounceMs = 30;
         // hold pressedonce clear for a short window after toggle to avoid rapid reset during bouncy inputs
@@ -946,7 +946,6 @@ namespace DS4Windows
         }
 
         // Helper: query/set per-action `PressedOnce` through ActionManager-backed per-action state.
-        // Falls back to legacy `pressedonce[index]` array if per-action state is not available.
         private static bool GetPressedOnce(int index, SpecialAction action, int device)
         {
             try
@@ -955,13 +954,6 @@ namespace DS4Windows
                 if (st != null) return st.PressedOnce;
             }
             catch { }
-
-            try
-            {
-                if (pressedonce != null && index >= 0 && index < pressedonce.Length) return pressedonce[index];
-            }
-            catch { }
-
             return false;
         }
 
@@ -973,12 +965,6 @@ namespace DS4Windows
                 if (st != null) { st.PressedOnce = value; return; }
             }
             catch { }
-
-            try
-            {
-                if (pressedonce != null && index >= 0 && index < pressedonce.Length) pressedonce[index] = value;
-            }
-            catch { }
         }
 
         // Determine whether it's safe to clear the pressedonce flag for given device/key.
@@ -986,7 +972,8 @@ namespace DS4Windows
         {
             try
             {
-                if (pressedonce == null) return true;
+                if (deviceState == null || device < 0 || device >= deviceState.Length) return true;
+                if (deviceState[device] == null) return true;
                 if (deviceState == null || device < 0 || device >= deviceState.Length) return true;
                 if (deviceState[device].keyPresses == null) return true;
                 if (deviceState[device].keyPresses.TryGetValue(key, out SyntheticState.KeyPresses kp))
@@ -5889,8 +5876,8 @@ namespace DS4Windows
 
                 // 押下済みフラグをクリア（ActionManager優先、legacy配列はフォールバック）
                 try { ActionManager.ClearPressedOnceForKey(key); } catch { }
-                if (pressedonce != null && key < pressedonce.Length)
-                    pressedonce[key] = false;
+                // Legacy `pressedonce` removed; use ActionManager to clear per-key pressed-once state.
+                // ActionManager.ClearPressedOnceForKey already invoked above.
 
                 AppLogger.LogToGui($"Runtime state for key {key} cleared on all devices.", false);
             }
