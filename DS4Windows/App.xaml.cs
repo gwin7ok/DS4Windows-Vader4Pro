@@ -295,6 +295,7 @@ namespace DS4WinWPF
                 services.AddSingleton<DS4Windows.Actions.IActionFactory, DS4Windows.Actions.DefaultActionFactory>();
                 services.AddSingleton<DS4Windows.Actions.IManagedActionManager, DS4Windows.Actions.DefaultActionManager>();
                 services.AddSingleton<DS4Windows.Actions.IKeyActionCreator, DS4Windows.Actions.DefaultKeyActionCreator>();
+                services.AddSingleton<DS4Windows.Actions.IKeyButtonActionControllerFactory, DS4Windows.Actions.DefaultKeyButtonActionControllerFactory>();
                 // Register other services here as needed in future (ActionManager, Loggers, etc.)
                 var sp = services.BuildServiceProvider();
                 DS4Windows.DI.ServiceProviderHolder.SetProvider(sp);

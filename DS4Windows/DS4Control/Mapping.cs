@@ -154,7 +154,19 @@ namespace DS4Windows
                     string dictKey = MakeKbcDictKey(device, actionName ?? "<mapping>");
                     if (!keyButtonControllers.TryGetValue(dictKey, out KeyButtonActionController inst) || inst == null)
                     {
-                        inst = new KeyButtonActionController(device, mode, actionName ?? "<mapping>");
+                        KeyButtonActionController temp = null;
+                        try
+                        {
+                            var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                            if (sp != null)
+                            {
+                                var factory = sp.GetService(typeof(DS4Windows.Actions.IKeyButtonActionControllerFactory)) as DS4Windows.Actions.IKeyButtonActionControllerFactory;
+                                if (factory != null) temp = factory.Create(device, mode, actionName ?? "<mapping>");
+                            }
+                        }
+                        catch { }
+
+                        inst = temp ?? new KeyButtonActionController(device, mode, actionName ?? "<mapping>");
                         keyButtonControllers[dictKey] = inst;
                     }
                     return inst;
@@ -173,7 +185,19 @@ namespace DS4Windows
                     string dictKey = MakeKbcDictKey(device, name);
                     if (!keyButtonControllers.TryGetValue(dictKey, out KeyButtonActionController inst) || inst == null)
                     {
-                        inst = new KeyButtonActionController(device, sa, name);
+                        KeyButtonActionController temp = null;
+                        try
+                        {
+                            var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                            if (sp != null)
+                            {
+                                var factory = sp.GetService(typeof(DS4Windows.Actions.IKeyButtonActionControllerFactory)) as DS4Windows.Actions.IKeyButtonActionControllerFactory;
+                                if (factory != null) temp = factory.Create(device, sa, name);
+                            }
+                        }
+                        catch { }
+
+                        inst = temp ?? new KeyButtonActionController(device, sa, name);
                         keyButtonControllers[dictKey] = inst;
                     }
                     return inst;
