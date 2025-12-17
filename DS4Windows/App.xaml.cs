@@ -162,25 +162,25 @@ namespace DS4WinWPF
             try
             {
                 // Detailed diagnostics at Debug level
-                AppLogger.LogDebug($"Startup culture: CurrentCulture={System.Globalization.CultureInfo.CurrentCulture}, CurrentUICulture={System.Globalization.CultureInfo.CurrentUICulture}");
-                AppLogger.LogDebug($"DefaultThreadCurrentCulture={System.Globalization.CultureInfo.DefaultThreadCurrentCulture}, DefaultThreadCurrentUICulture={System.Globalization.CultureInfo.DefaultThreadCurrentUICulture}");
+                AppLogger.LogInfo($"Startup culture: CurrentCulture={System.Globalization.CultureInfo.CurrentCulture}, CurrentUICulture={System.Globalization.CultureInfo.CurrentUICulture}");
+                AppLogger.LogInfo($"DefaultThreadCurrentCulture={System.Globalization.CultureInfo.DefaultThreadCurrentCulture}, DefaultThreadCurrentUICulture={System.Globalization.CultureInfo.DefaultThreadCurrentUICulture}");
 
                 // Log command-line args for Updater-related diagnostic
                 try
                 {
                     var argsJoined = string.Join(' ', e.Args ?? Array.Empty<string>());
-                    AppLogger.LogDebug($"Startup args: {argsJoined}");
+                    AppLogger.LogInfo($"Startup args: {argsJoined}");
                 }
                 catch { }
 
                 string langDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Lang");
-                AppLogger.LogDebug($"Lang folder exists: {System.IO.Directory.Exists(langDir)} at {langDir}");
+                AppLogger.LogInfo($"Lang folder exists: {System.IO.Directory.Exists(langDir)} at {langDir}");
                 if (System.IO.Directory.Exists(langDir))
                 {
                     try
                     {
                         var dirs = System.IO.Directory.GetDirectories(langDir);
-                        AppLogger.LogDebug($"Lang subdirs: {string.Join(',', System.Array.ConvertAll(dirs, d => System.IO.Path.GetFileName(d)))}");
+                        AppLogger.LogInfo($"Lang subdirs: {string.Join(',', System.Array.ConvertAll(dirs, d => System.IO.Path.GetFileName(d)))}");
                     }
                     catch (Exception ex) { AppLogger.LogError($"LangDirList exception: {ex}"); }
                 }
@@ -276,7 +276,6 @@ namespace DS4WinWPF
             try
             {
                 DS4Windows.KeyboardSettings.LoadFromRegistry();
-                AppLogger.LogDebug($"Keyboard settings loaded: InitialRepeatDelayMs={DS4Windows.KeyboardSettings.InitialRepeatDelayMs}, RepeatIntervalMs={DS4Windows.KeyboardSettings.RepeatIntervalMs}");
             }
             catch { }
 
