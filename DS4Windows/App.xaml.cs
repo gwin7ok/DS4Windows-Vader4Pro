@@ -1011,6 +1011,24 @@ namespace DS4WinWPF
 
                 if (ipcClassNameMMF != null) ipcClassNameMMF.Dispose();
 
+                // Dispose controllers registered in IControllerRegistry (if present)
+                try
+                {
+                    var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                    if (sp != null)
+                    {
+                        var reg = sp.GetService(typeof(DS4Windows.Actions.IControllerRegistry)) as DS4Windows.Actions.IControllerRegistry;
+                        if (reg != null)
+                        {
+                            for (int d = 0; d < Global.MAX_DS4_CONTROLLER_COUNT; d++)
+                            {
+                                try { reg.ClearControllersForDevice(d); } catch { }
+                            }
+                        }
+                    }
+                }
+                catch { }
+
                 LogManager.Flush();
                 LogManager.Shutdown();
             }
