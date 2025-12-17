@@ -78,8 +78,9 @@ namespace DS4Windows.DS4Control
             catch { }
         }
 
-        // Stop repeating and send a single KeyRelease. Safe to call multiple times. Does not dispose
+        // Stop repeating. Safe to call multiple times. Does not dispose
         // the underlying timer so the instance can be restarted by calling Start().
+        // NOTE: Release is no longer sent here; caller is responsible for sending KeyRelease.
         public void Stop()
         {
             if (Interlocked.CompareExchange(ref disposed, 0, 0) == 1) return;
@@ -89,12 +90,6 @@ namespace DS4Windows.DS4Control
             {
                 timer.Change(Timeout.Infinite, Timeout.Infinite);
                 isRunning = false;
-            }
-            catch { }
-
-            try
-            {
-                SyntheticDispatcher.SendRelease(device, kvpKey, nativeKey, useScanCode, handler);
             }
             catch { }
         }
@@ -108,11 +103,7 @@ namespace DS4Windows.DS4Control
                 try { timer.Dispose(); } catch { }
             }
             catch { }
-            try
-            {
-                if (isRunning) SyntheticDispatcher.SendRelease(device, kvpKey, nativeKey, useScanCode, handler);
-            }
-            catch { }
+            // Do NOT send release here; disposal should not implicitly generate key events.
             isRunning = false;
         }
     }

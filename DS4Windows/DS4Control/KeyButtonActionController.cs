@@ -118,6 +118,12 @@ namespace DS4Windows
                     {
                         // Stop repeater; Stop() sends single release but keep instance for reuse
                         try { e.repeater.Stop(); } catch { }
+                        try
+                        {
+                            if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
+                            SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey, e.useScanCode, e.handler);
+                        }
+                        catch { }
                     }
                     catch { }
                 }
@@ -132,6 +138,12 @@ namespace DS4Windows
                 if (entries.TryGetValue(kvpKey, out Entry e))
                 {
                     try { e.repeater?.Stop(); } catch { }
+                    try
+                    {
+                        if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
+                        SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey, e.useScanCode, e.handler);
+                    }
+                    catch { }
                     // keep entry for reuse; do not dispose here
                 }
                 try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
@@ -147,6 +159,12 @@ namespace DS4Windows
                         try
                         {
                             var e = entries[k];
+                            try
+                            {
+                                if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(k);
+                                SyntheticDispatcher.SendRelease(device, k, e.nativeKey, e.useScanCode, e.handler);
+                            }
+                            catch { }
                             try { e.repeater?.Dispose(); } catch { }
                             entries.Remove(k);
                             try { SyntheticDispatcher.ResetKeyTiming(0, k); } catch { }
@@ -188,9 +206,8 @@ namespace DS4Windows
                     e.isPressed = true;
                     try
                     {
-                        // Primary behavior: send one immediate press then release for the main action
+                        // Primary behavior: send one immediate press (hold). Release will be sent on OnUp.
                         SyntheticDispatcher.SendPress(device, kvpKey, e.nativeKey, e.useScanCode, e.handler);
-                        SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey, e.useScanCode, e.handler);
                     }
                     catch { }
 
@@ -237,7 +254,8 @@ namespace DS4Windows
                         {
                             try { e.repeater.Stop(); } catch { }
                         }
-                        // else: initial immediate press+release already sent, no additional release needed here
+                        // Ensure release is sent now for the held press
+                        try { SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey, e.useScanCode, e.handler); } catch { }
                         e.isPressed = false;
                     }
                     catch { }
@@ -254,6 +272,8 @@ namespace DS4Windows
                 {
                     try { e.delayCts?.Cancel(); } catch { }
                     try { e.repeater?.Stop(); } catch { }
+                    try { if (e.isPressed) SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey, e.useScanCode, e.handler); } catch { }
+                    e.isPressed = false;
                     // keep entry for reuse; do not dispose here
                 }
                 try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
@@ -268,8 +288,9 @@ namespace DS4Windows
                             try
                             {
                                 var e = entries[k];
-                                try { e.delayCts?.Cancel(); } catch { }
-                                try { e.repeater?.Dispose(); } catch { }
+                                        try { e.delayCts?.Cancel(); } catch { }
+                                        try { if (e.isPressed) SyntheticDispatcher.SendRelease(device, k, e.nativeKey, e.useScanCode, e.handler); } catch { }
+                                        try { e.repeater?.Dispose(); } catch { }
                                 entries.Remove(k);
                                 try { SyntheticDispatcher.ResetKeyTiming(0, k); } catch { }
                             }
