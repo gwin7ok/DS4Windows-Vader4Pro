@@ -10,7 +10,15 @@ namespace DS4Windows
         public bool PressedOnce = false;
         public long LastToggleTimeUtcTicks = 0;
         public bool FirstTouch = false;
+        // Whether the action is considered 'done' (previously stored in Mapping.actionDone[index].dev[device])
         public bool ActionDone = false;
+
+        // Index of an expected untrigger action for this state (-1 if none). Mirrors Mapping.untriggerindex[device] semantics
+        public int UntriggerIndex = -1;
+
+        // Bitmask for one-shot flags (GyroCalibrate, BatteryCheck, etc.) so we can record multiple one-shot states per action/device.
+        // Interpretation of bits is up to higher-level managers; using uint for compactness.
+        public uint OneShotFlags = 0u;
     }
 
     internal class ActionEntry
