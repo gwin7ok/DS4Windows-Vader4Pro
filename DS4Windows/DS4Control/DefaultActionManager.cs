@@ -180,7 +180,20 @@ namespace DS4Windows.Actions
             try
             {
                 var ent = GetOrCreateEntryInternal(actions, action);
-                ent?.ActionImpl?.OnTrigger(device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                try
+                {
+                    var ctx = new DS4Windows.Actions.MappingContext
+                    {
+                        LogicalValue = logicalValue,
+                        NativeValue = nativeValue,
+                        UseScanCode = useScanCode,
+                        OutputHandler = outputKBMHandler,
+                        ActionDef = action,
+                        Index = -1
+                    };
+                    ent?.ActionImpl?.OnTrigger(device, ctx);
+                }
+                catch { }
             }
             catch (Exception ex)
             {
@@ -193,7 +206,20 @@ namespace DS4Windows.Actions
             try
             {
                 var ent = GetOrCreateEntryInternal(actions, action);
-                ent?.ActionImpl?.OnRelease(device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                try
+                {
+                    var ctx = new DS4Windows.Actions.MappingContext
+                    {
+                        LogicalValue = logicalValue,
+                        NativeValue = nativeValue,
+                        UseScanCode = useScanCode,
+                        OutputHandler = outputKBMHandler,
+                        ActionDef = action,
+                        Index = -1
+                    };
+                    ent?.ActionImpl?.OnRelease(device, ctx);
+                }
+                catch { }
             }
             catch (Exception ex)
             {
