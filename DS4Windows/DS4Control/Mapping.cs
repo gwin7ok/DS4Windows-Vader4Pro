@@ -955,6 +955,42 @@ namespace DS4Windows
             catch { }
         }
 
+        // Helper: query/set per-action `PressedOnce` through ActionManager-backed per-action state.
+        // Falls back to legacy `pressedonce[index]` array if per-action state is not available.
+        private static bool GetPressedOnce(int index, SpecialAction action, int device)
+        {
+            try
+            {
+                var st = ActionManager.GetStateFor(action, device);
+                if (st != null) return st.PressedOnce;
+            }
+            catch { }
+
+            try
+            {
+                if (pressedonce != null && index >= 0 && index < pressedonce.Length) return pressedonce[index];
+            }
+            catch { }
+
+            return false;
+        }
+
+        private static void SetPressedOnce(int index, SpecialAction action, int device, bool value)
+        {
+            try
+            {
+                var st = ActionManager.GetStateFor(action, device);
+                if (st != null) { st.PressedOnce = value; return; }
+            }
+            catch { }
+
+            try
+            {
+                if (pressedonce != null && index >= 0 && index < pressedonce.Length) pressedonce[index] = value;
+            }
+            catch { }
+        }
+
         // Determine whether it's safe to clear the pressedonce flag for given device/key.
         private static bool ShouldClearPressedOnce(int device, ushort key)
         {
@@ -4377,22 +4413,22 @@ namespace DS4Windows
 
                         if (keyType.HasFlag(DS4KeyType.Toggle))
                         {
-                            if (!pressedonce[value])
+                            if (!GetPressedOnce(value, null, device))
                             {
                                 kp.current.toggle = !kp.current.toggle;
                                 kp.current.pending = true;
                                 kp.current.lastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
-                                pressedonce[value] = true;
+                                SetPressedOnce(value, null, device, true);
                             }
                             kp.current.toggleCount++;
                         }
                         kp.current.repeatCount++;
                     }
-                    else
-                    {
-                        if (ShouldClearPressedOnce(device, value))
-                            pressedonce[value] = false;
-                    }
+                        else
+                        {
+                            if (ShouldClearPressedOnce(device, value))
+                                SetPressedOnce(value, null, device, false);
+                        }
 
                     // erase default mappings for things that are remapped
                     ResetToDefaultValue(dcs.control, MappedState, outputfieldMapping);
@@ -4622,17 +4658,17 @@ namespace DS4Windows
                     {
                         if (GetBoolActionMapping(device, dcs.control, cState, eState, tp, fieldMapping))
                         {
-                            if (!pressedonce[keyvalue])
+                            if (!GetPressedOnce(keyvalue, null, device))
                             {
                                 deviceState.currentClicks.toggle = !deviceState.currentClicks.toggle;
-                                pressedonce[keyvalue] = true;
+                                SetPressedOnce(keyvalue, null, device, true);
                             }
                             deviceState.currentClicks.toggleCount++;
                         }
                         else
                         {
                             if (ShouldClearPressedOnce(device, (ushort)keyvalue))
-                                pressedonce[keyvalue] = false;
+                                SetPressedOnce(keyvalue, null, device, false);
                         }
                     }
 
