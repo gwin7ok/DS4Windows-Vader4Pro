@@ -921,6 +921,34 @@ namespace DS4Windows
         // ★新規追加: actionDone初期化状態管理
         public static volatile bool actionDoneInitialized = false;
         public static readonly object actionDoneLock = new object();
+        
+        // Helper: migrate actionDone usage to ActionManager-backed per-action state when available.
+        private static bool GetActionDone(int index, SpecialAction action, int device)
+        {
+            try
+            {
+                var st = ActionManager.GetStateFor(action, device);
+                if (st != null) return st.ActionDone;
+            }
+            catch { }
+
+            if (index >= 0 && index < actionDone.Count && device >= 0 && device < Global.MAX_DS4_CONTROLLER_COUNT)
+                return actionDone[index].dev[device];
+            return false;
+        }
+
+        private static void SetActionDone(int index, SpecialAction action, int device, bool value)
+        {
+            try
+            {
+                var st = ActionManager.GetStateFor(action, device);
+                if (st != null) { st.ActionDone = value; return; }
+            }
+            catch { }
+
+            if (index >= 0 && index < actionDone.Count && device >= 0 && device < Global.MAX_DS4_CONTROLLER_COUNT)
+                actionDone[index].dev[device] = value;
+        }
         // Rate-limit logging for ActionDone size mismatch to avoid log flood
         private static DateTime lastActionDoneMismatchLog = DateTime.MinValue;
         private static readonly TimeSpan actionDoneMismatchLogInterval = TimeSpan.FromSeconds(1);
@@ -5035,8 +5063,8 @@ namespace DS4Windows
                             try
                             {
                                 bool risingEdge = false;
-                                if (index >= 0 && index < actionDone.Count)
-                                    risingEdge = !actionDone[index].dev[device];
+                                if (index >= 0)
+                                    risingEdge = !GetActionDone(index, action, device);
 
                                 if (action.typeID != SpecialAction.ActionTypeId.Button)
                                     LogSpecialActionTrace(actionname, action, device, risingEdge, outputfieldMapping, Mapping.deviceState);
@@ -5052,10 +5080,10 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!actionDone[index].dev[device])
+                                if (!GetActionDone(index, action, device))
                                 {
                                     LogActionDoneCountOnTrigger(index, action, device, "Program");
-                                    actionDone[index].dev[device] = true;
+                                    SetActionDone(index, action, device, true);
                                     if (!string.IsNullOrEmpty(action.extra))
                                     {
                                         int pos = action.extra.IndexOf("$hidden", StringComparison.OrdinalIgnoreCase);
@@ -5194,11 +5222,11 @@ namespace DS4Windows
                                 if (!action.pressRelease)
                                 {
                                     // Macro run when trigger keys are pressed down (the default behaviour)
-                                    if (!actionDone[index].dev[device])
+                                    if (!GetActionDone(index, action, device))
                                     {
                                         DS4KeyType keyType = action.keyType;
                                         LogActionDoneCountOnTrigger(index, action, device, "Macro");
-                                        actionDone[index].dev[device] = true;
+                                        SetActionDone(index, action, device, true);
                                         /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                                         {
                                             DS4Controls dc = action.trigger[i];
@@ -5206,7 +5234,7 @@ namespace DS4Windows
                                         }
                                         */
 
-                                        PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, actionDone[index]);
+                                        PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, null);
                                     }
                                     else
                                     {
