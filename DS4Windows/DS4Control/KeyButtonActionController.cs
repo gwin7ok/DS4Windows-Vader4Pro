@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using DS4Windows.DS4Control;
+using DS4Windows.Actions;
 
 namespace DS4Windows
 {
@@ -123,7 +124,7 @@ namespace DS4Windows
                 public uint nativeKey;
                 public bool useScanCode;
                 public DS4Windows.DS4Control.VirtualKBMBase handler;
-                public DS4Windows.DS4Control.RepeatHelper repeater;
+                public IRepeater repeater;
             }
 
             private readonly Dictionary<ushort, Entry> entries = new Dictionary<ushort, Entry>();
@@ -158,16 +159,17 @@ namespace DS4Windows
                         }
                         else
                         {
-                            if (e.repeater == null)
-                            {
-                                if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
-                                e.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, e.nativeKey, e.useScanCode, e.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true, controllerId);
-                                try { AppLogger.LogTrace($"ToggleImpl.OnDown: controller-repeater link controllerId={controllerId} kvpKey={kvpKey} repeaterId={e.repeater.InstanceId} device={device}"); } catch { }
-                            }
-                            else
-                            {
-                                try { e.repeater.Start(); } catch { }
-                            }
+                                if (e.repeater == null)
+                                {
+                                    if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
+                                    e.repeater = new RepeatHelperToIRepeaterAdapter(() => new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, e.nativeKey, e.useScanCode, e.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true, controllerId));
+                                    try { AppLogger.LogTrace($"ToggleImpl.OnDown: controller-repeater link controllerId={controllerId} kvpKey={kvpKey} device={device}"); } catch { }
+                                    try { e.repeater.Start(TimeSpan.Zero, TimeSpan.FromMilliseconds(DS4Windows.KeyboardSettings.RepeatIntervalMs), null); } catch { }
+                                }
+                                else
+                                {
+                                    try { e.repeater.Start(TimeSpan.Zero, TimeSpan.FromMilliseconds(DS4Windows.KeyboardSettings.RepeatIntervalMs), null); } catch { }
+                                }
                         }
 
                         try { if (assignedActionDef != null) ActionManager.SetPressedOnce(assignedActionDef, device, true); } catch { }
@@ -194,7 +196,7 @@ namespace DS4Windows
                     try
                     {
                         try { e.repeater.Stop(); } catch { }
-                        try { AppLogger.LogTrace($"ToggleImpl.OnToggleOff: controllerId={controllerId} kvpKey={kvpKey} device={device} repeaterId={e.repeater.InstanceId} stopped"); } catch { }
+                        try { AppLogger.LogTrace($"ToggleImpl.OnToggleOff: controllerId={controllerId} kvpKey={kvpKey} device={device} repeater stopped"); } catch { }
                         try
                         {
                             // Ensure PressedOnce is cleared by the same component that set it true.
@@ -266,7 +268,7 @@ namespace DS4Windows
                 public uint nativeKey;
                 public bool useScanCode;
                 public DS4Windows.DS4Control.VirtualKBMBase handler;
-                public RepeatHelper repeater;
+                public IRepeater repeater;
                 public CancellationTokenSource delayCts;
             }
             private readonly Dictionary<ushort, Entry> entries = new Dictionary<ushort, Entry>();
@@ -309,11 +311,12 @@ namespace DS4Windows
                                     {
                                         if (localEntry.repeater == null)
                                         {
-                                            localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true, controllerId);
+                                            localEntry.repeater = new RepeatHelperToIRepeaterAdapter(() => new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true, controllerId));
+                                            try { localEntry.repeater.Start(TimeSpan.Zero, TimeSpan.FromMilliseconds(DS4Windows.KeyboardSettings.RepeatIntervalMs), null); } catch { }
                                         }
                                         else
                                         {
-                                            try { localEntry.repeater.Start(); } catch { }
+                                            try { localEntry.repeater.Start(TimeSpan.Zero, TimeSpan.FromMilliseconds(DS4Windows.KeyboardSettings.RepeatIntervalMs), null); } catch { }
                                         }
                                     }
                                 }

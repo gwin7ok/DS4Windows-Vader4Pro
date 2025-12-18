@@ -8,12 +8,17 @@
             "args": [
                 "publish",
                 "./DS4Windows/DS4WinWPF.csproj",
-                "-c", "Release",
+                "-c",
+                "Release",
                 "/p:platform=x64",
                 "/p:AppendTargetFrameworkToOutputPath=false",
-                "-o", "./DS4Windows/bin/x64/Release"
+                "-o",
+                "./DS4Windows/bin/x64/Release"
             ],
-            "group": "build"
+            "group": "build",
+            "presentation": {
+                "showReuseMessage": false
+            }
         },
         {
             "label": "post-build-x64",
@@ -27,7 +32,10 @@
                 "${workspaceFolder}/DS4Windows"
             ],
             "group": "build",
-            "dependsOn": "Release win-x64"
+            "dependsOn": "Release win-x64",
+            "presentation": {
+                "showReuseMessage": false
+            }
         },
         {
             "label": "Publish: (Release win-x64)",
@@ -40,8 +48,7 @@
             "group": {
                 "kind": "build",
             }
-        }
-        ,
+        },
         {
             "label": "Remove bin",
             "type": "shell",
@@ -52,10 +59,10 @@
             ],
             "presentation": {
                 "reveal": "silent",
-                "panel": "shared"
+                "panel": "shared",
+                "showReuseMessage": false
             }
-        }
-        ,
+        },
         {
             "label": "release-tag-and-push-short",
             "type": "shell",
@@ -68,10 +75,10 @@
             ],
             "presentation": {
                 "reveal": "always",
-                "panel": "shared"
+                "panel": "shared",
+                "showReuseMessage": false
             }
-        }
-        ,
+        },
         {
             "label": "release: publish-and-create-release",
             "type": "shell",
@@ -85,25 +92,30 @@
             ],
             "presentation": {
                 "reveal": "always",
-                "panel": "shared"
+                "panel": "shared",
+                "showReuseMessage": false
             }
         },
-                {
+        {
             "label": "Build Debug",
             "type": "shell",
             "command": "dotnet",
             "args": [
                 "build",
                 "./DS4Windows/DS4WinWPF.csproj",
-                "-c", "Debug",
+                "-c",
+                "Debug",
                 "/p:platform=x64",
-                "-o", "./DS4Windows/bin/x64/Debug"
+                "-o",
+                "./DS4Windows/bin/x64/Debug"
             ],
             "group": {
                 "kind": "build",
                 "isDefault": true
+            },
+            "presentation": {
+                "showReuseMessage": false
             }
         }
-
     ]
 }
