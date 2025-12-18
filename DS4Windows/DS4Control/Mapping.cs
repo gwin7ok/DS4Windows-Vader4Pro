@@ -1018,14 +1018,8 @@ namespace DS4Windows
             return false;
         }
 
-        private static void SetPressedOnce(int index, SpecialAction action, int device, bool value)
-        {
-            try
-            {
-                ActionManager.SetPressedOnce(action, device, value);
-            }
-            catch { }
-        }
+        // PressedOnce lifecycle is managed by Action implementations (e.g., KeyAction).
+        // Mapping must not mutate per-action PressedOnce state.
 
         // Determine whether it's safe to clear the pressedonce flag for given device/key.
         private static bool ShouldClearPressedOnce(int device, ushort key)
@@ -1464,6 +1458,13 @@ namespace DS4Windows
                                             }
                                             if (!handled && kbc != null)
                                                 kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                            // For Toggle-type SpecialAction, clear PressedOnce on the physical/untrigger release
+                                            try
+                                            {
+                                                if (sa != null && sa.keyType.HasFlag(DS4KeyType.Toggle))
+                                                    ActionManager.SetPressedOnce(sa, device, false);
+                                            }
+                                            catch { }
                                         }
                                     }
                                 catch { }
@@ -3917,6 +3918,78 @@ namespace DS4Windows
             }
         }
 
+        // Handle full device disconnect cleanup: release synthetic keys, clear queues and tasks,
+        // and remove any per-device runtime state. This consolidates the shutdown-like cleanup
+        // performed when the application exits so it can be used on disconnect as well.
+        public static void HandleDeviceDisconnect(int device)
+        {
+            try
+            {
+                // Do not call back into ActionManager.ClearDeviceState here (ActionManager
+                // now calls this method). Perform per-mapping cleanup locally below.
+
+                // Clear per-device synthetic state: send release for any remaining synthetic key presses
+                try
+                {
+                    if (deviceState != null && device >= 0 && device < deviceState.Length)
+                    {
+                        var ds = deviceState[device];
+                        if (ds?.keyPresses != null)
+                        {
+                            var keys = new List<ushort>(ds.keyPresses.Keys);
+                            foreach (var k in keys)
+                            {
+                                try
+                                {
+                                    uint native = 0;
+                                    ds.nativeKeyAlias?.TryGetValue(k, out native);
+                                    SyntheticDispatcher.SendRelease(device, k, native, false, null);
+                                }
+                                catch { }
+                            }
+                            try { ds.keyPresses.Clear(); } catch { }
+                            try { ds.nativeKeyAlias.Clear(); } catch { }
+                        }
+                    }
+                }
+                catch { }
+
+                // Clear custom mapping queue for device
+                try
+                {
+                    if (customMapQueue != null && device >= 0 && device < customMapQueue.Length)
+                    {
+                        lock (customMapQueue)
+                        {
+                            customMapQueue[device] = new Queue<ControlToXInput>();
+                        }
+                    }
+                }
+                catch { }
+
+                // Clear macro task queue entries for device
+                try
+                {
+                    if (macroTaskQueue != null && device >= 0 && device < macroTaskQueue.Length)
+                    {
+                        var dict = macroTaskQueue[device];
+                        if (dict != null)
+                        {
+                            try { dict.Clear(); } catch { }
+                        }
+                    }
+                }
+                catch { }
+
+                // Reset any simple runtime structures that could hold device state
+                try { if (deviceRuntime != null && device >= 0 && device < deviceRuntime.Length) deviceRuntime[device] = new DeviceRuntimeState(); } catch { }
+
+                // Finally ensure any per-device controllers are removed (defensive)
+                try { ClearKeyButtonControllersForDevice(device); } catch { }
+            }
+            catch { }
+        }
+
         // Public wrapper so Action/KeyAction code can reuse Mapping's cached controllers.
         public static KeyButtonActionController GetOrCreateKeyButtonControllerForAction(int device, SpecialAction sa)
         {
@@ -4663,7 +4736,7 @@ namespace DS4Windows
                                 kp.current.toggle = !kp.current.toggle;
                                 kp.current.pending = true;
                                 kp.current.lastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
-                                SetPressedOnce(value, null, device, true);
+                                // Do NOT set PressedOnce here; Action implementation handles it.
                             }
                             kp.current.toggleCount++;
                         }
@@ -4671,8 +4744,8 @@ namespace DS4Windows
                     }
                         else
                         {
-                            if (ShouldClearPressedOnce(device, value))
-                                SetPressedOnce(value, null, device, false);
+                            // Do not clear PressedOnce here; Action implementation manages lifecycle.
+                            // Intentionally left blank.
                         }
 
                     // erase default mappings for things that are remapped
@@ -4906,14 +4979,13 @@ namespace DS4Windows
                             if (!GetPressedOnce(keyvalue, null, device))
                             {
                                 deviceState.currentClicks.toggle = !deviceState.currentClicks.toggle;
-                                SetPressedOnce(keyvalue, null, device, true);
+                                // Do NOT set PressedOnce here; Action implementation handles it.
                             }
                             deviceState.currentClicks.toggleCount++;
                         }
                         else
                         {
-                            if (ShouldClearPressedOnce(device, (ushort)keyvalue))
-                                SetPressedOnce(keyvalue, null, device, false);
+                            // Do NOT clear PressedOnce here; Action implementation handles it.
                         }
                     }
 
@@ -5508,52 +5580,18 @@ namespace DS4Windows
                                             deviceState[device].nativeKeyAlias[key] = (ushort)Global.outputKBMMapping.GetRealEventKey(key);
                                         }
 
-                                        // Respect Toggle flag for SpecialAction keys even when no uTrigger is defined.
-                                                        if (action.keyType.HasFlag(DS4KeyType.Toggle))
-                                                        {
-                                                            var st = ActionManager.GetStateFor(action, device);
-                                                            if (st != null && !st.PressedOnce)
-                                                            {
-                                                                // Debounce rapid toggle flips (ignore toggles within ToggleDebounceMs)
-                                                                long nowTicks = DateTime.UtcNow.Ticks;
-                                                                long deltaTicks = nowTicks - kp.current.lastToggleTimeUtcTicks;
-                                                                if (kp.current.lastToggleTimeUtcTicks == 0 || deltaTicks > TimeSpan.FromMilliseconds(ToggleDebounceMs).Ticks)
-                                                                {
-                                                                    // flip stored toggle state
-                                                                    kp.current.toggle = !kp.current.toggle;
-                                                                    kp.current.lastToggleTimeUtcTicks = nowTicks;
-                                                    if (st != null) ActionManager.SetPressedOnce(action, device, true);
-                                                    kp.current.toggleCount++;
-                                                    AppLogger.LogDebug($"SpecialAction KEY toggle-flipped: name={action.name}, device={device}, key={key}, toggle={kp.current.toggle}, debounce_ms={(double)deltaTicks / TimeSpan.TicksPerMillisecond}");
-                                                    if (kp.current.toggle)
-                                                        TryDispatchSATriggerEstablished(action, device, key, deviceState[device].nativeKeyAlias[key], kp.current.scanCodeCount != 0, outputKBMHandler);
-                                                    else
-                                                        TryDispatchSATriggerReleased(action, device, key, deviceState[device].nativeKeyAlias[key], kp.current.scanCodeCount != 0, outputKBMHandler);
-                                                }
-                                                else
-                                                {
-                                                    AppLogger.LogTrace($"SpecialAction KEY toggle ignored by debounce: name={action.name}, device={device}, key={key}, delta_ms={(double)deltaTicks / TimeSpan.TicksPerMillisecond}");
-                                                }
-                                            }
-                                        }
-                                        else
+
+                                        // Delegate to ActionManager: Key-specific behavior (Toggle vs Press)
+                                        // is handled by the Action implementation (e.g., KeyAction).
+                                        try
                                         {
-                                            // Delegate Press-mode synthetic sends via KeyButtonActionController
-                                            // Only dispatch on rising edge (first tick when actionDone was false) to avoid
-                                            // repeated per-tick delegations while trigger remains active.
-                                            if (!prevActionDone)
-                                            {
-                                                try
-                                                {
-                                                    uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
-                                                    bool useScan = action.keyType.HasFlag(DS4KeyType.ScanCode);
-                                                    TryDispatchSATriggerEstablished(action, device, key, nativeKeyToUse, useScan, outputKBMHandler);
-                                                }
-                                                catch (Exception ex)
-                                                {
-                                                    AppLogger.LogTrace($"PressActionController.OnTriggerOn failed: {ex}");
-                                                }
-                                            }
+                                            uint nativeKeyToUse = deviceState[device].nativeKeyAlias[key];
+                                            bool useScan = action.keyType.HasFlag(DS4KeyType.ScanCode);
+                                            ActionManager.DispatchTriggerEstablished(action, device, key, nativeKeyToUse, useScan, outputKBMHandler);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            AppLogger.LogTrace($"Mapping dispatch to ActionManager failed for Key action: {ex}");
                                         }
 
                                         // keep repeatCount for compatibility with existing logic
@@ -5765,20 +5803,10 @@ namespace DS4Windows
                             }
                         }
 
-                        // If trigger is not active for a Key-type special action that relied on Toggle without uTrigger,
-                        // reset pressedonce so subsequent presses will flip the toggle again.
-                        if (!triggeractivated && action.typeID == SpecialAction.ActionTypeId.Key && action.uTrigger.Count == 0)
-                        {
-                            ushort keyToClear;
-                            if (ushort.TryParse(action.details, out keyToClear))
-                            {
-                                if (ShouldClearPressedOnce(device, keyToClear))
-                                {
-                                    var st = ActionManager.GetStateFor(action, device);
-                                    if (st != null) ActionManager.SetPressedOnce(action, device, false);
-                                }
-                            }
-                        }
+                        // NOTE: PressedOnce lifecycle for SpecialAction Key (toggle) is now managed by the
+                        // Action implementation (KeyAction) via ActionManager.SetPressedOnce.
+                        // Mapping must not clear per-action PressedOnce here to avoid races with
+                        // the Action implementation and synthetic repeat flows.
 
                         if (!actionFound)
                         {

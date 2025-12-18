@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Collections.Generic;
 using DS4Windows.DS4Control;
 using DS4Windows.Actions;
@@ -266,7 +268,7 @@ namespace DS4Windows
                     }
                 }
 
-                try { Mapping.ClearKeyButtonControllersForDevice(device); } catch { }
+                try { Mapping.HandleDeviceDisconnect(device); } catch { }
             }
             catch { }
         }
@@ -341,6 +343,14 @@ namespace DS4Windows
                 if (old == value) return;
                 st.PressedOnce = value;
                 try { PressedOnceChanged?.Invoke(action, device, old, value); } catch { }
+                try
+                {
+                    // Emit a short stack snippet to help trace call sites that set/clear PressedOnce.
+                    var trace = new StackTrace(1, false);
+                    string stackSnippet = trace.ToString();
+                    AppLogger.LogTrace($"ActionManager.SetPressedOnce: action={(action?.name ?? "(null)")} device={device} old={old} new={value} stack={stackSnippet}");
+                }
+                catch { }
             }
             catch { }
         }
