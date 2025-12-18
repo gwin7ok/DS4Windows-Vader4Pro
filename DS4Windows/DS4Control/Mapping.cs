@@ -1330,9 +1330,14 @@ namespace DS4Windows
                                     try
                                     {
                                         SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                                        var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
-                                        if (kbc != null)
-                                            kbc.OnSATriggerEstablished((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler, true);
+                                        bool handled = false;
+                                        try { handled = ActionManager.DispatchTriggerEstablished(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                        if (!handled)
+                                        {
+                                            var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
+                                            if (kbc != null)
+                                                kbc.OnSATriggerEstablished((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler, true);
+                                        }
                                     }
                                 catch { }
                                 // Clear pending after honoring it and mark last send time
@@ -1362,9 +1367,14 @@ namespace DS4Windows
                                 try
                                 {
                                     SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                                    var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
-                                    if (kbc != null)
-                                        kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                    bool handled = false;
+                                    try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                    if (!handled)
+                                    {
+                                        var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
+                                        if (kbc != null)
+                                            kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                    }
                                 }
                                 catch { }
                                     // Mark pending cleared and update last send time
@@ -1401,9 +1411,14 @@ namespace DS4Windows
                                 try
                                 {
                                     SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                                    var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
-                                    if (kbc != null)
-                                        kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                    bool handled = false;
+                                    try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                    if (!handled)
+                                    {
+                                        var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
+                                        if (kbc != null)
+                                            kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                    }
                                 }
                                 catch { }
                                     // Mark pending cleared and update last send time
