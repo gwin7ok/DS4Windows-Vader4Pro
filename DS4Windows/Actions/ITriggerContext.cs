@@ -12,5 +12,6 @@ namespace DS4Windows.Actions
         ushort LogicalValue { get; }
         uint NativeValue { get; }
         DateTime Timestamp { get; }
+        DS4Windows.DS4Control.VirtualKBMBase OutputHandler { get; }
     }
 }

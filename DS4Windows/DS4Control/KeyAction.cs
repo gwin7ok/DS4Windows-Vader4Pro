@@ -47,30 +47,37 @@ namespace DS4Windows
             {
                 var state = ActionManager.GetStateFor(action, device);
                 try { AppLogger.LogTrace($"KeyAction.OnTrigger ENTER: name={action?.name} device={device} logical={logicalValue} native={nativeValue} useScan={useScan} pressedOnce={(state?.PressedOnce ?? false)}"); } catch { }
-                var kbc = ActionManager.GetOrCreateControllerForAction(device, action);
-                try { AppLogger.LogTrace($"KeyAction.OnTrigger: obtained KBC={(kbc==null?"<null>":kbc.InstanceId.ToString())} for name={action?.name} device={device}"); } catch { }
+                var ctrl = ActionManager.GetOrCreateControllerForAction(device, action);
+                try { AppLogger.LogTrace($"KeyAction.OnTrigger: obtained controller={(ctrl==null?"<null>":ctrl.ControllerId.ToString())} for name={action?.name} device={device}"); } catch { }
+
+                var trigger = new DS4Windows.Actions.TriggerContextImpl
+                {
+                    Device = device,
+                    IsEdgeEstablished = true,
+                    LogicalValue = logicalValue,
+                    NativeValue = nativeValue == 0 ? nativeKey : nativeValue,
+                    OutputHandler = handler,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                var binding = new DS4Windows.Actions.KeyActionBinding(action);
+
                 if (IsToggle())
                 {
                     if (!state.PressedOnce)
                     {
-                        kbc?.OnSATriggerEstablished(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler, true);
+                        try { ctrl?.Start(binding, trigger); } catch { }
                         AppLogger.LogTrace($"KeyAction: trigger(established) delegated to controller for TOGGLE name={action?.name} device={device} key={logicalValue}");
                     }
                     else
                     {
-                        // If already toggled ON and trigger occurs again, treat it as OFF (toggle off).
-                        try
-                        {
-                            // Explicit toggle-off path: ask controller to stop repeater and send release.
-                            kbc?.OnSATriggerToggleOff(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler);
-                        }
-                        catch { }
+                        try { ctrl?.Stop(binding, trigger); } catch { }
                         AppLogger.LogTrace($"KeyAction: trigger(released) delegated to controller for TOGGLE name={action?.name} device={device} key={logicalValue}");
                     }
                 }
                 else
                 {
-                    kbc?.OnSATriggerEstablished(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler, true);
+                    try { ctrl?.Start(binding, trigger); } catch { }
                     AppLogger.LogTrace($"KeyAction: press sent name={action?.name} device={device} key={logicalValue}");
                 }
             }
@@ -85,8 +92,18 @@ namespace DS4Windows
             try
             {
                 var state = ActionManager.GetStateFor(action, device);
-                var kbc = ActionManager.GetOrCreateControllerForAction(device, action);
-                kbc?.OnSATriggerReleased(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler);
+                var ctrl = ActionManager.GetOrCreateControllerForAction(device, action);
+                var trigger = new DS4Windows.Actions.TriggerContextImpl
+                {
+                    Device = device,
+                    IsEdgeEstablished = false,
+                    LogicalValue = logicalValue,
+                    NativeValue = nativeValue == 0 ? nativeKey : nativeValue,
+                    OutputHandler = handler,
+                    Timestamp = DateTime.UtcNow
+                };
+                var binding = new DS4Windows.Actions.KeyActionBinding(action);
+                try { ctrl?.Stop(binding, trigger); } catch { }
 
                 // Release notifications are delegated to controller; pressed-once lifecycle is managed by controller.
             }

@@ -516,7 +516,7 @@ namespace DS4Windows
 
         // Abstraction: allow Actions to obtain controllers via ActionManager so implementations
         // do not directly depend on Mapping internals. Default implementation delegates to Mapping.
-        public static KeyButtonActionController GetOrCreateControllerForAction(int device, SpecialAction action)
+        public static DS4Windows.Actions.IActionController GetOrCreateControllerForAction(int device, SpecialAction action)
         {
             try
             {

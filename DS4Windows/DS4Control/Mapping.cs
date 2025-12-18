@@ -1478,7 +1478,7 @@ namespace DS4Windows
                                         catch { }
                                         if (!handled)
                                         {
-                                            KeyButtonActionController kbc = null;
+                                            var kbc = (DS4Windows.Actions.IActionController)null;
                                             if (sa != null)
                                             {
                                                 try
@@ -1503,7 +1503,20 @@ namespace DS4Windows
                                                 AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
                                             }
                                             if (!handled && kbc != null)
-                                                kbc.OnSATriggerEstablished((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler, true);
+                                            {
+                                                var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
+                                                var trig = new DS4Windows.Actions.TriggerContextImpl
+                                                {
+                                                    Device = device,
+                                                    IsEdgeEstablished = true,
+                                                    LogicalValue = (ushort)kvpKey,
+                                                    NativeValue = nativeKey,
+                                                    OutputHandler = outputKBMHandler,
+                                                    Timestamp = DateTime.UtcNow
+                                                };
+                                                var binding = new DS4Windows.Actions.KeyActionBinding(sa);
+                                                try { ctrl?.Start(binding, trig); } catch { }
+                                            }
                                         }
                                     }
                                 catch { }
@@ -1538,7 +1551,7 @@ namespace DS4Windows
                                         try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
                                         if (!handled)
                                         {
-                                            KeyButtonActionController kbc = null;
+                                            var kbc = (DS4Windows.Actions.IActionController)null;
                                             if (sa != null)
                                             {
                                                 try
@@ -1564,7 +1577,20 @@ namespace DS4Windows
                                                 AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
                                             }
                                             if (!handled && kbc != null)
-                                                kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                            {
+                                                var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
+                                                var trig = new DS4Windows.Actions.TriggerContextImpl
+                                                {
+                                                    Device = device,
+                                                    IsEdgeEstablished = false,
+                                                    LogicalValue = (ushort)kvpKey,
+                                                    NativeValue = nativeKey,
+                                                    OutputHandler = outputKBMHandler,
+                                                    Timestamp = DateTime.UtcNow
+                                                };
+                                                var binding = new DS4Windows.Actions.KeyActionBinding(sa);
+                                                try { ctrl?.Stop(binding, trig); } catch { }
+                                            }
                                             // For Toggle-type SpecialAction, clear PressedOnce on the physical/untrigger release
                                             try
                                             {
@@ -1613,7 +1639,7 @@ namespace DS4Windows
                                         try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
                                         if (!handled)
                                         {
-                                            KeyButtonActionController kbc = null;
+                                            var kbc = (DS4Windows.Actions.IActionController)null;
                                             if (sa != null)
                                             {
                                                 try
@@ -1638,7 +1664,20 @@ namespace DS4Windows
                                                 AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
                                             }
                                             if (!handled && kbc != null)
-                                                kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                            {
+                                                var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
+                                                var trig = new DS4Windows.Actions.TriggerContextImpl
+                                                {
+                                                    Device = device,
+                                                    IsEdgeEstablished = false,
+                                                    LogicalValue = (ushort)kvpKey,
+                                                    NativeValue = nativeKey,
+                                                    OutputHandler = outputKBMHandler,
+                                                    Timestamp = DateTime.UtcNow
+                                                };
+                                                var binding = new DS4Windows.Actions.KeyActionBinding(sa);
+                                                try { ctrl?.Stop(binding, trig); } catch { }
+                                            }
                                         }
                                     }
                                 catch { }
@@ -4111,9 +4150,12 @@ namespace DS4Windows
         }
 
         // Public wrapper so Action/KeyAction code can reuse Mapping's cached controllers.
-        public static KeyButtonActionController GetOrCreateKeyButtonControllerForAction(int device, SpecialAction sa)
+        public static DS4Windows.Actions.IActionController GetOrCreateKeyButtonControllerForAction(int device, SpecialAction sa)
         {
-            return GetOrCreateKeyButtonController(device, sa);
+            // Wrap existing KeyButtonActionController in adapter implementing IActionController
+            var inner = GetOrCreateKeyButtonController(device, sa);
+            if (inner == null) return null;
+            return new DS4Windows.Actions.KeyButtonActionControllerAdapter(device, sa);
         }
 
         // Try to find a SpecialAction that maps to given logical key (used by synthetic sender paths).
