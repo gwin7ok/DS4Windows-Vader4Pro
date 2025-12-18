@@ -444,6 +444,7 @@ namespace DS4Windows
         }
 
         // Generic dispatch entry that accepts a TriggerContext and routes to established/released handlers.
+        // This is a simple forwarder used as a fallback when no ActionInstanceState is available.
         public static bool DispatchTrigger(DS4Windows.TriggerContext ctx)
         {
             try
@@ -465,9 +466,9 @@ namespace DS4Windows
             }
         }
 
-        // Edge-only dispatch: notify only when a trigger first becomes established
-        // and when it later becomes released. This uses the per-action BeingTriggered
-        // flag (via ActionInstanceState) to gate repeated notifications.
+        // Edge-aware dispatcher: accepts a TriggerContext and only fires established/released once per input edge
+        // by consulting the per-action ActionInstanceState.BeingTriggered flag. If no state exists, falls back
+        // to the simple DispatchTrigger forwarder.
         public static bool DispatchTriggerEdge(DS4Windows.TriggerContext ctx)
         {
             try
@@ -475,7 +476,6 @@ namespace DS4Windows
                 if (ctx == null || ctx.ActionDef == null) return false;
 
                 var st = GetStateFor(ctx.ActionDef, ctx.Device);
-                // If we cannot access state, fall back to full dispatch behavior and log once.
                 if (st == null)
                 {
                     try { AppLogger.LogTrace($"DispatchTriggerEdge: no ActionInstanceState for name={ctx.ActionDef?.name} device={ctx.Device}; falling back to full dispatch"); } catch { }
@@ -484,7 +484,7 @@ namespace DS4Windows
 
                 if (ctx.IsEstablished)
                 {
-                    // Only log when we transition from not-being-triggered -> being-triggered
+                    // Only fire when transitioning from not-being-triggered -> being-triggered
                     if (!st.BeingTriggered)
                     {
                         st.SetBeingTriggeredInternal(true);
@@ -496,7 +496,7 @@ namespace DS4Windows
                 }
                 else
                 {
-                    // Only log when we transition from being-triggered -> not-being-triggered
+                    // Only fire when transitioning from being-triggered -> not-being-triggered
                     if (st.BeingTriggered)
                     {
                         st.SetBeingTriggeredInternal(false);

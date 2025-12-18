@@ -54,25 +54,18 @@ namespace DS4Windows
                     if (!state.PressedOnce)
                     {
                         kbc?.OnSATriggerEstablished(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler, true);
-                        ActionManager.SetPressedOnce(action, device, true);
-                        state.LastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
-                        AppLogger.LogTrace($"KeyAction: toggled ON name={action?.name} device={device} key={logicalValue}");
+                        AppLogger.LogTrace($"KeyAction: trigger(established) delegated to controller for TOGGLE name={action?.name} device={device} key={logicalValue}");
                     }
                     else
                     {
                         // If already toggled ON and trigger occurs again, treat it as OFF (toggle off).
                         try
                         {
-                            kbc?.OnSATriggerReleased(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler);
+                            // Explicit toggle-off path: ask controller to stop repeater and send release.
+                            kbc?.OnSATriggerToggleOff(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler);
                         }
                         catch { }
-                        try
-                        {
-                            ActionManager.SetPressedOnce(action, device, false);
-                        }
-                        catch { }
-                        state.LastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
-                        AppLogger.LogTrace($"KeyAction: toggled OFF name={action?.name} device={device} key={logicalValue}");
+                        AppLogger.LogTrace($"KeyAction: trigger(released) delegated to controller for TOGGLE name={action?.name} device={device} key={logicalValue}");
                     }
                 }
                 else
@@ -95,15 +88,7 @@ namespace DS4Windows
                 var kbc = ActionManager.GetOrCreateControllerForAction(device, action);
                 kbc?.OnSATriggerReleased(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler);
 
-                if (IsToggle() && state != null && state.PressedOnce)
-                {
-                    long delta = DateTime.UtcNow.Ticks - state.LastToggleTimeUtcTicks;
-                    if (delta > TimeSpan.FromMilliseconds(200).Ticks)
-                    {
-                        ActionManager.SetPressedOnce(action, device, false);
-                        AppLogger.LogTrace($"KeyAction: pressedOnce cleared name={action?.name} device={device} key={logicalValue}");
-                    }
-                }
+                // Release notifications are delegated to controller; pressed-once lifecycle is managed by controller.
             }
             catch (Exception ex)
             {

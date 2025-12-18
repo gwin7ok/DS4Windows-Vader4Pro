@@ -16,7 +16,9 @@ namespace DS4Windows
         private readonly int device;
         private readonly Mode mode;
         private readonly string assignedActionName;
+        private readonly SpecialAction assignedActionDef;
         private readonly IKeyController impl;
+        private readonly Action<SpecialAction, int, bool, bool> pressedOnceHandler;
 
         // Expose assigned action name for diagnostics
         public string AssignedActionName => assignedActionName;
@@ -26,6 +28,7 @@ namespace DS4Windows
             this.device = device;
             this.mode = mode;
             this.assignedActionName = actionName ?? "<null>";
+            this.assignedActionDef = null;
             try
             {
                 AppLogger.LogTrace($"KeyButtonActionController created: id={this.GetHashCode()} device={device} mode={mode} assignedAction={this.assignedActionName}");
@@ -35,9 +38,23 @@ namespace DS4Windows
             // Create concrete implementation based on mode. These implementations are lightweight wrappers
             // around the existing static controllers for now; this allows per-device instance semantics later.
             if (mode == Mode.Toggle)
-                impl = new ToggleImpl(device, this.GetHashCode());
+                impl = new ToggleImpl(device, this.GetHashCode(), this.assignedActionDef);
             else
                 impl = new PressImpl(device, this.GetHashCode());
+
+            // Subscribe to PressedOnceChanged so controllers react to Action-level state changes.
+            pressedOnceHandler = (sa, dev, oldv, newv) =>
+            {
+                try
+                {
+                    if (sa == this.assignedActionDef && dev == this.device && oldv == true && newv == false)
+                    {
+                        try { impl.ClearAll(); } catch { }
+                    }
+                }
+                catch { }
+            };
+            try { ActionManager.PressedOnceChanged += pressedOnceHandler; } catch { }
 
         }
 
@@ -46,6 +63,7 @@ namespace DS4Windows
         {
             this.device = device;
             this.assignedActionName = actionName ?? (sa?.name ?? "<null>");
+            this.assignedActionDef = sa;
             try
             {
                 // Decide mode: explicit switch mode first, fall back to keyType Toggle flag
@@ -62,9 +80,23 @@ namespace DS4Windows
             catch { }
 
             if (this.mode == Mode.Toggle)
-                impl = new ToggleImpl(device, this.GetHashCode());
+                impl = new ToggleImpl(device, this.GetHashCode(), this.assignedActionDef);
             else
                 impl = new PressImpl(device, this.GetHashCode());
+
+            // Subscribe to PressedOnceChanged so controllers react to Action-level state changes.
+            pressedOnceHandler = (sa, dev, oldv, newv) =>
+            {
+                try
+                {
+                    if (sa == this.assignedActionDef && dev == this.device && oldv == true && newv == false)
+                    {
+                        try { impl.ClearAll(); } catch { }
+                    }
+                }
+                catch { }
+            };
+            try { ActionManager.PressedOnceChanged += pressedOnceHandler; } catch { }
 
         }
 
@@ -73,24 +105,35 @@ namespace DS4Windows
         {
             void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction);
             void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler);
-                void Clear(ushort kvpKey);
-                void ClearAll();
+            // Invoked when a Toggle-mode action is explicitly toggled OFF (controller-level stop + release).
+            void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler);
+            void Clear(ushort kvpKey);
+            void ClearAll();
         }
 
-        // Toggle implementation: per-instance management of toggle state and repeat using RepeatHelper
+        // Toggle implementation: manage per-key repeater and explicit toggle-off behavior
         private class ToggleImpl : IKeyController
         {
             private readonly int device;
             private readonly int controllerId;
+            private readonly SpecialAction assignedActionDef;
+
             private class Entry
             {
                 public uint nativeKey;
                 public bool useScanCode;
                 public DS4Windows.DS4Control.VirtualKBMBase handler;
-                public RepeatHelper repeater;
+                public DS4Windows.DS4Control.RepeatHelper repeater;
             }
+
             private readonly Dictionary<ushort, Entry> entries = new Dictionary<ushort, Entry>();
-            public ToggleImpl(int device, int controllerId) { this.device = device; this.controllerId = controllerId; }
+
+            public ToggleImpl(int device, int controllerId, SpecialAction assignedActionDef)
+            {
+                this.device = device;
+                this.controllerId = controllerId;
+                this.assignedActionDef = assignedActionDef;
+            }
 
             public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
             {
@@ -99,32 +142,49 @@ namespace DS4Windows
                     e = new Entry() { nativeKey = nativeKey, useScanCode = useScanCode, handler = handler };
                     entries[kvpKey] = e;
                 }
-                if (e.repeater == null)
+
+                try
                 {
-                    if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
-                    try
+                    var st = assignedActionDef != null ? ActionManager.GetStateFor(assignedActionDef, device) : null;
+                    bool wasPressed = st?.PressedOnce ?? false;
+                    if (!wasPressed)
                     {
-                        // Create repeater and start it immediately for toggle-on semantics
-                        e.repeater = new RepeatHelper(device, kvpKey, e.nativeKey, e.useScanCode, e.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true, controllerId);
-                        try { AppLogger.LogTrace($"ToggleImpl.OnDown: controller-repeater link controllerId={controllerId} kvpKey={kvpKey} repeaterId={e.repeater.InstanceId} device={device}"); } catch { }
+                        if (e.repeater == null)
+                        {
+                            if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
+                            e.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, e.nativeKey, e.useScanCode, e.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true, controllerId);
+                            try { AppLogger.LogTrace($"ToggleImpl.OnDown: controller-repeater link controllerId={controllerId} kvpKey={kvpKey} repeaterId={e.repeater.InstanceId} device={device}"); } catch { }
+                        }
+                        else
+                        {
+                            try { e.repeater.Start(); } catch { }
+                        }
+
+                        try { if (assignedActionDef != null) ActionManager.SetPressedOnce(assignedActionDef, device, true); } catch { }
                     }
-                    catch { }
+                    else
+                    {
+                        // already pressedOnce: do nothing on additional OnDown
+                    }
                 }
-                else
-                {
-                    try { e.repeater.Start(); } catch { }
-                }
+                catch { }
             }
 
             public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+            {
+                // For Toggle mode, input-edge release should not stop repeaters or clear PressedOnce.
+                // Ignore input-level release here; rely on explicit toggle-off path.
+                try { SyntheticDispatcher.ResetKeyTiming(device, kvpKey); } catch { }
+            }
+
+            public void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
             {
                 if (entries.TryGetValue(kvpKey, out Entry e) && e.repeater != null)
                 {
                     try
                     {
-                        // Stop repeater; Stop() sends single release but keep instance for reuse
                         try { e.repeater.Stop(); } catch { }
-                        try { AppLogger.LogTrace($"ToggleImpl.OnUp: controllerId={controllerId} kvpKey={kvpKey} device={device} repeaterId={e.repeater.InstanceId} stopped"); } catch { }
+                        try { AppLogger.LogTrace($"ToggleImpl.OnToggleOff: controllerId={controllerId} kvpKey={kvpKey} device={device} repeaterId={e.repeater.InstanceId} stopped"); } catch { }
                         try
                         {
                             if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
@@ -136,7 +196,7 @@ namespace DS4Windows
                 }
                 else
                 {
-                    try { SyntheticDispatcher.ResetKeyTiming(device, kvpKey); } catch { }
+                    try { SyntheticDispatcher.ResetKeyTiming(0, kvpKey); } catch { }
                 }
             }
 
@@ -275,6 +335,12 @@ namespace DS4Windows
                 }
             }
 
+            public void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+            {
+                // For press-mode controller, treat toggle-off as a clear of any press state.
+                try { Clear(kvpKey); } catch { }
+            }
+
             public void Clear(ushort kvpKey)
             {
                 if (entries.TryGetValue(kvpKey, out Entry e))
@@ -328,7 +394,19 @@ namespace DS4Windows
                 AppLogger.LogTrace($"KBC OnSATriggerReleased: controllerId={this.GetHashCode()} assignedAction={this.assignedActionName} device={device} kvpKey={kvpKey}");
             }
             catch { }
+            // For Toggle-mode, ignore input-level release here; actual toggle-off should be handled explicitly.
             impl.OnUp(kvpKey, nativeKey, useScanCode, handler);
+        }
+
+        // Explicit API to indicate Toggle OFF (called by KeyAction when it decides to toggle off)
+        public void OnSATriggerToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+        {
+            try
+            {
+                AppLogger.LogTrace($"KBC OnSATriggerToggleOff: controllerId={this.GetHashCode()} assignedAction={this.assignedActionName} device={device} kvpKey={kvpKey}");
+            }
+            catch { }
+            impl.OnToggleOff(kvpKey, nativeKey, useScanCode, handler);
         }
 
         // (Removed backward-compatible wrappers to avoid accidental use of old API names.)

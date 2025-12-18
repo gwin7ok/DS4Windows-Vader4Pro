@@ -322,6 +322,7 @@ namespace DS4Windows.Actions
         {
             try
             {
+                // Dispatch release to action implementation regardless of switch mode.
                 var ent = GetOrCreateEntryInternal(actions, action);
                 if (ent?.ActionImpl == null) return false;
                 try
