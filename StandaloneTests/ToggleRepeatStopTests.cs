@@ -69,11 +69,9 @@ namespace StandaloneTests
 
             var handler = new TestVirtualKBM();
 
-            // Act: obtain controller via action path and trigger established
-            var kbc = Mapping.GetOrCreateKeyButtonControllerForAction(device, sa);
-            Assert.IsNotNull(kbc, "Expected controller created via action path");
-
-            kbc.OnSATriggerEstablished(logicalKey, logicalKey, false, handler, true);
+            // Act: dispatch via ActionManager (canonical path)
+            bool dispatched = ActionManager.DispatchTriggerEstablished(sa, device, logicalKey, logicalKey, false, handler);
+            Assert.IsTrue(dispatched, "Expected dispatch to succeed");
 
             // Allow a few repeat intervals to occur
             Thread.Sleep(160);
@@ -81,8 +79,9 @@ namespace StandaloneTests
             int pressesBefore = handler.PressCount;
             Assert.IsTrue(pressesBefore >= 1, "Expected at least one synthetic press before release");
 
-            // Now send release via same action path
-            kbc.OnSATriggerReleased(logicalKey, logicalKey, false, handler);
+            // Now send release via ActionManager
+            bool released = ActionManager.DispatchTriggerReleased(sa, device, logicalKey, logicalKey, false, handler);
+            Assert.IsTrue(released, "Expected release dispatch to succeed");
 
             // Wait to observe whether repeats continue
             Thread.Sleep(250);

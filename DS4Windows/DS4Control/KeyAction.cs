@@ -46,7 +46,7 @@ namespace DS4Windows
             try
             {
                 var state = ActionManager.GetStateFor(action, device);
-                var kbc = Mapping.GetOrCreateKeyButtonControllerForAction(device, action);
+                var kbc = ActionManager.GetOrCreateControllerForAction(device, action);
                 if (IsToggle())
                 {
                     if (!state.PressedOnce)
@@ -78,7 +78,7 @@ namespace DS4Windows
             try
             {
                 var state = ActionManager.GetStateFor(action, device);
-                var kbc = Mapping.GetOrCreateKeyButtonControllerForAction(device, action);
+                var kbc = ActionManager.GetOrCreateControllerForAction(device, action);
                 kbc?.OnSATriggerReleased(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler);
 
                 if (IsToggle() && state != null && state.PressedOnce)

@@ -410,5 +410,25 @@ namespace DS4Windows
                 return false;
             }
         }
+
+        // Abstraction: allow Actions to obtain controllers via ActionManager so implementations
+        // do not directly depend on Mapping internals. Default implementation delegates to Mapping.
+        public static KeyButtonActionController GetOrCreateControllerForAction(int device, SpecialAction action)
+        {
+            try
+            {
+                // If DI provider exposes a managed action manager, let it provide controllers.
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    // IManagedActionManager may be extended later to provide controller factory; for now fall back.
+                }
+
+                // Default behavior: delegate to Mapping helper.
+                return Mapping.GetOrCreateKeyButtonControllerForAction(device, action);
+            }
+            catch { return null; }
+        }
     }
 }
