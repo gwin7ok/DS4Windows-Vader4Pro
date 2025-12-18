@@ -6,6 +6,15 @@
 
 追記 (DI): プロジェクトは依存性注入（`Microsoft.Extensions.DependencyInjection`）を導入しており、`ActionFactory` / `IActionFactory` と `IManagedActionManager` の実装は DI コンテナに登録されます。既存の静的 `ActionFactory`/`ActionManager` は DI による実装があればそれを優先して利用するフォールバックを備えています。新しいアクション実装は可能なら `IActionFactory` 経由で生成し、`IManagedActionManager` を通じて状態管理・検索を行ってください。
 
+### 実装上の注記（現状）
+- `ServiceProviderHolder`：DI コンテナの `IServiceProvider` を静的に保持するユーティリティです。静的ファクトリや `Mapping` はこれを参照して、DI 実装が存在する場合にサービスを解決します。
+- DI 登録：`App.xaml.cs` で `IActionFactory`（`DefaultActionFactory`）、`IManagedActionManager`（`DefaultActionManager`）、`IKeyButtonActionControllerFactory`（`DefaultKeyButtonActionControllerFactory`）、`IControllerRegistry`（`DefaultControllerRegistry`）が既定で登録されています。
+- `DefaultActionManager`：`GetActionByIndex` で遅延生成（lazy）を行い、`ActionInstanceState` を `ActionEntry` ごとに保持します。`ClearDeviceState(int)` はアクション状態をリセットし、`Mapping.ClearKeyButtonControllersForDevice(device)` を呼んで関連コントローラを破棄します。
+- `DefaultKeyButtonActionControllerFactory`：コントローラ生成後、利用可能であれば `IControllerRegistry.Register(key, controller)` に自動登録します（`Mapping` の個別保持と併存可能）。
+- `DefaultControllerRegistry`：`Register`/`Unregister`/`GetControllersForDevice`/`ClearControllersForDevice` を提供し、内部で例外安全に `Dispose()` を呼んでから登録解除します。
+- `KeyButtonActionController`：`IDisposable.Dispose()` を実装して内部リソース（`RepeatHelper` など）を解放します。既存の `Destroy()` は互換ラッパーとして `Dispose()` を呼びます。
+- `Mapping`：`GetOrCreateKeyButtonController` は DI ベースの `IKeyButtonActionControllerFactory` を優先し、未提供時はフォールバックで `new KeyButtonActionController(...)` を作成して `keyButtonControllers` 辞書で保持します。
+
 ### 共通（`Action` / `SpecialActionBase`）
 - プロパティ（必須）: `string Name`, `SpecialAction.ActionTypeId TypeId`, `string Details`, `string Extra`, `List<DS4Controls> Trigger`, `List<DS4Controls> UTrigger`, `double DelayTime`, `bool PressRelease`
 - 状態: `ActionInstanceState[] states` (長さ = `Global.MAX_DS4_CONTROLLER_COUNT`)
@@ -199,9 +208,21 @@ Mapping との連携（呼び出しフロー）
 - コントローラの破棄は標準的な `IDisposable.Dispose()` を優先して行います。特に `KeyButtonActionController` は `IDisposable` を実装し、`Dispose()` が内部リソース（`RepeatHelper` など）を確実に解放します。
 - 既存の `Destroy()` メソッドは後方互換のため残しますが、実装は `Dispose()` を呼ぶラッパーとします。新しいコードは `Dispose()` を直接呼ぶか、DI コンテナのスコープ破棄に委ねてください。
 - `Mapping.ClearKeyButtonControllersForDevice(device)` のようなオーナー側でコントローラの登録解除と `Dispose()` 呼び出しを行い、例外が発生しても他のコントローラの破棄処理に影響を与えないように実装してください（現在の変更ではこの点を考慮した実装になっています）。
-- DI を用いる場合、コンテナがコントローラのライフサイクル（Scoped/Singleton）を管理する設計に移行することが可能です。その場合はファクトリ／登録機構（`IControllerRegistry` 等）を検討してください。
+  - DI を用いる場合、コンテナがコントローラのライフサイクル（Scoped/Singleton）を管理する設計に移行することが可能です。その場合はファクトリ／登録機構（`IControllerRegistry` 等）を検討してください。
+
+  - `IControllerRegistry`（補足）: コントローラを `Register` / `Unregister` し、特定デバイスに紐づく全コントローラを一括で破棄する `ClearControllersForDevice(int device)` などの操作を提供する軽量インターフェイスです。`Mapping` 側は必要に応じてこのレジストリを参照して一括破棄や監査を行えます。
+
+  - Factory の自動登録: デフォルト実装（例: `DefaultKeyButtonActionControllerFactory`）は、生成した `KeyButtonActionController` を利用可能な場合 `IControllerRegistry.Register(controller)` に自動登録します。これにより、`Mapping` が個別に管理している既存モデルとレジストリベースの一括管理を両立できます。
 
 これにより、using ブロックやコンテナ破棄で確実にリソースが解放され、GC に依存しない安定したクリーンアップが可能になります。
+
+### ランタイム破棄ポリシー（短縮）
+
+- 優先: `IDisposable.Dispose()` を呼び、`Destroy()` は互換ラッパーとして扱う。
+- オーナー責務: `Mapping`（または登録済みの `IControllerRegistry`）がデバイス切断／プロファイル切替時にコントローラを `Dispose()` して登録解除する。
+- 例外安全: 破棄処理は個々に try/catch し、あるコントローラの破棄失敗が他の破棄を阻害しないようにする。
+- DI 利用時: コンテナのスコープ破棄にライフサイクルを委ねられるならそれを利用し、手動破棄との混在に注意する。
+
 
 付録: 主要 API シグネチャ（サンプル）
 ```csharp

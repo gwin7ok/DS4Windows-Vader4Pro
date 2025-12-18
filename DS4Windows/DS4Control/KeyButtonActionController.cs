@@ -321,7 +321,7 @@ namespace DS4Windows
 
         private bool disposed = false;
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             if (disposed) return;
             disposed = true;
