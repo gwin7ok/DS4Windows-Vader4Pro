@@ -31,7 +31,7 @@ namespace DS4Windows.DS4Control
 
         public SendInputHandler()
         {
-            fakeKeyRepeat = true;
+            fakeKeyRepeat = false;
         }
 
         public override bool Connect()

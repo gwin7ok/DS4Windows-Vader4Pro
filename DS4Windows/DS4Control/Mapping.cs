@@ -119,7 +119,6 @@ namespace DS4Windows
         private static Dictionary<string, bool> lastButtonTriggerState;
 
         // Instrumentation counters to help diagnose hot loops
-        private static long mappingCallCount = 0;
         private static long mappingEvalSinceLast = 0;
         private static long setBeingTriggeredCallsSinceLast = 0;
         private static long mappingLastSummaryUtcTicks = DateTime.UtcNow.Ticks;
