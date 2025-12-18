@@ -20,5 +20,7 @@ namespace DS4Windows.Actions
         // Dispatch variants return true if an Action instance was invoked to handle the trigger
         bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler);
         bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler);
+        // Set the PressedOnce flag for given action/device and notify listeners.
+        void SetPressedOnce(SpecialAction action, int device, bool value);
     }
 }

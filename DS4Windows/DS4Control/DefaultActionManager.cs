@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using DS4Windows;
 using DS4Windows.Actions;
 using DS4Windows.DS4Control;
@@ -165,6 +166,7 @@ namespace DS4Windows.Actions
                             if (device >= 0 && device < ent.States.Length)
                             {
                                 ent.States[device] = new ActionInstanceState();
+                                try { AppLogger.LogTrace($"DefaultActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (PressedOnce cleared)"); } catch { }
                             }
                         }
                         catch { }
@@ -172,6 +174,47 @@ namespace DS4Windows.Actions
                 }
 
                 try { Mapping.ClearKeyButtonControllersForDevice(device); } catch { }
+            }
+            catch { }
+        }
+
+        public void SetPressedOnce(SpecialAction action, int device, bool value)
+        {
+            try
+            {
+                var ent = GetOrCreateEntryInternal(actions, action);
+                if (ent == null) return;
+                if (device < 0 || device >= ent.States.Length) return;
+                var st = ent.States[device];
+                if (st == null) return;
+                bool old = st.PressedOnce;
+                if (old == value) return;
+                st.PressedOnce = value;
+                try { ActionManager.PressedOnceChanged?.Invoke(action, device, old, value); } catch { }
+
+                try
+                {
+                    var trace = new StackTrace(1, false);
+                    string callerInfo = "(unknown)";
+                    try
+                    {
+                        for (int i = 0; i < trace.FrameCount; i++)
+                        {
+                            var fr = trace.GetFrame(i);
+                            var method = fr.GetMethod();
+                            if (method == null) continue;
+                            var declaring = method.DeclaringType;
+                            if (declaring == null) continue;
+                            if (declaring == typeof(DefaultActionManager)) continue;
+                            callerInfo = declaring.FullName + "." + method.Name;
+                            break;
+                        }
+                    }
+                    catch { }
+                    string stackSnippet = trace.ToString();
+                    AppLogger.LogTrace($"DefaultActionManager.SetPressedOnce: action={(action?.name ?? "(null)")} device={device} old={old} new={value} caller={callerInfo} stack={stackSnippet}");
+                }
+                catch { }
             }
             catch { }
         }

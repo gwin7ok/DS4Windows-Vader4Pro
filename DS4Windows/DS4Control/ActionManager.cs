@@ -36,6 +36,11 @@ namespace DS4Windows
             ActionImpl = ActionFactory.CreateFrom(action, -1);
             States = new ActionInstanceState[Global.MAX_DS4_CONTROLLER_COUNT];
             for (int i = 0; i < States.Length; ++i) States[i] = new ActionInstanceState();
+            try
+            {
+                AppLogger.LogTrace($"ActionEntry created: action={(action?.name ?? "(null)")} - initialized ActionInstanceState (PressedOnce cleared)");
+            }
+            catch { }
         }
     }
 
@@ -262,6 +267,7 @@ namespace DS4Windows
                             if (device >= 0 && device < ent.States.Length)
                             {
                                 ent.States[device] = new ActionInstanceState();
+                                try { AppLogger.LogTrace($"ActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (PressedOnce cleared)"); } catch { }
                             }
                         }
                         catch { }
@@ -320,18 +326,17 @@ namespace DS4Windows
                 var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
                 if (sp != null)
                 {
-                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
-                    if (mgr != null)
-                    {
-                        // IManagedActionManager may implement a SetPressedOnce variant in the future.
-                        // Try dynamic invocation if available to allow DI overrides without interface changes.
-                        try
+                        var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                        if (mgr != null)
                         {
-                            var mi = mgr.GetType().GetMethod("SetPressedOnce");
-                            if (mi != null) { mi.Invoke(mgr, new object[] { action, device, value }); return; }
+                            // Prefer explicit interface implementation on DI-managed manager.
+                            try
+                            {
+                                mgr.SetPressedOnce(action, device, value);
+                                return;
+                            }
+                            catch { }
                         }
-                        catch { }
-                    }
                 }
 
                 var ent = GetOrCreateEntry(action);
@@ -345,10 +350,28 @@ namespace DS4Windows
                 try { PressedOnceChanged?.Invoke(action, device, old, value); } catch { }
                 try
                 {
-                    // Emit a short stack snippet to help trace call sites that set/clear PressedOnce.
+                    // Build a compact caller identification: find first stack frame outside this class
                     var trace = new StackTrace(1, false);
+                    string callerInfo = "(unknown)";
+                    try
+                    {
+                        for (int i = 0; i < trace.FrameCount; i++)
+                        {
+                            var fr = trace.GetFrame(i);
+                            var method = fr.GetMethod();
+                            if (method == null) continue;
+                            var declaring = method.DeclaringType;
+                            if (declaring == null) continue;
+                            if (declaring == typeof(ActionManager)) continue;
+                            // Found first non-ActionManager caller
+                            callerInfo = declaring.FullName + "." + method.Name;
+                            break;
+                        }
+                    }
+                    catch { }
+                    // Also include a short stack snippet for deeper context
                     string stackSnippet = trace.ToString();
-                    AppLogger.LogTrace($"ActionManager.SetPressedOnce: action={(action?.name ?? "(null)")} device={device} old={old} new={value} stack={stackSnippet}");
+                    AppLogger.LogTrace($"ActionManager.SetPressedOnce: action={(action?.name ?? "(null)")} device={device} old={old} new={value} caller={callerInfo} stack={stackSnippet}");
                 }
                 catch { }
             }
