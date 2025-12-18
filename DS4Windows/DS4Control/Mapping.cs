@@ -1327,12 +1327,13 @@ namespace DS4Windows
                                 // Use ToggleRepeatController for deterministic toggle-driven press+repeat
                                 AppLogger.LogTrace($"SYNTHETIC TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
-                                try
-                                {
-                                    var kbc = GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
-                                    if (kbc != null)
-                                        kbc.OnSATriggerEstablished((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler, true);
-                                }
+                                    try
+                                    {
+                                        SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                                        var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
+                                        if (kbc != null)
+                                            kbc.OnSATriggerEstablished((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler, true);
+                                    }
                                 catch { }
                                 // Clear pending after honoring it and mark last send time
                                 gkp.current.pending = false;
@@ -1360,7 +1361,8 @@ namespace DS4Windows
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
                                 try
                                 {
-                                    var kbc = GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
+                                    SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                                    var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
                                     if (kbc != null)
                                         kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
                                 }
@@ -1398,7 +1400,8 @@ namespace DS4Windows
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
                                 try
                                 {
-                                    var kbc = GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
+                                    SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                                    var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
                                     if (kbc != null)
                                         kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
                                 }
@@ -3790,6 +3793,27 @@ namespace DS4Windows
         public static KeyButtonActionController GetOrCreateKeyButtonControllerForAction(int device, SpecialAction sa)
         {
             return GetOrCreateKeyButtonController(device, sa);
+        }
+
+        // Try to find a SpecialAction that maps to given logical key (used by synthetic sender paths).
+        private static SpecialAction FindSpecialActionForLogicalKey(ushort logicalKey)
+        {
+            try
+            {
+                if (!ActionRegistry.IsInitialized) return null;
+                foreach (var sa in ActionRegistry.AllActions())
+                {
+                    try
+                    {
+                        if (sa == null) continue;
+                        if (sa.typeID != SpecialAction.ActionTypeId.Key) continue;
+                        if (ushort.TryParse(sa.details, out ushort k) && k == logicalKey) return sa;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return null;
         }
 
         // Helper: Dispatch SpecialAction trigger established via KeyButtonActionController if available.

@@ -11,7 +11,7 @@ namespace StandaloneTests
         public void ActionDoneFlagRoundtrip()
         {
             // Arrange: create a lightweight SpecialAction
-            var sa = new SpecialAction("smoke_test", "L1", "Key", "32");
+            var sa = TestHelpers.CreateKeyAction("smoke_test", "L1", "32");
 
             // Act: get state and flip ActionDone
             var st = ActionManager.GetStateFor(sa, 0);
