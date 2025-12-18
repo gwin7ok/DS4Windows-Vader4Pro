@@ -13,8 +13,16 @@ namespace DS4Windows
         public bool PressedOnce = false;
         public long LastToggleTimeUtcTicks = 0;
         public bool FirstTouch = false;
-        // Whether the action is considered 'done' (previously stored in Mapping.actionDone[index].dev[device])
-        public bool ActionDone = false;
+        // Whether the action is currently considered 'being triggered' (replaces legacy actionDone)
+        // Exposed as a read-only property to prevent direct assignment from other code.
+        private bool _beingTriggered = false;
+        public bool BeingTriggered { get { return _beingTriggered; } }
+
+        // Internal setter used by ActionManager to mutate the state in a controlled way.
+        internal void SetBeingTriggeredInternal(bool value)
+        {
+            _beingTriggered = value;
+        }
 
         // Index of an expected untrigger action for this state (-1 if none). Mirrors Mapping.untriggerindex[device] semantics
         public int UntriggerIndex = -1;
@@ -166,6 +174,34 @@ namespace DS4Windows
             catch { return null; }
         }
 
+        // Query whether given action/device is currently marked as being triggered.
+        public static bool IsBeingTriggered(SpecialAction action, int device)
+        {
+            try
+            {
+                var st = GetStateFor(action, device);
+                if (st != null) return st.BeingTriggered;
+            }
+            catch { }
+            return false;
+        }
+
+        // Controlled setter for BeingTriggered — centralizes mutations so callers don't assign the field directly.
+        // This API is private to prevent external callers from mutating BeingTriggered; use DispatchTriggerEdge instead.
+        private static void SetBeingTriggeredFor(SpecialAction action, int device, bool value)
+        {
+            try
+            {
+                var st = GetStateFor(action, device);
+                if (st == null) return;
+                bool old = st.BeingTriggered;
+                if (old == value) return;
+                st.SetBeingTriggeredInternal(value);
+                try { AppLogger.LogTrace($"ActionManager.SetBeingTriggeredFor: name={action?.name} device={device} old={old} new={value}"); } catch { }
+            }
+            catch { }
+        }
+
         // Clear pressed-once flag for actions that map to given native key
         public static void ClearPressedOnceForKey(ushort key)
         {
@@ -279,103 +315,54 @@ namespace DS4Windows
             catch { }
         }
 
-        // Notify ActionImpl and let the Action handle controller delegation / state changes.
-        public static void NotifyTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
-        {
-            try
-            {
-                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
-                if (sp != null)
-                {
-                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
-                    if (mgr != null) { mgr.NotifyTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); return; }
-                }
-
-                var ent = GetOrCreateEntry(action);
-                try
-                {
-                    var ctx = new DS4Windows.Actions.MappingContext
-                    {
-                        LogicalValue = logicalValue,
-                        NativeValue = nativeValue,
-                        UseScanCode = useScanCode,
-                        OutputHandler = outputKBMHandler,
-                        ActionDef = action,
-                        Index = -1
-                    };
-                    ent?.ActionImpl?.OnTrigger(device, ctx);
-                }
-                catch { }
-            }
-            catch (Exception ex)
-            {
-                AppLogger.LogTrace($"ActionManager.NotifyTriggerEstablished failed: {ex}");
-            }
-        }
+        // NOTE: NotifyTriggerEstablished removed — use DispatchTriggerEstablished or DispatchTriggerEdge
 
         // Event fired when PressedOnce state changes for an action/device.
         // Parameters: (SpecialAction action, int device, bool oldValue, bool newValue)
         public static event Action<SpecialAction, int, bool, bool> PressedOnceChanged;
 
-        // Helper to set PressedOnce with change notification.
-        public static void SetPressedOnce(SpecialAction action, int device, bool value)
-        {
-            try
+            // Ensure the PressedOnceChanged event is always traced when fired.
+            static ActionManager()
             {
-                // If DI manager exists and exposes similar functionality, prefer it.
-                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
-                if (sp != null)
-                {
-                        var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
-                        if (mgr != null)
-                        {
-                            // Prefer explicit interface implementation on DI-managed manager.
-                            try
-                            {
-                                mgr.SetPressedOnce(action, device, value);
-                                return;
-                            }
-                            catch { }
-                        }
-                }
-
-                var ent = GetOrCreateEntry(action);
-                if (ent == null) return;
-                if (device < 0 || device >= ent.States.Length) return;
-                var st = ent.States[device];
-                if (st == null) return;
-                bool old = st.PressedOnce;
-                if (old == value) return;
-                st.PressedOnce = value;
-                try { PressedOnceChanged?.Invoke(action, device, old, value); } catch { }
                 try
                 {
-                    // Build a compact caller identification: find first stack frame outside this class
-                    var trace = new StackTrace(1, false);
-                    string callerInfo = "(unknown)";
-                    try
+                    PressedOnceChanged += (sa, dev, oldv, newv) =>
                     {
-                        for (int i = 0; i < trace.FrameCount; i++)
-                        {
-                            var fr = trace.GetFrame(i);
-                            var method = fr.GetMethod();
-                            if (method == null) continue;
-                            var declaring = method.DeclaringType;
-                            if (declaring == null) continue;
-                            if (declaring == typeof(ActionManager)) continue;
-                            // Found first non-ActionManager caller
-                            callerInfo = declaring.FullName + "." + method.Name;
-                            break;
-                        }
-                    }
-                    catch { }
-                    // Also include a short stack snippet for deeper context
-                    string stackSnippet = trace.ToString();
-                    AppLogger.LogTrace($"ActionManager.SetPressedOnce: action={(action?.name ?? "(null)")} device={device} old={old} new={value} caller={callerInfo} stack={stackSnippet}");
+                        try { AppLogger.LogTrace($"ActionManager.PressedOnceChanged: name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
+                    };
                 }
                 catch { }
             }
-            catch { }
+
+            // Helper for external components (such as DI-managed managers) to notify the static event.
+            public static void FirePressedOnceChanged(SpecialAction action, int device, bool oldValue, bool newValue)
+            {
+                try
+                {
+                    try { PressedOnceChanged?.Invoke(action, device, oldValue, newValue); } catch { }
+                }
+                catch { }
+            }
+
+        // Helper to set PressedOnce with change notification.
+        public static void SetPressedOnce(SpecialAction action, int device, bool value)
+        {
+            // Prefer DI-managed implementation and fail loudly if none present.
+            var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+            if (sp != null)
+            {
+                var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                if (mgr != null)
+                {
+                    mgr.SetPressedOnce(action, device, value);
+                    return;
+                }
+            }
+
+            // No DI manager available -> explicit failure to avoid silent state divergence
+            var msg = $"ActionManager.SetPressedOnce called but no IManagedActionManager is registered. action={(action?.name ?? "(null)")} device={device} value={value}";
+            try { AppLogger.LogError(msg); } catch { }
+            throw new InvalidOperationException(msg);
         }
 
         // Dispatch that returns true if an Action instance existed and was invoked to handle the trigger.
@@ -394,6 +381,8 @@ namespace DS4Windows
                 if (ent?.ActionImpl == null) return false;
                 try
                 {
+                    var st = GetStateFor(action, device);
+                    try { AppLogger.LogTrace($"DispatchTriggerEstablished: before OnTrigger BeingTriggered={st?.BeingTriggered ?? false} name={action?.name} device={device}"); } catch { }
                     var ctx = new DS4Windows.Actions.MappingContext
                     {
                         LogicalValue = logicalValue,
@@ -404,8 +393,9 @@ namespace DS4Windows
                         Index = -1
                     };
                     ent.ActionImpl.OnTrigger(device, ctx);
+                    try { AppLogger.LogTrace($"DispatchTriggerEstablished: after OnTrigger BeingTriggered={st?.BeingTriggered ?? false} name={action?.name} device={device}"); } catch { }
                 }
-                catch { }
+                catch (Exception ex) { AppLogger.LogTrace($"DispatchTriggerEstablished handler failed: {ex}"); }
                 return true;
             }
             catch (Exception ex)
@@ -415,38 +405,7 @@ namespace DS4Windows
             }
         }
 
-        public static void NotifyTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
-        {
-            try
-            {
-                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
-                if (sp != null)
-                {
-                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
-                    if (mgr != null) { mgr.NotifyTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); return; }
-                }
-
-                var ent = GetOrCreateEntry(action);
-                try
-                {
-                    var ctx = new DS4Windows.Actions.MappingContext
-                    {
-                        LogicalValue = logicalValue,
-                        NativeValue = nativeValue,
-                        UseScanCode = useScanCode,
-                        OutputHandler = outputKBMHandler,
-                        ActionDef = action,
-                        Index = -1
-                    };
-                    ent?.ActionImpl?.OnRelease(device, ctx);
-                }
-                catch { }
-            }
-            catch (Exception ex)
-            {
-                AppLogger.LogTrace($"ActionManager.NotifyTriggerReleased failed: {ex}");
-            }
-        }
+        // NOTE: NotifyTriggerReleased removed — use DispatchTriggerReleased or DispatchTriggerEdge
 
         public static bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
         {
@@ -502,6 +461,55 @@ namespace DS4Windows
             catch (Exception ex)
             {
                 AppLogger.LogTrace($"ActionManager.DispatchTrigger failed: {ex}");
+                return false;
+            }
+        }
+
+        // Edge-only dispatch: notify only when a trigger first becomes established
+        // and when it later becomes released. This uses the per-action BeingTriggered
+        // flag (via ActionInstanceState) to gate repeated notifications.
+        public static bool DispatchTriggerEdge(DS4Windows.TriggerContext ctx)
+        {
+            try
+            {
+                if (ctx == null || ctx.ActionDef == null) return false;
+
+                var st = GetStateFor(ctx.ActionDef, ctx.Device);
+                // If we cannot access state, fall back to full dispatch behavior and log once.
+                if (st == null)
+                {
+                    try { AppLogger.LogTrace($"DispatchTriggerEdge: no ActionInstanceState for name={ctx.ActionDef?.name} device={ctx.Device}; falling back to full dispatch"); } catch { }
+                    return DispatchTrigger(ctx);
+                }
+
+                if (ctx.IsEstablished)
+                {
+                    // Only log when we transition from not-being-triggered -> being-triggered
+                    if (!st.BeingTriggered)
+                    {
+                        st.SetBeingTriggeredInternal(true);
+                        try { AppLogger.LogTrace($"DispatchTriggerEdge: firing established (edge) for name={ctx.ActionDef?.name} device={ctx.Device} (now BeingTriggered={st.BeingTriggered})"); } catch { }
+                        return DispatchTriggerEstablished(ctx.ActionDef, ctx.Device, ctx.LogicalValue, ctx.NativeValue, ctx.UseScanCode, ctx.OutputHandler);
+                    }
+                    // suppressed duplicate established
+                    return false;
+                }
+                else
+                {
+                    // Only log when we transition from being-triggered -> not-being-triggered
+                    if (st.BeingTriggered)
+                    {
+                        st.SetBeingTriggeredInternal(false);
+                        try { AppLogger.LogTrace($"DispatchTriggerEdge: firing released (edge) for name={ctx.ActionDef?.name} device={ctx.Device}"); } catch { }
+                        return DispatchTriggerReleased(ctx.ActionDef, ctx.Device, ctx.LogicalValue, ctx.NativeValue, ctx.UseScanCode, ctx.OutputHandler);
+                    }
+                    // suppressed duplicate release
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ActionManager.DispatchTriggerEdge failed: {ex}");
                 return false;
             }
         }

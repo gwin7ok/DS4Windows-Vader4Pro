@@ -118,6 +118,12 @@ namespace DS4Windows
         // Cache of last trigger states for Button SpecialActions to reduce logging noise.
         private static Dictionary<string, bool> lastButtonTriggerState;
 
+        // Instrumentation counters to help diagnose hot loops
+        private static long mappingCallCount = 0;
+        private static long mappingEvalSinceLast = 0;
+        private static long setBeingTriggeredCallsSinceLast = 0;
+        private static long mappingLastSummaryUtcTicks = DateTime.UtcNow.Ticks;
+
         // プロファイル切り替え時に呼び出すことでエラーログ抑制をリセット
         // public static void ResetLoggedInvalidActions()
         // {
@@ -983,28 +989,63 @@ namespace DS4Windows
             new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState()
         };
 
-        // Helper: query/set per-action `ActionDone` through ActionManager-backed per-action state.
-        private static bool GetActionDone(int index, SpecialAction action, int device)
+        // Cache of previous input-level 'established' state per (actionIndex, device).
+        // Mapping will use this to detect input-edge (rise/fall) and only call DispatchTriggerEdge when input changed.
+        private static readonly Dictionary<long, bool> prevInputEstablished = new Dictionary<long, bool>();
+
+        private static long MakePrevKey(int index, int device)
+        {
+            return (((long)index) << 32) | (uint)device;
+        }
+
+        // Helper: query/set per-action `BeingTriggered` through ActionManager-backed per-action state.
+        // New preferred names matching the property: GetBeingTriggered / SetBeingTriggered
+        private static bool GetBeingTriggered(int index, SpecialAction action, int device)
         {
             try
             {
-                var st = ActionManager.GetStateFor(action, device);
-                if (st != null) return st.ActionDone;
+                return ActionManager.IsBeingTriggered(action, device);
             }
             catch { }
 
             return false;
         }
 
-        private static void SetActionDone(int index, SpecialAction action, int device, bool value)
+        private static void SetBeingTriggered(int index, SpecialAction action, int device, bool value)
         {
             try
             {
-                var st = ActionManager.GetStateFor(action, device);
-                if (st != null) { st.ActionDone = value; }
+                var key = MakePrevKey(index, device);
+                bool prevInput = false;
+                lock (prevInputEstablished)
+                {
+                    if (prevInputEstablished.TryGetValue(key, out var v)) prevInput = v;
+                    // If input-level established state hasn't changed, nothing to do.
+                    if (prevInput == value) return;
+                    // update cache
+                    prevInputEstablished[key] = value;
+                }
+
+                // Input edge detected — request dispatch. ActionManager.DispatchTriggerEdge
+                // will still gate actual mutation of BeingTriggered by its own per-action state.
+                var ctx = new DS4Windows.TriggerContext
+                {
+                    ActionDef = action,
+                    Device = device,
+                    LogicalValue = 0,
+                    NativeValue = 0,
+                    UseScanCode = false,
+                    OutputHandler = null,
+                    IsEstablished = value
+                };
+
+                bool handled = ActionManager.DispatchTriggerEdge(ctx);
+                try { AppLogger.LogTrace($"Mapping.SetBeingTriggered (input-edge): index={index} name={action?.name} device={device} requested={value} dispatched={handled} prevInput={prevInput}"); } catch { }
             }
             catch { }
         }
+
+        // NOTE: old wrappers removed — callers must use GetBeingTriggered/SetBeingTriggered.
 
         // Helper: query/set per-action `PressedOnce` through ActionManager-backed per-action state.
         private static bool GetPressedOnce(int index, SpecialAction action, int device)
@@ -1016,6 +1057,73 @@ namespace DS4Windows
             }
             catch { }
             return false;
+        }
+
+        // Helper: only set BeingTriggered when value differs to avoid redundant work
+        private static void SetBeingTriggeredIf(int index, SpecialAction action, int device, bool value)
+        {
+            try
+            {
+                if (ActionManager.IsBeingTriggered(action, device) == value) return;
+            }
+            catch { }
+
+            // count actual mutation attempts for diagnostics
+            try { System.Threading.Interlocked.Increment(ref setBeingTriggeredCallsSinceLast); } catch { }
+            SetBeingTriggered(index, action, device, value);
+        }
+
+        // Try dispatch via ActionManager.DispatchTriggerEdge; if no Action handled it, fall back to Setting BeingTriggered
+        private static void DispatchOrSetBeingTriggered(SpecialAction action, int device, bool value, ushort logicalValue = 0, uint nativeValue = 0, bool useScan = false, DS4Windows.DS4Control.VirtualKBMBase outputHandler = null)
+        {
+            try
+            {
+                var ctx = new DS4Windows.TriggerContext
+                {
+                    ActionDef = action,
+                    Device = device,
+                    LogicalValue = logicalValue,
+                    NativeValue = nativeValue,
+                    UseScanCode = useScan,
+                    OutputHandler = outputHandler,
+                    IsEstablished = value
+                };
+
+                bool handled = DispatchInputEdge(ctx);
+                if (!handled)
+                {
+                    try { SetBeingTriggeredIf(-1, action, device, value); } catch { }
+                }
+            }
+            catch
+            {
+                try { SetBeingTriggeredIf(-1, action, device, value); } catch { }
+            }
+        }
+
+        // Centralized Mapping-side input-edge handler. Detects input-level rise/fall per (action,device)
+        // and only calls ActionManager.DispatchTriggerEdge when an input edge is observed.
+        private static bool DispatchInputEdge(DS4Windows.TriggerContext ctx, int index = -1)
+        {
+            try
+            {
+                if (ctx == null || ctx.ActionDef == null) return false;
+
+                long key = index >= 0 ? MakePrevKey(index, ctx.Device) : (((long)ctx.ActionDef.name.GetHashCode() << 32) | (uint)ctx.Device);
+                bool prevInput = false;
+                lock (prevInputEstablished)
+                {
+                    if (prevInputEstablished.TryGetValue(key, out var v)) prevInput = v;
+                    if (prevInput == ctx.IsEstablished) return false;
+                    prevInputEstablished[key] = ctx.IsEstablished;
+                }
+
+                bool handled = false;
+                try { handled = ActionManager.DispatchTriggerEdge(ctx); } catch { }
+                try { AppLogger.LogTrace($"Mapping.DispatchInputEdge: name={ctx.ActionDef?.name} device={ctx.Device} requested={ctx.IsEstablished} dispatched={handled} prevInput={prevInput}"); } catch { }
+                return handled;
+            }
+            catch { return false; }
         }
 
         // PressedOnce lifecycle is managed by Action implementations (e.g., KeyAction).
@@ -1365,7 +1473,7 @@ namespace DS4Windows
                                                     OutputHandler = outputKBMHandler,
                                                     IsEstablished = true
                                                 };
-                                                handled = ActionManager.DispatchTrigger(ctx);
+                                                handled = DispatchInputEdge(ctx);
                                             }
                                         }
                                         catch { }
@@ -1386,7 +1494,7 @@ namespace DS4Windows
                                                         OutputHandler = outputKBMHandler,
                                                         IsEstablished = true
                                                     };
-                                                    handled = ActionManager.DispatchTrigger(ctx2);
+                                                    handled = DispatchInputEdge(ctx2);
                                                 }
                                                 catch { }
                                                 try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
@@ -1447,7 +1555,7 @@ namespace DS4Windows
                                                         OutputHandler = outputKBMHandler,
                                                         IsEstablished = false
                                                     };
-                                                    handled = ActionManager.DispatchTrigger(ctxRel);
+                                                    handled = DispatchInputEdge(ctxRel);
                                                 }
                                                 catch { }
                                                 try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
@@ -1521,7 +1629,7 @@ namespace DS4Windows
                                                         OutputHandler = outputKBMHandler,
                                                         IsEstablished = false
                                                     };
-                                                    handled = ActionManager.DispatchTrigger(ctxRel2);
+                                                    handled = DispatchInputEdge(ctxRel2);
                                                 }
                                                 catch { }
                                                 try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
@@ -3032,6 +3140,19 @@ namespace DS4Windows
             Mouse tp, ControlService ctrl)
         {
             /* TODO: This method is slow sauce. Find ways to speed up action execution */
+            try { System.Threading.Interlocked.Increment(ref mappingEvalSinceLast); } catch { }
+            try
+            {
+                long nowTicks = DateTime.UtcNow.Ticks;
+                if (nowTicks - mappingLastSummaryUtcTicks > TimeSpan.FromSeconds(5).Ticks)
+                {
+                    long evals = System.Threading.Interlocked.Exchange(ref mappingEvalSinceLast, 0);
+                    long sets = System.Threading.Interlocked.Exchange(ref setBeingTriggeredCallsSinceLast, 0);
+                    mappingLastSummaryUtcTicks = nowTicks;
+                    AppLogger.LogDebug($"Mapping SUMMARY (5s): device={device} evaluations={evals} setBeingTriggeredCalls={sets}");
+                }
+            }
+            catch { }
             double tempMouseDeltaX = 0.0;
             double tempMouseDeltaY = 0.0;
             //AbsMouseOutput absMouseOut = new AbsMouseOutput(0.5, 0.5);
@@ -4041,7 +4162,7 @@ namespace DS4Windows
                             OutputHandler = outputKBMHandler,
                             IsEstablished = true
                         };
-                        handledByManager = ActionManager.DispatchTrigger(ctx);
+                        handledByManager = DispatchInputEdge(ctx);
                     }
                 }
                 catch { }
@@ -4068,7 +4189,7 @@ namespace DS4Windows
                             OutputHandler = outputKBMHandler,
                             IsEstablished = true
                         };
-                        handledFinal = ActionManager.DispatchTrigger(ctxFinal);
+                        handledFinal = DispatchInputEdge(ctxFinal);
                     }
                     catch { }
 
@@ -4126,7 +4247,7 @@ namespace DS4Windows
                             OutputHandler = outputKBMHandler,
                             IsEstablished = false
                         };
-                        handledByManager = ActionManager.DispatchTrigger(ctx);
+                        handledByManager = DispatchInputEdge(ctx);
                     }
                 }
                 catch { }
@@ -4152,7 +4273,7 @@ namespace DS4Windows
                             OutputHandler = outputKBMHandler,
                             IsEstablished = false
                         };
-                        handledFinal = ActionManager.DispatchTrigger(ctxFinal);
+                        handledFinal = DispatchInputEdge(ctxFinal);
                     }
                     catch { }
 
@@ -5054,7 +5175,7 @@ namespace DS4Windows
 
         // InitializeActionDoneList removed — ActionManager owns per-action state initialization.
 
-        // ログ用ヘルパー: スペシャルアクションのトリガー成立時に現在の actionDone エントリ数を出力
+        // ログ用ヘルパー: スペシャルアクションのトリガー成立時に現在の beingTriggered エントリ数を出力
         private static void LogActionDoneCountOnTrigger(int index, SpecialAction action, int device, string context = "TRIGGER")
         {
             try
@@ -5098,7 +5219,7 @@ namespace DS4Windows
             if (!initializationSucceeded)
             {
                 // 3回リトライ失敗→スペシャルアクション実行せずに終了
-                AppLogger.LogToGui("ActionDone initialization failed after all retries. Skipping Special Actions for safety.", true);
+                AppLogger.LogToGui("BeingTriggered initialization failed after all retries. Skipping Special Actions for safety.", true);
                 return;
             }
 
@@ -5269,7 +5390,7 @@ namespace DS4Windows
                             {
                                 bool risingEdge = false;
                                 if (index >= 0)
-                                    risingEdge = !GetActionDone(index, action, device);
+                                    risingEdge = !GetBeingTriggered(index, action, device);
 
                                 if (action.typeID != SpecialAction.ActionTypeId.Button)
                                     LogSpecialActionTrace(actionname, action, device, risingEdge, outputfieldMapping, Mapping.deviceState);
@@ -5285,10 +5406,10 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!GetActionDone(index, action, device))
+                                if (!GetBeingTriggered(index, action, device))
                                 {
                                     LogActionDoneCountOnTrigger(index, action, device, "Program");
-                                    SetActionDone(index, action, device, true);
+                                        DispatchOrSetBeingTriggered(action, device, true);
                                     if (!string.IsNullOrEmpty(action.extra))
                                     {
                                         int pos = action.extra.IndexOf("$hidden", StringComparison.OrdinalIgnoreCase);
@@ -5347,13 +5468,13 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!GetActionDone(index, action, device) && (!useTempProfile[device] || deviceRuntime[device].UntriggerAction == null || deviceRuntime[device].UntriggerAction.typeID != SpecialAction.ActionTypeId.Profile))
+                                if (!GetBeingTriggered(index, action, device) && (!useTempProfile[device] || deviceRuntime[device].UntriggerAction == null || deviceRuntime[device].UntriggerAction.typeID != SpecialAction.ActionTypeId.Profile))
                                 {
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
-                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: actionDone={GetActionDone(index, action, device)}, useTempProfile={useTempProfile[device]}");
+                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={useTempProfile[device]}");
                                     
                                     LogActionDoneCountOnTrigger(index, action, device, "Profile");
-                                    SetActionDone(index, action, device, true);
+                                    DispatchOrSetBeingTriggered(action, device, true);
                                     // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
                                     if (action.uTrigger.Count > 0 || action.automaticUntrigger)
                                     {
@@ -5413,7 +5534,7 @@ namespace DS4Windows
                                                     int indexNext = GetProfileActionIndexOf(device, actionnameNext);
 
                                                     if (actionNext.controls == action.controls)
-                                                        SetActionDone(indexNext, actionNext, device, true);
+                                                        DispatchOrSetBeingTriggered(actionNext, device, true);
                                                 }
                                             }
                                         });
@@ -5428,11 +5549,11 @@ namespace DS4Windows
                                 if (!action.pressRelease)
                                 {
                                     // Macro run when trigger keys are pressed down (the default behaviour)
-                                    if (!GetActionDone(index, action, device))
+                                    if (!GetBeingTriggered(index, action, device))
                                     {
                                         DS4KeyType keyType = action.keyType;
                                         LogActionDoneCountOnTrigger(index, action, device, "Macro");
-                                        SetActionDone(index, action, device, true);
+                                        DispatchOrSetBeingTriggered(action, device, true);
                                         /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                                         {
                                             DS4Controls dc = action.trigger[i];
@@ -5454,11 +5575,11 @@ namespace DS4Windows
                                     if (action.firstTouch)
                                     {
                                         action.firstTouch = false;
-                                        if (!GetActionDone(index, action, device))
+                                        if (!GetBeingTriggered(index, action, device))
                                         {
                                             DS4KeyType keyType = action.keyType;
-                                            LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
-                                            SetActionDone(index, action, device, true);
+                                                LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
+                                                DispatchOrSetBeingTriggered(action, device, true);
                                             /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                                             {
                                                 DS4Controls dc = action.trigger[i];
@@ -5542,11 +5663,11 @@ namespace DS4Windows
                             else if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 actionFound = true;
-                                bool prevActionDone = GetActionDone(index, action, device);
+                                bool prevActionDone = GetBeingTriggered(index, action, device);
                                 if (!prevActionDone)
-                                    AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={deviceRuntime[device].UntriggerIndex}, actionDone={GetActionDone(index, action, device)}");
+                                    AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={deviceRuntime[device].UntriggerIndex}, beingTriggered={GetBeingTriggered(index, action, device)}");
 
-                                if (uTriggerCount == 0 || (uTriggerCount > 0 && deviceRuntime[device].UntriggerIndex == -1 && !GetActionDone(index, action, device)))
+                                if (uTriggerCount == 0 || (uTriggerCount > 0 && deviceRuntime[device].UntriggerIndex == -1 && !GetBeingTriggered(index, action, device)))
                                 {
                                     if (!prevActionDone)
                                     {
@@ -5558,7 +5679,7 @@ namespace DS4Windows
                                         }
                                         catch { }
                                     }
-                                    SetActionDone(index, action, device, true);
+                                    DispatchOrSetBeingTriggered(action, device, true);
                                     // For Toggle-type SpecialAction keys we do NOT register an untriggerindex here
                                     // because toggle off/on is driven by successive triggers, not by physical release.
                                         if (!action.keyType.HasFlag(DS4KeyType.Toggle))
@@ -5587,7 +5708,17 @@ namespace DS4Windows
                                         {
                                             uint nativeKeyToUse = deviceState[device].nativeKeyAlias[key];
                                             bool useScan = action.keyType.HasFlag(DS4KeyType.ScanCode);
-                                            ActionManager.DispatchTriggerEstablished(action, device, key, nativeKeyToUse, useScan, outputKBMHandler);
+                                            var ctxKey = new DS4Windows.TriggerContext
+                                            {
+                                                ActionDef = action,
+                                                Device = device,
+                                                LogicalValue = key,
+                                                NativeValue = nativeKeyToUse,
+                                                UseScanCode = useScan,
+                                                OutputHandler = outputKBMHandler,
+                                                IsEstablished = true
+                                            };
+                                            ActionManager.DispatchTriggerEdge(ctxKey);
                                         }
                                         catch (Exception ex)
                                         {
@@ -5638,7 +5769,7 @@ namespace DS4Windows
                                 string[] dets = action.details.Split('|');
                                 if (dets.Length == 1)
                                     dets = action.details.Split(',');
-                                if (bool.Parse(dets[1]) && !GetActionDone(index, action, device))
+                                if (bool.Parse(dets[1]) && !GetBeingTriggered(index, action, device))
                                 {
                                     AppLogger.LogToTray("Controller " + (device + 1) + ": " +
                                         ctrl.GetDS4Battery(device), true);
@@ -5646,7 +5777,7 @@ namespace DS4Windows
                                 if (bool.Parse(dets[2]))
                                 {
                                     DS4Device d = ctrl.DS4Controllers[device];
-                                    if (!GetActionDone(index, action, device))
+                                    if (!GetBeingTriggered(index, action, device))
                                     {
                                         lastColor[device] = d.LightBarColor;
                                         DS4LightBar.forcelight[device] = true;
@@ -5659,7 +5790,7 @@ namespace DS4Windows
                                 }
                                 LogActionDoneCountOnTrigger(index, action, device, "BatteryCheck");
                                 LogActionDoneCountOnTrigger(index, action, device, "WheelRecalibrate");
-                                SetActionDone(index, action, device, true);
+                                DispatchOrSetBeingTriggered(action, device, true);
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.SASteeringWheelEmulationCalibrate)
                             {
@@ -5678,13 +5809,13 @@ namespace DS4Windows
                                     d.WheelRecalibrateActiveState = 3;  // Complete calibration process
                                 }
 
-                                SetActionDone(index, action, device, true);
+                                DispatchOrSetBeingTriggered(action, device, true);
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.GyroCalibrate)
                             {
                                 actionFound = true;
 
-                                if (!GetActionDone(index, action, device))
+                                if (!GetBeingTriggered(index, action, device))
                                 {
                                     var d = ctrl.DS4Controllers[device];
 
@@ -5696,7 +5827,7 @@ namespace DS4Windows
                                     }
 
                                     LogActionDoneCountOnTrigger(index, action, device, "GyroCalibrate");
-                                    SetActionDone(index, action, device, true);
+                                    DispatchOrSetBeingTriggered(action, device, true);
                                 }
                             }
                         }
@@ -5707,10 +5838,10 @@ namespace DS4Windows
                             if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 // Only handle single-trigger Key special actions (no uTrigger entries)
-                                if (action.uTrigger.Count == 0 && GetActionDone(index, action, device) && deviceRuntime[device].UntriggerIndex == index)
+                                if (action.uTrigger.Count == 0 && GetBeingTriggered(index, action, device) && deviceRuntime[device].UntriggerIndex == index)
                                 {
                                     actionFound = true;
-                                    SetActionDone(index, action, device, false);
+                                    DispatchOrSetBeingTriggered(action, device, false);
                                     deviceRuntime[device].UntriggerIndex = -1;
                                         LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
                                         try
@@ -5763,7 +5894,7 @@ namespace DS4Windows
                             if (action.typeID == SpecialAction.ActionTypeId.BatteryCheck)
                             {
                                 actionFound = true;
-                                if (GetActionDone(index, action, device))
+                                if (GetBeingTriggered(index, action, device))
                                 {
                                     fadetimer[device] = 0;
                                     /*if (prevFadetimer[device] == fadetimer[device])
@@ -5774,7 +5905,7 @@ namespace DS4Windows
                                     else
                                         prevFadetimer[device] = fadetimer[device];*/
                                     DS4LightBar.forcelight[device] = false;
-                                    SetActionDone(index, action, device, false);
+                                    DispatchOrSetBeingTriggered(action, device, false);
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.DisconnectBT && action.pressRelease)
@@ -5788,7 +5919,7 @@ namespace DS4Windows
                                     {
                                         d.DisconnectDongle();
                                         ReleaseActionKeys(action, device);
-                                        SetActionDone(index, action, device, false);
+                                        DispatchOrSetBeingTriggered(action, device, false);
                                         action.pressRelease = false;
                                     }
                                 }
@@ -5799,7 +5930,7 @@ namespace DS4Windows
                             {
                                 // Ignore
                                 actionFound = true;
-                                SetActionDone(index, action, device, false);
+                                DispatchOrSetBeingTriggered(action, device, false);
                             }
                         }
 
@@ -5814,9 +5945,9 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (deviceRuntime[device].UntriggerIndex > -1 && GetActionDone(index, action, device))
+                                if (deviceRuntime[device].UntriggerIndex > -1 && GetBeingTriggered(index, action, device))
                                 {
-                                    SetActionDone(index, action, device, false);
+                                    DispatchOrSetBeingTriggered(action, device, false);
                                     deviceRuntime[device].UntriggerIndex = -1;
                                     LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
                                     if (action.typeID == SpecialAction.ActionTypeId.Key)
@@ -6008,7 +6139,7 @@ namespace DS4Windows
                             }
                             else
                             {
-                                SetActionDone(index, action, device, false);
+                                DispatchOrSetBeingTriggered(action, device, false);
                             }
                         }
                     }
@@ -6068,17 +6199,17 @@ namespace DS4Windows
 
                 if (utriggeractivated && action.typeID == SpecialAction.ActionTypeId.Profile)
                 {
-                    if ((action.controls == action.ucontrols && !GetActionDone(index, action, device)) || //if trigger and end trigger are the same
+                    if ((action.controls == action.ucontrols && !GetBeingTriggered(index, action, device)) || //if trigger and end trigger are the same
                     action.controls != action.ucontrols)
                     {
-                        if (useTempProfile[device])
+                                if (useTempProfile[device])
                         {
                             //foreach (DS4Controls dc in action.uTrigger)
                                 for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
                                 {
                                 DS4Controls dc = action.uTrigger[i];
                                 LogActionDoneCountOnTrigger(index, action, device, "UntriggerProfile");
-                                SetActionDone(index, action, device, true);
+                                DispatchOrSetBeingTriggered(action, device, true);
                                 DS4ControlSettings dcs = GetDS4CSetting(device, dc);
                                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                                 {
@@ -6109,16 +6240,16 @@ namespace DS4Windows
 
                             deviceRuntime[device].UntriggerAction = null;
 
-                            if (profileName == string.Empty)
-                                LoadProfile(device, false, ctrl); // Previous profile was a regular default profile of a controller
-                            else
-                                LoadTempProfile(device, profileName, true, ctrl); // Previous profile was a temporary profile, so re-load it as a temp profile
+                                if (profileName == string.Empty)
+                                    LoadProfile(device, false, ctrl); // Previous profile was a regular default profile of a controller
+                                else
+                                    LoadTempProfile(device, profileName, true, ctrl); // Previous profile was a temporary profile, so re-load it as a temp profile
+                            }
                         }
                     }
-                }
                 else
                 {
-                    SetActionDone(index, action, device, false);
+                    DispatchOrSetBeingTriggered(action, device, false);
                 }
 
                 // (moved) reset of pressedonce handled in main action loop
@@ -6297,7 +6428,19 @@ namespace DS4Windows
 
             // If a special action type of Macro has "Repeat while held" option and actionDoneState object is defined then reset the action back to "not done" status in order to re-fire it if the trigger key is still held down
             if (actionDoneState != null && keyType.HasFlag(DS4KeyType.RepeatMacro))
-                actionDoneState.ActionDone = false;
+            {
+                var ctxRel = new DS4Windows.TriggerContext
+                {
+                    ActionDef = action,
+                    Device = device,
+                    LogicalValue = 0,
+                    NativeValue = 0,
+                    UseScanCode = false,
+                    OutputHandler = null,
+                    IsEstablished = false
+                };
+                ActionManager.DispatchTriggerEdge(ctxRel);
+            }
         }
 
         private static bool PlayMacroCodeValue(int device, bool[] macrocontrol, DS4KeyType keyType, int macroCodeValue, bool[] keydown)

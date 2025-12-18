@@ -300,6 +300,13 @@ namespace DS4WinWPF
                 // Register other services here as needed in future (ActionManager, Loggers, etc.)
                 var sp = services.BuildServiceProvider();
                 DS4Windows.DI.ServiceProviderHolder.SetProvider(sp);
+                try
+                {
+                    // Preallocate action entries and button state table to avoid lazy race conditions
+                    var mam = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.DefaultActionManager;
+                    mam?.PreallocateEntries();
+                }
+                catch { }
             }
             catch (Exception ex)
             {

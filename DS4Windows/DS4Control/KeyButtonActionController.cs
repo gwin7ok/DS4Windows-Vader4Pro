@@ -214,10 +214,11 @@ namespace DS4Windows
                     e.isPressed = true;
                     try
                     {
+                        AppLogger.LogTrace($"PressImpl.OnDown: controllerId={controllerId} device={device} kvpKey={kvpKey} native={e.nativeKey} useScan={e.useScanCode}");
                         // Primary behavior: send one immediate press (hold). Release will be sent on OnUp.
                         SyntheticDispatcher.SendPress(device, kvpKey, e.nativeKey, e.useScanCode, e.handler);
                     }
-                    catch { }
+                    catch (Exception ex) { AppLogger.LogTrace($"PressImpl.OnDown failed: {ex}"); }
 
                     // Start delayed creation of repeater after InitialRepeatDelayMs for press-repeat semantics
                     try

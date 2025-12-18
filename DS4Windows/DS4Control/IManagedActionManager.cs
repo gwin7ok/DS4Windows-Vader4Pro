@@ -15,8 +15,6 @@ namespace DS4Windows.Actions
         void ClearAllPressedOnce();
         void ClearAllEntries();
         void ClearDeviceState(int device);
-        void NotifyTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler);
-        void NotifyTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler);
         // Dispatch variants return true if an Action instance was invoked to handle the trigger
         bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler);
         bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler);

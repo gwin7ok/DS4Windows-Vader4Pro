@@ -13,6 +13,8 @@ namespace DS4Windows.Actions
         public int InstanceId => this.GetHashCode();
         private readonly Dictionary<int, Actions.Action> actionInstances = new Dictionary<int, Actions.Action>();
         private readonly Dictionary<string, ActionEntry> actions = new Dictionary<string, ActionEntry>(StringComparer.OrdinalIgnoreCase);
+        // Button state table: device x controlIndex
+        private bool[,] buttonStates = null;
         private const int ToggleReleaseHoldMsLocal = 200;
 
         private static ActionEntry GetOrCreateEntryInternal(Dictionary<string, ActionEntry> actionsDict, SpecialAction action)
@@ -27,6 +29,33 @@ namespace DS4Windows.Actions
                 }
                 return ent;
             }
+        }
+
+        // Preallocate ActionEntry objects for all registered SpecialActions and initialize button state table.
+        public void PreallocateEntries()
+        {
+            try
+            {
+                // Initialize ActionEntry for every SpecialAction
+                lock (actions)
+                {
+                    foreach (var sa in ActionRegistry.AllActions())
+                    {
+                        try { GetOrCreateEntryInternal(actions, sa); } catch { }
+                    }
+                }
+
+                // Initialize button state table for all devices × supported control indices
+                try
+                {
+                    int devices = Global.MAX_DS4_CONTROLLER_COUNT;
+                    int controls = (int)DS4ControlSettings.LAST_DS4_ACTION + 1;
+                    buttonStates = new bool[devices, controls];
+                    AppLogger.LogTrace($"DefaultActionManager.PreallocateEntries: allocated buttonStates {devices}x{controls} and {actions.Count} action entries");
+                }
+                catch { }
+            }
+            catch { }
         }
 
         public Actions.Action GetActionByIndex(int index)
@@ -165,8 +194,17 @@ namespace DS4Windows.Actions
                             if (ent?.States == null) continue;
                             if (device >= 0 && device < ent.States.Length)
                             {
-                                ent.States[device] = new ActionInstanceState();
-                                try { AppLogger.LogTrace($"DefaultActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (PressedOnce cleared)"); } catch { }
+                                try
+                                {
+                                    bool old = ent.States[device]?.PressedOnce ?? false;
+                                    ent.States[device] = new ActionInstanceState();
+                                    try { AppLogger.LogTrace($"DefaultActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (PressedOnce cleared)"); } catch { }
+                                    if (old != false)
+                                    {
+                                        try { ActionManager.FirePressedOnceChanged(ent.ActionDef, device, old, false); } catch { }
+                                    }
+                                }
+                                catch { }
                             }
                         }
                         catch { }
@@ -190,7 +228,7 @@ namespace DS4Windows.Actions
                 bool old = st.PressedOnce;
                 if (old == value) return;
                 st.PressedOnce = value;
-                try { ActionManager.PressedOnceChanged?.Invoke(action, device, old, value); } catch { }
+                try { ActionManager.FirePressedOnceChanged(action, device, old, value); } catch { }
 
                 try
                 {
@@ -219,57 +257,34 @@ namespace DS4Windows.Actions
             catch { }
         }
 
-        public void NotifyTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        // Button state accessors: device in [0, MAX_DS4_CONTROLLER_COUNT), controlIndex as DS4Controls enum value
+        public bool GetButtonState(int device, int controlIndex)
         {
             try
             {
-                var ent = GetOrCreateEntryInternal(actions, action);
-                try
-                {
-                    var ctx = new DS4Windows.Actions.MappingContext
-                    {
-                        LogicalValue = logicalValue,
-                        NativeValue = nativeValue,
-                        UseScanCode = useScanCode,
-                        OutputHandler = outputKBMHandler,
-                        ActionDef = action,
-                        Index = -1
-                    };
-                    ent?.ActionImpl?.OnTrigger(device, ctx);
-                }
-                catch { }
+                if (buttonStates == null) return false;
+                if (device < 0 || device >= buttonStates.GetLength(0)) return false;
+                if (controlIndex < 0 || controlIndex >= buttonStates.GetLength(1)) return false;
+                return buttonStates[device, controlIndex];
             }
-            catch (Exception ex)
-            {
-                AppLogger.LogTrace($"DefaultActionManager.NotifyTriggerEstablished failed: {ex}");
-            }
+            catch { return false; }
         }
 
-        public void NotifyTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        public void SetButtonState(int device, int controlIndex, bool value)
         {
             try
             {
-                var ent = GetOrCreateEntryInternal(actions, action);
-                try
-                {
-                    var ctx = new DS4Windows.Actions.MappingContext
-                    {
-                        LogicalValue = logicalValue,
-                        NativeValue = nativeValue,
-                        UseScanCode = useScanCode,
-                        OutputHandler = outputKBMHandler,
-                        ActionDef = action,
-                        Index = -1
-                    };
-                    ent?.ActionImpl?.OnRelease(device, ctx);
-                }
-                catch { }
+                if (buttonStates == null) return;
+                if (device < 0 || device >= buttonStates.GetLength(0)) return;
+                if (controlIndex < 0 || controlIndex >= buttonStates.GetLength(1)) return;
+                buttonStates[device, controlIndex] = value;
             }
-            catch (Exception ex)
-            {
-                AppLogger.LogTrace($"DefaultActionManager.NotifyTriggerReleased failed: {ex}");
-            }
+            catch { }
         }
+
+        // NotifyTriggerEstablished removed; use DispatchTriggerEstablished or DispatchTriggerEdge instead.
+
+        // NotifyTriggerReleased removed; use DispatchTriggerReleased or DispatchTriggerEdge instead.
 
         public bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
         {
@@ -279,6 +294,8 @@ namespace DS4Windows.Actions
                 if (ent?.ActionImpl == null) return false;
                 try
                 {
+                    var st = GetStateFor(action, device);
+                    try { AppLogger.LogTrace($"DefaultActionManager.DispatchTriggerEstablished: before OnTrigger BeingTriggered={st?.BeingTriggered ?? false} name={action?.name} device={device}"); } catch { }
                     var ctx = new DS4Windows.Actions.MappingContext
                     {
                         LogicalValue = logicalValue,
@@ -289,6 +306,7 @@ namespace DS4Windows.Actions
                         Index = -1
                     };
                     ent.ActionImpl.OnTrigger(device, ctx);
+                    try { AppLogger.LogTrace($"DefaultActionManager.DispatchTriggerEstablished: after OnTrigger BeingTriggered={st?.BeingTriggered ?? false} name={action?.name} device={device}"); } catch { }
                 }
                 catch { }
                 return true;

@@ -46,7 +46,9 @@ namespace DS4Windows
             try
             {
                 var state = ActionManager.GetStateFor(action, device);
+                try { AppLogger.LogTrace($"KeyAction.OnTrigger ENTER: name={action?.name} device={device} logical={logicalValue} native={nativeValue} useScan={useScan} pressedOnce={(state?.PressedOnce ?? false)}"); } catch { }
                 var kbc = ActionManager.GetOrCreateControllerForAction(device, action);
+                try { AppLogger.LogTrace($"KeyAction.OnTrigger: obtained KBC={(kbc==null?"<null>":kbc.InstanceId.ToString())} for name={action?.name} device={device}"); } catch { }
                 if (IsToggle())
                 {
                     if (!state.PressedOnce)
