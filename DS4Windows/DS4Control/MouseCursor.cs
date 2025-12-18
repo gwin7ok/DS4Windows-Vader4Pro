@@ -20,8 +20,9 @@ using System;
 
 namespace DS4Windows
 {
-    public class MouseCursor
+    public class MouseCursor : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         private readonly int deviceNumber;
         private DS4Device.GyroMouseSens gyroMouseSensSettings;
         public MouseCursor(int deviceNum, DS4Device.GyroMouseSens gyroMouseSens)

@@ -22,8 +22,9 @@ using System.Windows.Input;
 
 namespace DS4Windows
 {
-    public class MacroParser
+    public class MacroParser : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         private bool loaded;
         private List<MacroStep> macroSteps;
         private int[] inputMacro;

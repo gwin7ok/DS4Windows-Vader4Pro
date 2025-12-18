@@ -37,8 +37,9 @@ using static DS4Windows.Global;
 namespace DS4Windows
 {
     #pragma warning disable CS0219 // some local variables are assigned but not read in legacy handlers
-    public class ControlService
+    public class ControlService : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         public ViGEmClient vigemTestClient = null;
         // Might be useful for ScpVBus build
         public const int EXPANDED_CONTROLLER_COUNT = 8;

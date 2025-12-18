@@ -7,8 +7,9 @@ using DS4Windows.DS4Control;
 namespace DS4Windows.Actions
 {
     // Instance-based ActionManager implementation for DI registration.
-    public class DefaultActionManager : IManagedActionManager
+    public class DefaultActionManager : IManagedActionManager, IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         private readonly Dictionary<int, Actions.Action> actionInstances = new Dictionary<int, Actions.Action>();
         private readonly Dictionary<string, ActionEntry> actions = new Dictionary<string, ActionEntry>(StringComparer.OrdinalIgnoreCase);
         private const int ToggleReleaseHoldMsLocal = 200;

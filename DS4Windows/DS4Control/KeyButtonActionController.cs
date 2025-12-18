@@ -8,8 +8,9 @@ namespace DS4Windows
 {
     // Lightweight per-device wrapper that delegates to existing static controllers
     // Mode is fixed at construction time (Press or Toggle).
-    public class KeyButtonActionController : IDisposable
+    public class KeyButtonActionController : IDisposable, IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         public enum Mode { Press, Toggle }
 
         private readonly int device;
@@ -24,16 +25,16 @@ namespace DS4Windows
             this.assignedActionName = actionName ?? "<null>";
             try
             {
-                AppLogger.LogTrace($"KeyButtonActionController created: device={device} mode={mode} assignedAction={this.assignedActionName}");
+                AppLogger.LogTrace($"KeyButtonActionController created: id={this.GetHashCode()} device={device} mode={mode} assignedAction={this.assignedActionName}");
             }
             catch { }
 
             // Create concrete implementation based on mode. These implementations are lightweight wrappers
             // around the existing static controllers for now; this allows per-device instance semantics later.
             if (mode == Mode.Toggle)
-                impl = new ToggleImpl(device);
+                impl = new ToggleImpl(device, this.GetHashCode());
             else
-                impl = new PressImpl(device);
+                impl = new PressImpl(device, this.GetHashCode());
 
         }
 
@@ -53,14 +54,14 @@ namespace DS4Windows
                     try { isToggle = sa != null && sa.keyType.HasFlag(DS4KeyType.Toggle); } catch { }
                     this.mode = isToggle ? Mode.Toggle : Mode.Press;
                 }
-                AppLogger.LogTrace($"KeyButtonActionController created: device={device} mode={this.mode} assignedAction={this.assignedActionName}");
+                AppLogger.LogTrace($"KeyButtonActionController created: id={this.GetHashCode()} device={device} mode={this.mode} assignedAction={this.assignedActionName}");
             }
             catch { }
 
             if (this.mode == Mode.Toggle)
-                impl = new ToggleImpl(device);
+                impl = new ToggleImpl(device, this.GetHashCode());
             else
-                impl = new PressImpl(device);
+                impl = new PressImpl(device, this.GetHashCode());
 
         }
 
@@ -77,6 +78,7 @@ namespace DS4Windows
         private class ToggleImpl : IKeyController
         {
             private readonly int device;
+            private readonly int controllerId;
             private class Entry
             {
                 public uint nativeKey;
@@ -85,7 +87,7 @@ namespace DS4Windows
                 public RepeatHelper repeater;
             }
             private readonly Dictionary<ushort, Entry> entries = new Dictionary<ushort, Entry>();
-            public ToggleImpl(int device) { this.device = device; }
+            public ToggleImpl(int device, int controllerId) { this.device = device; this.controllerId = controllerId; }
 
             public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
             {
@@ -100,7 +102,8 @@ namespace DS4Windows
                     try
                     {
                         // Create repeater and start it immediately for toggle-on semantics
-                        e.repeater = new RepeatHelper(device, kvpKey, e.nativeKey, e.useScanCode, e.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
+                        e.repeater = new RepeatHelper(device, kvpKey, e.nativeKey, e.useScanCode, e.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true, controllerId);
+                        try { AppLogger.LogTrace($"ToggleImpl.OnDown: controller-repeater link controllerId={controllerId} kvpKey={kvpKey} repeaterId={e.repeater.InstanceId} device={device}"); } catch { }
                     }
                     catch { }
                 }
@@ -118,6 +121,7 @@ namespace DS4Windows
                     {
                         // Stop repeater; Stop() sends single release but keep instance for reuse
                         try { e.repeater.Stop(); } catch { }
+                        try { AppLogger.LogTrace($"ToggleImpl.OnUp: controllerId={controllerId} kvpKey={kvpKey} device={device} repeaterId={e.repeater.InstanceId} stopped"); } catch { }
                         try
                         {
                             if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
@@ -180,6 +184,7 @@ namespace DS4Windows
         private class PressImpl : IKeyController
         {
             private readonly int device;
+            private readonly int controllerId;
             private class Entry
             {
                 public bool isPressed;
@@ -191,7 +196,7 @@ namespace DS4Windows
             }
             private readonly Dictionary<ushort, Entry> entries = new Dictionary<ushort, Entry>();
 
-            public PressImpl(int device) { this.device = device; }
+            public PressImpl(int device, int controllerId) { this.device = device; this.controllerId = controllerId; }
 
             public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
             {
@@ -225,7 +230,7 @@ namespace DS4Windows
                                     // create or start repeater that begins immediate repeating (send first immediate press)
                                     if (localEntry.repeater == null)
                                     {
-                                        localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true);
+                                        localEntry.repeater = new DS4Windows.DS4Control.RepeatHelper(device, kvpKey, localEntry.nativeKey, localEntry.useScanCode, localEntry.handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, true, controllerId);
                                     }
                                     else
                                     {
@@ -304,11 +309,21 @@ namespace DS4Windows
         // New, clearer API names reflecting Mapping-trigger notifications
         public void OnSATriggerEstablished(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
         {
+            try
+            {
+                AppLogger.LogTrace($"KBC OnSATriggerEstablished: controllerId={this.GetHashCode()} assignedAction={this.assignedActionName} device={device} kvpKey={kvpKey} isSpecialAction={isSpecialAction}");
+            }
+            catch { }
             impl.OnDown(kvpKey, nativeKey, useScanCode, handler, isSpecialAction);
         }
 
         public void OnSATriggerReleased(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
         {
+            try
+            {
+                AppLogger.LogTrace($"KBC OnSATriggerReleased: controllerId={this.GetHashCode()} assignedAction={this.assignedActionName} device={device} kvpKey={kvpKey}");
+            }
+            catch { }
             impl.OnUp(kvpKey, nativeKey, useScanCode, handler);
         }
 

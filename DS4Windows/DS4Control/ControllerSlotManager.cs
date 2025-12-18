@@ -22,8 +22,9 @@ using System.Threading;
 
 namespace DS4Windows
 {
-    public class ControllerSlotManager
+    public class ControllerSlotManager : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         private ReaderWriterLockSlim collectionLocker = new ReaderWriterLockSlim();
         public ReaderWriterLockSlim CollectionLocker { get => collectionLocker; }
 
