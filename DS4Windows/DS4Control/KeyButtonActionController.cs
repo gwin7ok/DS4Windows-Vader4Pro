@@ -18,6 +18,9 @@ namespace DS4Windows
         private readonly string assignedActionName;
         private readonly IKeyController impl;
 
+        // Expose assigned action name for diagnostics
+        public string AssignedActionName => assignedActionName;
+
         public KeyButtonActionController(int device, Mode mode, string actionName = "<unknown>")
         {
             this.device = device;

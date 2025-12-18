@@ -107,9 +107,9 @@ namespace DS4Windows.Actions
                         try
                         {
                             if (ent?.ActionDef == null) continue;
-                            if (ushort.TryParse(ent.ActionDef.details, out ushort k) && k == key)
+                                if (ushort.TryParse(ent.ActionDef.details, out ushort k) && k == key)
                             {
-                                for (int d = 0; d < ent.States.Length; d++) ent.States[d].PressedOnce = false;
+                                for (int d = 0; d < ent.States.Length; d++) ActionManager.SetPressedOnce(ent.ActionDef, d, false);
                             }
                         }
                         catch { }
@@ -130,7 +130,7 @@ namespace DS4Windows.Actions
                         try
                         {
                             if (ent?.States == null) continue;
-                            for (int d = 0; d < ent.States.Length; d++) ent.States[d].PressedOnce = false;
+                            for (int d = 0; d < ent.States.Length; d++) ActionManager.SetPressedOnce(ent.ActionDef, d, false);
                         }
                         catch { }
                     }

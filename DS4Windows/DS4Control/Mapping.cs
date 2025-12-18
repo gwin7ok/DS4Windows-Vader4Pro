@@ -133,6 +133,14 @@ namespace DS4Windows
                 new Queue<ControlToXInput>(), new Queue<ControlToXInput>(),
                 new Queue<ControlToXInput>(), new Queue<ControlToXInput>(),
             };
+            try
+            {
+                ActionManager.PressedOnceChanged += (sa, dev, oldv, newv) =>
+                {
+                    try { AppLogger.LogTrace($"Mapping: PressedOnceChanged name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
+                };
+            }
+            catch { }
         }
 
         // Per-device×SpecialAction Key/Button controller instances (lazy-created).
@@ -168,6 +176,11 @@ namespace DS4Windows
 
                         inst = temp ?? new KeyButtonActionController(device, mode, actionName ?? "<mapping>");
                         keyButtonControllers[dictKey] = inst;
+                        try { AppLogger.LogTrace($"KBC DIAGNOSTIC: Created controller dictKey={dictKey} id={inst.InstanceId} assignedAction={(inst.AssignedActionName ?? "(null)")} mode={mode} device={device}"); } catch { }
+                    }
+                    else
+                    {
+                        try { AppLogger.LogTrace($"KBC DIAGNOSTIC: Reusing existing controller dictKey={dictKey} id={inst.InstanceId} assignedAction={(inst.AssignedActionName ?? "(null)")} mode={mode} device={device}"); } catch { }
                     }
                     return inst;
                 }
@@ -199,7 +212,21 @@ namespace DS4Windows
 
                         inst = temp ?? new KeyButtonActionController(device, sa, name);
                         keyButtonControllers[dictKey] = inst;
+                        try { AppLogger.LogTrace($"KBC DIAGNOSTIC: Created controller dictKey={dictKey} id={inst.InstanceId} assignedAction={(inst.AssignedActionName ?? "(null)")} device={device}"); } catch { }
                     }
+                    else
+                    {
+                        try { AppLogger.LogTrace($"KBC DIAGNOSTIC: Reusing existing controller dictKey={dictKey} id={inst.InstanceId} assignedAction={(inst.AssignedActionName ?? "(null)")} device={device}"); } catch { }
+                    }
+                    // additional check: if existing assignedAction differs from requested, log warning
+                    try
+                    {
+                        if (inst != null && !string.Equals(inst.AssignedActionName, name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            AppLogger.LogDebug($"KBC DIAGNOSTIC: assignedAction mismatch for dictKey={dictKey} existing={(inst.AssignedActionName ?? "(null)")} requested={name} device={device}");
+                        }
+                    }
+                    catch { }
                     return inst;
                 }
             }
@@ -995,8 +1022,7 @@ namespace DS4Windows
         {
             try
             {
-                var st = ActionManager.GetStateFor(action, device);
-                if (st != null) { st.PressedOnce = value; return; }
+                ActionManager.SetPressedOnce(action, device, value);
             }
             catch { }
         }
@@ -1331,11 +1357,51 @@ namespace DS4Windows
                                     {
                                         SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
                                         bool handled = false;
-                                        try { handled = ActionManager.DispatchTriggerEstablished(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                        try
+                                        {
+                                            if (sa != null)
+                                            {
+                                                var ctx = new DS4Windows.TriggerContext
+                                                {
+                                                    ActionDef = sa,
+                                                    Device = device,
+                                                    LogicalValue = (ushort)kvpKey,
+                                                    NativeValue = nativeKey,
+                                                    UseScanCode = gkp.current.scanCodeCount != 0,
+                                                    OutputHandler = outputKBMHandler,
+                                                    IsEstablished = true
+                                                };
+                                                handled = ActionManager.DispatchTrigger(ctx);
+                                            }
+                                        }
+                                        catch { }
                                         if (!handled)
                                         {
-                                            var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
-                                            if (kbc != null)
+                                            KeyButtonActionController kbc = null;
+                                            if (sa != null)
+                                            {
+                                                try
+                                                {
+                                                    var ctx2 = new DS4Windows.TriggerContext
+                                                    {
+                                                        ActionDef = sa,
+                                                        Device = device,
+                                                        LogicalValue = (ushort)kvpKey,
+                                                        NativeValue = nativeKey,
+                                                        UseScanCode = gkp.current.scanCodeCount != 0,
+                                                        OutputHandler = outputKBMHandler,
+                                                        IsEstablished = true
+                                                    };
+                                                    handled = ActionManager.DispatchTrigger(ctx2);
+                                                }
+                                                catch { }
+                                                try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
+                                            }
+                                            else
+                                            {
+                                                AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
+                                            }
+                                            if (!handled && kbc != null)
                                                 kbc.OnSATriggerEstablished((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler, true);
                                         }
                                     }
@@ -1364,18 +1430,42 @@ namespace DS4Windows
                                 long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
                                 AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
-                                try
-                                {
-                                    SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                                    bool handled = false;
-                                    try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
-                                    if (!handled)
+                                    try
                                     {
-                                        var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
-                                        if (kbc != null)
-                                            kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                        SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                                        bool handled = false;
+                                        try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                        if (!handled)
+                                        {
+                                            KeyButtonActionController kbc = null;
+                                            if (sa != null)
+                                            {
+                                                try
+                                                {
+                                                    // Try central dispatch via TriggerContext even when previously attempted via specialized path
+                                                    var ctxRel = new DS4Windows.TriggerContext
+                                                    {
+                                                        ActionDef = sa,
+                                                        Device = device,
+                                                        LogicalValue = (ushort)kvpKey,
+                                                        NativeValue = nativeKey,
+                                                        UseScanCode = gkp.current.scanCodeCount != 0,
+                                                        OutputHandler = outputKBMHandler,
+                                                        IsEstablished = false
+                                                    };
+                                                    handled = ActionManager.DispatchTrigger(ctxRel);
+                                                }
+                                                catch { }
+                                                try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
+                                            }
+                                            else
+                                            {
+                                                AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
+                                            }
+                                            if (!handled && kbc != null)
+                                                kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                        }
                                     }
-                                }
                                 catch { }
                                     // Mark pending cleared and update last send time
                                     gkp.current.pending = false;
@@ -1408,18 +1498,41 @@ namespace DS4Windows
                             {
                                 AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending}");
                                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-                                try
-                                {
-                                    SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                                    bool handled = false;
-                                    try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
-                                    if (!handled)
+                                    try
                                     {
-                                        var kbc = sa != null ? GetOrCreateKeyButtonController(device, sa) : GetOrCreateKeyButtonController(device, KeyButtonActionController.Mode.Toggle);
-                                        if (kbc != null)
-                                            kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                        SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                                        bool handled = false;
+                                        try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                        if (!handled)
+                                        {
+                                            KeyButtonActionController kbc = null;
+                                            if (sa != null)
+                                            {
+                                                try
+                                                {
+                                                    var ctxRel2 = new DS4Windows.TriggerContext
+                                                    {
+                                                        ActionDef = sa,
+                                                        Device = device,
+                                                        LogicalValue = (ushort)kvpKey,
+                                                        NativeValue = nativeKey,
+                                                        UseScanCode = gkp.current.scanCodeCount != 0,
+                                                        OutputHandler = outputKBMHandler,
+                                                        IsEstablished = false
+                                                    };
+                                                    handled = ActionManager.DispatchTrigger(ctxRel2);
+                                                }
+                                                catch { }
+                                                try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
+                                            }
+                                            else
+                                            {
+                                                AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
+                                            }
+                                            if (!handled && kbc != null)
+                                                kbc.OnSATriggerReleased((ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler);
+                                        }
                                     }
-                                }
                                 catch { }
                                     // Mark pending cleared and update last send time
                                     gkp.current.pending = false;
@@ -3837,11 +3950,28 @@ namespace DS4Windows
         {
             try
             {
-                // First, ask ActionManager to dispatch to an Action instance. If it handled the trigger
-                // (returns true), the Action implementation will delegate to controllers as needed and
-                // we should avoid calling controllers directly to prevent double-dispatch.
+                // First, ask ActionManager to dispatch to an Action instance via generic TriggerContext.
+                // If it handled the trigger (returns true), the Action implementation will delegate to controllers
+                // as needed and we should avoid calling controllers directly to prevent double-dispatch.
                 bool handledByManager = false;
-                try { handledByManager = ActionManager.DispatchTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); } catch { }
+                try
+                {
+                    if (action != null)
+                    {
+                        var ctx = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = action,
+                            Device = device,
+                            LogicalValue = logicalValue,
+                            NativeValue = nativeValue,
+                            UseScanCode = useScanCode,
+                            OutputHandler = outputKBMHandler,
+                            IsEstablished = true
+                        };
+                        handledByManager = ActionManager.DispatchTrigger(ctx);
+                    }
+                }
+                catch { }
 
                 if (handledByManager)
                 {
@@ -3851,7 +3981,28 @@ namespace DS4Windows
                 var kbc = GetOrCreateKeyButtonController(device, action);
                 if (kbc != null)
                 {
-                    kbc.OnSATriggerEstablished(logicalValue, nativeValue, useScanCode, outputKBMHandler, true);
+                    // Try a final DispatchTrigger via TriggerContext before calling controller directly
+                    bool handledFinal = false;
+                    try
+                    {
+                        var ctxFinal = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = action,
+                            Device = device,
+                            LogicalValue = logicalValue,
+                            NativeValue = nativeValue,
+                            UseScanCode = useScanCode,
+                            OutputHandler = outputKBMHandler,
+                            IsEstablished = true
+                        };
+                        handledFinal = ActionManager.DispatchTrigger(ctxFinal);
+                    }
+                    catch { }
+
+                    if (!handledFinal)
+                    {
+                        kbc.OnSATriggerEstablished(logicalValue, nativeValue, useScanCode, outputKBMHandler, true);
+                    }
                     try
                     {
                         if (action != null && action.typeID == SpecialAction.ActionTypeId.Key)
@@ -3865,46 +4016,16 @@ namespace DS4Windows
                     }
                     catch { }
 
-                    try
-                    {
-                        // Also notify new ActionManager migration path for non-Action-managed triggers.
-                        ActionManager.NotifyTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
-                    }
-                    catch { }
-
-                    try
-                    {
-                        // New API: if an Action instance exists, invoke its OnTrigger path in parallel (non-destructive)
-                        var act = ActionManager.GetActionByName(action?.name);
-                        if (act != null)
-                        {
-                            var ctx = new DS4Windows.Actions.MappingContext
-                            {
-                                LogicalValue = logicalValue,
-                                NativeValue = nativeValue,
-                                UseScanCode = useScanCode,
-                                OutputHandler = outputKBMHandler,
-                                ActionDef = action,
-                                Index = -1
-                            };
-                            try { act.OnTrigger(device, ctx); } catch { }
-                        }
-                    }
-                    catch { }
-
                     return true;
                 }
-                else
-                {
-                    fallback?.Invoke();
-                    if (fallback == null)
-                        AppLogger.LogTrace($"SpecialAction {(action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch: no KeyButtonActionController available for device={device}, action={action.name}");
-                    return false;
-                }
+
+                // No controller available; do not run fallback. Log and return false.
+                AppLogger.LogTrace($"SpecialAction {(action!=null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch: no KeyButtonActionController available for device={device}, action={(action!=null?action.name:"(null)")} (fallback suppressed)");
+                return false;
             }
             catch (Exception ex)
             {
-                AppLogger.LogTrace($"SpecialAction {(action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch failed: {ex}");
+                AppLogger.LogTrace($"SpecialAction {(action!=null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch failed: {ex}");
                 return false;
             }
         }
@@ -3915,10 +4036,27 @@ namespace DS4Windows
         {
             try
             {
-                // Ask ActionManager to dispatch release first. If an Action handled it, it will
-                // delegate to controllers as needed and we should avoid calling controllers directly.
+                // Ask ActionManager to dispatch release first (via TriggerContext). If an Action handled it,
+                // it will delegate to controllers as needed and we should avoid calling controllers directly.
                 bool handledByManager = false;
-                try { handledByManager = ActionManager.DispatchTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); } catch { }
+                try
+                {
+                    if (action != null)
+                    {
+                        var ctx = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = action,
+                            Device = device,
+                            LogicalValue = logicalValue,
+                            NativeValue = nativeValue,
+                            UseScanCode = useScanCode,
+                            OutputHandler = outputKBMHandler,
+                            IsEstablished = false
+                        };
+                        handledByManager = ActionManager.DispatchTrigger(ctx);
+                    }
+                }
+                catch { }
 
                 if (handledByManager)
                 {
@@ -3928,7 +4066,27 @@ namespace DS4Windows
                 var kbc = GetOrCreateKeyButtonController(device, action);
                 if (kbc != null)
                 {
-                    kbc.OnSATriggerReleased(logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                    bool handledFinal = false;
+                    try
+                    {
+                        var ctxFinal = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = action,
+                            Device = device,
+                            LogicalValue = logicalValue,
+                            NativeValue = nativeValue,
+                            UseScanCode = useScanCode,
+                            OutputHandler = outputKBMHandler,
+                            IsEstablished = false
+                        };
+                        handledFinal = ActionManager.DispatchTrigger(ctxFinal);
+                    }
+                    catch { }
+
+                    if (!handledFinal)
+                    {
+                        kbc.OnSATriggerReleased(logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                    }
                     try
                     {
                         if (action != null && action.typeID == SpecialAction.ActionTypeId.Key)
@@ -3942,46 +4100,18 @@ namespace DS4Windows
                     }
                     catch { }
 
-                    try
-                    {
-                        // Also notify new ActionManager migration path for non-Action-managed releases.
-                        ActionManager.NotifyTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
-                    }
-                    catch { }
-
-                    try
-                    {
-                        // New API: if an Action instance exists, invoke its OnRelease path in parallel
-                        var act = ActionManager.GetActionByName(action?.name);
-                        if (act != null)
-                        {
-                            var ctx = new DS4Windows.Actions.MappingContext
-                            {
-                                LogicalValue = logicalValue,
-                                NativeValue = nativeValue,
-                                UseScanCode = useScanCode,
-                                OutputHandler = outputKBMHandler,
-                                ActionDef = action,
-                                Index = -1
-                            };
-                            try { act.OnRelease(device, ctx); } catch { }
-                        }
-                    }
-                    catch { }
-
                     return true;
                 }
                 else
                 {
-                    fallback?.Invoke();
-                    if (fallback == null)
-                        AppLogger.LogTrace($"SpecialAction {(action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch: no KeyButtonActionController available for device={device}, action={action.name}");
+                    // No controller available; do not run fallback. Log and return false.
+                    AppLogger.LogTrace($"SpecialAction {(action!=null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch: no KeyButtonActionController available for device={device}, action={(action!=null?action.name:"(null)")} (fallback suppressed)");
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                AppLogger.LogTrace($"SpecialAction {(action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch failed: {ex}");
+                AppLogger.LogTrace($"SpecialAction {(action!=null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch failed: {ex}");
                 return false;
             }
         }
@@ -5392,7 +5522,7 @@ namespace DS4Windows
                                                                     // flip stored toggle state
                                                                     kp.current.toggle = !kp.current.toggle;
                                                                     kp.current.lastToggleTimeUtcTicks = nowTicks;
-                                                    if (st != null) st.PressedOnce = true;
+                                                    if (st != null) ActionManager.SetPressedOnce(action, device, true);
                                                     kp.current.toggleCount++;
                                                     AppLogger.LogDebug($"SpecialAction KEY toggle-flipped: name={action.name}, device={device}, key={key}, toggle={kp.current.toggle}, debounce_ms={(double)deltaTicks / TimeSpan.TicksPerMillisecond}");
                                                     if (kp.current.toggle)
@@ -5645,7 +5775,7 @@ namespace DS4Windows
                                 if (ShouldClearPressedOnce(device, keyToClear))
                                 {
                                     var st = ActionManager.GetStateFor(action, device);
-                                    if (st != null) st.PressedOnce = false;
+                                    if (st != null) ActionManager.SetPressedOnce(action, device, false);
                                 }
                             }
                         }

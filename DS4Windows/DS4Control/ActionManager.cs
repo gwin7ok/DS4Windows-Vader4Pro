@@ -180,7 +180,7 @@ namespace DS4Windows
                             if (ent?.ActionDef == null) continue;
                             if (ushort.TryParse(ent.ActionDef.details, out ushort k) && k == key)
                             {
-                                for (int d = 0; d < ent.States.Length; d++) ent.States[d].PressedOnce = false;
+                                for (int d = 0; d < ent.States.Length; d++) SetPressedOnce(ent.ActionDef, d, false);
                             }
                         }
                         catch { }
@@ -209,7 +209,7 @@ namespace DS4Windows
                         try
                         {
                             if (ent?.States == null) continue;
-                            for (int d = 0; d < ent.States.Length; d++) ent.States[d].PressedOnce = false;
+                            for (int d = 0; d < ent.States.Length; d++) SetPressedOnce(ent.ActionDef, d, false);
                         }
                         catch { }
                     }
@@ -303,6 +303,46 @@ namespace DS4Windows
             {
                 AppLogger.LogTrace($"ActionManager.NotifyTriggerEstablished failed: {ex}");
             }
+        }
+
+        // Event fired when PressedOnce state changes for an action/device.
+        // Parameters: (SpecialAction action, int device, bool oldValue, bool newValue)
+        public static event Action<SpecialAction, int, bool, bool> PressedOnceChanged;
+
+        // Helper to set PressedOnce with change notification.
+        public static void SetPressedOnce(SpecialAction action, int device, bool value)
+        {
+            try
+            {
+                // If DI manager exists and exposes similar functionality, prefer it.
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null)
+                    {
+                        // IManagedActionManager may implement a SetPressedOnce variant in the future.
+                        // Try dynamic invocation if available to allow DI overrides without interface changes.
+                        try
+                        {
+                            var mi = mgr.GetType().GetMethod("SetPressedOnce");
+                            if (mi != null) { mi.Invoke(mgr, new object[] { action, device, value }); return; }
+                        }
+                        catch { }
+                    }
+                }
+
+                var ent = GetOrCreateEntry(action);
+                if (ent == null) return;
+                if (device < 0 || device >= ent.States.Length) return;
+                var st = ent.States[device];
+                if (st == null) return;
+                bool old = st.PressedOnce;
+                if (old == value) return;
+                st.PressedOnce = value;
+                try { PressedOnceChanged?.Invoke(action, device, old, value); } catch { }
+            }
+            catch { }
         }
 
         // Dispatch that returns true if an Action instance existed and was invoked to handle the trigger.
@@ -407,6 +447,28 @@ namespace DS4Windows
             catch (Exception ex)
             {
                 AppLogger.LogTrace($"ActionManager.DispatchTriggerReleased failed: {ex}");
+                return false;
+            }
+        }
+
+        // Generic dispatch entry that accepts a TriggerContext and routes to established/released handlers.
+        public static bool DispatchTrigger(DS4Windows.TriggerContext ctx)
+        {
+            try
+            {
+                if (ctx == null || ctx.ActionDef == null) return false;
+                if (ctx.IsEstablished)
+                {
+                    return DispatchTriggerEstablished(ctx.ActionDef, ctx.Device, ctx.LogicalValue, ctx.NativeValue, ctx.UseScanCode, ctx.OutputHandler);
+                }
+                else
+                {
+                    return DispatchTriggerReleased(ctx.ActionDef, ctx.Device, ctx.LogicalValue, ctx.NativeValue, ctx.UseScanCode, ctx.OutputHandler);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ActionManager.DispatchTrigger failed: {ex}");
                 return false;
             }
         }

@@ -52,7 +52,7 @@ namespace DS4Windows
                     if (!state.PressedOnce)
                     {
                         kbc?.OnSATriggerEstablished(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler, true);
-                        state.PressedOnce = true;
+                        ActionManager.SetPressedOnce(action, device, true);
                         state.LastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
                         AppLogger.LogTrace($"KeyAction: toggled ON name={action?.name} device={device} key={logicalValue}");
                     }
@@ -86,7 +86,7 @@ namespace DS4Windows
                     long delta = DateTime.UtcNow.Ticks - state.LastToggleTimeUtcTicks;
                     if (delta > TimeSpan.FromMilliseconds(200).Ticks)
                     {
-                        state.PressedOnce = false;
+                        ActionManager.SetPressedOnce(action, device, false);
                         AppLogger.LogTrace($"KeyAction: pressedOnce cleared name={action?.name} device={device} key={logicalValue}");
                     }
                 }
