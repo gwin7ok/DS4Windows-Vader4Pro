@@ -58,7 +58,19 @@ namespace DS4Windows
                     }
                     else
                     {
-                        AppLogger.LogTrace($"KeyAction: toggle ignored (already pressedOnce) name={action?.name} device={device} key={logicalValue}");
+                        // If already toggled ON and trigger occurs again, treat it as OFF (toggle off).
+                        try
+                        {
+                            kbc?.OnSATriggerReleased(logicalValue, nativeValue == 0 ? nativeKey : nativeValue, useScan ? true : useScanCode, handler);
+                        }
+                        catch { }
+                        try
+                        {
+                            ActionManager.SetPressedOnce(action, device, false);
+                        }
+                        catch { }
+                        state.LastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
+                        AppLogger.LogTrace($"KeyAction: toggled OFF name={action?.name} device={device} key={logicalValue}");
                     }
                 }
                 else

@@ -2595,6 +2595,12 @@ namespace DS4Windows
                         Mapping.Commit(ind);
                     }).Wait();
 
+                    try
+                    {
+                        Mapping.HandleDeviceDisconnect(ind);
+                    }
+                    catch { }
+
                     string removed = DS4WinWPF.Properties.Resources.ControllerWasRemoved.Replace("*Mac address*", (ind + 1).ToString());
                     if (device.getBattery() <= 20 &&
                         device.getConnectionType() == ConnectionType.BT && !device.isCharging())
