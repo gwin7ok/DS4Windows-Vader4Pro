@@ -3822,6 +3822,17 @@ namespace DS4Windows
         {
             try
             {
+                // First, ask ActionManager to dispatch to an Action instance. If it handled the trigger
+                // (returns true), the Action implementation will delegate to controllers as needed and
+                // we should avoid calling controllers directly to prevent double-dispatch.
+                bool handledByManager = false;
+                try { handledByManager = ActionManager.DispatchTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); } catch { }
+
+                if (handledByManager)
+                {
+                    return true;
+                }
+
                 var kbc = GetOrCreateKeyButtonController(device, action);
                 if (kbc != null)
                 {
@@ -3838,12 +3849,14 @@ namespace DS4Windows
                         }
                     }
                     catch { }
+
                     try
                     {
-                        // Also notify new ActionManager migration path in parallel
+                        // Also notify new ActionManager migration path for non-Action-managed triggers.
                         ActionManager.NotifyTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
                     }
                     catch { }
+
                     try
                     {
                         // New API: if an Action instance exists, invoke its OnTrigger path in parallel (non-destructive)
@@ -3863,6 +3876,7 @@ namespace DS4Windows
                         }
                     }
                     catch { }
+
                     return true;
                 }
                 else
@@ -3886,6 +3900,16 @@ namespace DS4Windows
         {
             try
             {
+                // Ask ActionManager to dispatch release first. If an Action handled it, it will
+                // delegate to controllers as needed and we should avoid calling controllers directly.
+                bool handledByManager = false;
+                try { handledByManager = ActionManager.DispatchTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); } catch { }
+
+                if (handledByManager)
+                {
+                    return true;
+                }
+
                 var kbc = GetOrCreateKeyButtonController(device, action);
                 if (kbc != null)
                 {
@@ -3902,12 +3926,14 @@ namespace DS4Windows
                         }
                     }
                     catch { }
+
                     try
                     {
-                        // Also notify new ActionManager migration path in parallel
+                        // Also notify new ActionManager migration path for non-Action-managed releases.
                         ActionManager.NotifyTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
                     }
                     catch { }
+
                     try
                     {
                         // New API: if an Action instance exists, invoke its OnRelease path in parallel
@@ -3927,6 +3953,7 @@ namespace DS4Windows
                         }
                     }
                     catch { }
+
                     return true;
                 }
                 else

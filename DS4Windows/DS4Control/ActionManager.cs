@@ -305,6 +305,43 @@ namespace DS4Windows
             }
         }
 
+        // Dispatch that returns true if an Action instance existed and was invoked to handle the trigger.
+        public static bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        {
+            try
+            {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) return mgr.DispatchTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                }
+
+                var ent = GetOrCreateEntry(action);
+                if (ent?.ActionImpl == null) return false;
+                try
+                {
+                    var ctx = new DS4Windows.Actions.MappingContext
+                    {
+                        LogicalValue = logicalValue,
+                        NativeValue = nativeValue,
+                        UseScanCode = useScanCode,
+                        OutputHandler = outputKBMHandler,
+                        ActionDef = action,
+                        Index = -1
+                    };
+                    ent.ActionImpl.OnTrigger(device, ctx);
+                }
+                catch { }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ActionManager.DispatchTriggerEstablished failed: {ex}");
+                return false;
+            }
+        }
+
         public static void NotifyTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
         {
             try
@@ -335,6 +372,42 @@ namespace DS4Windows
             catch (Exception ex)
             {
                 AppLogger.LogTrace($"ActionManager.NotifyTriggerReleased failed: {ex}");
+            }
+        }
+
+        public static bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        {
+            try
+            {
+                var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                if (sp != null)
+                {
+                    var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
+                    if (mgr != null) return mgr.DispatchTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                }
+
+                var ent = GetOrCreateEntry(action);
+                if (ent?.ActionImpl == null) return false;
+                try
+                {
+                    var ctx = new DS4Windows.Actions.MappingContext
+                    {
+                        LogicalValue = logicalValue,
+                        NativeValue = nativeValue,
+                        UseScanCode = useScanCode,
+                        OutputHandler = outputKBMHandler,
+                        ActionDef = action,
+                        Index = -1
+                    };
+                    ent.ActionImpl.OnRelease(device, ctx);
+                }
+                catch { }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ActionManager.DispatchTriggerReleased failed: {ex}");
+                return false;
             }
         }
     }

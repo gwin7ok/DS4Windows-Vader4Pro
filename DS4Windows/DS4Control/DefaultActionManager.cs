@@ -227,5 +227,63 @@ namespace DS4Windows.Actions
                 AppLogger.LogTrace($"DefaultActionManager.NotifyTriggerReleased failed: {ex}");
             }
         }
+
+        public bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        {
+            try
+            {
+                var ent = GetOrCreateEntryInternal(actions, action);
+                if (ent?.ActionImpl == null) return false;
+                try
+                {
+                    var ctx = new DS4Windows.Actions.MappingContext
+                    {
+                        LogicalValue = logicalValue,
+                        NativeValue = nativeValue,
+                        UseScanCode = useScanCode,
+                        OutputHandler = outputKBMHandler,
+                        ActionDef = action,
+                        Index = -1
+                    };
+                    ent.ActionImpl.OnTrigger(device, ctx);
+                }
+                catch { }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"DefaultActionManager.DispatchTriggerEstablished failed: {ex}");
+                return false;
+            }
+        }
+
+        public bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        {
+            try
+            {
+                var ent = GetOrCreateEntryInternal(actions, action);
+                if (ent?.ActionImpl == null) return false;
+                try
+                {
+                    var ctx = new DS4Windows.Actions.MappingContext
+                    {
+                        LogicalValue = logicalValue,
+                        NativeValue = nativeValue,
+                        UseScanCode = useScanCode,
+                        OutputHandler = outputKBMHandler,
+                        ActionDef = action,
+                        Index = -1
+                    };
+                    ent.ActionImpl.OnRelease(device, ctx);
+                }
+                catch { }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"DefaultActionManager.DispatchTriggerReleased failed: {ex}");
+                return false;
+            }
+        }
     }
 }
