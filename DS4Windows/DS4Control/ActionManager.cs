@@ -13,6 +13,10 @@ namespace DS4Windows
         public bool IsToggledOn = false;
         public long LastToggleTimeUtcTicks = 0;
         public bool FirstTouch = false;
+        // Whether a macro iteration is currently executing on this device.
+        // This flag indicates a single macro run (one iteration) is in progress.
+        // Do not use it to represent the lifetime of a repeat-in-place task.
+        public bool IsMacroRunning = false;
         // Whether the action is currently considered 'being triggered' (replaces legacy actionDone)
         // Exposed as a read-only property to prevent direct assignment from other code.
         private bool _beingTriggered = false;
@@ -485,24 +489,52 @@ namespace DS4Windows
                 if (ctx.IsEstablished)
                 {
                     // Only fire when transitioning from not-being-triggered -> being-triggered
-                    if (!st.BeingTriggered)
+                    bool shouldFire = false;
+                    try
                     {
-                        st.SetBeingTriggeredInternal(true);
+                        lock (st)
+                        {
+                            if (!st.BeingTriggered)
+                            {
+                                st.SetBeingTriggeredInternal(true);
+                                shouldFire = true;
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (shouldFire)
+                    {
                         try { AppLogger.LogTrace($"DispatchTriggerEdge: firing established (edge) for name={ctx.ActionDef?.name} device={ctx.Device} (now BeingTriggered={st.BeingTriggered})"); } catch { }
                         return DispatchTriggerEstablished(ctx.ActionDef, ctx.Device, ctx.LogicalValue, ctx.NativeValue, ctx.UseScanCode, ctx.OutputHandler);
                     }
+
                     // suppressed duplicate established
                     return false;
                 }
                 else
                 {
                     // Only fire when transitioning from being-triggered -> not-being-triggered
-                    if (st.BeingTriggered)
+                    bool shouldFire = false;
+                    try
                     {
-                        st.SetBeingTriggeredInternal(false);
+                        lock (st)
+                        {
+                            if (st.BeingTriggered)
+                            {
+                                st.SetBeingTriggeredInternal(false);
+                                shouldFire = true;
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (shouldFire)
+                    {
                         try { AppLogger.LogTrace($"DispatchTriggerEdge: firing released (edge) for name={ctx.ActionDef?.name} device={ctx.Device}"); } catch { }
                         return DispatchTriggerReleased(ctx.ActionDef, ctx.Device, ctx.LogicalValue, ctx.NativeValue, ctx.UseScanCode, ctx.OutputHandler);
                     }
+
                     // suppressed duplicate release
                     return false;
                 }

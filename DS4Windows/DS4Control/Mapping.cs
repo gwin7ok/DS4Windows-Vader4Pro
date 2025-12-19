@@ -6360,9 +6360,34 @@ namespace DS4Windows
         // If the macro definition is a macroStr string value then it will be converted as integer array on the fl. If steps are already defined as list or array of integers then there is no need to do type cast conversion.
         private static void PlayMacro(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action = null, ActionInstanceState actionDoneState = null)
         {
-            if (action != null && action.synchronized)
+            // If caller didn't provide per-action state, obtain it so we can check for running macro.
+            ActionInstanceState st = actionDoneState;
+            if (st == null && action != null)
             {
-                // Run special action macros in synchronized order (ie. FirstIn-FirstOut). The trigger control name string is the execution queue identifier (ie. each unique trigger combination has an own synchronization queue).
+                try { st = ActionManager.GetStateFor(action, device); } catch { st = null; }
+            }
+
+            // Startup guard: if a macro iteration is already running for this action/device,
+            // skip starting another macro and log the decision (DECISION=RUN/NORUN).
+            try
+            {
+                bool isRunning = st != null ? st.IsMacroRunning : false;
+                string decision = isRunning ? "NORUN" : "RUN";
+                AppLogger.LogTrace($"PlayMacro START GUARD: action={action?.name} device={device} IsMacroRunning={isRunning} DECISION={decision}");
+                if (isRunning) return;
+            }
+            catch { }
+
+            // Note: do not use a task-wide "macro running" guard here. Per-iteration
+            // running state is represented by `IsMacroRunning` on the ActionInstanceState
+            // and `RepeatMacro` semantics rely on `BeingTriggered`. Allow PlayMacro to
+            // start; synchronization for repeat macros is handled via `macroTaskQueue`.
+            // For "Repeat while held" macros we must avoid overlapping executions.
+            // Treat repeat-macros as synchronized so a new run waits for previous to finish.
+            bool shouldSync = action != null && (action.synchronized || keyType.HasFlag(DS4KeyType.RepeatMacro));
+            if (shouldSync)
+            {
+                // Run special action macros in synchronized order (ie. FirstIn-First-Out). The trigger control name string is the execution queue identifier (ie. each unique trigger combination has an own synchronization queue).
                 if (!macroTaskQueue[device].TryGetValue(action.controls, out Task prevTask))
                     macroTaskQueue[device].Add(action.controls, (Task.Factory.StartNew(() => PlayMacroTask(device, macroControl, macroStr, macroLst, macroArr, control, keyType, action, actionDoneState))));
                 else
@@ -6391,6 +6416,13 @@ namespace DS4Windows
                 for (int i = 0; i < macroArr.Length; i++)
                     macroArr[i] = int.Parse(skeys[i]);
             }
+
+            // Do not mark a task-wide "macro running" flag here. `IsMacroRunning` will
+            // be set/cleared per single macro iteration below.
+
+            try
+            {
+                try { AppLogger.LogTrace($"PlayMacroTask START: action={action?.name} device={device} IsMacroRunning={(actionDoneState!=null?actionDoneState.IsMacroRunning:false)} IsBeingTriggered={(action!=null?ActionManager.IsBeingTriggered(action, device):false)} keyType={keyType}"); } catch { }
 
             // macro.StartsWith("164/9/9/164") || macro.StartsWith("18/9/9/18")
             if ((macroLst != null && macroLst.Count >= 4 && ((macroLst[0] == 164 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 164) || (macroLst[0] == 18 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 18)))
@@ -6465,24 +6497,126 @@ namespace DS4Windows
                     if (control != DS4Controls.None)
                         macrodone[DS4ControltoInt(control)] = false;
                 }
+                // Per-macro-unit end handling: call EndMacro for this completed macro run
+                    try
+                    {
+                        // Clear iteration-running before end handling so logs show iteration completed
+                        if (actionDoneState != null)
+                        {
+                            try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                        }
+
+                        if (!String.IsNullOrEmpty(macroStr))
+                            EndMacro(device, macrocontrol, macroStr, control);
+                        else if (macroLst != null)
+                            EndMacro(device, macrocontrol, macroLst, control);
+                        else if (macroArr != null)
+                            EndMacro(device, macrocontrol, macroArr, control);
+                        try { AppLogger.LogTrace($"PlayMacroTask MACRO EXECUTE END: action={action?.name} device={device} IsMacroRunning={(actionDoneState!=null?actionDoneState.IsMacroRunning:false)} IsBeingTriggered={(action!=null?ActionManager.IsBeingTriggered(action, device):false)}"); } catch { }
+                    }
+                catch { }
+
             }
 
-            // If a special action type of Macro has "Repeat while held" option and actionDoneState object is defined then reset the action back to "not done" status in order to re-fire it if the trigger key is still held down
-            if (actionDoneState != null && keyType.HasFlag(DS4KeyType.RepeatMacro))
+            // Repeat-while-held handling: instead of re-dispatching a released edge (which may enqueue
+            // additional macro runs), perform repeat-in-place. After a macro run completes, check the
+            // per-action BeingTriggered flag; if it remains true (trigger still held), run the macro again.
+            // This avoids accumulating a queue of runs that would execute after physical release.
+            if (action != null && keyType.HasFlag(DS4KeyType.RepeatMacro) && actionDoneState != null)
             {
-                var ctxRel = new DS4Windows.TriggerContext
+                bool keepRunning = true;
+                while (keepRunning)
                 {
-                    ActionDef = action,
-                    Device = device,
-                    LogicalValue = 0,
-                    NativeValue = 0,
-                    UseScanCode = false,
-                    OutputHandler = null,
-                    IsEstablished = false
-                };
-                ActionManager.DispatchTriggerEdge(ctxRel);
+                    bool curBeing = false;
+                    try { curBeing = ActionManager.IsBeingTriggered(action, device); keepRunning = curBeing; } catch { keepRunning = false; curBeing = false; }
+
+                    // Log the recheck result and the decision whether we'll rerun this macro
+                    try
+                    {
+                        string decision = keepRunning ? "RERUN" : "NORUN";
+                        AppLogger.LogTrace($"PlayMacroTask ITERATION CHECK: action={action?.name} device={device} IsMacroRunning={actionDoneState?.IsMacroRunning ?? false} IsBeingTriggered={curBeing} DECISION={decision}");
+                    }
+                    catch { }
+
+                    if (!keepRunning) break;
+
+                    // Mark iteration running for this inline repeat
+                    if (actionDoneState != null)
+                    {
+                        try { lock (actionDoneState) { actionDoneState.IsMacroRunning = true; } } catch { }
+                    }
+
+                    // Execute the macro sequence again inline
+                    bool[] keydown = new bool[512];
+                    if (macroLst != null)
+                    {
+                        for (int i = 0; i < macroLst.Count; i++)
+                        {
+                            int macroCodeValue = macroLst[i];
+                            if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                Task.Delay(macroCodeValue - 300).Wait();
+                        }
+                    }
+                    else if (macroArr != null)
+                    {
+                        for (int i = 0; i < macroArr.Length; i++)
+                        {
+                            int macroCodeValue = macroArr[i];
+                            if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                Task.Delay(macroCodeValue - 300).Wait();
+                        }
+                    }
+
+                    if (action == null || !action.keepKeyState)
+                    {
+                        for (int i = 0, arlength = keydown.Length; i < arlength; i++)
+                        {
+                            if (keydown[i])
+                                PlayMacroCodeValue(device, macrocontrol, keyType, i, keydown);
+                        }
+
+                        DS4LightBar.forcedFlash[device] = 0;
+                        DS4LightBar.forcelight[device] = false;
+                    }
+
+                    if (keyType.HasFlag(DS4KeyType.HoldMacro))
+                    {
+                        Task.Delay(50).Wait();
+                        if (control != DS4Controls.None)
+                            macrodone[DS4ControltoInt(control)] = false;
+                    }
+                    // Per-macro-unit end handling for this iteration
+                    try
+                    {
+                        // Clear iteration-running so end/logging shows iteration completed
+                        if (actionDoneState != null)
+                        {
+                            try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                        }
+
+                        if (!String.IsNullOrEmpty(macroStr))
+                            EndMacro(device, macrocontrol, macroStr, control);
+                        else if (macroLst != null)
+                            EndMacro(device, macrocontrol, macroLst, control);
+                        else if (macroArr != null)
+                            EndMacro(device, macrocontrol, macroArr, control);
+                        try { AppLogger.LogTrace($"PlayMacroTask MACRO EXECUTE END: action={action?.name} device={device} IsMacroRunning={(actionDoneState!=null?actionDoneState.IsMacroRunning:false)} IsBeingTriggered={(action!=null?ActionManager.IsBeingTriggered(action, device):false)}"); } catch { }
+                    }
+                    catch { }
+
+                    // loop will check BeingTriggered again
+                }
             }
-        }
+                }
+                finally
+                {
+                    if (actionDoneState != null)
+                    {
+                        try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                    }
+                }
+                try { AppLogger.LogTrace($"PlayMacroTask END: action={action?.name} device={device} IsMacroRunning={(actionDoneState!=null?actionDoneState.IsMacroRunning:false)} IsBeingTriggered={(action!=null?ActionManager.IsBeingTriggered(action, device):false)}"); } catch { }
+            }
 
         private static bool PlayMacroCodeValue(int device, bool[] macrocontrol, DS4KeyType keyType, int macroCodeValue, bool[] keydown)
         {
