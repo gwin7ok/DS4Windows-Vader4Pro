@@ -2900,6 +2900,17 @@ namespace DS4Windows
                 AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");
                 RaiseSelectedProfileChanged(device, profileName);
 
+                // Ensure global Action entries are reloaded so SpecialAction changes take effect.
+                try
+                {
+                    try { DS4Windows.ActionManager.ClearAllEntries(); } catch { }
+                    AppLogger.LogDebug($"ApplyProfile: Cleared ActionManager global entries to force re-creation of Action instances for new profile");
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogTrace($"ApplyProfile: Failed to clear ActionManager entries: {ex}");
+                }
+
                 // Clear any per-device SpecialAction controllers so new profile's SpecialAction settings
                 // will cause fresh controllers to be created with updated mode/behavior.
                 try
@@ -2912,6 +2923,10 @@ namespace DS4Windows
                 {
                     AppLogger.LogTrace($"ApplyProfile: Failed to clear per-device controllers: {ex}");
                 }
+
+                // Preallocate runtime instances for this device so SpecialAction instances and controllers
+                // are ready immediately after profile application.
+                try { DS4Windows.ActionManager.PreallocateForProfileApply(device); } catch { }
 
                 // Set controller activation flags based on profile SpecialAction settings.
                 try

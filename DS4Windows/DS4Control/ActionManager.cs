@@ -319,6 +319,34 @@ namespace DS4Windows
             catch { }
         }
 
+        // Preallocate runtime instances at startup: create Action instances and per-action states
+        // This forces creation of `Actions.Action` and `ActionEntry` objects so first-use latency
+        // does not hit the input path.
+        public static void PreallocateOnStartup()
+        {
+            try
+            {
+                int count = ActionRegistry.Count;
+                for (int i = 0; i < count; ++i)
+                {
+                    try { GetActionByIndex(i); } catch { }
+                }
+
+                // Ensure ActionEntry/States are created for all actions and devices.
+                try
+                {
+                    foreach (var sa in ActionRegistry.AllActions())
+                    {
+                        try { GetStateFor(sa, 0); } catch { }
+                    }
+                }
+                catch { }
+
+                try { AppLogger.LogTrace($"ActionManager.PreallocateOnStartup: preallocated {count} actions"); } catch { }
+            }
+            catch { }
+        }
+
         // NOTE: NotifyTriggerEstablished removed — use DispatchTriggerEstablished or DispatchTriggerEdge
 
         // Event fired when toggled-on state changes for an action/device.
@@ -564,6 +592,40 @@ namespace DS4Windows
                 return Mapping.GetOrCreateKeyButtonControllerForAction(device, action);
             }
             catch { return null; }
+        }
+
+        // Preallocate runtime instances for a specific device when a profile is applied to that device.
+        // Creates Action instances, per-device ActionInstanceState entries and key/button controllers
+        // for the SpecialActions present in the applied profile.
+        public static void PreallocateForProfileApply(int device)
+        {
+            try
+            {
+                var profileActions = Global.getProfileActions(device);
+                if (profileActions == null) return;
+
+                foreach (var actionName in profileActions)
+                {
+                    try
+                    {
+                        var sa = Global.GetProfileAction(device, actionName);
+                        if (sa == null) continue;
+
+                        // Ensure Action instance exists
+                        try { GetActionByName(sa.name); } catch { }
+
+                        // Ensure per-device state exists
+                        try { GetStateFor(sa, device); } catch { }
+
+                        // Create key/button controller if needed
+                        try { Mapping.GetOrCreateKeyButtonControllerForAction(device, sa); } catch { }
+                    }
+                    catch { }
+                }
+
+                try { AppLogger.LogTrace($"ActionManager.PreallocateForProfileApply: preallocated actions/controllers for device {device}"); } catch { }
+            }
+            catch { }
         }
     }
 }
