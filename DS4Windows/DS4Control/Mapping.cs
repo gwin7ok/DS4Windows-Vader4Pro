@@ -4155,7 +4155,7 @@ namespace DS4Windows
             // Wrap existing KeyButtonActionController in adapter implementing IActionController
             var inner = GetOrCreateKeyButtonController(device, sa);
             if (inner == null) return null;
-            return new DS4Windows.Actions.KeyButtonActionControllerAdapter(device, sa);
+            return new DS4Windows.Actions.KeyButtonActionControllerAdapter(inner);
         }
 
         // Try to find a SpecialAction that maps to given logical key (used by synthetic sender paths).

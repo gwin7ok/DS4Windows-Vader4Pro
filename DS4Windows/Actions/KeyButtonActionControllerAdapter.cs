@@ -15,6 +15,12 @@ namespace DS4Windows.Actions
             inner = new KeyButtonActionController(device, sa, sa?.name ?? "<unknown>");
         }
 
+        // Wrap an existing KeyButtonActionController instance (used by Mapping to avoid duplicate instances)
+        public KeyButtonActionControllerAdapter(KeyButtonActionController existing)
+        {
+            inner = existing ?? throw new ArgumentNullException(nameof(existing));
+        }
+
         public void Start(IActionBinding binding, ITriggerContext trigger)
         {
             try
