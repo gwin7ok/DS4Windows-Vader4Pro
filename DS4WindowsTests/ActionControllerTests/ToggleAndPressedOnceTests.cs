@@ -265,5 +265,61 @@ namespace DS4Windows.Actions.Tests
                 DS4Windows.DI.ServiceProviderHolder.SetProvider(null);
             }
         }
+
+        [Fact]
+        public void KeyButtonActionControllerAdapter_Handle_Release_DoesNot_Clear_Toggle()
+        {
+            var dam = new DS4Windows.Actions.DefaultActionManager();
+            var srv = new TestServiceProvider(dam);
+            DS4Windows.DI.ServiceProviderHolder.SetProvider(srv);
+
+            try
+            {
+                var sa = new DS4Windows.SpecialAction("adaptertoggle_handle", "0", "Key", "0");
+                sa.KeyButtonSwitchMode = DS4Windows.SpecialAction.KeyButtonSwitchModeEnum.Toggle;
+
+                dam.ClearAllToggledOn();
+                dam.ClearAllEntries();
+
+                var handler = new FakeKBMHandler();
+                var adapter = new DS4Windows.Actions.KeyButtonActionControllerAdapter(0, sa);
+                var binding = new DS4Windows.Actions.KeyActionBinding(sa);
+                var triggerEst = new DS4Windows.Actions.TriggerContextImpl
+                {
+                    Device = 0,
+                    IsEdgeEstablished = true,
+                    LogicalValue = 0,
+                    NativeValue = 0,
+                    OutputHandler = handler,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                // Start should set IsToggledOn
+                adapter.Start(binding, triggerEst);
+                var st = ActionManager.GetStateFor(sa, 0);
+                Assert.NotNull(st);
+                Assert.True(st.IsToggledOn);
+
+                // Now call Handle with a release edge — toggle-mode controllers should ignore release
+                var triggerRel = new DS4Windows.Actions.TriggerContextImpl
+                {
+                    Device = 0,
+                    IsEdgeEstablished = false,
+                    LogicalValue = 0,
+                    NativeValue = 0,
+                    OutputHandler = handler,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                adapter.Handle(binding, triggerRel);
+
+                // Toggled state should remain true after release handled
+                Assert.True(st.IsToggledOn);
+            }
+            finally
+            {
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(null);
+            }
+        }
     }
 }
