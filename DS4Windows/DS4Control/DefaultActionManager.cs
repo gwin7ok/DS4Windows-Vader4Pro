@@ -126,7 +126,7 @@ namespace DS4Windows.Actions
             catch { return null; }
         }
 
-        public void ClearPressedOnceForKey(ushort key)
+        public void ClearToggledOnForKey(ushort key)
         {
             try
             {
@@ -139,7 +139,7 @@ namespace DS4Windows.Actions
                             if (ent?.ActionDef == null) continue;
                                 if (ushort.TryParse(ent.ActionDef.details, out ushort k) && k == key)
                             {
-                                for (int d = 0; d < ent.States.Length; d++) ActionManager.SetPressedOnce(ent.ActionDef, d, false);
+                                for (int d = 0; d < ent.States.Length; d++) ActionManager.SetToggledOn(ent.ActionDef, d, false);
                             }
                         }
                         catch { }
@@ -149,7 +149,7 @@ namespace DS4Windows.Actions
             catch { }
         }
 
-        public void ClearAllPressedOnce()
+        public void ClearAllToggledOn()
         {
             try
             {
@@ -160,7 +160,7 @@ namespace DS4Windows.Actions
                         try
                         {
                             if (ent?.States == null) continue;
-                            for (int d = 0; d < ent.States.Length; d++) ActionManager.SetPressedOnce(ent.ActionDef, d, false);
+                            for (int d = 0; d < ent.States.Length; d++) ActionManager.SetToggledOn(ent.ActionDef, d, false);
                         }
                         catch { }
                     }
@@ -196,12 +196,12 @@ namespace DS4Windows.Actions
                             {
                                 try
                                 {
-                                    bool old = ent.States[device]?.PressedOnce ?? false;
+                                    bool old = ent.States[device]?.IsToggledOn ?? false;
                                     ent.States[device] = new ActionInstanceState();
-                                    try { AppLogger.LogTrace($"DefaultActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (PressedOnce cleared)"); } catch { }
+                                    try { AppLogger.LogTrace($"DefaultActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (IsToggledOn cleared)"); } catch { }
                                     if (old != false)
                                     {
-                                        try { ActionManager.FirePressedOnceChanged(ent.ActionDef, device, old, false); } catch { }
+                                        try { ActionManager.FireToggledOnChanged(ent.ActionDef, device, old, false); } catch { }
                                     }
                                 }
                                 catch { }
@@ -216,7 +216,7 @@ namespace DS4Windows.Actions
             catch { }
         }
 
-        public void SetPressedOnce(SpecialAction action, int device, bool value)
+        public void SetToggledOn(SpecialAction action, int device, bool value)
         {
             try
             {
@@ -225,10 +225,10 @@ namespace DS4Windows.Actions
                 if (device < 0 || device >= ent.States.Length) return;
                 var st = ent.States[device];
                 if (st == null) return;
-                bool old = st.PressedOnce;
-                if (old == value) return;
-                st.PressedOnce = value;
-                try { ActionManager.FirePressedOnceChanged(action, device, old, value); } catch { }
+            bool old = st.IsToggledOn;
+            if (old == value) return;
+            st.IsToggledOn = value;
+            try { ActionManager.FireToggledOnChanged(action, device, old, value); } catch { }
 
                 try
                 {
@@ -250,7 +250,7 @@ namespace DS4Windows.Actions
                     }
                     catch { }
                     string stackSnippet = trace.ToString();
-                    AppLogger.LogTrace($"DefaultActionManager.SetPressedOnce: action={(action?.name ?? "(null)")} device={device} old={old} new={value} caller={callerInfo} stack={stackSnippet}");
+                    AppLogger.LogTrace($"DefaultActionManager.SetToggledOn: action={(action?.name ?? "(null)")} device={device} old={old} new={value} caller={callerInfo} stack={stackSnippet}");
                 }
                 catch { }
             }

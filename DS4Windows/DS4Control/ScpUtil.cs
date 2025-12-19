@@ -9222,7 +9222,7 @@ namespace DS4Windows
                             {
                                 Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
                             }
-                            try { ActionManager.ClearAllPressedOnce(); } catch { }
+                            try { ActionManager.ClearAllToggledOn(); } catch { }
                             if (Mapping.macrodone != null)
                             {
                                 for (int i = 0; i < Mapping.macrodone.Length; i++) Mapping.macrodone[i] = false;
@@ -9264,7 +9264,7 @@ namespace DS4Windows
                     {
                         Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
                     }
-                    try { ActionManager.ClearAllPressedOnce(); } catch { }
+                    try { ActionManager.ClearAllToggledOn(); } catch { }
                     if (Mapping.macrodone != null)
                     {
                         for (int i = 0; i < Mapping.macrodone.Length; i++) Mapping.macrodone[i] = false;

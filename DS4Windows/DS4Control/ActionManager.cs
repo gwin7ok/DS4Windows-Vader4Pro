@@ -10,7 +10,7 @@ namespace DS4Windows
     // Per-action per-device instance state
     public class ActionInstanceState
     {
-        public bool PressedOnce = false;
+        public bool IsToggledOn = false;
         public long LastToggleTimeUtcTicks = 0;
         public bool FirstTouch = false;
         // Whether the action is currently considered 'being triggered' (replaces legacy actionDone)
@@ -46,7 +46,7 @@ namespace DS4Windows
             for (int i = 0; i < States.Length; ++i) States[i] = new ActionInstanceState();
             try
             {
-                AppLogger.LogTrace($"ActionEntry created: action={(action?.name ?? "(null)")} - initialized ActionInstanceState (PressedOnce cleared)");
+                AppLogger.LogTrace($"ActionEntry created: action={(action?.name ?? "(null)")} - initialized ActionInstanceState (IsToggledOn cleared)");
             }
             catch { }
         }
@@ -202,8 +202,8 @@ namespace DS4Windows
             catch { }
         }
 
-        // Clear pressed-once flag for actions that map to given native key
-        public static void ClearPressedOnceForKey(ushort key)
+        // Clear toggled-on flag for actions that map to given native key
+        public static void ClearToggledOnForKey(ushort key)
         {
             try
             {
@@ -211,7 +211,7 @@ namespace DS4Windows
                 if (sp != null)
                 {
                     var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
-                    if (mgr != null) { mgr.ClearPressedOnceForKey(key); return; }
+                    if (mgr != null) { mgr.ClearToggledOnForKey(key); return; }
                 }
 
                 lock (actions)
@@ -223,7 +223,7 @@ namespace DS4Windows
                             if (ent?.ActionDef == null) continue;
                             if (ushort.TryParse(ent.ActionDef.details, out ushort k) && k == key)
                             {
-                                for (int d = 0; d < ent.States.Length; d++) SetPressedOnce(ent.ActionDef, d, false);
+                                for (int d = 0; d < ent.States.Length; d++) SetToggledOn(ent.ActionDef, d, false);
                             }
                         }
                         catch { }
@@ -234,7 +234,7 @@ namespace DS4Windows
         }
 
         // Clear pressed-once flags for all known actions
-        public static void ClearAllPressedOnce()
+        public static void ClearAllToggledOn()
         {
             try
             {
@@ -242,7 +242,7 @@ namespace DS4Windows
                 if (sp != null)
                 {
                     var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
-                    if (mgr != null) { mgr.ClearAllPressedOnce(); return; }
+                    if (mgr != null) { mgr.ClearAllToggledOn(); return; }
                 }
 
                 lock (actions)
@@ -252,7 +252,7 @@ namespace DS4Windows
                         try
                         {
                             if (ent?.States == null) continue;
-                            for (int d = 0; d < ent.States.Length; d++) SetPressedOnce(ent.ActionDef, d, false);
+                            for (int d = 0; d < ent.States.Length; d++) SetToggledOn(ent.ActionDef, d, false);
                         }
                         catch { }
                     }
@@ -303,7 +303,7 @@ namespace DS4Windows
                             if (device >= 0 && device < ent.States.Length)
                             {
                                 ent.States[device] = new ActionInstanceState();
-                                try { AppLogger.LogTrace($"ActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (PressedOnce cleared)"); } catch { }
+                                try { AppLogger.LogTrace($"ActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (IsToggledOn cleared)"); } catch { }
                             }
                         }
                         catch { }
@@ -317,35 +317,35 @@ namespace DS4Windows
 
         // NOTE: NotifyTriggerEstablished removed — use DispatchTriggerEstablished or DispatchTriggerEdge
 
-        // Event fired when PressedOnce state changes for an action/device.
+        // Event fired when toggled-on state changes for an action/device.
         // Parameters: (SpecialAction action, int device, bool oldValue, bool newValue)
-        public static event Action<SpecialAction, int, bool, bool> PressedOnceChanged;
+        public static event Action<SpecialAction, int, bool, bool> ToggledOnChanged;
 
-            // Ensure the PressedOnceChanged event is always traced when fired.
+            // Ensure the ToggledOnChanged event is always traced when fired.
             static ActionManager()
             {
                 try
                 {
-                    PressedOnceChanged += (sa, dev, oldv, newv) =>
+                    ToggledOnChanged += (sa, dev, oldv, newv) =>
                     {
-                        try { AppLogger.LogTrace($"ActionManager.PressedOnceChanged: name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
+                        try { AppLogger.LogTrace($"ActionManager.ToggledOnChanged: name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
                     };
                 }
                 catch { }
             }
 
             // Helper for external components (such as DI-managed managers) to notify the static event.
-            public static void FirePressedOnceChanged(SpecialAction action, int device, bool oldValue, bool newValue)
+            public static void FireToggledOnChanged(SpecialAction action, int device, bool oldValue, bool newValue)
             {
                 try
                 {
-                    try { PressedOnceChanged?.Invoke(action, device, oldValue, newValue); } catch { }
+                    try { ToggledOnChanged?.Invoke(action, device, oldValue, newValue); } catch { }
                 }
                 catch { }
             }
 
-        // Helper to set PressedOnce with change notification.
-        public static void SetPressedOnce(SpecialAction action, int device, bool value)
+        // Helper to set toggled-on flag with change notification.
+        public static void SetToggledOn(SpecialAction action, int device, bool value)
         {
             // Prefer DI-managed implementation and fail loudly if none present.
             var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
@@ -354,13 +354,13 @@ namespace DS4Windows
                 var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
                 if (mgr != null)
                 {
-                    mgr.SetPressedOnce(action, device, value);
+                    mgr.SetToggledOn(action, device, value);
                     return;
                 }
             }
 
             // No DI manager available -> explicit failure to avoid silent state divergence
-            var msg = $"ActionManager.SetPressedOnce called but no IManagedActionManager is registered. action={(action?.name ?? "(null)")} device={device} value={value}";
+            var msg = $"ActionManager.SetToggledOn called but no IManagedActionManager is registered. action={(action?.name ?? "(null)")} device={device} value={value}";
             try { AppLogger.LogError(msg); } catch { }
             throw new InvalidOperationException(msg);
         }

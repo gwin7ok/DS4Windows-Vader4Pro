@@ -27,19 +27,19 @@
 
 ### `KeyAction` (ActionTypeId.Key)
 - プロパティ: `ushort KeyId`, `DS4KeyType KeyFlags`（ScanCode/Repeat/Toggle）、`KeyButtonSwitchModeEnum SwitchMode`（Press|Toggle）、`bool FirstTouchBehavior`, `bool KeepKeyState`
-- `ActionInstanceState` 内フィールド: `bool PressedOnce`, `long LastToggleTimeUtcTicks`, `SyntheticState.KeyPresses KeyState`
+- `ActionInstanceState` 内フィールド: `bool IsToggledOn`, `long LastToggleTimeUtcTicks`, `SyntheticState.KeyPresses KeyState`
 - ExecuteTrigger / OnTrigger の振る舞い:
-  - `SwitchMode == Toggle` のとき: `PressedOnce` と `LastToggleTimeUtcTicks` を用いたデバウンス + トグル反転を行い、`KeyButtonActionController` に合成送出委譲。
+  - `SwitchMode == Toggle` のとき: `IsToggledOn` と `LastToggleTimeUtcTicks` を用いたデバウンス + トグル反転を行い、`KeyButtonActionController` に合成送出委譲。
   - `SwitchMode == Press` のとき: `SendPress` を呼び、リリースは `OnRelease` で送る。
   - 決定: `RepeatHelper` の利用はコントローラ側（例: `KeyButtonActionController`）に統一します。`Action` 側は合成送出をコントローラに委譲し、連続送信の開始/停止やライフサイクル管理（Stop/Dispose）はコントローラが責任を持ちます。アクション実装側で独自にリピータを実装しないことで、重複実装を避けます。
-- ExecuteRelease / OnRelease: `SendRelease`（必要に応じ）・`PressedOnce` 解除ロジック（`ShouldClearPressedOnce` 判定）
+- ExecuteRelease / OnRelease: `SendRelease`（必要に応じ）・`IsToggledOn` 解除ロジック（`ShouldClearPressedOnce` 判定）
 
 ### `ButtonAction` (ActionTypeId.Button)
 - プロパティ: `int ButtonId`（details）、`KeyButtonSwitchModeEnum SwitchMode`
 - 動作:
   - 基本は `ctx.OutputFieldMapping.buttons[ButtonId]` を更新して X360 出力を行う。
   - `KeyButtonActionController` を使う合成パスが現行コードに存在するため、Action は必要なら委譲する。
-  - Toggle/Press の扱いは `KeyAction` と同様に `PressedOnce` を持てる。
+  - Toggle/Press の扱いは `KeyAction` と同様に `IsToggledOn` を持てる。
 
 ### `MacroAction` (ActionTypeId.Macro)
 - プロパティ: `List<int> MacroIds`, `bool PressRelease`, `bool Synchronized`, `bool KeepKeyState`, `bool RepeatMacro`
@@ -83,7 +83,7 @@
 - 既存の SpecialAction 実装を踏まえ、`Action` 基底と `BasicAction`/`SpecialAction` 派生群を含むオブジェクト指向設計を定義する。
 - 設計書は実装前の合意文書として利用する。まずは現状の SpecialAction 種類のみを取り込み、拡張性と互換性を保つ。
 
-範囲pressedonce[key]：toggle 反転時に true にセットされ、トリガが完全に解除（かつ ShouldClearPressedOnce 判定を満たす）されると false に戻る。これが連続したトグル反転を抑止する役割。
+範囲IsToggledOn[key]：toggle 反転時に true にセットされ、トリガが完全に解除（かつ ShouldClearPressedOnce 判定を満たす）されると false に戻る。これが連続したトグル反転を抑止する役割。
 - 対象: 既存の `Mapping.cs` に現れる SpecialAction ロジック（Key, Button, Macro, MultiAction 等）をクラス化する。
 - 目的外: UI 層、プロファイルの永続化仕様の細部（ただし移行プランは含む）。
 
@@ -124,7 +124,7 @@
     - Toggle フラグ（`DS4KeyType.Toggle`）に基づく toggle/press ロジック。
     - デバウンスは `states[device].LastToggleTimeUtcTicks` を用いる。
     - 合成キー送出は `KeyButtonActionController`（既存）を利用して `OnSATriggerEstablished/Released` 相当の呼び出しを行う。
-    - `InstanceState` に `pressedOnce` 相当のフラグを保持（デバイス毎、Action 単位）。
+    - `InstanceState` に `IsToggledOn` 相当のフラグを保持（デバイス毎、Action 単位）。
   - `ButtonAction` の主な振る舞い:
     - `Details` を `X360Controls` またはマウス操作に解釈。
     - 必要に応じ `outputfieldMapping` を更新、あるいは `TryDispatchSATriggerEstablished` を通す。
@@ -136,7 +136,7 @@
 - ActionInstanceState
   - フィールド例:
     - `bool ActionDone` — Mapping の `actionDone[index].dev[device]` と同等
-    - `bool PressedOnce` — 現在の `pressedonce` の SA版
+    - `bool IsToggledOn` — 旧 `PressedOnce` 相当のフラグ
     - `long LastToggleTimeUtcTicks`
     - `SyntheticState.KeyPresses KeyState`（必要に応じ）
     - `object Misc`（派生専用の補助データ）
@@ -185,7 +185,7 @@ Mapping との連携（呼び出しフロー）
 移行計画（推奨）
 1. ドキュメント合意 → `SpecialActionBase` と `KeyAction` の最小実装を追加（Mapping に並列パス）。
 2. 実機で KeyAction の動作確認 → Button/Macro を順次移行。
-3. すべて移行後に旧グローバル状態（`pressedonce` 等）と重複コードを除去。
+3. すべて移行後に旧グローバル状態（`IsToggledOn` / 旧 `pressedonce` 等）と重複コードを除去。
 
 実装ルール（必須）
 - アクションインスタンスのライフサイクル:
@@ -198,7 +198,7 @@ Mapping との連携（呼び出しフロー）
   - `Action` は合成送出の要求（例: `OnSATriggerEstablished` / `OnSATriggerReleased` に相当する呼び出し）をコントローラに委譲し、リピータの生成や停止、リリース送信の責務はコントローラが負う。
 
 - 状態管理の原則:
-  - グローバル配列やグローバルフラグ（`pressedonce[]`, `actionDone` 等）は新規実装では使用しない。各アクション固有の状態は `ActionInstanceState` としてアクションインスタンスが保持する。
+  - グローバル配列やグローバルフラグ（`IsToggledOn[]`（旧 `pressedonce[]`）, `actionDone` 等）は新規実装では使用しない。各アクション固有の状態は `ActionInstanceState` としてアクションインスタンスが保持する。
   - Mapping や他コンポーネントからアクション状態へアクセスする際は `ActionManager` 経由で該当アクションインスタンスを取得し、その `GetState(device)` を参照する。
 
 これらのルールを守ることで、責務の分離が明確になり、重複実装やグローバル状態による副作用を避けられます。
@@ -319,7 +319,7 @@ sequenceDiagram
   M->>AM: GetActionByIndex(index)
   AM-->>M: Action instance (lazy-created if needed)
   M->>A: OnTrigger(device, ctx)
-  A->>A: Update ActionInstanceState(device) (PressedOnce etc.)
+  A->>A: Update ActionInstanceState(device) (IsToggledOn etc.)
   A->>K: OnSATriggerEstablished(kvpKey, nativeKey, useScan, handler, isSpecialAction)
   alt Controller starts repeat
     K->>R: Create/Start RepeatHelper
@@ -348,7 +348,7 @@ sequenceDiagram
 - `ButtonAction` : コントローラ／マウス出力用。ボタンID を扱い、必要に応じて `KeyButtonActionController` を利用する。
 - `MacroAction` : マクロ再生を管理するアクション。`KeepKeyState` や `PressRelease` を尊重する。
 - `ProfileAction` / `ProgramAction` / `DisconnectBTAction` : 専用の副作用（プロファイル切替・外部プログラム実行・切断）を行う実装。
-- `ActionInstanceState` : 各アクションがデバイス単位で保持する状態（`PressedOnce` など）。
+- `ActionInstanceState` : 各アクションがデバイス単位で保持する状態（`IsToggledOn` など）。
 - `ActionManager` : Action インスタンスのライフサイクル管理（遅延生成、検索、破棄）を提供。
 - `ActionFactory` : `SpecialAction` から適切な `Action` インスタンスを生成する責務を持つ。
 - `MappingContext` : Mapping から渡されるランタイム情報（`OutputKBMHandler` など）をまとめる軽量構造。

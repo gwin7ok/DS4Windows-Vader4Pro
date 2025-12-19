@@ -19,7 +19,7 @@ namespace DS4Windows
         private readonly string assignedActionName;
         private readonly SpecialAction assignedActionDef;
         private readonly IKeyController impl;
-        private readonly Action<SpecialAction, int, bool, bool> pressedOnceHandler;
+        private readonly Action<SpecialAction, int, bool, bool> toggledOnHandler;
 
         // Expose assigned action name for diagnostics
         public string AssignedActionName => assignedActionName;
@@ -43,8 +43,8 @@ namespace DS4Windows
             else
                 impl = new PressImpl(device, this.GetHashCode());
 
-            // Subscribe to PressedOnceChanged so controllers react to Action-level state changes.
-            pressedOnceHandler = (sa, dev, oldv, newv) =>
+            // Subscribe to toggled-on changes so controllers react to Action-level state changes.
+            toggledOnHandler = (sa, dev, oldv, newv) =>
             {
                 try
                 {
@@ -55,7 +55,7 @@ namespace DS4Windows
                 }
                 catch { }
             };
-            try { ActionManager.PressedOnceChanged += pressedOnceHandler; } catch { }
+            try { ActionManager.ToggledOnChanged += toggledOnHandler; } catch { }
 
         }
 
@@ -85,8 +85,8 @@ namespace DS4Windows
             else
                 impl = new PressImpl(device, this.GetHashCode());
 
-            // Subscribe to PressedOnceChanged so controllers react to Action-level state changes.
-            pressedOnceHandler = (sa, dev, oldv, newv) =>
+            // Subscribe to toggled-on changes so controllers react to Action-level state changes.
+            toggledOnHandler = (sa, dev, oldv, newv) =>
             {
                 try
                 {
@@ -97,7 +97,7 @@ namespace DS4Windows
                 }
                 catch { }
             };
-            try { ActionManager.PressedOnceChanged += pressedOnceHandler; } catch { }
+            try { ActionManager.ToggledOnChanged += toggledOnHandler; } catch { }
 
         }
 
@@ -147,7 +147,7 @@ namespace DS4Windows
                 try
                 {
                     var st = assignedActionDef != null ? ActionManager.GetStateFor(assignedActionDef, device) : null;
-                    bool wasPressed = st?.PressedOnce ?? false;
+                    bool wasPressed = st?.IsToggledOn ?? false;
                     if (!wasPressed)
                     {
                         // If output handler implements its own fake key repeat (SendInput), avoid creating
@@ -172,11 +172,11 @@ namespace DS4Windows
                                 }
                         }
 
-                        try { if (assignedActionDef != null) ActionManager.SetPressedOnce(assignedActionDef, device, true); } catch { }
+                        try { if (assignedActionDef != null) ActionManager.SetToggledOn(assignedActionDef, device, true); } catch { }
                     }
                     else
                     {
-                        // already pressedOnce: do nothing on additional OnDown
+                        // already toggled-on: do nothing on additional OnDown
                     }
                 }
                 catch { }
@@ -184,8 +184,8 @@ namespace DS4Windows
 
             public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
             {
-                // For Toggle mode, input-edge release should not stop repeaters or clear PressedOnce.
-                // Ignore input-level release here; rely on explicit toggle-off path.
+                    // For Toggle mode, input-edge release should not stop repeaters or clear IsToggledOn.
+                    // Ignore input-level release here; rely on explicit toggle-off path.
                 try { SyntheticDispatcher.ResetKeyTiming(device, kvpKey); } catch { }
             }
 
@@ -199,8 +199,8 @@ namespace DS4Windows
                         try { AppLogger.LogTrace($"ToggleImpl.OnToggleOff: controllerId={controllerId} kvpKey={kvpKey} device={device} repeater stopped"); } catch { }
                         try
                         {
-                            // Ensure PressedOnce is cleared by the same component that set it true.
-                            try { if (assignedActionDef != null) ActionManager.SetPressedOnce(assignedActionDef, device, false); } catch { }
+                            // Ensure toggled-on flag is cleared by the same component that set it true.
+                            try { if (assignedActionDef != null) ActionManager.SetToggledOn(assignedActionDef, device, false); } catch { }
                             if (e.nativeKey == 0) e.nativeKey = SyntheticDispatcher.ResolveNativeKey(kvpKey);
                             SyntheticDispatcher.SendRelease(device, kvpKey, e.nativeKey, e.useScanCode, e.handler);
                         }

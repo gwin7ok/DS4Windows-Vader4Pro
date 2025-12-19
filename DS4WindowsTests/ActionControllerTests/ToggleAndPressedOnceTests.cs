@@ -43,10 +43,10 @@ namespace DS4Windows.Actions.Tests
         public override string GetFullDisplayName() => "FakeKBM";
     }
 
-    public class ToggleAndPressedOnceTests
+    public class ToggleAndToggledOnTests
     {
         [Fact]
-        public void Toggle_OnTrigger_Toggles_PressedOnce_State()
+        public void Toggle_OnTrigger_Toggles_IsToggledOn_State()
         {
             var dam = new DS4Windows.Actions.DefaultActionManager();
             var srv = new TestServiceProvider(dam);
@@ -62,13 +62,13 @@ namespace DS4Windows.Actions.Tests
                 var handler = new FakeKBMHandler();
 
                 // Ensure a clean starting state
-                dam.ClearAllPressedOnce();
+                dam.ClearAllToggledOn();
                 dam.ClearAllEntries();
 
-                // First trigger should set PressedOnce true
+                // First trigger should set IsToggledOn true
                 ka.OnTrigger(0, 0, 0, false, handler);
                 var stateAfter = ActionManager.GetStateFor(sa, 0);
-                Assert.True(stateAfter.PressedOnce);
+                Assert.True(stateAfter.IsToggledOn);
 
                 // Simulate explicit Toggle-OFF by invoking controller's OnSATriggerToggleOff
                 var mappingType = typeof(DS4Windows.Mapping);
@@ -86,7 +86,7 @@ namespace DS4Windows.Actions.Tests
                 }
 
                 var stateAfterOff = ActionManager.GetStateFor(sa, 0);
-                Assert.False(stateAfterOff.PressedOnce);
+                Assert.False(stateAfterOff.IsToggledOn);
             }
             finally
             {
@@ -95,7 +95,7 @@ namespace DS4Windows.Actions.Tests
         }
 
         [Fact]
-        public void Press_OnTrigger_DoesNot_Set_PressedOnce()
+        public void Press_OnTrigger_DoesNot_Set_IsToggledOn()
         {
             var dam = new DS4Windows.Actions.DefaultActionManager();
             var srv = new TestServiceProvider(dam);
@@ -111,12 +111,51 @@ namespace DS4Windows.Actions.Tests
                 var handler = new FakeKBMHandler();
 
                 // Ensure a clean starting state
-                dam.ClearAllPressedOnce();
+                dam.ClearAllToggledOn();
                 dam.ClearAllEntries();
 
                 ka.OnTrigger(0, 0, 0, false, handler);
                 var stateAfter = ActionManager.GetStateFor(sa, 0);
-                Assert.False(stateAfter.PressedOnce);
+                Assert.False(stateAfter.IsToggledOn);
+            }
+            finally
+            {
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(null);
+            }
+        }
+
+        [Fact]
+        public void IsToggledOn_SingleWriter_EventOnlyFromManager()
+        {
+            var dam = new DS4Windows.Actions.DefaultActionManager();
+            var srv = new TestServiceProvider(dam);
+            DS4Windows.DI.ServiceProviderHolder.SetProvider(srv);
+
+            try
+            {
+                var sa = new DS4Windows.SpecialAction("invarianttest", "0", "Key", "0");
+                sa.KeyButtonSwitchMode = DS4Windows.SpecialAction.KeyButtonSwitchModeEnum.Toggle;
+
+                dam.ClearAllToggledOn();
+                dam.ClearAllEntries();
+
+                bool eventFired = false;
+                Action<DS4Windows.SpecialAction, int, bool, bool> handler = (a, d, oldv, newv) => { eventFired = true; };
+                try { DS4Windows.ActionManager.ToggledOnChanged += handler; } catch { }
+
+                // Directly mutate state: should NOT fire ToggledOnChanged event
+                var st = DS4Windows.ActionManager.GetStateFor(sa, 0);
+                Assert.NotNull(st);
+                st.IsToggledOn = true;
+                Assert.True(st.IsToggledOn);
+                Assert.False(eventFired);
+
+                // Now use manager API to change: this SHOULD fire the event
+                DS4Windows.ActionManager.SetToggledOn(sa, 0, false);
+                Assert.False(st.IsToggledOn);
+                Assert.True(eventFired);
+
+                try { DS4Windows.ActionManager.ToggledOnChanged -= handler; } catch { }
             }
             finally
             {

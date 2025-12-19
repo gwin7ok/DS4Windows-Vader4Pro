@@ -46,7 +46,7 @@ namespace DS4Windows
             try
             {
                 var state = ActionManager.GetStateFor(action, device);
-                try { AppLogger.LogTrace($"KeyAction.OnTrigger ENTER: name={action?.name} device={device} logical={logicalValue} native={nativeValue} useScan={useScan} pressedOnce={(state?.PressedOnce ?? false)}"); } catch { }
+                try { AppLogger.LogTrace($"KeyAction.OnTrigger ENTER: name={action?.name} device={device} logical={logicalValue} native={nativeValue} useScan={useScan} isToggledOn={(state?.IsToggledOn ?? false)}"); } catch { }
                 var ctrl = ActionManager.GetOrCreateControllerForAction(device, action);
                 try { AppLogger.LogTrace($"KeyAction.OnTrigger: obtained controller={(ctrl==null?"<null>":ctrl.ControllerId.ToString())} for name={action?.name} device={device}"); } catch { }
 
@@ -64,7 +64,7 @@ namespace DS4Windows
 
                 if (IsToggle())
                 {
-                    if (!state.PressedOnce)
+                    if (!state.IsToggledOn)
                     {
                         try { ctrl?.Start(binding, trigger); } catch { }
                         AppLogger.LogTrace($"KeyAction: trigger(established) delegated to controller for TOGGLE name={action?.name} device={device} key={logicalValue}");

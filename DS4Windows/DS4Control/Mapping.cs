@@ -140,9 +140,9 @@ namespace DS4Windows
             };
             try
             {
-                ActionManager.PressedOnceChanged += (sa, dev, oldv, newv) =>
+                ActionManager.ToggledOnChanged += (sa, dev, oldv, newv) =>
                 {
-                    try { AppLogger.LogTrace($"Mapping: PressedOnceChanged name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
+                    try { AppLogger.LogTrace($"Mapping: ToggledOnChanged name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
                 };
             }
             catch { }
@@ -966,7 +966,7 @@ namespace DS4Windows
         public static bool[] macrodone = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
         // debounce for SpecialAction toggle (milliseconds)
         private const int ToggleDebounceMs = 30;
-        // hold pressedonce clear for a short window after toggle to avoid rapid reset during bouncy inputs
+        // hold toggled-on clear for a short window after toggle to avoid rapid reset during bouncy inputs
         private const int ToggleReleaseHoldMs = 200;
         // throttle synthetic sends per key (milliseconds)
         // Keep below fakeKeyRepeat internal repeat interval (25ms) to avoid suppressing repeats
@@ -1046,13 +1046,13 @@ namespace DS4Windows
 
         // NOTE: old wrappers removed — callers must use GetBeingTriggered/SetBeingTriggered.
 
-        // Helper: query/set per-action `PressedOnce` through ActionManager-backed per-action state.
-        private static bool GetPressedOnce(int index, SpecialAction action, int device)
+        // Helper: query per-action `IsToggledOn` through ActionManager-backed per-action state.
+        private static bool GetIsToggledOn(int index, SpecialAction action, int device)
         {
             try
             {
                 var st = ActionManager.GetStateFor(action, device);
-                if (st != null) return st.PressedOnce;
+                if (st != null) return st.IsToggledOn;
             }
             catch { }
             return false;
@@ -1125,11 +1125,11 @@ namespace DS4Windows
             catch { return false; }
         }
 
-        // PressedOnce lifecycle is managed by Action implementations (e.g., KeyAction).
-        // Mapping must not mutate per-action PressedOnce state.
+        // IsToggledOn lifecycle is managed by Action implementations (e.g., KeyAction).
+        // Mapping must not mutate per-action IsToggledOn state.
 
-        // Determine whether it's safe to clear the pressedonce flag for given device/key.
-        private static bool ShouldClearPressedOnce(int device, ushort key)
+        // Determine whether it's safe to clear the toggled-on flag for given device/key.
+        private static bool ShouldClearToggledOn(int device, ushort key)
         {
             try
             {
@@ -1591,11 +1591,11 @@ namespace DS4Windows
                                                 var binding = new DS4Windows.Actions.KeyActionBinding(sa);
                                                 try { ctrl?.Stop(binding, trig); } catch { }
                                             }
-                                            // For Toggle-type SpecialAction, clear PressedOnce on the physical/untrigger release
+                                                // For Toggle-type SpecialAction, clear toggled-on flag on the physical/untrigger release
                                             try
                                             {
                                                 if (sa != null && sa.keyType.HasFlag(DS4KeyType.Toggle))
-                                                    ActionManager.SetPressedOnce(sa, device, false);
+                                                    ActionManager.SetToggledOn(sa, device, false);
                                             }
                                             catch { }
                                         }
@@ -4893,12 +4893,12 @@ namespace DS4Windows
 
                         if (keyType.HasFlag(DS4KeyType.Toggle))
                         {
-                            if (!GetPressedOnce(value, null, device))
+                            if (!GetIsToggledOn(value, null, device))
                             {
                                 kp.current.toggle = !kp.current.toggle;
                                 kp.current.pending = true;
                                 kp.current.lastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
-                                // Do NOT set PressedOnce here; Action implementation handles it.
+                                // Do NOT set IsToggledOn here; Action implementation handles it.
                             }
                             kp.current.toggleCount++;
                         }
@@ -4906,7 +4906,7 @@ namespace DS4Windows
                     }
                         else
                         {
-                            // Do not clear PressedOnce here; Action implementation manages lifecycle.
+                            // Do not clear IsToggledOn here; Action implementation manages lifecycle.
                             // Intentionally left blank.
                         }
 
@@ -5138,16 +5138,16 @@ namespace DS4Windows
                     {
                         if (GetBoolActionMapping(device, dcs.control, cState, eState, tp, fieldMapping))
                         {
-                            if (!GetPressedOnce(keyvalue, null, device))
+                            if (!GetIsToggledOn(keyvalue, null, device))
                             {
                                 deviceState.currentClicks.toggle = !deviceState.currentClicks.toggle;
-                                // Do NOT set PressedOnce here; Action implementation handles it.
+                                // Do NOT set IsToggledOn here; Action implementation handles it.
                             }
                             deviceState.currentClicks.toggleCount++;
                         }
                         else
                         {
-                            // Do NOT clear PressedOnce here; Action implementation handles it.
+                            // Do NOT clear IsToggledOn here; Action implementation handles it.
                         }
                     }
 
@@ -5975,9 +5975,9 @@ namespace DS4Windows
                             }
                         }
 
-                        // NOTE: PressedOnce lifecycle for SpecialAction Key (toggle) is now managed by the
-                        // Action implementation (KeyAction) via ActionManager.SetPressedOnce.
-                        // Mapping must not clear per-action PressedOnce here to avoid races with
+                        // NOTE: IsToggledOn lifecycle for SpecialAction Key (toggle) is now managed by the
+                        // Action implementation (KeyAction) via ActionManager.SetToggledOn.
+                        // Mapping must not clear per-action IsToggledOn here to avoid races with
                         // the Action implementation and synthetic repeat flows.
 
                         if (!actionFound)
@@ -6293,7 +6293,7 @@ namespace DS4Windows
                     DispatchOrSetBeingTriggered(action, device, false);
                 }
 
-                // (moved) reset of pressedonce handled in main action loop
+                // (moved) reset of toggled-on flag handled in main action loop
             }
         }
 
@@ -6343,9 +6343,9 @@ namespace DS4Windows
                 }
 
                 // 押下済みフラグをクリア（ActionManager優先、legacy配列はフォールバック）
-                try { ActionManager.ClearPressedOnceForKey(key); } catch { }
-                // Legacy `pressedonce` removed; use ActionManager to clear per-key pressed-once state.
-                // ActionManager.ClearPressedOnceForKey already invoked above.
+                try { ActionManager.ClearToggledOnForKey(key); } catch { }
+                // Legacy `PressedOnce` removed; use ActionManager `IsToggledOn` to represent per-key toggled-on state.
+                // ActionManager.ClearToggledOnForKey already invoked above.
 
                 AppLogger.LogToGui($"Runtime state for key {key} cleared on all devices.", false);
             }
