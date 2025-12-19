@@ -14,16 +14,43 @@ namespace DS4Windows.Actions
 
         public IInputAction Input => null;
 
-        public IReadOnlyList<IOutputAction> Outputs => new List<IOutputAction>().AsReadOnly();
+        private readonly System.Collections.Generic.List<IOutputAction> outputs = new System.Collections.Generic.List<IOutputAction>();
+
+        public KeyActionBinding(SpecialAction sa, bool populateOutputs = true) : this(sa)
+        {
+            if (populateOutputs && sa != null)
+            {
+                outputs.Add(new KeyOutputAction(sa));
+            }
+        }
+
+        public IReadOnlyList<IOutputAction> Outputs => outputs.AsReadOnly();
 
         public void OnTriggered(ITriggerContext trigger)
         {
-            // No-op for now; controllers are started via registry/adapters directly.
+            try
+            {
+                // Invoke each output's Execute with a concrete context
+                var ctx = new OutputContextImpl(trigger.Device, trigger.OutputHandler);
+                foreach (var o in Outputs)
+                {
+                    try { o.Execute(ctx); } catch { }
+                }
+            }
+            catch { }
         }
 
         public void OnReleased(ITriggerContext trigger)
         {
-            // No-op
+            try
+            {
+                var ctx = new OutputContextImpl(trigger.Device, trigger.OutputHandler);
+                foreach (var o in Outputs)
+                {
+                    try { o.Stop(ctx); } catch { }
+                }
+            }
+            catch { }
         }
     }
 }
