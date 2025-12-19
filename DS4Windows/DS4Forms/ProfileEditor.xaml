@@ -65,7 +65,7 @@
         <!-- 上部ボタン類 -->
         <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,4,0,10">
             <TextBlock Text="{lex:BLoc Profile, StringFormat='{}{0}:'}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <TextBox x:Name="profileNameTxt" Text="" Width="160" VerticalContentAlignment="Center" />
+            <TextBox x:Name="profileNameTxt" Text="" Width="160" VerticalContentAlignment="Center" InputMethod.IsInputMethodEnabled="True" InputMethod.PreferredImeState="Off" />
             <Button x:Name="saveBtn" Content="{lex:Loc SaveProfile}" Margin="10,0,0,0" Click="SaveBtn_Click" />
             <Button x:Name="cancelBtn" Content="{lex:Loc Cancel}" Margin="10,0,0,0" Click="CancelBtn_Click" />
             <Button x:Name="applyBtn" Content="{lex:Loc Apply}" Margin="10,0,0,0" Click="ApplyBtn_Click" IsEnabled="False" />

@@ -16,7 +16,7 @@
         <DockPanel DockPanel.Dock="Top" Margin="4,8,4,8">
             <Label Content="Name:" DockPanel.Dock="Left" />
             <TextBox x:Name="actionNameTxt" Text="{Binding ActionName,FallbackValue=Name,ValidatesOnNotifyDataErrors=True}"
-                     Margin="8,0,0,0" DockPanel.Dock="Right" VerticalContentAlignment="Center" />
+                     Margin="8,0,0,0" DockPanel.Dock="Right" VerticalContentAlignment="Center" InputMethod.IsInputMethodEnabled="True" InputMethod.PreferredImeState="Off" />
         </DockPanel>
         <DockPanel DockPanel.Dock="Bottom">
             <DockPanel DockPanel.Dock="Left">

@@ -82,6 +82,8 @@
     <Style x:Key="WindowStyle" TargetType="{x:Type Window}">
         <Setter Property="Background" Value="{StaticResource BackgroundColor}" />
         <Setter Property="Foreground" Value="{StaticResource ForegroundColor}" />
+        <Setter Property="InputMethod.IsInputMethodEnabled" Value="True" />
+        <Setter Property="InputMethod.PreferredImeState" Value="Off" />
     </Style>
 
     <!-- Label Style -->
@@ -335,6 +337,8 @@
         <Setter Property="Background" Value="{StaticResource BackgroundColor}" />
         <Setter Property="Foreground" Value="{StaticResource ForegroundColor}" />
         <Setter Property="BorderBrush" Value="{StaticResource BorderColor}" />
+        <Setter Property="InputMethod.IsInputMethodEnabled" Value="True" />
+        <Setter Property="InputMethod.PreferredImeState" Value="On" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type TextBox}">
@@ -902,7 +906,7 @@
                                         BorderBrush="{TemplateBinding BorderBrush}" HorizontalContentAlignment="Stretch" IsTabStop="False" 
                                         ShowButtonSpinner="{Binding ShowButtonSpinner, RelativeSource={RelativeSource TemplatedParent}}" 
                                         VerticalContentAlignment="Stretch">
-                        <xctk:WatermarkTextBox x:Name="PART_TextBox" AutoMoveFocus="{Binding AutoMoveFocus, RelativeSource={RelativeSource TemplatedParent}}" AcceptsReturn="False" AutoSelectBehavior="{Binding AutoSelectBehavior, RelativeSource={RelativeSource TemplatedParent}}" Background="Transparent" BorderThickness="0" ContextMenu="{TemplateBinding ContextMenu}" FontStyle="{TemplateBinding FontStyle}" FontStretch="{TemplateBinding FontStretch}" FontWeight="{TemplateBinding FontWeight}" FontFamily="{TemplateBinding FontFamily}" Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" IsUndoEnabled="{Binding IsUndoEnabled, RelativeSource={RelativeSource TemplatedParent}}" IsTabStop="True" MinWidth="20" MaxLength="{Binding MaxLength, RelativeSource={RelativeSource TemplatedParent}}" Padding="{TemplateBinding Padding}" TextWrapping="NoWrap" TabIndex="{TemplateBinding TabIndex}" TextAlignment="{Binding TextAlignment, RelativeSource={RelativeSource TemplatedParent}}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" WatermarkTemplate="{Binding WatermarkTemplate, RelativeSource={RelativeSource TemplatedParent}}" Watermark="{Binding Watermark, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        <xctk:WatermarkTextBox x:Name="PART_TextBox" AutoMoveFocus="{Binding AutoMoveFocus, RelativeSource={RelativeSource TemplatedParent}}" AcceptsReturn="False" AutoSelectBehavior="{Binding AutoSelectBehavior, RelativeSource={RelativeSource TemplatedParent}}" Background="Transparent" BorderThickness="0" ContextMenu="{TemplateBinding ContextMenu}" FontStyle="{TemplateBinding FontStyle}" FontStretch="{TemplateBinding FontStretch}" FontWeight="{TemplateBinding FontWeight}" FontFamily="{TemplateBinding FontFamily}" Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" IsUndoEnabled="{Binding IsUndoEnabled, RelativeSource={RelativeSource TemplatedParent}}" IsTabStop="True" MinWidth="20" MaxLength="{Binding MaxLength, RelativeSource={RelativeSource TemplatedParent}}" Padding="{TemplateBinding Padding}" TextWrapping="NoWrap" TabIndex="{TemplateBinding TabIndex}" TextAlignment="{Binding TextAlignment, RelativeSource={RelativeSource TemplatedParent}}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" WatermarkTemplate="{Binding WatermarkTemplate, RelativeSource={RelativeSource TemplatedParent}}" Watermark="{Binding Watermark, RelativeSource={RelativeSource TemplatedParent}}" InputMethod.IsInputMethodEnabled="True" InputMethod.PreferredImeState="Off"/>
                     </xctk:ButtonSpinner>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
