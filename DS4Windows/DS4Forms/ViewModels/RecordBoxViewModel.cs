@@ -207,7 +207,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 settings.keyType = DS4KeyType.Macro;
                 if (macroModeIndex == 1)
                 {
+                    // When user selects "Repeat while held" in the macro editor,
+                    // preserve both HoldMacro and RepeatMacro flags so the
+                    // SpecialAction editor's Repeat checkbox stays in sync.
                     settings.keyType |= DS4KeyType.HoldMacro;
+                    settings.keyType |= DS4KeyType.RepeatMacro;
                 }
                 if (useScanCode)
                 {
@@ -222,6 +226,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 if (macroModeIndex == 1)
                 {
                     settings.shiftKeyType |= DS4KeyType.HoldMacro;
+                    settings.shiftKeyType |= DS4KeyType.RepeatMacro;
                 }
                 if (useScanCode)
                 {
