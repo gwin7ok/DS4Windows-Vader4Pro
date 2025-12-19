@@ -162,5 +162,108 @@ namespace DS4Windows.Actions.Tests
                 DS4Windows.DI.ServiceProviderHolder.SetProvider(null);
             }
         }
+
+        [Fact]
+        public void DeterministicRepeater_TriggerViaFake()
+        {
+            var dam = new DS4Windows.Actions.DefaultActionManager();
+            var srv = new TestServiceProvider(dam);
+            DS4Windows.DI.ServiceProviderHolder.SetProvider(srv);
+
+            // Install override to create FakeDeterministicRepeater for any adapter constructions
+            DS4Windows.Actions.RepeatHelperToIRepeaterAdapter.RepeaterFactoryOverride = (origFactory) => new FakeDeterministicRepeater();
+
+            try
+            {
+                // Create a SpecialAction configured as Toggle to drive controller path
+                var sa = new DS4Windows.SpecialAction("repeattest", "0", "Key", "0");
+                sa.KeyButtonSwitchMode = DS4Windows.SpecialAction.KeyButtonSwitchModeEnum.Toggle;
+                var ka = new DS4Windows.KeyAction(sa, 0);
+                var handler = new FakeKBMHandler();
+
+                dam.ClearAllToggledOn();
+                dam.ClearAllEntries();
+
+                // Trigger action: controller should create adapter that wraps FakeDeterministicRepeater
+                ka.OnTrigger(0, 0, 0, false, handler);
+
+                // Inspect mapping controllers and invoke TriggerOnce on any fake repeater found
+                var mappingType = typeof(DS4Windows.Mapping);
+                var dictField = mappingType.GetField("keyButtonControllers", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                var dict = dictField.GetValue(null) as System.Collections.IDictionary;
+                if (dict != null)
+                {
+                    foreach (System.Collections.DictionaryEntry de in dict)
+                    {
+                        var inst = de.Value as DS4Windows.KeyButtonActionController;
+                        if (inst == null) continue;
+                        // attempt to access internal entries via reflection to find the IRepeater and trigger it
+                        var implField = typeof(DS4Windows.KeyButtonActionController).GetField("impl", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                        var impl = implField?.GetValue(inst);
+                        if (impl == null) continue;
+                        var toggleImplType = impl.GetType();
+                        var entriesField = toggleImplType.GetField("entries", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                        var entries = entriesField?.GetValue(impl) as System.Collections.IDictionary;
+                        if (entries == null) continue;
+                        foreach (System.Collections.DictionaryEntry e in entries)
+                        {
+                            var entry = e.Value;
+                            var repField = entry.GetType().GetField("repeater", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                            var rep = repField?.GetValue(entry) as FakeDeterministicRepeater;
+                            try { rep?.TriggerOnce(); } catch { }
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                DS4Windows.Actions.RepeatHelperToIRepeaterAdapter.RepeaterFactoryOverride = null;
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(null);
+            }
+        }
+
+        [Fact]
+        public void KeyButtonActionControllerAdapter_StartStop_Toggle_Clears_IsToggledOn()
+        {
+            var dam = new DS4Windows.Actions.DefaultActionManager();
+            var srv = new TestServiceProvider(dam);
+            DS4Windows.DI.ServiceProviderHolder.SetProvider(srv);
+
+            try
+            {
+                var sa = new DS4Windows.SpecialAction("adaptertoggle", "0", "Key", "0");
+                sa.KeyButtonSwitchMode = DS4Windows.SpecialAction.KeyButtonSwitchModeEnum.Toggle;
+
+                dam.ClearAllToggledOn();
+                dam.ClearAllEntries();
+
+                var handler = new FakeKBMHandler();
+                var adapter = new DS4Windows.Actions.KeyButtonActionControllerAdapter(0, sa);
+                var binding = new DS4Windows.Actions.KeyActionBinding(sa);
+                var trigger = new DS4Windows.Actions.TriggerContextImpl
+                {
+                    Device = 0,
+                    IsEdgeEstablished = true,
+                    LogicalValue = 0,
+                    NativeValue = 0,
+                    OutputHandler = handler,
+                    Timestamp = DateTime.UtcNow
+                };
+
+                // Start should set IsToggledOn
+                adapter.Start(binding, trigger);
+                var st = ActionManager.GetStateFor(sa, 0);
+                Assert.NotNull(st);
+                Assert.True(st.IsToggledOn);
+
+                // Stop should clear IsToggledOn via ToggleOff path
+                adapter.Stop(binding, trigger);
+                Assert.False(st.IsToggledOn);
+            }
+            finally
+            {
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(null);
+            }
+        }
     }
 }

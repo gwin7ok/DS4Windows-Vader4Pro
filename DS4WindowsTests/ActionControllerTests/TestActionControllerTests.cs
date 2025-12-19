@@ -66,6 +66,15 @@ namespace DS4Windows.Actions.Tests
             repeater.Stop();
         }
 
+        public void Handle(IActionBinding binding, ITriggerContext trigger)
+        {
+            // For tests treat established as Start, released as Stop
+            if (trigger != null && trigger.IsEdgeEstablished)
+                Start(binding, trigger);
+            else
+                Stop(binding, trigger);
+        }
+
         public void Clear() { Running = false; }
 
         public void Dispose() { }

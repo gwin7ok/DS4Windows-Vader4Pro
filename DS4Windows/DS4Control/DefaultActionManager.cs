@@ -230,6 +230,8 @@ namespace DS4Windows.Actions
             st.IsToggledOn = value;
             try { ActionManager.FireToggledOnChanged(action, device, old, value); } catch { }
 
+                // No defensive timestamping here; toggled-on lifecycle is authoritative and single-writer.
+
                 try
                 {
                     var trace = new StackTrace(1, false);

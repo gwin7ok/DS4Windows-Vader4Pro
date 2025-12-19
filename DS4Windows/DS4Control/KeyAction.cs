@@ -62,24 +62,9 @@ namespace DS4Windows
 
                 var binding = new DS4Windows.Actions.KeyActionBinding(action);
 
-                if (IsToggle())
-                {
-                    if (!state.IsToggledOn)
-                    {
-                        try { ctrl?.Start(binding, trigger); } catch { }
-                        AppLogger.LogTrace($"KeyAction: trigger(established) delegated to controller for TOGGLE name={action?.name} device={device} key={logicalValue}");
-                    }
-                    else
-                    {
-                        try { ctrl?.Stop(binding, trigger); } catch { }
-                        AppLogger.LogTrace($"KeyAction: trigger(released) delegated to controller for TOGGLE name={action?.name} device={device} key={logicalValue}");
-                    }
-                }
-                else
-                {
-                    try { ctrl?.Start(binding, trigger); } catch { }
-                    AppLogger.LogTrace($"KeyAction: press sent name={action?.name} device={device} key={logicalValue}");
-                }
+                // Forward the trigger (established) to the controller and let it decide semantics (press vs toggle)
+                try { ctrl?.Handle(binding, trigger); } catch { }
+                AppLogger.LogTrace($"KeyAction: trigger(established) forwarded to controller name={action?.name} device={device} key={logicalValue}");
             }
             catch (Exception ex)
             {
@@ -103,9 +88,8 @@ namespace DS4Windows
                     Timestamp = DateTime.UtcNow
                 };
                 var binding = new DS4Windows.Actions.KeyActionBinding(action);
-                try { ctrl?.Stop(binding, trigger); } catch { }
-
-                // Release notifications are delegated to controller; pressed-once lifecycle is managed by controller.
+                // Forward release edge to controller and let controller instance decide how to handle it.
+                try { ctrl?.Handle(binding, trigger); } catch { }
             }
             catch (Exception ex)
             {

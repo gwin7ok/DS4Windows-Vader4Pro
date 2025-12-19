@@ -24,6 +24,9 @@ namespace DS4Windows
         // Expose assigned action name for diagnostics
         public string AssignedActionName => assignedActionName;
 
+        // Expose whether this controller was created in Toggle mode (used by adapters)
+        public bool IsToggleMode { get { return this.mode == Mode.Toggle; } }
+
         public KeyButtonActionController(int device, Mode mode, string actionName = "<unknown>")
         {
             this.device = device;
@@ -176,7 +179,8 @@ namespace DS4Windows
                     }
                     else
                     {
-                        // already toggled-on: do nothing on additional OnDown
+                        // already toggled-on: interpret additional OnDown as explicit toggle-off
+                        try { OnToggleOff(kvpKey, nativeKey, useScanCode, handler); } catch { }
                     }
                 }
                 catch { }

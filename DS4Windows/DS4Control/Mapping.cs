@@ -1515,7 +1515,7 @@ namespace DS4Windows
                                                     Timestamp = DateTime.UtcNow
                                                 };
                                                 var binding = new DS4Windows.Actions.KeyActionBinding(sa);
-                                                try { ctrl?.Start(binding, trig); } catch { }
+                                                try { ctrl?.Handle(binding, trig); } catch { }
                                             }
                                         }
                                     }
@@ -1589,7 +1589,7 @@ namespace DS4Windows
                                                     Timestamp = DateTime.UtcNow
                                                 };
                                                 var binding = new DS4Windows.Actions.KeyActionBinding(sa);
-                                                try { ctrl?.Stop(binding, trig); } catch { }
+                                                try { ctrl?.Handle(binding, trig); } catch { }
                                             }
                                                 // For Toggle-type SpecialAction, clear toggled-on flag on the physical/untrigger release
                                             try
@@ -4213,8 +4213,8 @@ namespace DS4Windows
                     return true;
                 }
 
-                var kbc = GetOrCreateKeyButtonController(device, action);
-                if (kbc != null)
+                var ctrl = GetOrCreateKeyButtonControllerForAction(device, action);
+                if (ctrl != null)
                 {
                     // Try a final DispatchTrigger via TriggerContext before calling controller directly
                     bool handledFinal = false;
@@ -4236,7 +4236,7 @@ namespace DS4Windows
 
                     if (!handledFinal)
                     {
-                        kbc.OnSATriggerEstablished(logicalValue, nativeValue, useScanCode, outputKBMHandler, true);
+                        try { ActionManager.DispatchTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); } catch { }
                     }
                     try
                     {
@@ -4298,8 +4298,8 @@ namespace DS4Windows
                     return true;
                 }
 
-                var kbc = GetOrCreateKeyButtonController(device, action);
-                if (kbc != null)
+                var ctrl = GetOrCreateKeyButtonControllerForAction(device, action);
+                if (ctrl != null)
                 {
                     bool handledFinal = false;
                     try
@@ -4320,7 +4320,7 @@ namespace DS4Windows
 
                     if (!handledFinal)
                     {
-                        kbc.OnSATriggerReleased(logicalValue, nativeValue, useScanCode, outputKBMHandler);
+                        try { ActionManager.DispatchTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); } catch { }
                     }
                     try
                     {
