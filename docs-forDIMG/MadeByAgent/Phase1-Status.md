@@ -60,7 +60,8 @@
 - `MouseOutputAction` はドキュメント上の設計名（`docs/OutputAction-Feature-Inventory.md` で要件定義のみ）。実ファイルはまだ存在しない。
 - `Mapping.cs` の Mouse 系呼び出し箇所は `docs/Direct-Callsites-Inventory.md` にインベントリ済み（L1272〜L1377、L6648〜L6708 等）。
 - `VirtualKBMBase` の `PerformMouseButtonEvent` / `PerformMouseButtonEventAlt` は既存（`FakerInputHandler.cs`, `SendInputHandler.cs`）。
-- C2 は `MouseOutputAction` の新規作成（`KeyOutputAction` と同様のパターン）が必要。現在は未着手（次の PR 対象）。
+- C2 は `MouseOutputAction` の新規作成（`KeyOutputAction` と同様のパターン）が必要。現在は未着手（次PR対象）。
+- 2026-08-26: `MouseOutputAction.cs` 新規作成完了（`IOutputAction` 実装、`Execute`/`Stop` で `AppLogger.LogTrace` 維持、フォールバックは `Mapping.cs` 側に残存 — §2.1修正版準拠）。ビルド成功（`dotnet build` 通過）。
 
 ## 次の推奨アクション
 
