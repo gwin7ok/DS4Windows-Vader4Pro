@@ -34,6 +34,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using WPFLocalizeExtension.Engine;
 using DS4Windows;
+using DS4Windows.DI;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DS4WinWPF
@@ -311,6 +312,17 @@ namespace DS4WinWPF
             catch (Exception ex)
             {
                 AppLogger.LogTrace($"DI initialization failed: {ex}");
+            }
+
+            // フェーズ0-3: AppHost正式ルートの動作確認（古い簡易ServiceCollectionは削除せず残す）
+            try
+            {
+                var host = AppHost.CreateHost(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+                AppLogger.LogInfo("AppHost.CreateHost() called successfully (Phase 0-3 verification)");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"AppHost verification call failed (expected if no full config): {ex.Message}");
             }
 
             CreateControlService(parser);

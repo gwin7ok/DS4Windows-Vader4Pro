@@ -347,6 +347,8 @@
 			<DependentUpon>Strings.resx</DependentUpon>
 		</EmbeddedResource>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
 		<EmbeddedResource Update="Translations\Strings.fr.resx">
 			<DependentUpon>Strings.resx</DependentUpon>
 		</EmbeddedResource>
