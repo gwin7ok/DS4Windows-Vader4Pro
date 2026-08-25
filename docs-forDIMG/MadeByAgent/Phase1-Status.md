@@ -56,6 +56,12 @@
 - `MockManagedActionManager.cs`: 完成
 - `DS4WinWPF.csproj`: `Microsoft.Extensions.Hosting` 8.0.0, `Configuration` 8.0.0 追加済み
 
+## C2 調査結果（2026-08-17 追加）
+- `MouseOutputAction` はドキュメント上の設計名（`docs/OutputAction-Feature-Inventory.md` で要件定義のみ）。実ファイルはまだ存在しない。
+- `Mapping.cs` の Mouse 系呼び出し箇所は `docs/Direct-Callsites-Inventory.md` にインベントリ済み（L1272〜L1377、L6648〜L6708 等）。
+- `VirtualKBMBase` の `PerformMouseButtonEvent` / `PerformMouseButtonEventAlt` は既存（`FakerInputHandler.cs`, `SendInputHandler.cs`）。
+- C2 は `MouseOutputAction` の新規作成（`KeyOutputAction` と同様のパターン）が必要。現在は未着手（次の PR 対象）。
+
 ## 次の推奨アクション
 
 1. `MouseOutputAction` の存在確認と `Mapping.cs` の Mouse 系呼び出し箇所のインベントリ再確認（C2 開始）
