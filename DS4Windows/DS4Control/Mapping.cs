@@ -238,7 +238,7 @@ namespace DS4Windows
             catch { return null; }
         }
 
-            // Legacy actionDone compatibility removed — use ActionManager and ActionInstanceState.
+        // Legacy actionDone compatibility removed — use ActionManager and ActionInstanceState.
 
         // Remove and destroy all per-device KeyButtonActionController instances for given device
         public static void ClearKeyButtonControllersForDevice(int device)
@@ -1231,9 +1231,9 @@ namespace DS4Windows
             50, // DS4Controls.BLP
             51, // DS4Controls.BRP
         };
-        #pragma warning disable CS0414 // macroEndIndex assigned but not read; keep for readability of macro array length
+#pragma warning disable CS0414 // macroEndIndex assigned but not read; keep for readability of macro array length
         private static int macroEndIndex = DS4_CONTROL_MACRO_ARRAY_LEN - 1;
-        #pragma warning restore CS0414
+#pragma warning restore CS0414
 
         // Special macros
         static bool altTabDone = true;
@@ -1269,8 +1269,38 @@ namespace DS4Windows
             {
                 AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftDown");
                 AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
-                outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
-            
+                // C2 MouseOutputAction integration (§2.1修正版: new DI route + fallback preserved)
+                bool mouseHandled = false;
+                try
+                {
+                    var mouseCtx = new DS4Windows.TriggerContext
+                    {
+                        ActionDef = null,
+                        Device = device,
+                        LogicalValue = 0,
+                        NativeValue = 0,
+                        UseScanCode = false,
+                        OutputHandler = outputKBMHandler,
+                        IsEstablished = true
+                    };
+                    var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                    if (sp != null)
+                    {
+                        var mouseAction = sp.GetService(typeof(DS4Windows.Actions.MouseOutputAction)) as DS4Windows.Actions.MouseOutputAction;
+                        if (mouseAction != null)
+                        {
+                            mouseAction.Execute(new DS4Windows.Actions.OutputContextImpl(device, outputKBMHandler));
+                            mouseHandled = true;
+                        }
+                    }
+                }
+                catch { mouseHandled = false; }
+
+                if (!mouseHandled)
+                {
+                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                }
+
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
@@ -1316,7 +1346,37 @@ namespace DS4Windows
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                    // C2 MouseOutputAction integration (§2.1修正版: new DI route + fallback preserved)
+                    bool mouseHandled = false;
+                    try
+                    {
+                        var mouseCtx = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = null,
+                            Device = device,
+                            LogicalValue = 0,
+                            NativeValue = 0,
+                            UseScanCode = false,
+                            OutputHandler = outputKBMHandler,
+                            IsEstablished = true
+                        };
+                        var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                        if (sp != null)
+                        {
+                            var mouseAction = sp.GetService(typeof(DS4Windows.Actions.MouseOutputAction)) as DS4Windows.Actions.MouseOutputAction;
+                            if (mouseAction != null)
+                            {
+                                mouseAction.Execute(new DS4Windows.Actions.OutputContextImpl(device, outputKBMHandler));
+                                mouseHandled = true;
+                            }
+                        }
+                    }
+                    catch { mouseHandled = false; }
+
+                    if (!mouseHandled)
+                    {
+                        outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                    }
                 }
                 else if (globalState.currentClicks.leftCount == 0 && globalState.previousClicks.leftCount != 0)
                 {
@@ -1451,287 +1511,289 @@ namespace DS4Windows
                     long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
                     if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                     {
-                                // Use ToggleRepeatController for deterministic toggle-driven press+repeat
-                                AppLogger.LogTrace($"SYNTHETIC TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
-                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
+                        // Use ToggleRepeatController for deterministic toggle-driven press+repeat
+                        AppLogger.LogTrace($"SYNTHETIC TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
+                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
+                        try
+                        {
+                            SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                            bool handled = false;
+                            try
+                            {
+                                if (sa != null)
+                                {
+                                    var ctx = new DS4Windows.TriggerContext
+                                    {
+                                        ActionDef = sa,
+                                        Device = device,
+                                        LogicalValue = (ushort)kvpKey,
+                                        NativeValue = nativeKey,
+                                        UseScanCode = gkp.current.scanCodeCount != 0,
+                                        OutputHandler = outputKBMHandler,
+                                        IsEstablished = true
+                                    };
+                                    handled = DispatchInputEdge(ctx);
+                                }
+                            }
+                            catch { }
+                            if (!handled)
+                            {
+                                var kbc = (DS4Windows.Actions.IActionController)null;
+                                if (sa != null)
+                                {
                                     try
                                     {
-                                        SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                                        bool handled = false;
-                                        try
+                                        var ctx2 = new DS4Windows.TriggerContext
                                         {
-                                            if (sa != null)
-                                            {
-                                                var ctx = new DS4Windows.TriggerContext
-                                                {
-                                                    ActionDef = sa,
-                                                    Device = device,
-                                                    LogicalValue = (ushort)kvpKey,
-                                                    NativeValue = nativeKey,
-                                                    UseScanCode = gkp.current.scanCodeCount != 0,
-                                                    OutputHandler = outputKBMHandler,
-                                                    IsEstablished = true
-                                                };
-                                                handled = DispatchInputEdge(ctx);
-                                            }
-                                        }
-                                        catch { }
-                                        if (!handled)
-                                        {
-                                            var kbc = (DS4Windows.Actions.IActionController)null;
-                                            if (sa != null)
-                                            {
-                                                try
-                                                {
-                                                    var ctx2 = new DS4Windows.TriggerContext
-                                                    {
-                                                        ActionDef = sa,
-                                                        Device = device,
-                                                        LogicalValue = (ushort)kvpKey,
-                                                        NativeValue = nativeKey,
-                                                        UseScanCode = gkp.current.scanCodeCount != 0,
-                                                        OutputHandler = outputKBMHandler,
-                                                        IsEstablished = true
-                                                    };
-                                                    handled = DispatchInputEdge(ctx2);
-                                                }
-                                                catch { }
-                                                try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
-                                            }
-                                            else
-                                            {
-                                                AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
-                                            }
-                                            if (!handled && kbc != null)
-                                            {
-                                                var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
-                                                var trig = new DS4Windows.Actions.TriggerContextImpl
-                                                {
-                                                    Device = device,
-                                                    IsEdgeEstablished = true,
-                                                    LogicalValue = (ushort)kvpKey,
-                                                    NativeValue = nativeKey,
-                                                    OutputHandler = outputKBMHandler,
-                                                    Timestamp = DateTime.UtcNow
-                                                };
-                                                var binding = new DS4Windows.Actions.KeyActionBinding(sa);
-                                                try { ctrl?.Handle(binding, trig); } catch { }
-                                            }
-                                        }
+                                            ActionDef = sa,
+                                            Device = device,
+                                            LogicalValue = (ushort)kvpKey,
+                                            NativeValue = nativeKey,
+                                            UseScanCode = gkp.current.scanCodeCount != 0,
+                                            OutputHandler = outputKBMHandler,
+                                            IsEstablished = true
+                                        };
+                                        handled = DispatchInputEdge(ctx2);
                                     }
-                                catch { }
-                                // Clear pending after honoring it and mark last send time
-                                gkp.current.pending = false;
-                                gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                                try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
-                                // Mark last send time to throttle repeats
-                                gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                    catch { }
+                                    try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
+                                }
+                                else
+                                {
+                                    AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
+                                }
+                                if (!handled && kbc != null)
+                                {
+                                    var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
+                                    var trig = new DS4Windows.Actions.TriggerContextImpl
+                                    {
+                                        Device = device,
+                                        IsEdgeEstablished = true,
+                                        LogicalValue = (ushort)kvpKey,
+                                        NativeValue = nativeKey,
+                                        OutputHandler = outputKBMHandler,
+                                        Timestamp = DateTime.UtcNow
+                                    };
+                                    var binding = new DS4Windows.Actions.KeyActionBinding(sa);
+                                    try { ctrl?.Handle(binding, trig); } catch { }
+                                }
+                            }
+                        }
+                        catch { }
+                        // Clear pending after honoring it and mark last send time
+                        gkp.current.pending = false;
+                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                        try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
+                        // Mark last send time to throttle repeats
+                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                     }
                     else
                     {
-                        AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                        AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
                     }
                 }
                 else if ((gkp.current.toggleCount != 0 || gkp.current.pending) && gkp.previous.toggleCount == 0 && !gkp.current.toggle)
                 {
-                        if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
+                    if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
+                    {
+                        long nowTicksSend = DateTime.UtcNow.Ticks;
+                        long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                        if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                         {
-                            long nowTicksSend = DateTime.UtcNow.Ticks;
-                            long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                            if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                            long _nowTicksDbg = DateTime.UtcNow.Ticks;
+                            long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
+                            AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
+                            try
                             {
-                                long _nowTicksDbg = DateTime.UtcNow.Ticks;
-                                long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
-                                AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
-                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
+                                SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                                bool handled = false;
+                                try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                if (!handled)
+                                {
+                                    var kbc = (DS4Windows.Actions.IActionController)null;
+                                    if (sa != null)
+                                    {
+                                        try
+                                        {
+                                            // Try central dispatch via TriggerContext even when previously attempted via specialized path
+                                            var ctxRel = new DS4Windows.TriggerContext
+                                            {
+                                                ActionDef = sa,
+                                                Device = device,
+                                                LogicalValue = (ushort)kvpKey,
+                                                NativeValue = nativeKey,
+                                                UseScanCode = gkp.current.scanCodeCount != 0,
+                                                OutputHandler = outputKBMHandler,
+                                                IsEstablished = false
+                                            };
+                                            handled = DispatchInputEdge(ctxRel);
+                                        }
+                                        catch { }
+                                        try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
+                                    }
+                                    else
+                                    {
+                                        AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
+                                    }
+                                    if (!handled && kbc != null)
+                                    {
+                                        var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
+                                        var trig = new DS4Windows.Actions.TriggerContextImpl
+                                        {
+                                            Device = device,
+                                            IsEdgeEstablished = false,
+                                            LogicalValue = (ushort)kvpKey,
+                                            NativeValue = nativeKey,
+                                            OutputHandler = outputKBMHandler,
+                                            Timestamp = DateTime.UtcNow
+                                        };
+                                        var binding = new DS4Windows.Actions.KeyActionBinding(sa);
+                                        try { ctrl?.Handle(binding, trig); } catch { }
+                                    }
+                                    // For Toggle-type SpecialAction, clear toggled-on flag on the physical/untrigger release
                                     try
                                     {
-                                        SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                                        bool handled = false;
-                                        try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
-                                        if (!handled)
-                                        {
-                                            var kbc = (DS4Windows.Actions.IActionController)null;
-                                            if (sa != null)
-                                            {
-                                                try
-                                                {
-                                                    // Try central dispatch via TriggerContext even when previously attempted via specialized path
-                                                    var ctxRel = new DS4Windows.TriggerContext
-                                                    {
-                                                        ActionDef = sa,
-                                                        Device = device,
-                                                        LogicalValue = (ushort)kvpKey,
-                                                        NativeValue = nativeKey,
-                                                        UseScanCode = gkp.current.scanCodeCount != 0,
-                                                        OutputHandler = outputKBMHandler,
-                                                        IsEstablished = false
-                                                    };
-                                                    handled = DispatchInputEdge(ctxRel);
-                                                }
-                                                catch { }
-                                                try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
-                                            }
-                                            else
-                                            {
-                                                AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
-                                            }
-                                            if (!handled && kbc != null)
-                                            {
-                                                var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
-                                                var trig = new DS4Windows.Actions.TriggerContextImpl
-                                                {
-                                                    Device = device,
-                                                    IsEdgeEstablished = false,
-                                                    LogicalValue = (ushort)kvpKey,
-                                                    NativeValue = nativeKey,
-                                                    OutputHandler = outputKBMHandler,
-                                                    Timestamp = DateTime.UtcNow
-                                                };
-                                                var binding = new DS4Windows.Actions.KeyActionBinding(sa);
-                                                try { ctrl?.Handle(binding, trig); } catch { }
-                                            }
-                                                // For Toggle-type SpecialAction, clear toggled-on flag on the physical/untrigger release
-                                            try
-                                            {
-                                                if (sa != null && sa.keyType.HasFlag(DS4KeyType.Toggle))
-                                                    ActionManager.SetToggledOn(sa, device, false);
-                                            }
-                                            catch { }
-                                        }
+                                        if (sa != null && sa.keyType.HasFlag(DS4KeyType.Toggle))
+                                            ActionManager.SetToggledOn(sa, device, false);
                                     }
-                                catch { }
-                                    // Mark pending cleared and update last send time
-                                    gkp.current.pending = false;
-                                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                                    try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
-                                    // Mark last send time to throttle repeats
-                                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                                    // Ensure current and previous state reflect released to avoid repeated release sends
-                                    gkp.current.vkCount = 0;
-                                    gkp.current.scanCodeCount = 0;
-                                    gkp.current.repeatCount = 0;
-                                    gkp.current.toggleCount = 0;
-                                    gkp.current.toggle = false;
-                                    gkp.previous.vkCount = 0;
-                                    gkp.previous.scanCodeCount = 0;
-                                    gkp.previous.repeatCount = 0;
-                                    gkp.previous.toggleCount = 0;
-                                    gkp.previous.toggle = false;
+                                    catch { }
+                                }
                             }
-                            else
-                            {
-                                AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
-                            }
+                            catch { }
+                            // Mark pending cleared and update last send time
+                            gkp.current.pending = false;
+                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
+                            // Mark last send time to throttle repeats
+                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            // Ensure current and previous state reflect released to avoid repeated release sends
+                            gkp.current.vkCount = 0;
+                            gkp.current.scanCodeCount = 0;
+                            gkp.current.repeatCount = 0;
+                            gkp.current.toggleCount = 0;
+                            gkp.current.toggle = false;
+                            gkp.previous.vkCount = 0;
+                            gkp.previous.scanCodeCount = 0;
+                            gkp.previous.repeatCount = 0;
+                            gkp.previous.toggleCount = 0;
+                            gkp.previous.toggle = false;
                         }
+                        else
+                        {
+                            AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
+                        }
+                    }
                     else
+                    {
+                        long nowTicksSend = DateTime.UtcNow.Ticks;
+                        long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                        if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                         {
-                            long nowTicksSend = DateTime.UtcNow.Ticks;
-                            long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                            if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                            AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending}");
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
+                            try
                             {
-                                AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending}");
-                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-                                    try
+                                SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                                bool handled = false;
+                                try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                if (!handled)
+                                {
+                                    var kbc = (DS4Windows.Actions.IActionController)null;
+                                    if (sa != null)
                                     {
-                                        SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                                        bool handled = false;
-                                        try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
-                                        if (!handled)
+                                        try
                                         {
-                                            var kbc = (DS4Windows.Actions.IActionController)null;
-                                            if (sa != null)
+                                            var ctxRel2 = new DS4Windows.TriggerContext
                                             {
-                                                try
-                                                {
-                                                    var ctxRel2 = new DS4Windows.TriggerContext
-                                                    {
-                                                        ActionDef = sa,
-                                                        Device = device,
-                                                        LogicalValue = (ushort)kvpKey,
-                                                        NativeValue = nativeKey,
-                                                        UseScanCode = gkp.current.scanCodeCount != 0,
-                                                        OutputHandler = outputKBMHandler,
-                                                        IsEstablished = false
-                                                    };
-                                                    handled = DispatchInputEdge(ctxRel2);
-                                                }
-                                                catch { }
-                                                try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
-                                            }
-                                            else
-                                            {
-                                                AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
-                                            }
-                                            if (!handled && kbc != null)
-                                            {
-                                                var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
-                                                var trig = new DS4Windows.Actions.TriggerContextImpl
-                                                {
-                                                    Device = device,
-                                                    IsEdgeEstablished = false,
-                                                    LogicalValue = (ushort)kvpKey,
-                                                    NativeValue = nativeKey,
-                                                    OutputHandler = outputKBMHandler,
-                                                    Timestamp = DateTime.UtcNow
-                                                };
-                                                var binding = new DS4Windows.Actions.KeyActionBinding(sa);
-                                                try { ctrl?.Stop(binding, trig); } catch { }
-                                            }
+                                                ActionDef = sa,
+                                                Device = device,
+                                                LogicalValue = (ushort)kvpKey,
+                                                NativeValue = nativeKey,
+                                                UseScanCode = gkp.current.scanCodeCount != 0,
+                                                OutputHandler = outputKBMHandler,
+                                                IsEstablished = false
+                                            };
+                                            handled = DispatchInputEdge(ctxRel2);
                                         }
+                                        catch { }
+                                        try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
                                     }
-                                catch { }
-                                    // Mark pending cleared and update last send time
-                                    gkp.current.pending = false;
-                                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                                    try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
-                                    // Mark last send time to throttle repeats and clear device counts
-                                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                                    try {
-                                        kvpValue.current.vkCount = 0;
-                                        kvpValue.current.scanCodeCount = 0;
-                                        kvpValue.current.repeatCount = 0;
-                                        kvpValue.current.toggleCount = 0;
-                                        kvpValue.current.toggle = false;
-                                    } catch { }
-                                    // Ensure current and previous state reflect released to avoid repeated release sends
-                                    gkp.current.vkCount = 0;
-                                    gkp.current.scanCodeCount = 0;
-                                    gkp.current.repeatCount = 0;
-                                    gkp.current.toggleCount = 0;
-                                    gkp.current.toggle = false;
-                                    gkp.previous.vkCount = 0;
-                                    gkp.previous.scanCodeCount = 0;
-                                    gkp.previous.repeatCount = 0;
-                                    gkp.previous.toggleCount = 0;
-                                    gkp.previous.toggle = false;
+                                    else
+                                    {
+                                        AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
+                                    }
+                                    if (!handled && kbc != null)
+                                    {
+                                        var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
+                                        var trig = new DS4Windows.Actions.TriggerContextImpl
+                                        {
+                                            Device = device,
+                                            IsEdgeEstablished = false,
+                                            LogicalValue = (ushort)kvpKey,
+                                            NativeValue = nativeKey,
+                                            OutputHandler = outputKBMHandler,
+                                            Timestamp = DateTime.UtcNow
+                                        };
+                                        var binding = new DS4Windows.Actions.KeyActionBinding(sa);
+                                        try { ctrl?.Stop(binding, trig); } catch { }
+                                    }
+                                }
                             }
-                            else
+                            catch { }
+                            // Mark pending cleared and update last send time
+                            gkp.current.pending = false;
+                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
+                            // Mark last send time to throttle repeats and clear device counts
+                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                            try
                             {
-                                AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                                kvpValue.current.vkCount = 0;
+                                kvpValue.current.scanCodeCount = 0;
+                                kvpValue.current.repeatCount = 0;
+                                kvpValue.current.toggleCount = 0;
+                                kvpValue.current.toggle = false;
                             }
+                            catch { }
+                            // Ensure current and previous state reflect released to avoid repeated release sends
+                            gkp.current.vkCount = 0;
+                            gkp.current.scanCodeCount = 0;
+                            gkp.current.repeatCount = 0;
+                            gkp.current.toggleCount = 0;
+                            gkp.current.toggle = false;
+                            gkp.previous.vkCount = 0;
+                            gkp.previous.scanCodeCount = 0;
+                            gkp.previous.repeatCount = 0;
+                            gkp.previous.toggleCount = 0;
+                            gkp.previous.toggle = false;
                         }
+                        else
+                        {
+                            AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
+                        }
+                    }
                 }
                 else if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
                 {
-                        if (gkp.current.scanCodeCount != 0)
+                    if (gkp.current.scanCodeCount != 0)
+                    {
+                        long nowTicksSend = DateTime.UtcNow.Ticks;
+                        long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                        oldnow = DateTime.UtcNow;
+                        if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                         {
-                            long nowTicksSend = DateTime.UtcNow.Ticks;
-                            long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                            oldnow = DateTime.UtcNow;
-                            if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
-                            {
-                                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
-                                outputKBMHandler.PerformKeyPressAlt(nativeKey);
-                                gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                            }
-                            else
-                            {
-                                AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
-                            }
-                            pressagain = false;
-                            keyshelddown = kvpKey;
+                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
+                            outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                         }
+                        else
+                        {
+                            AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
+                        }
+                        pressagain = false;
+                        keyshelddown = kvpKey;
+                    }
                     else
                     {
                         long nowTicksSend = DateTime.UtcNow.Ticks;
@@ -1745,7 +1807,7 @@ namespace DS4Windows
                         }
                         else
                         {
-                            AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
+                            AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
                         }
                         pressagain = false;
                         keyshelddown = kvpKey;
@@ -1767,77 +1829,77 @@ namespace DS4Windows
                             now = DateTime.UtcNow;
                             if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
                             {
-                                    oldnow = now;
-                                    long nowTicksSend = DateTime.UtcNow.Ticks;
-                                    long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                                    if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
-                                    {
-                                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
-                                        outputKBMHandler.PerformKeyPressAlt(nativeKey);
-                                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                                    }
-                                    else
-                                    {
-                                        AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
-                                    }
+                                oldnow = now;
+                                long nowTicksSend = DateTime.UtcNow.Ticks;
+                                long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                                if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
+                                {
+                                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
+                                    outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                                }
+                                else
+                                {
+                                    AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
+                                }
                             }
                         }
                         else if (pressagain)
                         {
                             now = DateTime.UtcNow;
-                                if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
+                            if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
+                            {
+                                oldnow = now;
+                                long nowTicksSend = DateTime.UtcNow.Ticks;
+                                long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
+                                if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                                 {
-                                    oldnow = now;
-                                    long nowTicksSend = DateTime.UtcNow.Ticks;
-                                    long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                                    if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
-                                    {
-                                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
-                                        outputKBMHandler.PerformKeyPress(nativeKey);
-                                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                                    }
-                                    else
-                                    {
-                                        AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend/TimeSpan.TicksPerMillisecond}");
-                                    }
+                                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
+                                    outputKBMHandler.PerformKeyPress(nativeKey);
+                                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                                 }
+                                else
+                                {
+                                    AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
+                                }
+                            }
                         }
                     }
                 }
 
                 if ((gkp.current.toggleCount == 0 && gkp.previous.toggleCount == 0) && gkp.current.vkCount + gkp.current.scanCodeCount == 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount != 0)
                 {
-                        if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
-                        {
-                            long nowTicksSend = DateTime.UtcNow.Ticks;
-                            long _nowTicksDbg = DateTime.UtcNow.Ticks;
-                            long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
-                            AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
-                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
-                            outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
-                            // update last send and clear previous pressed counts to avoid repeats
-                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                            gkp.previous.vkCount = 0;
-                            gkp.previous.scanCodeCount = 0;
-                            gkp.previous.repeatCount = 0;
-                            gkp.previous.toggleCount = 0;
-                            gkp.previous.toggle = false;
-                            pressagain = false;
-                        }
+                    if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
+                    {
+                        long nowTicksSend = DateTime.UtcNow.Ticks;
+                        long _nowTicksDbg = DateTime.UtcNow.Ticks;
+                        long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
+                        AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
+                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
+                        outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
+                        // update last send and clear previous pressed counts to avoid repeats
+                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                        gkp.previous.vkCount = 0;
+                        gkp.previous.scanCodeCount = 0;
+                        gkp.previous.repeatCount = 0;
+                        gkp.previous.toggleCount = 0;
+                        gkp.previous.toggle = false;
+                        pressagain = false;
+                    }
                     else
-                        {
-                            long nowTicksSend = DateTime.UtcNow.Ticks;
-                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-                            outputKBMHandler.PerformKeyRelease(nativeKey);
-                            // update last send and clear previous pressed counts to avoid repeats
-                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                            gkp.previous.vkCount = 0;
-                            gkp.previous.scanCodeCount = 0;
-                            gkp.previous.repeatCount = 0;
-                            gkp.previous.toggleCount = 0;
-                            gkp.previous.toggle = false;
-                            pressagain = false;
-                        }
+                    {
+                        long nowTicksSend = DateTime.UtcNow.Ticks;
+                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
+                        outputKBMHandler.PerformKeyRelease(nativeKey);
+                        // update last send and clear previous pressed counts to avoid repeats
+                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
+                        gkp.previous.vkCount = 0;
+                        gkp.previous.scanCodeCount = 0;
+                        gkp.previous.repeatCount = 0;
+                        gkp.previous.toggleCount = 0;
+                        gkp.previous.toggle = false;
+                        pressagain = false;
+                    }
                 }
             }
 
@@ -3631,7 +3693,7 @@ namespace DS4Windows
                                 if (xboxControl == X360Controls.TouchpadClick)
                                 {
                                     outputfieldMapping.outputTouchButton = true;
-                                    
+
                                 }
                                 else if (xboxControl >= X360Controls.LeftMouse && xboxControl <= X360Controls.WDOWN)
                                 {
@@ -3640,31 +3702,31 @@ namespace DS4Windows
                                     {
                                         case X360Controls.LeftMouse:
                                             deviceState.currentClicks.leftCount++;
-                                            
+
                                             break;
                                         case X360Controls.RightMouse:
                                             deviceState.currentClicks.rightCount++;
-                                            
+
                                             break;
                                         case X360Controls.MiddleMouse:
                                             deviceState.currentClicks.middleCount++;
-                                            
+
                                             break;
                                         case X360Controls.FourthMouse:
                                             deviceState.currentClicks.fourthCount++;
-                                            
+
                                             break;
                                         case X360Controls.FifthMouse:
                                             deviceState.currentClicks.fifthCount++;
-                                            
+
                                             break;
                                         case X360Controls.WUP:
                                             deviceState.currentClicks.wUpCount++;
-                                            
+
                                             break;
                                         case X360Controls.WDOWN:
                                             deviceState.currentClicks.wDownCount++;
-                                            
+
                                             break;
                                     }
                                 }
@@ -3674,46 +3736,46 @@ namespace DS4Windows
                                     {
                                         outputfieldMapping.buttons[(int)xboxControl] = true;
                                         // Log the setting only on rising edge to avoid per-poll noise
-                                            
+
                                     }
                                 }
-                            // Log the current output button combination for this SA trigger
-                            if (AppLogger.IsTraceEnabled)
-                            {
-                                try
+                                // Log the current output button combination for this SA trigger
+                                if (AppLogger.IsTraceEnabled)
                                 {
-                                    var parts = new List<string>();
-
-                                    if (outputfieldMapping.outputTouchButton)
-                                        parts.Add("TouchpadClick");
-
-                                    // mouse click counters
-                                    if (deviceState.currentClicks.leftCount > 0) parts.Add($"LeftMouse({deviceState.currentClicks.leftCount})");
-                                    if (deviceState.currentClicks.rightCount > 0) parts.Add($"RightMouse({deviceState.currentClicks.rightCount})");
-                                    if (deviceState.currentClicks.middleCount > 0) parts.Add($"MiddleMouse({deviceState.currentClicks.middleCount})");
-                                    if (deviceState.currentClicks.fourthCount > 0) parts.Add($"FourthMouse({deviceState.currentClicks.fourthCount})");
-                                    if (deviceState.currentClicks.fifthCount > 0) parts.Add($"FifthMouse({deviceState.currentClicks.fifthCount})");
-                                    if (deviceState.currentClicks.wUpCount > 0) parts.Add($"WUP({deviceState.currentClicks.wUpCount})");
-                                    if (deviceState.currentClicks.wDownCount > 0) parts.Add($"WDOWN({deviceState.currentClicks.wDownCount})");
-
-                                    // buttons array
-                                    for (int bi = 0; bi < outputfieldMapping.buttons.Length; bi++)
+                                    try
                                     {
-                                        if (outputfieldMapping.buttons[bi])
-                                        {
-                                            var controlEnum = (X360Controls)bi;
-                                            parts.Add($"{controlEnum}({bi})");
-                                        }
-                                    }
+                                        var parts = new List<string>();
 
-                                    string combo = parts.Count > 0 ? string.Join(", ", parts) : "<none>";
-                                    AppLogger.LogTrace($"SA '{actionname}' output combo: {combo}");
+                                        if (outputfieldMapping.outputTouchButton)
+                                            parts.Add("TouchpadClick");
+
+                                        // mouse click counters
+                                        if (deviceState.currentClicks.leftCount > 0) parts.Add($"LeftMouse({deviceState.currentClicks.leftCount})");
+                                        if (deviceState.currentClicks.rightCount > 0) parts.Add($"RightMouse({deviceState.currentClicks.rightCount})");
+                                        if (deviceState.currentClicks.middleCount > 0) parts.Add($"MiddleMouse({deviceState.currentClicks.middleCount})");
+                                        if (deviceState.currentClicks.fourthCount > 0) parts.Add($"FourthMouse({deviceState.currentClicks.fourthCount})");
+                                        if (deviceState.currentClicks.fifthCount > 0) parts.Add($"FifthMouse({deviceState.currentClicks.fifthCount})");
+                                        if (deviceState.currentClicks.wUpCount > 0) parts.Add($"WUP({deviceState.currentClicks.wUpCount})");
+                                        if (deviceState.currentClicks.wDownCount > 0) parts.Add($"WDOWN({deviceState.currentClicks.wDownCount})");
+
+                                        // buttons array
+                                        for (int bi = 0; bi < outputfieldMapping.buttons.Length; bi++)
+                                        {
+                                            if (outputfieldMapping.buttons[bi])
+                                            {
+                                                var controlEnum = (X360Controls)bi;
+                                                parts.Add($"{controlEnum}({bi})");
+                                            }
+                                        }
+
+                                        string combo = parts.Count > 0 ? string.Join(", ", parts) : "<none>";
+                                        AppLogger.LogTrace($"SA '{actionname}' output combo: {combo}");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppLogger.LogTrace($"Failed to build output combo log for SA '{actionname}': {ex}");
+                                    }
                                 }
-                                catch (Exception ex)
-                                {
-                                    AppLogger.LogTrace($"Failed to build output combo log for SA '{actionname}': {ex}");
-                                }
-                            }
                             }
                         }
 
@@ -4246,7 +4308,7 @@ namespace DS4Windows
                         }
                         else
                         {
-                            AppLogger.LogDebug($"SpecialAction {(action!=null && action.typeID==SpecialAction.ActionTypeId.Button?"BUTTON":"KEY")} press delegated to KeyButtonActionController: name={(action!=null?action.name:"(null)" )}, device={device}, value={logicalValue}");
+                            AppLogger.LogDebug($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press delegated to KeyButtonActionController: name={(action != null ? action.name : "(null)")}, device={device}, value={logicalValue}");
                         }
                     }
                     catch { }
@@ -4255,12 +4317,12 @@ namespace DS4Windows
                 }
 
                 // No controller available; do not run fallback. Log and return false.
-                AppLogger.LogTrace($"SpecialAction {(action!=null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch: no KeyButtonActionController available for device={device}, action={(action!=null?action.name:"(null)")} (fallback suppressed)");
+                AppLogger.LogTrace($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch: no KeyButtonActionController available for device={device}, action={(action != null ? action.name : "(null)")} (fallback suppressed)");
                 return false;
             }
             catch (Exception ex)
             {
-                AppLogger.LogTrace($"SpecialAction {(action!=null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch failed: {ex}");
+                AppLogger.LogTrace($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch failed: {ex}");
                 return false;
             }
         }
@@ -4330,7 +4392,7 @@ namespace DS4Windows
                         }
                         else
                         {
-                            AppLogger.LogDebug($"SpecialAction {(action!=null && action.typeID==SpecialAction.ActionTypeId.Button?"BUTTON":"KEY")} release delegated to KeyButtonActionController: name={(action!=null?action.name:"(null)" )}, device={device}, value={logicalValue}");
+                            AppLogger.LogDebug($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release delegated to KeyButtonActionController: name={(action != null ? action.name : "(null)")}, device={device}, value={logicalValue}");
                         }
                     }
                     catch { }
@@ -4340,13 +4402,13 @@ namespace DS4Windows
                 else
                 {
                     // No controller available; do not run fallback. Log and return false.
-                    AppLogger.LogTrace($"SpecialAction {(action!=null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch: no KeyButtonActionController available for device={device}, action={(action!=null?action.name:"(null)")} (fallback suppressed)");
+                    AppLogger.LogTrace($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch: no KeyButtonActionController available for device={device}, action={(action != null ? action.name : "(null)")} (fallback suppressed)");
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                AppLogger.LogTrace($"SpecialAction {(action!=null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch failed: {ex}");
+                AppLogger.LogTrace($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch failed: {ex}");
                 return false;
             }
         }
@@ -4904,11 +4966,11 @@ namespace DS4Windows
                         }
                         kp.current.repeatCount++;
                     }
-                        else
-                        {
-                            // Do not clear IsToggledOn here; Action implementation manages lifecycle.
-                            // Intentionally left blank.
-                        }
+                    else
+                    {
+                        // Do not clear IsToggledOn here; Action implementation manages lifecycle.
+                        // Intentionally left blank.
+                    }
 
                     // erase default mappings for things that are remapped
                     ResetToDefaultValue(dcs.control, MappedState, outputfieldMapping);
@@ -5171,42 +5233,42 @@ namespace DS4Windows
         private static void RunLightbarMacro(ObservableCollection<LightbarMacroElement> macro, int device, CancellationToken token)
         {
             lock (DS4LightBar.forcedColor) lock (DS4LightBar.forcelight)
+            {
+                DS4LightBar.forcelight[device] = true;
+
+                var timestamp = DateTime.UtcNow.Ticks;
+                var i = 0;
+
+                while (i < macro.Count)
                 {
-                    DS4LightBar.forcelight[device] = true;
-
-                    var timestamp = DateTime.UtcNow.Ticks;
-                    var i = 0;
-
-                    while (i < macro.Count)
+                    if (token.IsCancellationRequested)
                     {
-                        if (token.IsCancellationRequested)
-                        {
-                            break;
-                        }
-
-                        DS4LightBar.forcedColor[device] = macro[i].Color;
-
-                        try
-                        {
-                            Task.Delay(10, token).Wait();
-                        }
-                        catch (AggregateException ex)
-                        {
-                            if (ex.InnerExceptions.All(e => e is OperationCanceledException))
-                            { }
-                            else
-                            { throw; }
-                        }
-
-                        if (DateTime.UtcNow.Ticks - timestamp >= macro[i].Length * TimeSpan.TicksPerMillisecond)
-                        {
-                            i++;
-                            timestamp = DateTime.UtcNow.Ticks;
-                        }
+                        break;
                     }
 
-                    DS4LightBar.forcelight[device] = false;
+                    DS4LightBar.forcedColor[device] = macro[i].Color;
+
+                    try
+                    {
+                        Task.Delay(10, token).Wait();
+                    }
+                    catch (AggregateException ex)
+                    {
+                        if (ex.InnerExceptions.All(e => e is OperationCanceledException))
+                        { }
+                        else
+                        { throw; }
+                    }
+
+                    if (DateTime.UtcNow.Ticks - timestamp >= macro[i].Length * TimeSpan.TicksPerMillisecond)
+                    {
+                        i++;
+                        timestamp = DateTime.UtcNow.Ticks;
+                    }
                 }
+
+                DS4LightBar.forcelight[device] = false;
+            }
         }
 
         private static bool IfAxisIsNotModified(int device, bool shift, DS4Controls dc)
@@ -5222,7 +5284,7 @@ namespace DS4Windows
             try
             {
                 int count = GetActions()?.Count ?? 0;
-                DS4Windows.AppLogger.LogDebug($"SpecialAction {context}: device={device}, name={(action != null ? action.name : "(null)" )}, index={index}, ActionEntries={count}");
+                DS4Windows.AppLogger.LogDebug($"SpecialAction {context}: device={device}, name={(action != null ? action.name : "(null)")}, index={index}, ActionEntries={count}");
             }
             catch
             {
@@ -5450,7 +5512,7 @@ namespace DS4Windows
                                 if (!GetBeingTriggered(index, action, device))
                                 {
                                     LogActionDoneCountOnTrigger(index, action, device, "Program");
-                                        DispatchOrSetBeingTriggered(action, device, true);
+                                    DispatchOrSetBeingTriggered(action, device, true);
                                     if (!string.IsNullOrEmpty(action.extra))
                                     {
                                         int pos = action.extra.IndexOf("$hidden", StringComparison.OrdinalIgnoreCase);
@@ -5513,7 +5575,7 @@ namespace DS4Windows
                                 {
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={useTempProfile[device]}");
-                                    
+
                                     LogActionDoneCountOnTrigger(index, action, device, "Profile");
                                     DispatchOrSetBeingTriggered(action, device, true);
                                     // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
@@ -5619,8 +5681,8 @@ namespace DS4Windows
                                         if (!GetBeingTriggered(index, action, device))
                                         {
                                             DS4KeyType keyType = action.keyType;
-                                                LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
-                                                DispatchOrSetBeingTriggered(action, device, true);
+                                            LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
+                                            DispatchOrSetBeingTriggered(action, device, true);
                                             /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                                             {
                                                 DS4Controls dc = action.trigger[i];
@@ -5723,10 +5785,10 @@ namespace DS4Windows
                                     DispatchOrSetBeingTriggered(action, device, true);
                                     // For Toggle-type SpecialAction keys we do NOT register an untriggerindex here
                                     // because toggle off/on is driven by successive triggers, not by physical release.
-                                        if (!action.keyType.HasFlag(DS4KeyType.Toggle))
-                                            deviceRuntime[device].UntriggerIndex = index;
-                                        else
-                                            deviceRuntime[device].UntriggerIndex = -1;
+                                    if (!action.keyType.HasFlag(DS4KeyType.Toggle))
+                                        deviceRuntime[device].UntriggerIndex = index;
+                                    else
+                                        deviceRuntime[device].UntriggerIndex = -1;
                                     // For Key actions we keep single-trigger toggle behavior only;
                                     // do not register an untrigger action here.
                                     ushort key;
@@ -5884,38 +5946,38 @@ namespace DS4Windows
                                     actionFound = true;
                                     DispatchOrSetBeingTriggered(action, device, false);
                                     deviceRuntime[device].UntriggerIndex = -1;
-                                        LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
-                                        try
+                                    LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
+                                    try
+                                    {
+                                        string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
+                                        string released = "(unknown)";
+                                        if (action.trigger != null)
                                         {
-                                            string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
-                                            string released = "(unknown)";
-                                            if (action.trigger != null)
+                                            for (int ti = 0; ti < action.trigger.Count; ti++)
                                             {
-                                                for (int ti = 0; ti < action.trigger.Count; ti++)
+                                                var dc = action.trigger[ti];
+                                                if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
                                                 {
-                                                    var dc = action.trigger[ti];
-                                                    if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
-                                                    {
-                                                        released = dc.ToString();
-                                                        break;
-                                                    }
+                                                    released = dc.ToString();
+                                                    break;
                                                 }
                                             }
-                                            if (released == "(unknown)" && action.uTrigger != null)
-                                            {
-                                                for (int ui = 0; ui < action.uTrigger.Count; ui++)
-                                                {
-                                                    var udc = action.uTrigger[ui];
-                                                    if (!getBoolSpecialActionMapping(device, udc, cState, eState, tp, fieldMapping))
-                                                    {
-                                                        released = udc.ToString();
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                            AppLogger.LogDebug($"SpecialAction KeyReleased: device={device}, name={action.name}, trigger={triggerCombo}, released={released}, index={index}");
                                         }
-                                        catch { }
+                                        if (released == "(unknown)" && action.uTrigger != null)
+                                        {
+                                            for (int ui = 0; ui < action.uTrigger.Count; ui++)
+                                            {
+                                                var udc = action.uTrigger[ui];
+                                                if (!getBoolSpecialActionMapping(device, udc, cState, eState, tp, fieldMapping))
+                                                {
+                                                    released = udc.ToString();
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        AppLogger.LogDebug($"SpecialAction KeyReleased: device={device}, name={action.name}, trigger={triggerCombo}, released={released}, index={index}");
+                                    }
+                                    catch { }
                                     // (Duplicate KeyReleased logging removed — preserved single log above)
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
@@ -6204,7 +6266,7 @@ namespace DS4Windows
                 int index = deviceRuntime[device].UntriggerIndex;
                 bool utriggeractivated;
 
-                AppLogger.LogDebug($"SpecialAction UNTRIGGER check: device={device}, untriggeraction={(action!=null?action.name:"null")}, untriggerindex={index}");
+                AppLogger.LogDebug($"SpecialAction UNTRIGGER check: device={device}, untriggeraction={(action != null ? action.name : "null")}, untriggerindex={index}");
 
                 if (!action.automaticUntrigger)
                 {
@@ -6243,11 +6305,11 @@ namespace DS4Windows
                     if ((action.controls == action.ucontrols && !GetBeingTriggered(index, action, device)) || //if trigger and end trigger are the same
                     action.controls != action.ucontrols)
                     {
-                                if (useTempProfile[device])
+                        if (useTempProfile[device])
                         {
                             //foreach (DS4Controls dc in action.uTrigger)
-                                for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
-                                {
+                            for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
+                            {
                                 DS4Controls dc = action.uTrigger[i];
                                 LogActionDoneCountOnTrigger(index, action, device, "UntriggerProfile");
                                 DispatchOrSetBeingTriggered(action, device, true);
@@ -6281,13 +6343,13 @@ namespace DS4Windows
 
                             deviceRuntime[device].UntriggerAction = null;
 
-                                if (profileName == string.Empty)
-                                    LoadProfile(device, false, ctrl); // Previous profile was a regular default profile of a controller
-                                else
-                                    LoadTempProfile(device, profileName, true, ctrl); // Previous profile was a temporary profile, so re-load it as a temp profile
-                            }
+                            if (profileName == string.Empty)
+                                LoadProfile(device, false, ctrl); // Previous profile was a regular default profile of a controller
+                            else
+                                LoadTempProfile(device, profileName, true, ctrl); // Previous profile was a temporary profile, so re-load it as a temp profile
                         }
                     }
+                }
                 else
                 {
                     DispatchOrSetBeingTriggered(action, device, false);
@@ -6422,82 +6484,82 @@ namespace DS4Windows
 
             try
             {
-                try { AppLogger.LogTrace($"PlayMacroTask START: action={action?.name} device={device} IsMacroRunning={(actionDoneState!=null?actionDoneState.IsMacroRunning:false)} IsBeingTriggered={(action!=null?ActionManager.IsBeingTriggered(action, device):false)} keyType={keyType}"); } catch { }
+                try { AppLogger.LogTrace($"PlayMacroTask START: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)} keyType={keyType}"); } catch { }
 
-            // macro.StartsWith("164/9/9/164") || macro.StartsWith("18/9/9/18")
-            if ((macroLst != null && macroLst.Count >= 4 && ((macroLst[0] == 164 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 164) || (macroLst[0] == 18 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 18)))
-              || (macroArr != null && macroArr.Length >= 4 && ((macroArr[0] == 164 && macroArr[1] == 9 && macroArr[2] == 9 && macroArr[3] == 164) || (macroArr[0] == 18 && macroArr[1] == 9 && macroArr[2] == 9 && macroArr[3] == 18)))
-            )
-            {
-                int wait;
-                if (macroLst != null)
-                    wait = macroLst[macroLst.Count - 1];
-                else
-                    wait = macroArr[macroArr.Length - 1];
-
-                if (wait <= 300 || wait > ushort.MaxValue)
-                    wait = 1000;
-                else
-                    wait -= 300;
-
-                AltTabSwapping(wait, device);
-                if (control != DS4Controls.None)
-                    macrodone[DS4ControltoInt(control)] = true;
-            }
-            else if (control == DS4Controls.None || !macrodone[DS4ControltoInt(control)])
-            {
-                int macroCodeValue;
-                bool[] keydown = new bool[512];
-
-                if (control != DS4Controls.None)
-                    macrodone[DS4ControltoInt(control)] = true;
-
-                // Play macro codes and simulate key down/up events (note! The same key may go through several up and down events during the same macro).
-                // If the return value is TRUE then this method should do a asynchronized delay (the usual Thread.Sleep doesnt work here because it would block the main gamepad reading thread).
-                if (macroLst != null)
+                // macro.StartsWith("164/9/9/164") || macro.StartsWith("18/9/9/18")
+                if ((macroLst != null && macroLst.Count >= 4 && ((macroLst[0] == 164 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 164) || (macroLst[0] == 18 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 18)))
+                  || (macroArr != null && macroArr.Length >= 4 && ((macroArr[0] == 164 && macroArr[1] == 9 && macroArr[2] == 9 && macroArr[3] == 164) || (macroArr[0] == 18 && macroArr[1] == 9 && macroArr[2] == 9 && macroArr[3] == 18)))
+                )
                 {
-                    for (int i = 0; i < macroLst.Count; i++)
-                    {
-                        macroCodeValue = macroLst[i];
-                        if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
-                            Task.Delay(macroCodeValue - 300).Wait();
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < macroArr.Length; i++)
-                    {
-                        macroCodeValue = macroArr[i];
-                        if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
-                            Task.Delay(macroCodeValue - 300).Wait();
-                    }
-                }
+                    int wait;
+                    if (macroLst != null)
+                        wait = macroLst[macroLst.Count - 1];
+                    else
+                        wait = macroArr[macroArr.Length - 1];
 
-                // The macro is finished. If any of the keys is still in down state then release a key state (ie. simulate key up event) unless special action specified to keep the last state as it is left in a macro
-                if (action == null || !action.keepKeyState)
-                {
-                    for (int i = 0, arlength = keydown.Length; i < arlength; i++)
-                    {
-                        if (keydown[i])
-                            PlayMacroCodeValue(device, macrocontrol, keyType, i, keydown);
-                    }
+                    if (wait <= 300 || wait > ushort.MaxValue)
+                        wait = 1000;
+                    else
+                        wait -= 300;
 
-                    // Reset lightbar back to a default value (if the macro modified the color) because keepKeyState macro option was not set
-                    DS4LightBar.forcedFlash[device] = 0;
-                    DS4LightBar.forcelight[device] = false;
-                }
-
-                // Commented out rumble reset. No need to zero out rumble after a macro because it may conflict with a game generated rumble events (ie. macro would stop a game generated rumble effect).
-                // If macro generates rumble effects then the macro can stop the rumble as a last step or wait for rumble watchdog timer to do it after few seconds.
-                //Program.rootHub.DS4Controllers[device].setRumble(0, 0);
-
-                if (keyType.HasFlag(DS4KeyType.HoldMacro))
-                {
-                    Task.Delay(50).Wait();
+                    AltTabSwapping(wait, device);
                     if (control != DS4Controls.None)
-                        macrodone[DS4ControltoInt(control)] = false;
+                        macrodone[DS4ControltoInt(control)] = true;
                 }
-                // Per-macro-unit end handling: call EndMacro for this completed macro run
+                else if (control == DS4Controls.None || !macrodone[DS4ControltoInt(control)])
+                {
+                    int macroCodeValue;
+                    bool[] keydown = new bool[512];
+
+                    if (control != DS4Controls.None)
+                        macrodone[DS4ControltoInt(control)] = true;
+
+                    // Play macro codes and simulate key down/up events (note! The same key may go through several up and down events during the same macro).
+                    // If the return value is TRUE then this method should do a asynchronized delay (the usual Thread.Sleep doesnt work here because it would block the main gamepad reading thread).
+                    if (macroLst != null)
+                    {
+                        for (int i = 0; i < macroLst.Count; i++)
+                        {
+                            macroCodeValue = macroLst[i];
+                            if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                Task.Delay(macroCodeValue - 300).Wait();
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < macroArr.Length; i++)
+                        {
+                            macroCodeValue = macroArr[i];
+                            if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                Task.Delay(macroCodeValue - 300).Wait();
+                        }
+                    }
+
+                    // The macro is finished. If any of the keys is still in down state then release a key state (ie. simulate key up event) unless special action specified to keep the last state as it is left in a macro
+                    if (action == null || !action.keepKeyState)
+                    {
+                        for (int i = 0, arlength = keydown.Length; i < arlength; i++)
+                        {
+                            if (keydown[i])
+                                PlayMacroCodeValue(device, macrocontrol, keyType, i, keydown);
+                        }
+
+                        // Reset lightbar back to a default value (if the macro modified the color) because keepKeyState macro option was not set
+                        DS4LightBar.forcedFlash[device] = 0;
+                        DS4LightBar.forcelight[device] = false;
+                    }
+
+                    // Commented out rumble reset. No need to zero out rumble after a macro because it may conflict with a game generated rumble events (ie. macro would stop a game generated rumble effect).
+                    // If macro generates rumble effects then the macro can stop the rumble as a last step or wait for rumble watchdog timer to do it after few seconds.
+                    //Program.rootHub.DS4Controllers[device].setRumble(0, 0);
+
+                    if (keyType.HasFlag(DS4KeyType.HoldMacro))
+                    {
+                        Task.Delay(50).Wait();
+                        if (control != DS4Controls.None)
+                            macrodone[DS4ControltoInt(control)] = false;
+                    }
+                    // Per-macro-unit end handling: call EndMacro for this completed macro run
                     try
                     {
                         // Clear iteration-running before end handling so logs show iteration completed
@@ -6512,111 +6574,111 @@ namespace DS4Windows
                             EndMacro(device, macrocontrol, macroLst, control);
                         else if (macroArr != null)
                             EndMacro(device, macrocontrol, macroArr, control);
-                        try { AppLogger.LogTrace($"PlayMacroTask MACRO EXECUTE END: action={action?.name} device={device} IsMacroRunning={(actionDoneState!=null?actionDoneState.IsMacroRunning:false)} IsBeingTriggered={(action!=null?ActionManager.IsBeingTriggered(action, device):false)}"); } catch { }
-                    }
-                catch { }
-
-            }
-
-            // Repeat-while-held handling: instead of re-dispatching a released edge (which may enqueue
-            // additional macro runs), perform repeat-in-place. After a macro run completes, check the
-            // per-action BeingTriggered flag; if it remains true (trigger still held), run the macro again.
-            // This avoids accumulating a queue of runs that would execute after physical release.
-            if (action != null && keyType.HasFlag(DS4KeyType.RepeatMacro) && actionDoneState != null)
-            {
-                bool keepRunning = true;
-                while (keepRunning)
-                {
-                    bool curBeing = false;
-                    try { curBeing = ActionManager.IsBeingTriggered(action, device); keepRunning = curBeing; } catch { keepRunning = false; curBeing = false; }
-
-                    // Log the recheck result and the decision whether we'll rerun this macro
-                    try
-                    {
-                        string decision = keepRunning ? "RERUN" : "NORUN";
-                        AppLogger.LogTrace($"PlayMacroTask ITERATION CHECK: action={action?.name} device={device} IsMacroRunning={actionDoneState?.IsMacroRunning ?? false} IsBeingTriggered={curBeing} DECISION={decision}");
+                        try { AppLogger.LogTrace($"PlayMacroTask MACRO EXECUTE END: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)}"); } catch { }
                     }
                     catch { }
 
-                    if (!keepRunning) break;
+                }
 
-                    // Mark iteration running for this inline repeat
-                    if (actionDoneState != null)
+                // Repeat-while-held handling: instead of re-dispatching a released edge (which may enqueue
+                // additional macro runs), perform repeat-in-place. After a macro run completes, check the
+                // per-action BeingTriggered flag; if it remains true (trigger still held), run the macro again.
+                // This avoids accumulating a queue of runs that would execute after physical release.
+                if (action != null && keyType.HasFlag(DS4KeyType.RepeatMacro) && actionDoneState != null)
+                {
+                    bool keepRunning = true;
+                    while (keepRunning)
                     {
-                        try { lock (actionDoneState) { actionDoneState.IsMacroRunning = true; } } catch { }
-                    }
+                        bool curBeing = false;
+                        try { curBeing = ActionManager.IsBeingTriggered(action, device); keepRunning = curBeing; } catch { keepRunning = false; curBeing = false; }
 
-                    // Execute the macro sequence again inline
-                    bool[] keydown = new bool[512];
-                    if (macroLst != null)
-                    {
-                        for (int i = 0; i < macroLst.Count; i++)
+                        // Log the recheck result and the decision whether we'll rerun this macro
+                        try
                         {
-                            int macroCodeValue = macroLst[i];
-                            if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
-                                Task.Delay(macroCodeValue - 300).Wait();
+                            string decision = keepRunning ? "RERUN" : "NORUN";
+                            AppLogger.LogTrace($"PlayMacroTask ITERATION CHECK: action={action?.name} device={device} IsMacroRunning={actionDoneState?.IsMacroRunning ?? false} IsBeingTriggered={curBeing} DECISION={decision}");
                         }
-                    }
-                    else if (macroArr != null)
-                    {
-                        for (int i = 0; i < macroArr.Length; i++)
-                        {
-                            int macroCodeValue = macroArr[i];
-                            if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
-                                Task.Delay(macroCodeValue - 300).Wait();
-                        }
-                    }
+                        catch { }
 
-                    if (action == null || !action.keepKeyState)
-                    {
-                        for (int i = 0, arlength = keydown.Length; i < arlength; i++)
-                        {
-                            if (keydown[i])
-                                PlayMacroCodeValue(device, macrocontrol, keyType, i, keydown);
-                        }
+                        if (!keepRunning) break;
 
-                        DS4LightBar.forcedFlash[device] = 0;
-                        DS4LightBar.forcelight[device] = false;
-                    }
-
-                    if (keyType.HasFlag(DS4KeyType.HoldMacro))
-                    {
-                        Task.Delay(50).Wait();
-                        if (control != DS4Controls.None)
-                            macrodone[DS4ControltoInt(control)] = false;
-                    }
-                    // Per-macro-unit end handling for this iteration
-                    try
-                    {
-                        // Clear iteration-running so end/logging shows iteration completed
+                        // Mark iteration running for this inline repeat
                         if (actionDoneState != null)
                         {
-                            try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                            try { lock (actionDoneState) { actionDoneState.IsMacroRunning = true; } } catch { }
                         }
 
-                        if (!String.IsNullOrEmpty(macroStr))
-                            EndMacro(device, macrocontrol, macroStr, control);
-                        else if (macroLst != null)
-                            EndMacro(device, macrocontrol, macroLst, control);
+                        // Execute the macro sequence again inline
+                        bool[] keydown = new bool[512];
+                        if (macroLst != null)
+                        {
+                            for (int i = 0; i < macroLst.Count; i++)
+                            {
+                                int macroCodeValue = macroLst[i];
+                                if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                    Task.Delay(macroCodeValue - 300).Wait();
+                            }
+                        }
                         else if (macroArr != null)
-                            EndMacro(device, macrocontrol, macroArr, control);
-                        try { AppLogger.LogTrace($"PlayMacroTask MACRO EXECUTE END: action={action?.name} device={device} IsMacroRunning={(actionDoneState!=null?actionDoneState.IsMacroRunning:false)} IsBeingTriggered={(action!=null?ActionManager.IsBeingTriggered(action, device):false)}"); } catch { }
-                    }
-                    catch { }
+                        {
+                            for (int i = 0; i < macroArr.Length; i++)
+                            {
+                                int macroCodeValue = macroArr[i];
+                                if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                    Task.Delay(macroCodeValue - 300).Wait();
+                            }
+                        }
 
-                    // loop will check BeingTriggered again
-                }
-            }
-                }
-                finally
-                {
-                    if (actionDoneState != null)
-                    {
-                        try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                        if (action == null || !action.keepKeyState)
+                        {
+                            for (int i = 0, arlength = keydown.Length; i < arlength; i++)
+                            {
+                                if (keydown[i])
+                                    PlayMacroCodeValue(device, macrocontrol, keyType, i, keydown);
+                            }
+
+                            DS4LightBar.forcedFlash[device] = 0;
+                            DS4LightBar.forcelight[device] = false;
+                        }
+
+                        if (keyType.HasFlag(DS4KeyType.HoldMacro))
+                        {
+                            Task.Delay(50).Wait();
+                            if (control != DS4Controls.None)
+                                macrodone[DS4ControltoInt(control)] = false;
+                        }
+                        // Per-macro-unit end handling for this iteration
+                        try
+                        {
+                            // Clear iteration-running so end/logging shows iteration completed
+                            if (actionDoneState != null)
+                            {
+                                try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                            }
+
+                            if (!String.IsNullOrEmpty(macroStr))
+                                EndMacro(device, macrocontrol, macroStr, control);
+                            else if (macroLst != null)
+                                EndMacro(device, macrocontrol, macroLst, control);
+                            else if (macroArr != null)
+                                EndMacro(device, macrocontrol, macroArr, control);
+                            try { AppLogger.LogTrace($"PlayMacroTask MACRO EXECUTE END: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)}"); } catch { }
+                        }
+                        catch { }
+
+                        // loop will check BeingTriggered again
                     }
                 }
-                try { AppLogger.LogTrace($"PlayMacroTask END: action={action?.name} device={device} IsMacroRunning={(actionDoneState!=null?actionDoneState.IsMacroRunning:false)} IsBeingTriggered={(action!=null?ActionManager.IsBeingTriggered(action, device):false)}"); } catch { }
             }
+            finally
+            {
+                if (actionDoneState != null)
+                {
+                    try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                }
+            }
+            try { AppLogger.LogTrace($"PlayMacroTask END: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)}"); } catch { }
+        }
 
         private static bool PlayMacroCodeValue(int device, bool[] macrocontrol, DS4KeyType keyType, int macroCodeValue, bool[] keydown)
         {
