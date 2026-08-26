@@ -5680,17 +5680,34 @@ namespace DS4Windows
                                     // Macro run when trigger keys are pressed down (the default behaviour)
                                     if (!GetBeingTriggered(index, action, device))
                                     {
-                                        DS4KeyType keyType = action.keyType;
                                         LogActionDoneCountOnTrigger(index, action, device, "Macro");
-                                        DispatchOrSetBeingTriggered(action, device, true);
-                                        /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
-                                        {
-                                            DS4Controls dc = action.trigger[i];
-                                            resetToDefaultValue2(dc, MappedState, outputfieldMapping);
-                                        }
-                                        */
 
-                                        PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, null);
+                                        // C3-5: ActionManager 経由（MacroAction / IMacroPlayer）へのディスパッチを試行
+                                        // handled が true の場合は下の直接 PlayMacro（フォールバック）をスキップし二重実行を防止
+                                        bool handled = false;
+                                        try
+                                        {
+                                            var ctx = new DS4Windows.TriggerContext
+                                            {
+                                                ActionDef = action,
+                                                Device = device,
+                                                IsEstablished = true
+                                            };
+                                            handled = DispatchInputEdge(ctx);
+                                        }
+                                        catch { }
+
+                                        if (!handled)
+                                        {
+                                            try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+                                        }
+
+                                        if (!handled)
+                                        {
+                                            // フォールバック: DI未登録時は従来の直接 PlayMacro 呼び出し
+                                            DS4KeyType keyType = action.keyType;
+                                            PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, null);
+                                        }
                                     }
                                     else
                                     {
@@ -5700,23 +5717,38 @@ namespace DS4Windows
                                 }
                                 else
                                 {
-                                    // Macro is run when trigger keys are released (optional behaviour of macro special action))
+                                    // Macro is run when trigger keys are released (optional behaviour of macro special action)
                                     if (action.firstTouch)
                                     {
                                         action.firstTouch = false;
                                         if (!GetBeingTriggered(index, action, device))
                                         {
-                                            DS4KeyType keyType = action.keyType;
                                             LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
-                                            DispatchOrSetBeingTriggered(action, device, true);
-                                            /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
-                                            {
-                                                DS4Controls dc = action.trigger[i];
-                                                resetToDefaultValue2(dc, MappedState, outputfieldMapping);
-                                            }
-                                            */
 
-                                            PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, null);
+                                            // C3-5: リリース時トリガーの DI ディスパッチ試行
+                                            bool handled = false;
+                                            try
+                                            {
+                                                var ctx = new DS4Windows.TriggerContext
+                                                {
+                                                    ActionDef = action,
+                                                    Device = device,
+                                                    IsEstablished = true
+                                                };
+                                                handled = DispatchInputEdge(ctx);
+                                            }
+                                            catch { }
+
+                                            if (!handled)
+                                            {
+                                                try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+                                            }
+
+                                            if (!handled)
+                                            {
+                                                DS4KeyType keyType = action.keyType;
+                                                PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, null);
+                                            }
                                         }
                                     }
                                     else
