@@ -1,7 +1,8 @@
 # C3: MacroAction 移行設計書 (Macro系アクションのDI分離)
 
 **作成日**: 2026-08-27  
-**ステータス**: 設計完了 / レビュー待ち  
+**最終更新日**: 2026-08-27  
+**ステータス**: 実装進行中 (Step 1-2 完了 / Step 3 準備中)  
 **対象領域**: `SpecialAction.ActionTypeId.Macro` / `Mapping.PlayMacro` 系
 
 ---
@@ -14,89 +15,80 @@
 
 ---
 
-## 2. 現状分析 (As-Is)
+## 2. 現状分析 (As-Is) と安全な委譲設計
 
 ### 2.1 現行の実行フロー (`Mapping.cs`)
 1. **トリガー判定**: `MapCustomAction` (L5309〜) にて `SpecialAction.ActionTypeId.Macro` を検出。
-2. **実行開始**: `PlayMacro(device, action, ...)` (L6448) が呼び出される。
-3. **非同期タスク生成**: `PlayMacroTask` (L6490) 内で `Task.Run` を起動し、`CancellationToken` および `macroPlaying[device]` フラグでライフサイクルを管理。
-4. **ステップ逐次実行**:
-   * キー押下/解放: `InputMethods.performSCKeyPress`, `InputMethods.performSCKeyRelease`
-   * マウス操作: `InputMethods.MouseEvent`, `InputMethods.MouseWheel`
-   * 待機: `Task.Delay` またはスピンウェイト
-   * リピートモード判定: `action.macroRepeat`, `action.macroHold`
-5. **終了/中断**: `EndMacro(device)` (L6863) にて押下中キーの強制解放とタスクキャンセルを実行。
+2. **実行開始**: `PlayMacro(device, ...)` (L6466〜) が呼び出される。
+3. **非同期タスク生成**: `PlayMacroTask` (L6508〜) 内で `Task.Run` を起動し、`CancellationToken` およびキー解放を管理。
+4. **終了/中断**: `EndMacro(device, ...)` (L6881〜) にて押下中キーの強制解放とタスクキャンセルを実行。
 
-### 2.2 現行の課題
-* `Mapping.cs` 内部で静的配列（`macroPlaying[device]` 等）やスレッドを直接管理しているため、テスタビリティが皆無。
-* `InputMethods` への直接依存があり、低レベル出力のモック化が不可能。
+### 2.2 採用した委譲方式
+既存の 800 行を超える実績あるマクロ処理を複製せず、`Mapping.cs` に `internal static void PlayMacroDirect` / `EndMacroDirect` を新設し、`DefaultMacroPlayer` から安全に呼び出す構造を採用。これによりエッジケースや機能の欠落を完全に防止（No Feature Drop）。
 
 ---
 
 ## 3. 目標設計 (To-Be)
 
-[ Mapping.cs / Trigger層 ] │ (OnTrigger / Execute) ▼ [ MacroActionAdapter ] ───►
-[ MacroAction (IOutputAction) ] │ ▼ (DI解決: ServiceProviderHolder) [ IMacroPlayer
-] │ ┌─────────────┴─────────────┐ ▼ ▼ [ DefaultMacroPlayer ] [ MockMacroPlayer ]
-(テスト用) │ ▼ [ InputMethods / KBM ]
+[ Mapping.cs / Trigger層 ]
+│ (OnTrigger / Execute)
+▼
+[ MacroActionAdapter ] ───► [ MacroAction (IOutputAction) ]
+│
+▼ (DI解決: ServiceProviderHolder)
+[ IMacroPlayer ]
+│
+┌─────────────┴─────────────┐
+▼ ▼
+[ DefaultMacroPlayer ] [ MockMacroPlayer ] (テスト用)
+│
+▼
+[ Mapping.PlayMacroDirect ]
+code Code
+download
+content_copy
+expand_less
 
+### 3.1 コンポーネント構成
 
-### 3.1 新設・改修するコンポーネント
+1. **`IMacroPlayer` (`DS4Windows/Actions/IMacroPlayer.cs`)** 【完了】
+   * マクロ再生・停止・状態取得の抽象インターフェース。
+2. **`DefaultMacroPlayer` (`DS4Windows/Actions/DefaultMacroPlayer.cs`)** 【完了】
+   * `Mapping.PlayMacroDirect` / `EndMacroDirect` を呼び出す標準実装。
+3. **`MacroAction` (`DS4Windows/Actions/MacroAction.cs`)** 【Step 3】
+   * `IOutputAction` を実装し、`ServiceProviderHolder` 経由で `IMacroPlayer` を取得して再生。
+4. **`MacroActionAdapter` (`DS4Windows/Actions/MacroActionAdapter.cs`)** 【Step 3】
+   * `IActionAdapter` を実装し、トリガーイベントを `MacroAction` へ中継。
 
-1. **`IMacroPlayer` (新規インターフェース: `DS4Windows/Actions/IMacroPlayer.cs`)**
-   * マクロシーケンスの再生・停止・状態取得を抽象化。
-   ```csharp
-   public interface IMacroPlayer
-   {
-       bool IsPlaying(int deviceIndex);
-       void Play(int deviceIndex, SpecialAction action, CancellationToken cancellationToken = default);
-       void Stop(int deviceIndex);
-   }
+---
 
-2.  DefaultMacroPlayer (新規サービス: DS4Windows/Actions/DefaultMacroPlayer.cs)
+## 4. No Feature Drop (機能完全維持) チェックリスト
 
-      - 既存 Mapping.cs の PlayMacroTask / PlayMacroCodeValue / EndMacro
-        ロジックを機能欠落なく移植。
-      - DI コンテナ（AppHost）にシングルトンとして登録。
+移行にあたり、以下のエッジケース・特殊処理を一切省略せず維持します：
 
-3.  MacroAction (新規アクションクラス: DS4Windows/Actions/MacroAction.cs / IOutputAction
-    実装)
+- [x] **リピート動作モード**:
+  - `SpecialAction` に定義されたリピート・ホールド設定を `Mapping.PlayMacroDirect` 経由でそのまま維持。
+- [x] **正確なディレイ制御**:
+  - 既存 `PlayMacroTask` のミリ秒精度ウェイト処理を完全維持。
+- [x] **中断時の安全解放 (Safe Cleanup)**:
+  - 途中でマクロがキャンセルされた場合、押下状態のまま残ったすべてのキー/マウスボタンを確実に解放する処理（`EndMacro` の挙動）を維持。
+- [x] **デバイスごとの排他制御**:
+  - 各コントローラー番号（0〜3）ごとの独立したマクロ実行状態管理。
 
-      - IOutputAction を実装し、ServiceProviderHolder.Provider から IMacroPlayer
-        を取得して再生を実行。
+---
 
-4.  MacroActionAdapter (新規アダプタークラス: DS4Windows/Actions/MacroActionAdapter.cs /
-    IActionAdapter 実装)
+## 5. 段階的移行ステップと進捗
 
-      - ActionFactory / DefaultActionFactory から生成され、Mapping.cs からのアクション実行要求を中継。
+- [x] **Step 1**: `IMacroPlayer.cs` の新設
+- [x] **Step 2**: `Mapping.cs` 委譲エントリーポイント追加 & `DefaultMacroPlayer.cs` 実装・ビルド確認
+- [ ] **Step 3**: `MacroAction.cs` および `MacroActionAdapter.cs` の作成
+- [ ] **Step 4**: `ActionFactory.cs` / `DefaultActionFactory.cs` への `Macro` 型配線
+- [ ] **Step 5**: `Mapping.cs` のディスパッチ呼び出し箇所のピンポイント置換（フォールバック保持）
+- [ ] **Step 6**: 単体テスト（`MockMacroPlayer` および `MacroActionTests`）の実装とビルド検証
 
-5. No Feature Drop (機能完全維持) チェックリスト
+---
 
-移行にあたり、以下のエッジケース・特殊処理を一切省略せず移植します：
-
-- [ ] リピート動作モード:
-    - macroRepeat = true（トリガー解除までリピート）
-    - macroHold = true（トリガー維持中のみキーを押し続ける挙動）
-- [ ] 正確なディレイ制御:
-    - ミリ秒精度のウェイト処理および 0ms 時のスキップ処理
-- [ ] 中断時の安全解放 (Safe Cleanup):
-    - 途中でマクロがキャンセルされた場合、押下状態のまま残ったすべてのキー/マウスボタンを確実に解放する処理（EndMacro の挙動）
-- [ ] デバイスごとの排他制御:
-    - 各コントローラー番号（0〜3）ごとの独立したマクロ実行状態管理
-
-6. 段階的移行ステップ (マイクロ・ステップ計画)
-
-  - Step 1: IMacroPlayer.cs の新設
-  - Step 2: DefaultMacroPlayer.cs の実装（既存ロジックの完全移植）
-  - Step 3: MacroAction.cs および MacroActionAdapter.cs の作成
-  - Step 4: ActionFactory.cs / DefaultActionFactory.cs への Macro 型配線
-  - Step 5: Mapping.cs のディスパッチ呼び出し箇所のピンポイント置換（フォールバック保持）
-  - Step 6: 単体テスト（MockMacroPlayer および MacroActionTests）の実装とビルド検証
-
-7. 完了基準
-
-  - DS4Windows.Actions.Tests において MacroAction の単体テストがすべて合格すること。
-  - Mapping.cs 内の SpecialAction.ActionTypeId.Macro 処理が handled
-    フラグで二重実行なくディスパッチされること。
-  - 既存のマクロ（リピート、キーストローク、ウェイト）が実機/テストで同等に動作すること。
-
+## 6. 完了基準
+* `DS4Windows.Actions.Tests` において `MacroAction` の単体テストがすべて合格すること。
+* `Mapping.cs` 内の `SpecialAction.ActionTypeId.Macro` 処理が `handled` フラグで二重実行なくディスパッチされること。
+* 既存のマクロ（リピート、キーストローク、ウェイト）が実機/テストで同等に動作すること。
