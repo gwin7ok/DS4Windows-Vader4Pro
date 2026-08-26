@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using DS4Windows.Actions;
@@ -12,19 +13,34 @@ namespace DS4Windows.DI
         public static IServiceProvider Services => _host?.Services;
 
         /// <summary>
-        /// App.xaml.cs から呼び出されるホスト作成・初期化エントリーポイント（引数対応）
+        /// App.xaml.cs から IConfigurationRoot を受け取ってホストを初期化するエントリーポイント
         /// </summary>
-        public static IHost CreateHost(string[] args = null)
+        public static IHost CreateHost(IConfigurationRoot configuration)
         {
-            Initialize(args);
+            Initialize(configuration);
             return _host;
         }
 
-        public static void Initialize(string[] args = null)
+        public static IHost CreateHost(string[] args = null)
+        {
+            Initialize(args: args);
+            return _host;
+        }
+
+        public static void Initialize(IConfigurationRoot configuration = null, string[] args = null)
         {
             if (_host != null) return;
 
             var builder = Host.CreateDefaultBuilder(args ?? Array.Empty<string>());
+
+            if (configuration != null)
+            {
+                builder.ConfigureAppConfiguration((context, configBuilder) =>
+                {
+                    configBuilder.AddConfiguration(configuration);
+                });
+            }
+
             builder.ConfigureServices((context, services) =>
             {
                 // Actions サブシステムのサービス登録
