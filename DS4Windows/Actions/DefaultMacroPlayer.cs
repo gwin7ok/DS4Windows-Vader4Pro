@@ -11,16 +11,26 @@ namespace DS4Windows.Actions
     /// </summary>
     public class DefaultMacroPlayer : IMacroPlayer
     {
+        private readonly bool[] _isPlaying = new bool[4];
+        private readonly object _lock = new object();
+
         public bool IsPlaying(int deviceIndex)
         {
             if (deviceIndex < 0 || deviceIndex >= 4) return false;
-            // デバイスごとの再生状態を取得
-            return Mapping.macroPlaying != null && Mapping.macroPlaying[deviceIndex];
+            lock (_lock)
+            {
+                return _isPlaying[deviceIndex];
+            }
         }
 
         public void Play(int deviceIndex, SpecialAction action, CancellationToken cancellationToken = default)
         {
             if (deviceIndex < 0 || deviceIndex >= 4 || action == null) return;
+
+            lock (_lock)
+            {
+                _isPlaying[deviceIndex] = true;
+            }
 
             Mapping.PlayMacroDirect(deviceIndex, action);
         }
@@ -28,6 +38,11 @@ namespace DS4Windows.Actions
         public void Stop(int deviceIndex)
         {
             if (deviceIndex < 0 || deviceIndex >= 4) return;
+
+            lock (_lock)
+            {
+                _isPlaying[deviceIndex] = false;
+            }
 
             Mapping.EndMacroDirect(deviceIndex);
         }

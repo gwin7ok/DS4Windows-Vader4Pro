@@ -6445,11 +6445,13 @@ namespace DS4Windows
         /// <summary>
         /// DI/IMacroPlayer 用のマクロ実行エントリーポイント
         /// </summary>
+        /// <summary>
+        /// DI/IMacroPlayer 用のマクロ実行エントリーポイント
+        /// </summary>
         internal static void PlayMacroDirect(int device, SpecialAction action)
         {
             if (device < 0 || device >= 4 || action == null) return;
-            // 既存の内部 PlayMacro を安全に呼び出し
-            PlayMacro(device, falseArray, action.name, action.macro, action.macroKeyType, action.controls, action.keyType, action, action.actionState);
+            PlayMacro(device, new bool[4], action.name, action.macro, new int[0], DS4Controls.None, action.keyType, action, null);
         }
 
         /// <summary>
@@ -6458,10 +6460,8 @@ namespace DS4Windows
         internal static void EndMacroDirect(int device)
         {
             if (device < 0 || device >= 4) return;
-            // 既存の内部 EndMacro を呼び出して全キーを安全解放
-            EndMacro(device, falseArray, string.Empty, DS4Controls.None);
-        }
-        // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
+            EndMacro(device, new bool[4], string.Empty, DS4Controls.None);
+        }        // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
         // Macro steps are defined either as macrostr string value, macroLst list<int> object or as macroArr integer array. Only one of these should have a valid macro definition when this method is called.
         // If the macro definition is a macroStr string value then it will be converted as integer array on the fl. If steps are already defined as list or array of integers then there is no need to do type cast conversion.
         private static void PlayMacro(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action = null, ActionInstanceState actionDoneState = null)
