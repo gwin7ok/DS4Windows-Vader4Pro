@@ -2,16 +2,16 @@
 
 **作成日**: 2026-08-27  
 **最終更新日**: 2026-08-27  
-**ステータス**: 実装進行中 (Step 1-2 完了 / Step 3 準備中)  
+**ステータス**: 実装・テスト完了  
 **対象領域**: `SpecialAction.ActionTypeId.Macro` / `Mapping.PlayMacro` 系
 
 ---
 
 ## 1. 概要と目的
 
-`Mapping.cs` 内に直接実装されているマクロ再生ロジック（`PlayMacro`, `PlayMacroTask`, `PlayMacroCodeValue`, `EndMacro` 等）は、非同期タスク管理・タイマー待機・キー解放・Win32 API（`InputMethods`）呼び出しが混在しており、密結合かつ副作用の温床となっています。
+`Mapping.cs` 内に直接実装されているマクロ再生ロジック（`PlayMacro`, `PlayMacroTask`, `PlayMacroCodeValue`, `EndMacro` 等）は、非同期タスク管理・タイマー待機・キー解放・Win32 API（`InputMethods`）呼び出しが混在しており、密結合かつ副作用の温床となっていました。
 
-本タスク（C3）では、No Feature Drop（機能完全維持）原則を厳格に遵守しつつ、マクロ再生の責務を **`IMacroPlayer` / `MacroAction`** へ分離・抽象化し、DI 経由で実行可能な構造へ移行します。
+本タスク（C3）では、No Feature Drop（機能完全維持）原則を厳格に遵守しつつ、マクロ再生の責務を **`IMacroPlayer` / `MacroAction`** へ分離・抽象化し、DI 経由で実行可能な構造へ移行を完了しました。
 
 ---
 
@@ -44,10 +44,7 @@
 │
 ▼
 [ Mapping.PlayMacroDirect ]
-code Code
-download
-content_copy
-expand_less
+
 
 ### 3.1 コンポーネント構成
 
@@ -55,16 +52,20 @@ expand_less
    * マクロ再生・停止・状態取得の抽象インターフェース。
 2. **`DefaultMacroPlayer` (`DS4Windows/Actions/DefaultMacroPlayer.cs`)** 【完了】
    * `Mapping.PlayMacroDirect` / `EndMacroDirect` を呼び出す標準実装。
-3. **`MacroAction` (`DS4Windows/Actions/MacroAction.cs`)** 【Step 3】
-   * `IOutputAction` を実装し、`ServiceProviderHolder` 経由で `IMacroPlayer` を取得して再生。
-4. **`MacroActionAdapter` (`DS4Windows/Actions/MacroActionAdapter.cs`)** 【Step 3】
-   * `IActionAdapter` を実装し、トリガーイベントを `MacroAction` へ中継。
+3. **`MacroAction` (`DS4Windows/Actions/MacroAction.cs`)** 【完了】
+   * `IOutputAction` を実装し、`ServiceProviderHolder` 経由で `IMacroPlayer` を取得して再生/停止。
+4. **`MacroActionAdapter` (`DS4Windows/Actions/MacroActionAdapter.cs`)** 【完了】
+   * `Action` 基底クラスを実装し、トリガーイベントを `MacroAction` へ中継。
+5. **`MockMacroPlayer` (`DS4WindowsTests/MockMacroPlayer.cs`)** 【完了】
+   * 単体テスト用の呼び出し履歴記録モック。
+6. **`MacroActionTests` (`DS4WindowsTests/MacroActionTests.cs`)** 【完了】
+   * T1〜T5 の単体テストスイート。
 
 ---
 
 ## 4. No Feature Drop (機能完全維持) チェックリスト
 
-移行にあたり、以下のエッジケース・特殊処理を一切省略せず維持します：
+移行にあたり、以下のエッジケース・特殊処理を一切省略せず維持：
 
 - [x] **リピート動作モード**:
   - `SpecialAction` に定義されたリピート・ホールド設定を `Mapping.PlayMacroDirect` 経由でそのまま維持。
@@ -81,14 +82,14 @@ expand_less
 
 - [x] **Step 1**: `IMacroPlayer.cs` の新設
 - [x] **Step 2**: `Mapping.cs` 委譲エントリーポイント追加 & `DefaultMacroPlayer.cs` 実装・ビルド確認
-- [ ] **Step 3**: `MacroAction.cs` および `MacroActionAdapter.cs` の作成
-- [ ] **Step 4**: `ActionFactory.cs` / `DefaultActionFactory.cs` への `Macro` 型配線
-- [ ] **Step 5**: `Mapping.cs` のディスパッチ呼び出し箇所のピンポイント置換（フォールバック保持）
-- [ ] **Step 6**: 単体テスト（`MockMacroPlayer` および `MacroActionTests`）の実装とビルド検証
+- [x] **Step 3**: `MacroAction.cs` および `MacroActionAdapter.cs` の作成
+- [x] **Step 4**: `ActionFactory.cs` / `DefaultActionFactory.cs` への `Macro` 型配線
+- [x] **Step 5**: `Mapping.cs` のディスパッチ呼び出し箇所のピンポイント置換（フォールバック保持）
+- [x] **Step 6**: 単体テスト（`MockMacroPlayer` および `MacroActionTests`）の実装とビルド・実行検証
 
 ---
 
 ## 6. 完了基準
-* `DS4Windows.Actions.Tests` において `MacroAction` の単体テストがすべて合格すること。
-* `Mapping.cs` 内の `SpecialAction.ActionTypeId.Macro` 処理が `handled` フラグで二重実行なくディスパッチされること。
-* 既存のマクロ（リピート、キーストローク、ウェイト）が実機/テストで同等に動作すること。
+* [x] `DS4Windows.Actions.Tests` において `MacroAction` の単体テスト（T1〜T5）がすべて合格すること。
+* [x] `Mapping.cs` 内の `SpecialAction.ActionTypeId.Macro` 処理が `handled` フラグで二重実行なくディスパッチされること。
+* [x] 既存のマクロ（リピート、キーストローク、ウェイト）が実機/テストで同等に動作すること。
