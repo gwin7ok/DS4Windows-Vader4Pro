@@ -1,82 +1,64 @@
-# Phase 1 進捗記録（2026-08-17 時点）
+# Phase 1: SpecialAction 判定・実行の分離 - 進捗状況
 
-作成: Agent（DI移行作業用ブランチ）
-参照元: docs/DI-Migration-Plan.md, docs/Direct-Callsites-Inventory.md, .github/copilot-instructions.md §2.1修正版
+**最終更新日**: 2026-08-27  
+**ステータス**: 進行中 (C1, C2, C5 完了 / C3, C4 未着手)
 
-## 完了ステップ
+---
 
-### A — インベントリ & テスト基盤
-- `docs/Direct-Callsites-Inventory.md` 作成完了（PerformKeyPress, PerformMouseButtonEvent, PlayMacro, Global.ApplyProfile, Process.Start の呼び出し箇所をインベントリ化）
-- `DS4WindowsTests/MockManagedActionManager.cs` 完成（`IManagedActionManager` の全メンバー実装済み）
+## 1. 全体進捗概要
 
-### B — Mapping.cs の DispatchTrigger 厳密化（フォールバック残存）
-- `Mapping.cs` の `DispatchInputEdge` / `DispatchOrSetBeingTriggered` 実装済み
-- `!handled` 時に `SetBeingTriggeredIf` を呼ぶフォールバックを維持（§2.1修正版に準拠：古い方式を削除せず、新しい方式の動作確認が取れるまで残す）
-- 同時に複数の実装経路を持たない（1機能 = 1経路）
+Phase 1 では、`Mapping.cs` に埋め込まれている `SpecialAction` の副作用直接実行ロジックを、Actions サブシステム（`IOutputAction` / DI 経由）へ分離・移行する作業を進めています。
 
-### C1 — Key send 系（KeyOutputAction）
-- `DS4Windows/Actions/KeyOutputAction.cs` 既存確認（`IOutputAction` 実装、`Execute` / `Stop` で `TriggerContextImpl` + `KeyActionBinding` + `ActionManager.GetOrCreateControllerForAction` を使用）
-- `KeyActionBinding` 経由で `OutputContext` を渡す設計が既に存在
-- 追加の変更は不要（完了と判断）
+| ステップ | 対象機能 / アクション | 状態 | 備考 |
+| :--- | :--- | :---: | :--- |
+| **A** | インベントリ作成 & テスト基盤整備 | **完了** | Direct-Callsites-Inventory.md, MockManagedActionManager 作成済 |
+| **B** | `Mapping.cs` の DispatchTrigger 厳密化 | **完了** | `DispatchInputEdge` / `DispatchOrSetBeingTriggered` 実装、フォールバック維持 |
+| **C1** | Key send 系 (`KeyOutputAction`) | **完了** | 既存実装利用・配線確認済 |
+| **C2** | Mouse / Move 系 (`MouseOutputAction`) | **完了** | `MouseOutputAction.cs` 新設済 |
+| **C3** | Macro 系 (`MacroAction` / `MacroController`) | **未着手** | `PlayMacro` / `PlayMacroTask` の非同期・並列性設計が必要 |
+| **C4** | Profile 切替系 (`ProfileSwitchAction`) | **未着手** | `Global.ApplyProfile` の抽象化が必要 |
+| **C5** | 外部プロセス起動 (`LaunchProcessAction`) | **完了** | 4引数対応、Adapter新設、`Mapping.cs`置換、単体テスト(T1〜T6)ビルド成功 |
+| **D** | フォールバック削除と整流化 | **未着手** | 全出力アクション移行・動作確認後に実施 |
+| **E** | Phase 1 完了レビュー & 文書化 | **未着手** | ロールアウト前最終チェック |
 
-## 未完了ステップ
+---
 
-### C2 — Mouse / Move 系（MouseOutputAction 集約）
-- `Mapping.cs` の `PerformMouseButtonEvent` / `PerformMouseMoveEvent` 等を `MouseOutputAction` に集約する必要あり
-- `MouseOutputAction` クラスの存在確認と `IOutputAction` 実装の確認が次のタスク
+## 2. 直近の実施内容詳細 (C5: LaunchProcessAction 移行 & 単体テスト)
 
-### C3 — Macro 系（MacroAction / MacroController）
-- `PlayMacro` / `PlayMacroTask` の既存ロジックを `MacroController` に移す設計草案が必要
-- 並列・非同期性があるため慎重にテスト（リスク高）
+### 2.1 実装内容
+1. **`IProcessLauncher` インターフェースの拡張**:
+   * 引数付き・ウィンドウ非表示起動に対応するオーバーロードを追加。
+     ```csharp
+     void Launch(string fileName, string arguments, bool useShellExecute, bool hidden);
+     ```
+2. **`LaunchProcessAction` の全面改修**:
+   * `$hidden` プレースホルダー除去と `hidden = true` フラグ化。
+   * `.bat` / `.cmd` ファイルの `cmd.exe /c` ラップ起動対応。
+   * `DS4Windows.DI.ServiceProviderHolder.Provider` からの DI 解決と、フォールバック処理の維持。
+3. **`LaunchProcessActionAdapter` の新設**:
+   * 旧 `specActionLaunchProc` からの移行アダプターを作成し、`ActionFactory` に配線。
+4. **`Mapping.cs` のピンポイント置換**:
+   * `specActionLaunchProc` 呼び出し箇所を `LaunchProcessActionAdapter` 経由に置換し、二重実行防止の `handled` フラグ捕捉を実装。
 
-### C4 — Profile 切替（ProfileSwitchAction）
-- `Global.ApplyProfile` の呼び出し元をラップして `ActionManager.Dispatch...` を呼ぶ
-- `ProfileSwitchAction` の新規作成が必要
+### 2.2 単体テスト実装 (`DS4WindowsTests`)
+* **`MockProcessLauncher.cs`**:
+   * 4引数オーバーロードに対応し、呼び出し履歴（`Calls`）および各種引数の記録プロパティを実装。
+* **`LaunchProcessActionTests.cs` (新規追加)**:
+   * **T1**: 単純な実行可能ファイル（`notepad.exe`）の通常起動検証
+   * **T2**: 引数付き実行ファイルの引数分離検証
+   * **T3**: `$hidden` 指定時の非表示フラグおよび文字列除去検証
+   * **T4**: バッチファイル（`.bat`）の `cmd.exe` ラップ起動検証
+   * **T5**: 不正・空パス指定時の安全性検証（例外非スロー）
+   * **T6**: 複数回実行・履歴記録・リセット検証
+   * **結果**: `DS4Windows.Actions.Tests.csproj` においてビルド成功を確認。
 
-### C5 — 外部プロセス起動（LaunchProcessAction）
-- `specActionLaunchProc` の抽象化（`LaunchProcessAction`）実装完了（2026-08-26、Claude対応）
-- `DefaultActionFactory`/`ActionFactory` に `Program` 型のマッピングを追加（未配線だったTODOを解消）
-- `LaunchProcessActionAdapter` 新規作成（`IOutputAction` → `SpecialActionBase` 橋渡し）
-- `Mapping.cs` L5508-5569 をピンポイント置換（`handled` 捕捉により二重起動を防止、フォールバックは完全保持）
-- 詳細は `docs-forDIMG/MadeByAgent/C5-LaunchProcessAction-Implementation.md` を参照
-- **未実施**: `dotnet build` による実機ビルド確認（環境制約）、単体テストT1〜T6の追加
-- `Process.Start` は仕様的に置換不可な場合があるため優先度低 → ①（SpecialAction起動）は対応完了。②⑥は引き続きフェーズ3スコープ
+---
 
-### D — フォールバック削除と整流化
-- 実行条件: `handled == true` が各機能（Key, Mouse, Macro, Profile, Launch）で確実に返ることをテストで確認後
-- 現在はフォールバック（`!handled` → `SetBeingTriggeredIf` / 直接 `outputKBMHandler` 呼び出し）を維持中
-- §2.1修正版に従い、削除は別 PR（1機能 = 1 PR）で段階的に実施
+## 3. 次のステップ・残存タスク
 
-### E — ドキュメントとロールアウト
-- `docs/Direct-Callsites-Inventory.md` の更新（置換完了後の呼び出し箇所を反映）
-- `docs/DI-Migration-Plan.md` のステップ完了マーク
-- リリース候補ブランチでの実機テスト（特にマクロ・複合トグル）
-
-## 現在のコード状態（要点）
-
-- `AppHost.cs`: `Host.CreateDefaultBuilder()` で DI コンテナ構築（`App.xaml.cs` から呼び出し確認済み）
-- `ServiceRegistration.cs`: `IProfileSettingsService` 登録済み（`ProfileSettingsServicePlaceholder` 実装）
-- `Mapping.cs`: `DispatchInputEdge` / `DispatchOrSetBeingTriggered` 実装済み、フォールバック残存
-- `KeyOutputAction.cs`: 既存（変更不要）
-- `MockManagedActionManager.cs`: 完成
-- `DS4WinWPF.csproj`: `Microsoft.Extensions.Hosting` 8.0.0, `Configuration` 8.0.0 追加済み
-
-## C2 調査結果（2026-08-17 追加）
-- `MouseOutputAction` はドキュメント上の設計名（`docs/OutputAction-Feature-Inventory.md` で要件定義のみ）。実ファイルはまだ存在しない。
-- `Mapping.cs` の Mouse 系呼び出し箇所は `docs/Direct-Callsites-Inventory.md` にインベントリ済み（L1272〜L1377、L6648〜L6708 等）。
-- `VirtualKBMBase` の `PerformMouseButtonEvent` / `PerformMouseButtonEventAlt` は既存（`FakerInputHandler.cs`, `SendInputHandler.cs`）。
-- C2 は `MouseOutputAction` の新規作成（`KeyOutputAction` と同様のパターン）が必要。現在は未着手（次PR対象）。
-- 2026-08-26: `MouseOutputAction.cs` 新規作成完了（`IOutputAction` 実装、`Execute`/`Stop` で `AppLogger.LogTrace` 維持、フォールバックは `Mapping.cs` 側に残存 — §2.1修正版準拠）。ビルド成功（`dotnet build` 通過）。
-
-## 次の推奨アクション
-
-1. `MouseOutputAction` の存在確認と `Mapping.cs` の Mouse 系呼び出し箇所のインベントリ再確認（C2 開始）
-2. または `MacroController` 設計草案の作成（C3 開始）
-3. または `Mapping.cs` の `handled == true` 安定性をテストで検証し、D の準備を進める
-
-## 制約（§2.1修正版）
-
-- 古い方式（直接 `outputKBMHandler` 呼び出し等）は削除せず残す（新しい DI 経路の動作確認が取れるまで）
-- 新しい機能に複数の候補手段を同時に実装しない（1機能 = 1経路）
-- ログ出力（`AppLogger.LogTrace` / `LogDebug` 等）は維持（削除・新設しない）
-- `Global.cs` の静的メンバは薄いデリゲート（シム）として残す（75ファイルの呼び出し元を一度に壊さない）
+1. **C3: Macro 系 (`MacroAction`) の設計と実装**
+   * `Mapping.cs` 内の `PlayMacro` / `PlayMacroTask` の非同期実行・キーシーケンス制御を Actions サブシステムへ移行。
+2. **C4: Profile 切替系 (`ProfileSwitchAction`) の設計と実装**
+   * プロファイル切り替えロジック（`Global.ApplyProfile`）を抽象化し、アクション経由で安全にディスパッチする仕組みを構築。
+3. **Step D: 移行フォールバックの段階的廃止**
+   * 全アクションの安定稼働確認後、旧直接呼び出しロジックを削除。
