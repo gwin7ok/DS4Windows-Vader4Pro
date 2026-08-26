@@ -27,6 +27,7 @@ namespace DS4Windows.Actions
 
             // Fallback to minimal static behavior
             // Fallback to minimal static behavior
+            // Fallback to minimal static behavior
             switch (sa.typeID)
             {
                 case SpecialAction.ActionTypeId.Key:
@@ -35,7 +36,9 @@ namespace DS4Windows.Actions
                     return new LaunchProcessActionAdapter(sa, index);
                 case SpecialAction.ActionTypeId.Macro:
                     return new MacroActionAdapter(sa, index);
-                // Add other mappings as needed (Profile, etc.)
+                case SpecialAction.ActionTypeId.Profile:
+                    return new ProfileSwitchActionAdapter(sa, index);
+                // Add other mappings as needed
                 default:
                     return null;
             }

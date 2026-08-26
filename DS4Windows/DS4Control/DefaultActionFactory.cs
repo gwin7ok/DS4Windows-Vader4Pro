@@ -17,7 +17,9 @@ namespace DS4Windows.Actions
                     return new LaunchProcessActionAdapter(sa, index);
                 case SpecialAction.ActionTypeId.Macro:
                     return new MacroActionAdapter(sa, index);
-                // TODO: add Profile, Disconnect etc.
+                case SpecialAction.ActionTypeId.Profile:
+                    return new ProfileSwitchActionAdapter(sa, index);
+                // TODO: add Disconnect etc.
                 default:
                     return null;
             }
