@@ -1,37 +1,55 @@
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
+using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using DS4Windows.Actions;
 
 namespace DS4Windows.DI
 {
     public static class AppHost
     {
-        public static IHost CreateHost(IConfiguration configuration)
-        {
-            var builder = Host.CreateDefaultBuilder()
-                .ConfigureAppConfiguration((ctx, cfg) => {
-                    // cfg.AddConfiguration(configuration);
-                })
-                .ConfigureServices((ctx, services) => {
-                    ServiceRegistration.ConfigureServices(services, ctx.Configuration);
-                })
-                .ConfigureLogging(logging => {
-                    // ログ設定はここで行う
-                });
+        private static IHost _host;
 
-            return builder.Build();
+        public static IServiceProvider Services => _host?.Services;
+
+        /// <summary>
+        /// App.xaml.cs から呼び出されるホスト作成・初期化エントリーポイント
+        /// </summary>
+        /// <returns>構築された IHost インスタンス</returns>
+        public static IHost CreateHost()
+        {
+            Initialize();
+            return _host;
         }
 
-        public static async Task StartAsync(IHost host)
+        public static void Initialize()
         {
-            await host.StartAsync();
+            if (_host != null) return;
+
+            var builder = Host.CreateDefaultBuilder();
+            builder.ConfigureServices((context, services) =>
+            {
+                // Actions サブシステムのサービス登録
+                services.AddSingleton<IProcessLauncher, ProcessLauncher>();
+                services.AddSingleton<IMacroPlayer, DefaultMacroPlayer>();
+                services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
+                services.AddSingleton<IActionFactory, DefaultActionFactory>();
+            });
+
+            _host = builder.Build();
+
+            // Bridge to ServiceProviderHolder for legacy/hybrid access
+            ServiceProviderHolder.SetProvider(_host.Services);
         }
 
-        public static async Task StopAsync(IHost host)
+        public static void Shutdown()
         {
-            await host.StopAsync();
-            host.Dispose();
+            try
+            {
+                _host?.Dispose();
+                _host = null;
+                ServiceProviderHolder.SetProvider(null);
+            }
+            catch { }
         }
     }
 }
