@@ -11,20 +11,23 @@ namespace DS4Windows.Actions
     public class MacroAction : IOutputAction
     {
         private readonly SpecialAction sa;
+        private readonly int deviceIndex;
 
-        public MacroAction(SpecialAction sa)
+        public MacroAction(SpecialAction sa, int deviceIndex = 0)
         {
             this.sa = sa;
+            this.deviceIndex = deviceIndex;
         }
 
         public string Id => sa?.name ?? "Macro";
         public SpecialAction SpecialAction => sa;
+        public int DeviceIndex => deviceIndex;
 
         public void Execute(IOutputContext ctx)
         {
             if (sa == null) return;
 
-            int device = ctx?.DeviceIndex ?? 0;
+            int dev = deviceIndex;
             bool executedViaDI = false;
 
             // DI コンテナからの IMacroPlayer 解決試行
@@ -34,7 +37,7 @@ namespace DS4Windows.Actions
                 var player = sp.GetService(typeof(IMacroPlayer)) as IMacroPlayer;
                 if (player != null)
                 {
-                    player.Play(device, sa);
+                    player.Play(dev, sa);
                     executedViaDI = true;
                 }
             }
@@ -42,13 +45,13 @@ namespace DS4Windows.Actions
             // フォールバック: DI未登録時は従来の直接呼び出し
             if (!executedViaDI)
             {
-                Mapping.PlayMacroDirect(device, sa);
+                Mapping.PlayMacroDirect(dev, sa);
             }
         }
 
         public void Stop(IOutputContext ctx)
         {
-            int device = ctx?.DeviceIndex ?? 0;
+            int dev = deviceIndex;
             bool stoppedViaDI = false;
 
             var sp = ServiceProviderHolder.Provider;
@@ -57,14 +60,14 @@ namespace DS4Windows.Actions
                 var player = sp.GetService(typeof(IMacroPlayer)) as IMacroPlayer;
                 if (player != null)
                 {
-                    player.Stop(device);
+                    player.Stop(dev);
                     stoppedViaDI = true;
                 }
             }
 
             if (!stoppedViaDI)
             {
-                Mapping.EndMacroDirect(device);
+                Mapping.EndMacroDirect(dev);
             }
         }
     }
