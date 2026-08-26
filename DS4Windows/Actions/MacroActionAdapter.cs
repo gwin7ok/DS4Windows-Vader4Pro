@@ -24,14 +24,13 @@ namespace DS4Windows.Actions
         public SpecialAction SpecialAction => sa;
         public MacroAction OutputAction => action;
 
-        public bool OnTrigger(int device, MappingContext context)
+        public override void OnTrigger(int device, MappingContext context)
         {
-            if (sa == null) return false;
+            if (sa == null) return;
             action.Execute(null);
-            return true;
         }
 
-        public void OnRelease(int device, MappingContext context)
+        public override void OnRelease(int device, MappingContext context)
         {
             action.Stop(null);
         }
