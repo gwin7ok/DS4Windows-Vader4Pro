@@ -5513,10 +5513,7 @@ namespace DS4Windows
                                 {
                                     LogActionDoneCountOnTrigger(index, action, device, "Program");
 
-                                    // C5-2: ActionManager 経由（LaunchProcessAction）へのディスパッチを試みる。
-                                    // handled が true の場合、下の直接 Process.Start 呼び出し（フォールバック）はスキップする
-                                    // （§2.1修正版: 1機能=1経路。二重起動を防止するため、DispatchOrSetBeingTriggered ではなく
-                                    // handled を直接取得できる DispatchInputEdge を使用する）。
+                                    // C5 / Phase1-D-2: ActionManager 経由（LaunchProcessAction）へのディスパッチ
                                     bool handled = false;
                                     try
                                     {
@@ -5529,68 +5526,14 @@ namespace DS4Windows
                                         handled = DispatchInputEdge(ctx);
                                     }
                                     catch { }
+
                                     if (!handled)
                                     {
-                                        // BeingTriggered 状態の維持は DispatchOrSetBeingTriggered と同一のフォールバック処理
-                                        // （元の呼び出しが内部で行っていたものと等価）。
                                         try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+
+                                        // フォールバック: DI未登録時も LaunchProcessAction に集約して安全に実行
+                                        new DS4Windows.Actions.LaunchProcessAction(action).Execute(null);
                                     }
-
-                                    if (!handled)
-                                    {
-                                        if (!string.IsNullOrEmpty(action.extra))
-                                        {
-                                            int pos = action.extra.IndexOf("$hidden", StringComparison.OrdinalIgnoreCase);
-                                            if (pos >= 0)
-                                            {
-                                                System.Diagnostics.Process specActionLaunchProc = new System.Diagnostics.Process();
-
-                                                // LaunchProgram specAction has $hidden argument to indicate that the child process window should be hidden (especially useful when launching .bat/.cmd batch files).
-                                                // Removes the first occurence of $hidden substring from extra argument because it was a special action modifier keyword
-                                                string cmdArgs = specActionLaunchProc.StartInfo.Arguments = action.extra.Remove(pos, 7);
-                                                string cmdExt = Path.GetExtension(action.details).ToLower();
-
-                                                if (cmdExt == ".bat" || cmdExt == ".cmd")
-                                                {
-                                                    // Launch batch script using the default command shell cmd (COMSPEC env variable)
-                                                    specActionLaunchProc.StartInfo.FileName = System.Environment.GetEnvironmentVariable("COMSPEC");
-                                                    specActionLaunchProc.StartInfo.Arguments = "/C \"" + action.details + "\" " + cmdArgs;
-                                                }
-                                                else
-                                                {
-                                                    // Normal EXE executable app (action.details) with optional cmdline arguments (action.extra)
-                                                    specActionLaunchProc.StartInfo.FileName = action.details;
-                                                    specActionLaunchProc.StartInfo.Arguments = cmdArgs;
-                                                }
-
-                                                // Launch child process using hidden wnd option (the child process should probably do something and then close itself unless you want it to remain hidden in background)
-                                                specActionLaunchProc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                                                specActionLaunchProc.StartInfo.CreateNoWindow = true;
-                                                specActionLaunchProc.StartInfo.UseShellExecute = true;
-                                                specActionLaunchProc.Start();
-                                            }
-                                            else
-                                            {
-                                                // No special process modifiers (ie. $hidden wnd keyword). Launch the child process using the default WinOS settings
-                                                using (Process temp = new Process())
-                                                {
-                                                    temp.StartInfo.FileName = action.details;
-                                                    temp.StartInfo.Arguments = action.extra;
-                                                    temp.StartInfo.UseShellExecute = true;
-                                                    temp.Start();
-                                                }
-                                            }
-                                        }
-                                        else
-                                        {
-                                            using (Process temp = new Process())
-                                            {
-                                                temp.StartInfo.FileName = action.details;
-                                                temp.StartInfo.UseShellExecute = true;
-                                                temp.Start();
-                                            }
-                                        }
-                                    } // end fallback (!handled) — C5-2
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.Profile)
