@@ -24,7 +24,7 @@ namespace DS4WindowsTests
 
         public void Dispose()
         {
-            ServiceProviderHolder.Reset();
+            ServiceProviderHolder.SetProvider(null);
         }
 
         private static SpecialAction CreateSpecialAction(string details, string extra = "")
