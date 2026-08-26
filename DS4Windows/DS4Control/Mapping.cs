@@ -5512,7 +5512,32 @@ namespace DS4Windows
                                 if (!GetBeingTriggered(index, action, device))
                                 {
                                     LogActionDoneCountOnTrigger(index, action, device, "Program");
-                                    DispatchOrSetBeingTriggered(action, device, true);
+
+                                    // C5-2: ActionManager 経由（LaunchProcessAction）へのディスパッチを試みる。
+                                    // handled が true の場合、下の直接 Process.Start 呼び出し（フォールバック）はスキップする
+                                    // （§2.1修正版: 1機能=1経路。二重起動を防止するため、DispatchOrSetBeingTriggered ではなく
+                                    // handled を直接取得できる DispatchInputEdge を使用する）。
+                                    bool handled = false;
+                                    try
+                                    {
+                                        var ctx = new DS4Windows.TriggerContext
+                                        {
+                                            ActionDef = action,
+                                            Device = device,
+                                            IsEstablished = true
+                                        };
+                                        handled = DispatchInputEdge(ctx);
+                                    }
+                                    catch { }
+                                    if (!handled)
+                                    {
+                                        // BeingTriggered 状態の維持は DispatchOrSetBeingTriggered と同一のフォールバック処理
+                                        // （元の呼び出しが内部で行っていたものと等価）。
+                                        try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+                                    }
+
+                                    if (!handled)
+                                    {
                                     if (!string.IsNullOrEmpty(action.extra))
                                     {
                                         int pos = action.extra.IndexOf("$hidden", StringComparison.OrdinalIgnoreCase);
@@ -5565,6 +5590,7 @@ namespace DS4Windows
                                             temp.Start();
                                         }
                                     }
+                                    } // end fallback (!handled) — C5-2
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.Profile)

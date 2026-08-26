@@ -9,8 +9,14 @@ namespace DS4Windows.Actions
     public interface IProcessLauncher
     {
         /// <summary>
-        /// 指定されたパスのプロセスを起動する（分類①・⑥共通）
+        /// 指定されたパスのプロセスを起動する（分類①・⑥共通、引数なしの単純起動）
         /// </summary>
         void Launch(string filePath);
+
+        /// <summary>
+        /// 引数・ウィンドウ非表示オプション付きでプロセスを起動する（分類①: specActionLaunchProc 完全互換）。
+        /// hidden=true の場合、呼び出し側が .bat/.cmd 判定・COMSPEC ラップ・Arguments を確定済みの状態で渡す。
+        /// </summary>
+        void Launch(string fileName, string arguments, bool useShellExecute, bool hidden);
     }
 }

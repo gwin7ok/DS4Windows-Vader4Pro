@@ -30,7 +30,9 @@ namespace DS4Windows.Actions
             {
                 case SpecialAction.ActionTypeId.Key:
                     return new KeyActionAdapter(sa, index);
-                // Add other mappings as needed (Macro, Profile, Program, etc.)
+                case SpecialAction.ActionTypeId.Program:
+                    return new LaunchProcessActionAdapter(sa, index);
+                // Add other mappings as needed (Macro, Profile, etc.)
                 default:
                     return null;
             }
