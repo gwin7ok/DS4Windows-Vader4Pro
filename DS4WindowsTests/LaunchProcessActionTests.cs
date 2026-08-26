@@ -19,12 +19,12 @@ namespace DS4WindowsTests
             _mockLauncher = new MockProcessLauncher();
             var services = new ServiceCollection();
             services.AddSingleton<IProcessLauncher>(_mockLauncher);
-            ServiceProviderHolder.Provider = services.BuildServiceProvider();
+            ServiceProviderHolder.SetProvider(services.BuildServiceProvider());
         }
 
         public void Dispose()
         {
-            ServiceProviderHolder.Provider = null;
+            ServiceProviderHolder.Reset();
         }
 
         private static SpecialAction CreateSpecialAction(string details, string extra = "")
@@ -80,12 +80,12 @@ namespace DS4WindowsTests
             // Assert
             Assert.True(_mockLauncher.LaunchCalled);
             Assert.True(_mockLauncher.LastHidden);
-            // $hidden (7文字) が除去され " arg1" が渡されること
+            // $hidden が引数文字列から除外されていること
             Assert.DoesNotContain("$hidden", _mockLauncher.LastArguments ?? string.Empty);
         }
 
         [Fact]
-        public void T4_LaunchBatchFile_SetsUseShellExecuteTrue()
+        public void T4_LaunchBatchFile_WrapsWithCmdExe()
         {
             // Arrange
             var sa = CreateSpecialAction("C:\\scripts\\test.bat", string.Empty);
@@ -96,8 +96,9 @@ namespace DS4WindowsTests
 
             // Assert
             Assert.True(_mockLauncher.LaunchCalled);
-            // .bat は COMSPEC 経由またはパスが渡され、Hidden/UseShellExecute が設定される
-            Assert.True(_mockLauncher.LastUseShellExecute);
+            // .bat は cmd.exe (COMSPEC) 経由でラップされて起動されること
+            Assert.Contains("cmd.exe", _mockLauncher.LastPath, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("test.bat", _mockLauncher.LastArguments);
         }
 
         [Fact]
