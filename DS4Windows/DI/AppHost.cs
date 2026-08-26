@@ -12,19 +12,19 @@ namespace DS4Windows.DI
         public static IServiceProvider Services => _host?.Services;
 
         /// <summary>
-        /// App.xaml.cs から呼び出されるホスト作成・初期化エントリーポイント
+        /// App.xaml.cs から呼び出されるホスト作成・初期化エントリーポイント（引数対応）
         /// </summary>
-        public static IHost CreateHost()
+        public static IHost CreateHost(string[] args = null)
         {
-            Initialize();
+            Initialize(args);
             return _host;
         }
 
-        public static void Initialize()
+        public static void Initialize(string[] args = null)
         {
             if (_host != null) return;
 
-            var builder = Host.CreateDefaultBuilder();
+            var builder = Host.CreateDefaultBuilder(args ?? Array.Empty<string>());
             builder.ConfigureServices((context, services) =>
             {
                 // Actions サブシステムのサービス登録
