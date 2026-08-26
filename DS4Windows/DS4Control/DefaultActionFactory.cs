@@ -15,7 +15,9 @@ namespace DS4Windows.Actions
                     return new KeyActionAdapter(sa, index);
                 case SpecialAction.ActionTypeId.Program:
                     return new LaunchProcessActionAdapter(sa, index);
-                // TODO: add Macro, Profile, Disconnect etc.
+                case SpecialAction.ActionTypeId.Macro:
+                    return new MacroActionAdapter(sa, index);
+                // TODO: add Profile, Disconnect etc.
                 default:
                     return null;
             }

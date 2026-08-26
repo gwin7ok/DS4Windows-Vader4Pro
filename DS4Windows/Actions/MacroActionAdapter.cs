@@ -7,7 +7,7 @@ namespace DS4Windows.Actions
     /// マクロアクションのアダプター
     /// Mapping.cs のトリガー判定から MacroAction へのディスパッチを中継
     /// </summary>
-    public class MacroActionAdapter
+    public class MacroActionAdapter : Action
     {
         private readonly SpecialAction sa;
         private readonly MacroAction action;
