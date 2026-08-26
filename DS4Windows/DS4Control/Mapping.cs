@@ -5538,58 +5538,58 @@ namespace DS4Windows
 
                                     if (!handled)
                                     {
-                                    if (!string.IsNullOrEmpty(action.extra))
-                                    {
-                                        int pos = action.extra.IndexOf("$hidden", StringComparison.OrdinalIgnoreCase);
-                                        if (pos >= 0)
+                                        if (!string.IsNullOrEmpty(action.extra))
                                         {
-                                            System.Diagnostics.Process specActionLaunchProc = new System.Diagnostics.Process();
-
-                                            // LaunchProgram specAction has $hidden argument to indicate that the child process window should be hidden (especially useful when launching .bat/.cmd batch files).
-                                            // Removes the first occurence of $hidden substring from extra argument because it was a special action modifier keyword
-                                            string cmdArgs = specActionLaunchProc.StartInfo.Arguments = action.extra.Remove(pos, 7);
-                                            string cmdExt = Path.GetExtension(action.details).ToLower();
-
-                                            if (cmdExt == ".bat" || cmdExt == ".cmd")
+                                            int pos = action.extra.IndexOf("$hidden", StringComparison.OrdinalIgnoreCase);
+                                            if (pos >= 0)
                                             {
-                                                // Launch batch script using the default command shell cmd (COMSPEC env variable)
-                                                specActionLaunchProc.StartInfo.FileName = System.Environment.GetEnvironmentVariable("COMSPEC");
-                                                specActionLaunchProc.StartInfo.Arguments = "/C \"" + action.details + "\" " + cmdArgs;
+                                                System.Diagnostics.Process specActionLaunchProc = new System.Diagnostics.Process();
+
+                                                // LaunchProgram specAction has $hidden argument to indicate that the child process window should be hidden (especially useful when launching .bat/.cmd batch files).
+                                                // Removes the first occurence of $hidden substring from extra argument because it was a special action modifier keyword
+                                                string cmdArgs = specActionLaunchProc.StartInfo.Arguments = action.extra.Remove(pos, 7);
+                                                string cmdExt = Path.GetExtension(action.details).ToLower();
+
+                                                if (cmdExt == ".bat" || cmdExt == ".cmd")
+                                                {
+                                                    // Launch batch script using the default command shell cmd (COMSPEC env variable)
+                                                    specActionLaunchProc.StartInfo.FileName = System.Environment.GetEnvironmentVariable("COMSPEC");
+                                                    specActionLaunchProc.StartInfo.Arguments = "/C \"" + action.details + "\" " + cmdArgs;
+                                                }
+                                                else
+                                                {
+                                                    // Normal EXE executable app (action.details) with optional cmdline arguments (action.extra)
+                                                    specActionLaunchProc.StartInfo.FileName = action.details;
+                                                    specActionLaunchProc.StartInfo.Arguments = cmdArgs;
+                                                }
+
+                                                // Launch child process using hidden wnd option (the child process should probably do something and then close itself unless you want it to remain hidden in background)
+                                                specActionLaunchProc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                                                specActionLaunchProc.StartInfo.CreateNoWindow = true;
+                                                specActionLaunchProc.StartInfo.UseShellExecute = true;
+                                                specActionLaunchProc.Start();
                                             }
                                             else
                                             {
-                                                // Normal EXE executable app (action.details) with optional cmdline arguments (action.extra)
-                                                specActionLaunchProc.StartInfo.FileName = action.details;
-                                                specActionLaunchProc.StartInfo.Arguments = cmdArgs;
+                                                // No special process modifiers (ie. $hidden wnd keyword). Launch the child process using the default WinOS settings
+                                                using (Process temp = new Process())
+                                                {
+                                                    temp.StartInfo.FileName = action.details;
+                                                    temp.StartInfo.Arguments = action.extra;
+                                                    temp.StartInfo.UseShellExecute = true;
+                                                    temp.Start();
+                                                }
                                             }
-
-                                            // Launch child process using hidden wnd option (the child process should probably do something and then close itself unless you want it to remain hidden in background)
-                                            specActionLaunchProc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                                            specActionLaunchProc.StartInfo.CreateNoWindow = true;
-                                            specActionLaunchProc.StartInfo.UseShellExecute = true;
-                                            specActionLaunchProc.Start();
                                         }
                                         else
                                         {
-                                            // No special process modifiers (ie. $hidden wnd keyword). Launch the child process using the default WinOS settings
                                             using (Process temp = new Process())
                                             {
                                                 temp.StartInfo.FileName = action.details;
-                                                temp.StartInfo.Arguments = action.extra;
                                                 temp.StartInfo.UseShellExecute = true;
                                                 temp.Start();
                                             }
                                         }
-                                    }
-                                    else
-                                    {
-                                        using (Process temp = new Process())
-                                        {
-                                            temp.StartInfo.FileName = action.details;
-                                            temp.StartInfo.UseShellExecute = true;
-                                            temp.Start();
-                                        }
-                                    }
                                     } // end fallback (!handled) — C5-2
                                 }
                             }
@@ -6442,7 +6442,25 @@ namespace DS4Windows
                 AppLogger.LogToGui($"Failed to reset runtime key state for {key}: {ex.Message}", true);
             }
         }
+        /// <summary>
+        /// DI/IMacroPlayer 用のマクロ実行エントリーポイント
+        /// </summary>
+        internal static void PlayMacroDirect(int device, SpecialAction action)
+        {
+            if (device < 0 || device >= 4 || action == null) return;
+            // 既存の内部 PlayMacro を安全に呼び出し
+            PlayMacro(device, falseArray, action.name, action.macro, action.macroKeyType, action.controls, action.keyType, action, action.actionState);
+        }
 
+        /// <summary>
+        /// DI/IMacroPlayer 用のマクロ停止・キー解放エントリーポイント
+        /// </summary>
+        internal static void EndMacroDirect(int device)
+        {
+            if (device < 0 || device >= 4) return;
+            // 既存の内部 EndMacro を呼び出して全キーを安全解放
+            EndMacro(device, falseArray, string.Empty, DS4Controls.None);
+        }
         // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
         // Macro steps are defined either as macrostr string value, macroLst list<int> object or as macroArr integer array. Only one of these should have a valid macro definition when this method is called.
         // If the macro definition is a macroStr string value then it will be converted as integer array on the fl. If steps are already defined as list or array of integers then there is no need to do type cast conversion.
