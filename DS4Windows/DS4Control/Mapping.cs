@@ -6493,7 +6493,72 @@ namespace DS4Windows
         {
             if (device < 0 || device >= 4) return;
             EndMacro(device, new bool[4], string.Empty, DS4Controls.None);
-        }        // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
+        }
+
+        /// <summary>
+        /// DI/IProfileSwitcher 用のプロファイル切り替えエントリーポイント
+        /// </summary>
+        internal static void ApplyProfileDirect(int device, SpecialAction action)
+        {
+            if (device < 0 || device >= 4 || action == null) return;
+
+            var ctrl = Program.rootHub;
+            if (ctrl == null) return;
+
+            DS4Device d = ctrl.DS4Controllers[device];
+            if (d == null) return;
+
+            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
+                (device + 1).ToString(), action.details, $"{d.Battery}");
+            bool display = Global.ProfileChangedNotification;
+
+            Task.Run(() =>
+            {
+                d.HaltReportingRunAction(() =>
+                {
+                    Global.ApplyProfile(device, action.details, false, true, ctrl,
+                        DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
+
+                    if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
+                    {
+                        List<string> profileActionsNext = getProfileActions(device);
+                        for (int actionIndexNext = 0, profileListLenNext = profileActionsNext.Count; actionIndexNext < profileListLenNext; actionIndexNext++)
+                        {
+                            string actionnameNext = profileActionsNext[actionIndexNext];
+                            SpecialAction actionNext = GetProfileAction(device, actionnameNext);
+                            int indexNext = GetProfileActionIndexOf(device, actionnameNext);
+
+                            if (actionNext != null && actionNext.controls == action.controls)
+                                DispatchOrSetBeingTriggered(actionNext, device, true);
+                        }
+                    }
+                });
+            });
+        }
+
+        /// <summary>
+        /// DI/IProfileSwitcher 用の一時プロファイル復帰エントリーポイント
+        /// </summary>
+        internal static void RestoreProfileDirect(int device)
+        {
+            if (device < 0 || device >= 4) return;
+
+            var ctrl = Program.rootHub;
+            if (ctrl == null) return;
+
+            if (deviceRuntime[device].UntriggerAction != null)
+            {
+                string profileName = deviceRuntime[device].UntriggerAction.prevProfileName;
+                deviceRuntime[device].UntriggerAction = null;
+
+                if (string.IsNullOrEmpty(profileName))
+                    LoadProfile(device, false, ctrl);
+                else
+                    LoadTempProfile(device, profileName, true, ctrl);
+            }
+        }
+
+        // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
         // Macro steps are defined either as macrostr string value, macroLst list<int> object or as macroArr integer array. Only one of these should have a valid macro definition when this method is called.
         // If the macro definition is a macroStr string value then it will be converted as integer array on the fl. If steps are already defined as list or array of integers then there is no need to do type cast conversion.
         private static void PlayMacro(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action = null, ActionInstanceState actionDoneState = null)
