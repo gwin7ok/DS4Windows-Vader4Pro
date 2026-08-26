@@ -6,7 +6,7 @@ namespace DS4Windows.Actions
 {
     /// <summary>
     /// マクロ再生アクション（IOutputAction 実装）
-    /// DI（IMacroPlayer）経由で再生を実行し、未解決時は Mapping.PlayMacroDirect へフォールバック
+    /// DI（IMacroPlayer）経由で再生/停止を実行し、未解決時は Mapping.PlayMacroDirect / EndMacroDirect へフォールバック
     /// </summary>
     public class MacroAction : IOutputAction
     {
@@ -24,13 +24,7 @@ namespace DS4Windows.Actions
         {
             if (sa == null) return;
 
-            // コンテキストからデバイスインデックスを取得
-            int device = 0;
-            if (ctx is ActionContext actCtx)
-            {
-                device = actCtx.Device;
-            }
-
+            int device = ctx?.DeviceIndex ?? 0;
             bool executedViaDI = false;
 
             // DI コンテナからの IMacroPlayer 解決試行
@@ -49,6 +43,28 @@ namespace DS4Windows.Actions
             if (!executedViaDI)
             {
                 Mapping.PlayMacroDirect(device, sa);
+            }
+        }
+
+        public void Stop(IOutputContext ctx)
+        {
+            int device = ctx?.DeviceIndex ?? 0;
+            bool stoppedViaDI = false;
+
+            var sp = ServiceProviderHolder.Provider;
+            if (sp != null)
+            {
+                var player = sp.GetService(typeof(IMacroPlayer)) as IMacroPlayer;
+                if (player != null)
+                {
+                    player.Stop(device);
+                    stoppedViaDI = true;
+                }
+            }
+
+            if (!stoppedViaDI)
+            {
+                Mapping.EndMacroDirect(device);
             }
         }
     }

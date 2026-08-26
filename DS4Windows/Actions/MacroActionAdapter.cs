@@ -4,10 +4,10 @@ using DS4Windows;
 namespace DS4Windows.Actions
 {
     /// <summary>
-    /// マクロアクションのアダプター（IActionAdapter 実装）
+    /// マクロアクションのアダプター
     /// Mapping.cs のトリガー判定から MacroAction へのディスパッチを中継
     /// </summary>
-    public class MacroActionAdapter : IActionAdapter
+    public class MacroActionAdapter
     {
         private readonly SpecialAction sa;
         private readonly MacroAction action;
@@ -20,13 +20,18 @@ namespace DS4Windows.Actions
 
         public string ActionType => "Macro";
         public SpecialAction SpecialAction => sa;
-        public IOutputAction OutputAction => action;
+        public MacroAction OutputAction => action;
 
         public bool OnTrigger(int device, MappingContext context)
         {
             if (sa == null) return false;
-            action.Execute(new ActionContext(device, context));
+            action.Execute(new OutputContext(device, context));
             return true;
+        }
+
+        public void OnRelease(int device, MappingContext context)
+        {
+            action.Stop(new OutputContext(device, context));
         }
     }
 }
