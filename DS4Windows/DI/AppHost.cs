@@ -14,7 +14,6 @@ namespace DS4Windows.DI
         /// <summary>
         /// App.xaml.cs から呼び出されるホスト作成・初期化エントリーポイント
         /// </summary>
-        /// <returns>構築された IHost インスタンス</returns>
         public static IHost CreateHost()
         {
             Initialize();
@@ -29,7 +28,7 @@ namespace DS4Windows.DI
             builder.ConfigureServices((context, services) =>
             {
                 // Actions サブシステムのサービス登録
-                services.AddSingleton<IProcessLauncher, ProcessLauncher>();
+                services.AddSingleton<IProcessLauncher, DefaultProcessLauncher>();
                 services.AddSingleton<IMacroPlayer, DefaultMacroPlayer>();
                 services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
                 services.AddSingleton<IActionFactory, DefaultActionFactory>();
