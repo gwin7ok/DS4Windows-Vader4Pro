@@ -1,8 +1,6 @@
 using OutputKBMHandler = DS4Windows.Services.IVirtualKBM;
 using DS4Windows.Services;
 using DS4WinWPF;
-using DS4Windows.Services;
-using DS4WinWPF;
 /*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
@@ -1079,7 +1077,7 @@ namespace DS4Windows
         }
 
         // Try dispatch via ActionManager.DispatchTriggerEdge; if no Action handled it, fall back to Setting BeingTriggered
-        private static void DispatchOrSetBeingTriggered(SpecialAction action, int device, bool value, ushort logicalValue = 0, uint nativeValue = 0, bool useScan = false, DS4Windows.Services.IOutputKBMHandler outputHandler = null)
+        private static void DispatchOrSetBeingTriggered(SpecialAction action, int device, bool value, ushort logicalValue = 0, uint nativeValue = 0, bool useScan = false, DS4Windows.Services.IVirtualKBM outputHandler = null)
         {
             try
             {
