@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using DS4Windows.Services;
 using DS4WinWPF;
 
@@ -45,7 +45,7 @@ namespace DS4Windows.Actions
             {
                 if (sa == null) return;
                 int dev = (ctx != null && ctx.Device >= 0) ? ctx.Device : (deviceIndex >= 0 ? deviceIndex : 0);
-                _profileSwitcher.RestoreProfile(dev, sa);
+                _profileSwitcher.RestoreProfile(dev);
                 try { AppLogger.LogTrace($"ProfileSwitchAction.Stop: id={Id} device={dev}"); } catch { }
             }
             catch (Exception ex)
