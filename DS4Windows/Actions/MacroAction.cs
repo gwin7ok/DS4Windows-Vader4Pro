@@ -29,7 +29,7 @@ namespace DS4Windows.Actions
             try
             {
                 if (sa == null) return;
-                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx?.Device ?? 0);
+                int dev = (ctx != null && ctx.Device >= 0) ? ctx.Device : (deviceIndex >= 0 ? deviceIndex : 0);
                 _macroPlayer.Play(dev, sa);
                 try { AppLogger.LogTrace($"MacroAction.Execute: id={Id} device={dev}"); } catch { }
             }
@@ -44,7 +44,7 @@ namespace DS4Windows.Actions
             try
             {
                 if (sa == null) return;
-                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx?.Device ?? 0);
+                int dev = (ctx != null && ctx.Device >= 0) ? ctx.Device : (deviceIndex >= 0 ? deviceIndex : 0);
                 _macroPlayer.Stop(dev);
                 try { AppLogger.LogTrace($"MacroAction.Stop: id={Id} device={dev}"); } catch { }
             }

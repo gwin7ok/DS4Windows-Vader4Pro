@@ -29,7 +29,7 @@ namespace DS4Windows.Actions
             try
             {
                 if (sa == null) return;
-                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx?.Device ?? 0);
+                int dev = (ctx != null && ctx.Device >= 0) ? ctx.Device : (deviceIndex >= 0 ? deviceIndex : 0);
                 _profileSwitcher.SwitchProfile(dev, sa);
                 try { AppLogger.LogTrace($"ProfileSwitchAction.Execute: id={Id} device={dev}"); } catch { }
             }
@@ -41,6 +41,17 @@ namespace DS4Windows.Actions
 
         public void Stop(IOutputContext ctx)
         {
+            try
+            {
+                if (sa == null) return;
+                int dev = (ctx != null && ctx.Device >= 0) ? ctx.Device : (deviceIndex >= 0 ? deviceIndex : 0);
+                _profileSwitcher.RestoreProfile(dev, sa);
+                try { AppLogger.LogTrace($"ProfileSwitchAction.Stop: id={Id} device={dev}"); } catch { }
+            }
+            catch (Exception ex)
+            {
+                try { AppLogger.LogTrace($"ProfileSwitchAction.Stop failed: {ex}"); } catch { }
+            }
         }
     }
 }
