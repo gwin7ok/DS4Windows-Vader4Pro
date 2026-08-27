@@ -1,3 +1,4 @@
+using DS4Windows.Services;
 using System;
 
 using DS4Windows;
@@ -9,7 +10,7 @@ namespace DS4Windows.Actions
         public ushort LogicalValue { get; set; }
         public uint NativeValue { get; set; }
         public bool UseScanCode { get; set; }
-        public DS4Windows.DS4Control.VirtualKBMBase OutputHandler { get; set; }
+        public IVirtualKBM OutputHandler { get; set; }
         public SpecialAction ActionDef { get; set; }
         public int Index { get; set; }
     }
