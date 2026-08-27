@@ -1,3 +1,4 @@
+using DS4Windows.Services;
 using System;
 using DS4Windows.DS4Control;
 
@@ -41,7 +42,7 @@ namespace DS4Windows
             // Do not parse repeater options here; controllers handle repeat behavior.
         }
 
-        public void OnTrigger(int device, ushort logicalValue, uint nativeValue, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+        public void OnTrigger(int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM handler)
         {
             try
             {
@@ -72,7 +73,7 @@ namespace DS4Windows
             }
         }
 
-        public void OnRelease(int device, ushort logicalValue, uint nativeValue, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+        public void OnRelease(int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM handler)
         {
             try
             {

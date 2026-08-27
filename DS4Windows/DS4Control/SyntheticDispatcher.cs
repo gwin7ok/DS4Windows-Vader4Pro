@@ -1,3 +1,4 @@
+using DS4Windows.Services;
 using System;
 using System.Collections.Generic;
 using DS4Windows.DS4Control;
@@ -20,7 +21,7 @@ namespace DS4Windows
             return kvpKey;
         }
 
-        public static void SendPress(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler = null)
+        public static void SendPress(int device, ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler = null)
         {
             try
             {
@@ -70,7 +71,7 @@ namespace DS4Windows
             }
         }
 
-        public static void SendRelease(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler = null)
+        public static void SendRelease(int device, ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler = null)
         {
             try
             {
