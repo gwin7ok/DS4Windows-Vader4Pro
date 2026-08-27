@@ -1,4 +1,4 @@
-﻿using IVirtualKBM = DS4Windows.Services.IVirtualKBM;
+using IVirtualKBM = DS4Windows.Services.IVirtualKBM;
 using DS4Windows.Services;
 using DS4WinWPF;
 /*
@@ -40,7 +40,7 @@ namespace DS4Windows
 {
     public class Mapping
     {
-        private static IVirtualKBM VirtualKBM => AppHost.GetService<IVirtualKBM>() ?? Global.outputKBMHandler;
+        private static IVirtualKBM VirtualKBM => AppHost.GetService<IVirtualKBM>() ?? Global.IVirtualKBM;
         // SpecialAction名ごとのエラーログ抑制用（1プロファイル切り替えごとに1回だけ）
         // private static HashSet<string> loggedInvalidActions = new HashSet<string>();
 
