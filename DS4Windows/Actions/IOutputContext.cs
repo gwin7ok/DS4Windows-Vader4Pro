@@ -1,3 +1,4 @@
+using DS4Windows.Services;
 using System;
 using DS4Windows.DS4Control;
 
@@ -9,6 +10,6 @@ namespace DS4Windows.Actions
     public interface IOutputContext
     {
         int Device { get; }
-        VirtualKBMBase OutputHandler { get; }
+        IVirtualKBM OutputHandler { get; }
     }
 }

@@ -1,3 +1,4 @@
+using DS4Windows.Services;
 using System;
 using DS4Windows.Actions;
 using DS4Windows.DS4Control;
@@ -11,6 +12,6 @@ namespace DS4Windows.Actions
         public ushort LogicalValue { get; set; }
         public uint NativeValue { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-        public VirtualKBMBase OutputHandler { get; set; }
+        public IVirtualKBM OutputHandler { get; set; }
     }
 }
