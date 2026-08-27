@@ -10,7 +10,7 @@ namespace DS4WindowsTests
         public void T4_LaunchBatchFile_WrapsWithCmdExe()
         {
             var mock = new MockProcessLauncher();
-            var sa = new SpecialAction("LaunchProg", "Cross", "Key", "C:\\scripts\\test.bat", 0, "");
+            var sa = new SpecialAction("LaunchProg", "Cross", "Key", "Key", 0, "");
             sa.details = "C:\\scripts\\test.bat";
 
             var action = new LaunchProcessAction(sa, mock);
@@ -18,15 +18,15 @@ namespace DS4WindowsTests
 
             action.Execute(ctx);
 
-            Assert.Single(mock.LaunchCalls);
-            Assert.Contains("cmd.exe", mock.LaunchCalls[0].path);
+            Assert.Single(mock.LaunchedProcesses);
+            Assert.Contains("cmd.exe", mock.LaunchedProcesses[0].Path);
         }
 
         [Fact]
         public void T6_MultipleExecutions_RecordsAllCallsCorrectly()
         {
             var mock = new MockProcessLauncher();
-            var sa = new SpecialAction("LaunchProg", "Cross", "Key", "notepad.exe", 0, "");
+            var sa = new SpecialAction("LaunchProg", "Cross", "Key", "Key", 0, "");
             sa.details = "notepad.exe";
 
             var action = new LaunchProcessAction(sa, mock);
@@ -35,7 +35,7 @@ namespace DS4WindowsTests
             action.Execute(ctx);
             action.Execute(ctx);
 
-            Assert.Equal(2, mock.LaunchCalls.Count);
+            Assert.Equal(2, mock.LaunchedProcesses.Count);
         }
     }
 }
