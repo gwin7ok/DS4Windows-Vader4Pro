@@ -1,4 +1,4 @@
-using OutputKBMHandler = DS4Windows.Services.IVirtualKBM;
+using IVirtualKBM = DS4Windows.Services.IVirtualKBM;
 using DS4Windows.Services;
 using DS4WinWPF;
 /*
