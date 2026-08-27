@@ -30,7 +30,7 @@ namespace DS4Windows.DS4Control
         protected string errorMessage = string.Empty;
         public string ErrorMessage { get => errorMessage; }
 
-        public bool fakeKeyRepeat = false;
+        public bool fakeKeyRepeat { get; set; } = false;
 
         public Version version = new Version("0.0.0.0");
         public string Version

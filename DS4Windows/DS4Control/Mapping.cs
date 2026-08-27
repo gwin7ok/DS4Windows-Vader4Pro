@@ -1076,7 +1076,7 @@ namespace DS4Windows
         }
 
         // Try dispatch via ActionManager.DispatchTriggerEdge; if no Action handled it, fall back to Setting BeingTriggered
-        private static void DispatchOrSetBeingTriggered(SpecialAction action, int device, bool value, ushort logicalValue = 0, uint nativeValue = 0, bool useScan = false, DS4Windows.DS4Control.VirtualKBMBase outputHandler = null)
+        private static void DispatchOrSetBeingTriggered(SpecialAction action, int device, bool value, ushort logicalValue = 0, uint nativeValue = 0, bool useScan = false, DS4Windows.Services.IVirtualKBM outputHandler = null)
         {
             try
             {
@@ -1283,7 +1283,7 @@ namespace DS4Windows
                         LogicalValue = 0,
                         NativeValue = 0,
                         UseScanCode = false,
-                        OutputHandler = outputKBMHandler,
+                        OutputHandler = VirtualKBM,
                         IsEstablished = true
                     };
                     var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
@@ -1292,7 +1292,7 @@ namespace DS4Windows
                         var mouseAction = sp.GetService(typeof(DS4Windows.Actions.MouseOutputAction)) as DS4Windows.Actions.MouseOutputAction;
                         if (mouseAction != null)
                         {
-                            mouseAction.Execute(new DS4Windows.Actions.OutputContextImpl(device, outputKBMHandler));
+                            mouseAction.Execute(new DS4Windows.Actions.OutputContextImpl(device, VirtualKBM));
                             mouseHandled = true;
                         }
                     }
@@ -1301,46 +1301,46 @@ namespace DS4Windows
 
                 if (!mouseHandled)
                 {
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
                 }
 
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
                 }
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
                 }
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
                 }
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
                 }
             }
             else if (globalState.currentClicks.toggleCount != 0 && globalState.previousClicks.toggleCount == 0 && !globalState.currentClicks.toggle)
             {
                 if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
             }
 
             if (globalState.currentClicks.toggleCount == 0 && globalState.previousClicks.toggleCount == 0)
@@ -1360,7 +1360,7 @@ namespace DS4Windows
                             LogicalValue = 0,
                             NativeValue = 0,
                             UseScanCode = false,
-                            OutputHandler = outputKBMHandler,
+                            OutputHandler = VirtualKBM,
                             IsEstablished = true
                         };
                         var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
@@ -1369,7 +1369,7 @@ namespace DS4Windows
                             var mouseAction = sp.GetService(typeof(DS4Windows.Actions.MouseOutputAction)) as DS4Windows.Actions.MouseOutputAction;
                             if (mouseAction != null)
                             {
-                                mouseAction.Execute(new DS4Windows.Actions.OutputContextImpl(device, outputKBMHandler));
+                                mouseAction.Execute(new DS4Windows.Actions.OutputContextImpl(device, VirtualKBM));
                                 mouseHandled = true;
                             }
                         }
@@ -1378,73 +1378,73 @@ namespace DS4Windows
 
                     if (!mouseHandled)
                     {
-                        outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                        VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
                     }
                 }
                 else if (globalState.currentClicks.leftCount == 0 && globalState.previousClicks.leftCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftUp");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
                 }
 
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
                 }
                 else if (globalState.currentClicks.middleCount == 0 && globalState.previousClicks.middleCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleUp");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
                 }
 
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
                 }
                 else if (globalState.currentClicks.rightCount == 0 && globalState.previousClicks.rightCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightUp");
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
                 }
 
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
                 }
                 else if (globalState.currentClicks.fourthCount == 0 && globalState.previousClicks.fourthCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonUp btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=1");
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
                 }
 
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
                 }
                 else if (globalState.currentClicks.fifthCount == 0 && globalState.previousClicks.fifthCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonUp btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=2");
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
                 }
 
                 if (globalState.currentClicks.wUpCount != 0 && globalState.previousClicks.wUpCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseWheelUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelUp");
-                    outputKBMHandler.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_UP, 0);
+                    VirtualKBM.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_UP, 0);
                     oldnow = DateTime.UtcNow;
                     wheel = outputKBMMapping.WHEEL_TICK_UP;
                 }
@@ -1455,7 +1455,7 @@ namespace DS4Windows
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseWheelDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelDown");
-                    outputKBMHandler.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_DOWN, 0);
+                    VirtualKBM.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_DOWN, 0);
                     oldnow = DateTime.UtcNow;
                     wheel = outputKBMMapping.WHEEL_TICK_DOWN;
                 }
@@ -1470,7 +1470,7 @@ namespace DS4Windows
                 if (now >= oldnow + TimeSpan.FromMilliseconds(150) && !pressagain)
                 {
                     oldnow = now;
-                    outputKBMHandler.PerformMouseWheelEvent(wheel, 0);
+                    VirtualKBM.PerformMouseWheelEvent(wheel, 0);
                 }
             }
 
@@ -1532,7 +1532,7 @@ namespace DS4Windows
                                         LogicalValue = (ushort)kvpKey,
                                         NativeValue = nativeKey,
                                         UseScanCode = gkp.current.scanCodeCount != 0,
-                                        OutputHandler = outputKBMHandler,
+                                        OutputHandler = VirtualKBM,
                                         IsEstablished = true
                                     };
                                     handled = DispatchInputEdge(ctx);
@@ -1553,7 +1553,7 @@ namespace DS4Windows
                                             LogicalValue = (ushort)kvpKey,
                                             NativeValue = nativeKey,
                                             UseScanCode = gkp.current.scanCodeCount != 0,
-                                            OutputHandler = outputKBMHandler,
+                                            OutputHandler = VirtualKBM,
                                             IsEstablished = true
                                         };
                                         handled = DispatchInputEdge(ctx2);
@@ -1574,7 +1574,7 @@ namespace DS4Windows
                                         IsEdgeEstablished = true,
                                         LogicalValue = (ushort)kvpKey,
                                         NativeValue = nativeKey,
-                                        OutputHandler = outputKBMHandler,
+                                        OutputHandler = VirtualKBM,
                                         Timestamp = DateTime.UtcNow
                                     };
                                     var binding = new DS4Windows.Actions.KeyActionBinding(sa);
@@ -1611,7 +1611,7 @@ namespace DS4Windows
                             {
                                 SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
                                 bool handled = false;
-                                try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, VirtualKBM); } catch { }
                                 if (!handled)
                                 {
                                     var kbc = (DS4Windows.Actions.IActionController)null;
@@ -1627,7 +1627,7 @@ namespace DS4Windows
                                                 LogicalValue = (ushort)kvpKey,
                                                 NativeValue = nativeKey,
                                                 UseScanCode = gkp.current.scanCodeCount != 0,
-                                                OutputHandler = outputKBMHandler,
+                                                OutputHandler = VirtualKBM,
                                                 IsEstablished = false
                                             };
                                             handled = DispatchInputEdge(ctxRel);
@@ -1648,7 +1648,7 @@ namespace DS4Windows
                                             IsEdgeEstablished = false,
                                             LogicalValue = (ushort)kvpKey,
                                             NativeValue = nativeKey,
-                                            OutputHandler = outputKBMHandler,
+                                            OutputHandler = VirtualKBM,
                                             Timestamp = DateTime.UtcNow
                                         };
                                         var binding = new DS4Windows.Actions.KeyActionBinding(sa);
@@ -1699,7 +1699,7 @@ namespace DS4Windows
                             {
                                 SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
                                 bool handled = false;
-                                try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, outputKBMHandler); } catch { }
+                                try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, VirtualKBM); } catch { }
                                 if (!handled)
                                 {
                                     var kbc = (DS4Windows.Actions.IActionController)null;
@@ -1714,7 +1714,7 @@ namespace DS4Windows
                                                 LogicalValue = (ushort)kvpKey,
                                                 NativeValue = nativeKey,
                                                 UseScanCode = gkp.current.scanCodeCount != 0,
-                                                OutputHandler = outputKBMHandler,
+                                                OutputHandler = VirtualKBM,
                                                 IsEstablished = false
                                             };
                                             handled = DispatchInputEdge(ctxRel2);
@@ -1735,7 +1735,7 @@ namespace DS4Windows
                                             IsEdgeEstablished = false,
                                             LogicalValue = (ushort)kvpKey,
                                             NativeValue = nativeKey,
-                                            OutputHandler = outputKBMHandler,
+                                            OutputHandler = VirtualKBM,
                                             Timestamp = DateTime.UtcNow
                                         };
                                         var binding = new DS4Windows.Actions.KeyActionBinding(sa);
@@ -1787,7 +1787,7 @@ namespace DS4Windows
                         if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                         {
                             AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
-                            outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                            VirtualKBM.PerformKeyPressAlt(nativeKey);
                             gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                         }
                         else
@@ -1805,7 +1805,7 @@ namespace DS4Windows
                         if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                         {
                             AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
-                            outputKBMHandler.PerformKeyPress(nativeKey);
+                            VirtualKBM.PerformKeyPress(nativeKey);
                             gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                         }
                         else
@@ -1816,7 +1816,7 @@ namespace DS4Windows
                         keyshelddown = kvpKey;
                     }
                 }
-                else if (outputKBMHandler.fakeKeyRepeat && (gkp.current.toggleCount != 0 || gkp.previous.toggleCount != 0 || gkp.current.repeatCount != 0 || // repeat or SC/VK transition
+                else if (VirtualKBM.fakeKeyRepeat && (gkp.current.toggleCount != 0 || gkp.previous.toggleCount != 0 || gkp.current.repeatCount != 0 || // repeat or SC/VK transition
                      ((gkp.previous.scanCodeCount == 0) != (gkp.current.scanCodeCount == 0)))) //repeat keystroke after 500ms
                 {
                     if (keyshelddown == kvpKey)
@@ -1838,7 +1838,7 @@ namespace DS4Windows
                                 if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                                 {
                                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPressAlt(repeat)");
-                                    outputKBMHandler.PerformKeyPressAlt(nativeKey);
+                                    VirtualKBM.PerformKeyPressAlt(nativeKey);
                                     gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                                 }
                                 else
@@ -1858,7 +1858,7 @@ namespace DS4Windows
                                 if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                                 {
                                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(repeat)");
-                                    outputKBMHandler.PerformKeyPress(nativeKey);
+                                    VirtualKBM.PerformKeyPress(nativeKey);
                                     gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                                 }
                                 else
@@ -1879,7 +1879,7 @@ namespace DS4Windows
                         long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
                         AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
                         AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
-                        outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
+                        VirtualKBM.PerformKeyReleaseAlt(nativeKey);
                         // update last send and clear previous pressed counts to avoid repeats
                         gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                         gkp.previous.vkCount = 0;
@@ -1893,7 +1893,7 @@ namespace DS4Windows
                     {
                         long nowTicksSend = DateTime.UtcNow.Ticks;
                         AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-                        outputKBMHandler.PerformKeyRelease(nativeKey);
+                        VirtualKBM.PerformKeyRelease(nativeKey);
                         // update last send and clear previous pressed counts to avoid repeats
                         gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
                         gkp.previous.vkCount = 0;
@@ -1915,7 +1915,7 @@ namespace DS4Windows
             // SendInput version does nothing
             // Update toggle-driven repeat controller so it can emit repeats using stored handlers
             // ToggleActionController removed from per-path usage — per-device controllers handle updates.
-            outputKBMHandler.Sync();
+            VirtualKBM.Sync();
         }
 
         public enum Click { None, Left, Middle, Right, Fourth, Fifth, WUP, WDOWN };
@@ -4006,7 +4006,7 @@ namespace DS4Windows
                 out mouseDeltaX, out mouseDeltaY);
             if (mouseDeltaX != 0 || mouseDeltaY != 0)
             {
-                outputKBMHandler.MoveRelativeMouse(mouseDeltaX, mouseDeltaY);
+                VirtualKBM.MoveRelativeMouse(mouseDeltaX, mouseDeltaY);
             }
 
             if (absMouseOut.Dirty ||
@@ -4041,7 +4041,7 @@ namespace DS4Windows
 
                     outX = Math.Clamp(outX, 0.0, 1.0);
                     outY = Math.Clamp(outY, 0.0, 1.0);
-                    outputKBMHandler.MoveAbsoluteMouse(outX, outY);
+                    VirtualKBM.MoveAbsoluteMouse(outX, outY);
                 }
                 else if (absMouseOut.previousDirty)
                 {
@@ -4057,7 +4057,7 @@ namespace DS4Windows
                                 out releaseX, out releaseY);
                         }
 
-                        outputKBMHandler.MoveAbsoluteMouse(releaseX, releaseY);
+                        VirtualKBM.MoveAbsoluteMouse(releaseX, releaseY);
                     }
                 }
 
@@ -4246,7 +4246,7 @@ namespace DS4Windows
 
         // Helper: Dispatch SpecialAction trigger established via KeyButtonActionController if available.
         // If a fallback action is provided it will be executed when no controller exists.
-        private static bool TryDispatchSATriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler, Action fallback = null)
+        private static bool TryDispatchSATriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM VirtualKBM, Action fallback = null)
         {
             try
             {
@@ -4265,7 +4265,7 @@ namespace DS4Windows
                             LogicalValue = logicalValue,
                             NativeValue = nativeValue,
                             UseScanCode = useScanCode,
-                            OutputHandler = outputKBMHandler,
+                            OutputHandler = VirtualKBM,
                             IsEstablished = true
                         };
                         handledByManager = DispatchInputEdge(ctx);
@@ -4292,7 +4292,7 @@ namespace DS4Windows
                             LogicalValue = logicalValue,
                             NativeValue = nativeValue,
                             UseScanCode = useScanCode,
-                            OutputHandler = outputKBMHandler,
+                            OutputHandler = VirtualKBM,
                             IsEstablished = true
                         };
                         handledFinal = DispatchInputEdge(ctxFinal);
@@ -4301,7 +4301,7 @@ namespace DS4Windows
 
                     if (!handledFinal)
                     {
-                        try { ActionManager.DispatchTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); } catch { }
+                        try { ActionManager.DispatchTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, VirtualKBM); } catch { }
                     }
                     try
                     {
@@ -4332,7 +4332,7 @@ namespace DS4Windows
 
         // Helper: Dispatch SpecialAction trigger release via KeyButtonActionController if available.
         // If a fallback action is provided it will be executed when no controller exists.
-        private static bool TryDispatchSATriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler, Action fallback = null)
+        private static bool TryDispatchSATriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM VirtualKBM, Action fallback = null)
         {
             try
             {
@@ -4350,7 +4350,7 @@ namespace DS4Windows
                             LogicalValue = logicalValue,
                             NativeValue = nativeValue,
                             UseScanCode = useScanCode,
-                            OutputHandler = outputKBMHandler,
+                            OutputHandler = VirtualKBM,
                             IsEstablished = false
                         };
                         handledByManager = DispatchInputEdge(ctx);
@@ -4376,7 +4376,7 @@ namespace DS4Windows
                             LogicalValue = logicalValue,
                             NativeValue = nativeValue,
                             UseScanCode = useScanCode,
-                            OutputHandler = outputKBMHandler,
+                            OutputHandler = VirtualKBM,
                             IsEstablished = false
                         };
                         handledFinal = DispatchInputEdge(ctxFinal);
@@ -4385,7 +4385,7 @@ namespace DS4Windows
 
                     if (!handledFinal)
                     {
-                        try { ActionManager.DispatchTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, outputKBMHandler); } catch { }
+                        try { ActionManager.DispatchTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, VirtualKBM); } catch { }
                     }
                     try
                     {
@@ -5569,7 +5569,7 @@ namespace DS4Windows
                                             if (dcs.actionType == DS4ControlSettings.ActionType.Key)
                                             {
                                                 uint tempKey = outputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
-                                                outputKBMHandler.PerformKeyRelease(tempKey);
+                                                VirtualKBM.PerformKeyRelease(tempKey);
                                             }
                                             else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
                                             {
@@ -5577,7 +5577,7 @@ namespace DS4Windows
                                                 for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
                                                 {
                                                     uint tempKey = outputKBMMapping.GetRealEventKey((uint)keys[j]);
-                                                    outputKBMHandler.PerformKeyRelease(tempKey);
+                                                    VirtualKBM.PerformKeyRelease(tempKey);
                                                 }
                                             }
                                         }
@@ -5772,7 +5772,7 @@ namespace DS4Windows
                                             {
                                                 try
                                                 {
-                                                    TryDispatchSATriggerEstablished(action, device, (ushort)btnVal, (uint)btnVal, false, outputKBMHandler, () => outputfieldMapping.buttons[(int)xboxControl] = true);
+                                                    TryDispatchSATriggerEstablished(action, device, (ushort)btnVal, (uint)btnVal, false, VirtualKBM, () => outputfieldMapping.buttons[(int)xboxControl] = true);
                                                 }
                                                 catch
                                                 {
@@ -5842,7 +5842,7 @@ namespace DS4Windows
                                                 LogicalValue = key,
                                                 NativeValue = nativeKeyToUse,
                                                 UseScanCode = useScan,
-                                                OutputHandler = outputKBMHandler,
+                                                OutputHandler = VirtualKBM,
                                                 IsEstablished = true
                                             };
                                             ActionManager.DispatchTriggerEdge(ctxKey);
@@ -5858,12 +5858,12 @@ namespace DS4Windows
                                     else if (action.keyType.HasFlag(DS4KeyType.ScanCode))
                                     {
                                         AppLogger.LogDebug($"SpecialAction KEY direct PerformKeyPressAlt: name={action.name}, device={device}, key={key}");
-                                        outputKBMHandler.PerformKeyPressAlt(key);
+                                        VirtualKBM.PerformKeyPressAlt(key);
                                     }
                                     else
                                     {
                                         AppLogger.LogDebug($"SpecialAction KEY direct PerformKeyPress: name={action.name}, device={device}, key={key}");
-                                        outputKBMHandler.PerformKeyPress(key);
+                                        VirtualKBM.PerformKeyPress(key);
                                     }
                                 }
                             }
@@ -6009,7 +6009,7 @@ namespace DS4Windows
                                     {
                                         uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
                                         bool useScanRel = action.keyType.HasFlag(DS4KeyType.ScanCode);
-                                        TryDispatchSATriggerReleased(action, device, key, nativeKeyToUse, useScanRel, outputKBMHandler);
+                                        TryDispatchSATriggerReleased(action, device, key, nativeKeyToUse, useScanRel, VirtualKBM);
                                     }
                                     catch (Exception ex)
                                     {
@@ -6085,7 +6085,7 @@ namespace DS4Windows
                                         {
                                             uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
                                             bool useScanRel = action.keyType.HasFlag(DS4KeyType.ScanCode);
-                                            TryDispatchSATriggerReleased(action, device, key, nativeKeyToUse, useScanRel, outputKBMHandler);
+                                            TryDispatchSATriggerReleased(action, device, key, nativeKeyToUse, useScanRel, VirtualKBM);
                                         }
                                         catch (Exception ex)
                                         {
@@ -6100,7 +6100,7 @@ namespace DS4Windows
                                             {
                                                 try
                                                 {
-                                                    TryDispatchSATriggerReleased(action, device, (ushort)btnVal2, (uint)btnVal2, false, outputKBMHandler);
+                                                    TryDispatchSATriggerReleased(action, device, (ushort)btnVal2, (uint)btnVal2, false, VirtualKBM);
                                                 }
                                                 catch (Exception ex)
                                                 {
@@ -6341,12 +6341,12 @@ namespace DS4Windows
                                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                                 {
                                     if (dcs.actionType == DS4ControlSettings.ActionType.Key)
-                                        outputKBMHandler.PerformKeyRelease((ushort)dcs.action.actionKey);
+                                        VirtualKBM.PerformKeyRelease((ushort)dcs.action.actionKey);
                                     else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
                                     {
                                         int[] keys = dcs.action.actionMacro;
                                         for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
-                                            outputKBMHandler.PerformKeyRelease((ushort)keys[j]);
+                                            VirtualKBM.PerformKeyRelease((ushort)keys[j]);
                                     }
                                 }
                             }
@@ -6395,7 +6395,7 @@ namespace DS4Windows
                     if (dcs.actionType == DS4ControlSettings.ActionType.Key)
                     {
                         uint tempKey = outputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
-                        outputKBMHandler.PerformKeyRelease(tempKey);
+                        VirtualKBM.PerformKeyRelease(tempKey);
                     }
                     else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
                     {
@@ -6403,7 +6403,7 @@ namespace DS4Windows
                         for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
                         {
                             uint tempKey = outputKBMMapping.GetRealEventKey((uint)keys[j]);
-                            outputKBMHandler.PerformKeyRelease(tempKey);
+                            VirtualKBM.PerformKeyRelease(tempKey);
                         }
                     }
                 }
@@ -6814,23 +6814,23 @@ namespace DS4Windows
                         //anything above 255 is not a keyvalue
                         case 256:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseLeftDown");
-                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
                             break;
                         case 257:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseRightDown");
-                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
                             break;
                         case 258:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseMiddleDown");
-                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
                             break;
                         case 259:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonDown btn=1");
-                            outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                            VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
                             break;
                         case 260:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonDown btn=2");
-                            outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                            VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
                             break;
 
                         default:
@@ -6840,12 +6840,12 @@ namespace DS4Windows
                             if (keyType.HasFlag(DS4KeyType.ScanCode))
                             {
                                 AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyPressAlt native={eventMacroCode}");
-                                outputKBMHandler.PerformKeyPressAlt(eventMacroCode);
+                                VirtualKBM.PerformKeyPressAlt(eventMacroCode);
                             }
                             else
                             {
                                 AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyPress native={eventMacroCode}");
-                                outputKBMHandler.PerformKeyPress(eventMacroCode);
+                                VirtualKBM.PerformKeyPress(eventMacroCode);
                             }
                             break;
                     }
@@ -6858,23 +6858,23 @@ namespace DS4Windows
                         //anything above 255 is not a keyvalue
                         case 256:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseLeftUp");
-                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
                             break;
                         case 257:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseRightUp");
-                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
                             break;
                         case 258:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseMiddleUp");
-                            outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
                             break;
                         case 259:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonUp btn=1");
-                            outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                            VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
                             break;
                         case 260:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonUp btn=2");
-                            outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                            VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
                             break;
 
                         default:
@@ -6887,7 +6887,7 @@ namespace DS4Windows
                                 long _deltaSendDbg = 0; // inline macro release: lastSyntheticSend not tracked here
                                 AppLogger.LogTrace($"INLINE RELEASE TRACE device={device} macroCode={macroCodeValue} native={eventMacroCode} lastSendDeltaMs={_deltaSendDbg}");
                                 AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyReleaseAlt native={eventMacroCode}");
-                                outputKBMHandler.PerformKeyReleaseAlt(eventMacroCode);
+                                VirtualKBM.PerformKeyReleaseAlt(eventMacroCode);
                             }
                             else
                             {
@@ -6895,7 +6895,7 @@ namespace DS4Windows
                                 long _deltaSendDbg = 0;
                                 AppLogger.LogTrace($"INLINE RELEASE TRACE device={device} macroCode={macroCodeValue} native={eventMacroCode} lastSendDeltaMs={_deltaSendDbg}");
                                 AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyRelease native={eventMacroCode}");
-                                outputKBMHandler.PerformKeyRelease(eventMacroCode);
+                                VirtualKBM.PerformKeyRelease(eventMacroCode);
                             }
                             break;
                     }
@@ -6975,7 +6975,7 @@ namespace DS4Windows
             {
                 altTabDone = false;
                 AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyPress TAB");
-                outputKBMHandler.PerformKeyPress(outputKBMMapping.KEY_TAB);
+                VirtualKBM.PerformKeyPress(outputKBMMapping.KEY_TAB);
             }
             else
             {
@@ -6984,9 +6984,9 @@ namespace DS4Windows
                 {
                     oldAltTabNow = altTabNow;
                     AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyPress TAB");
-                    outputKBMHandler.PerformKeyPress(outputKBMMapping.KEY_TAB);
+                    VirtualKBM.PerformKeyPress(outputKBMMapping.KEY_TAB);
                     AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyRelease TAB");
-                    outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_TAB);
+                    VirtualKBM.PerformKeyRelease(outputKBMMapping.KEY_TAB);
                 }
             }
         }
@@ -6997,9 +6997,9 @@ namespace DS4Windows
             {
                 altTabDone = true;
                 AppLogger.LogDebug($"EVENT SENT [INLINE] event=AltTab KeyRelease TAB");
-                outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_TAB);
+                VirtualKBM.PerformKeyRelease(outputKBMMapping.KEY_TAB);
                 AppLogger.LogDebug($"EVENT SENT [INLINE] event=AltTab KeyRelease LALT");
-                outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_LALT);
+                VirtualKBM.PerformKeyRelease(outputKBMMapping.KEY_LALT);
                 altTabNow = DateTime.UtcNow;
                 oldAltTabNow = DateTime.UtcNow - TimeSpan.FromDays(1);
             }
@@ -7024,7 +7024,7 @@ namespace DS4Windows
                 if (stickWheel >= 1.0)
                 {
                     int wheelTravel = (int)stickWheel * wheelDir;
-                    outputKBMHandler.PerformMouseWheelEvent(wheelTravel, 0);
+                    VirtualKBM.PerformMouseWheelEvent(wheelTravel, 0);
                     stickWheelRemainder = stickWheel - (int)stickWheel;
                 }
                 else

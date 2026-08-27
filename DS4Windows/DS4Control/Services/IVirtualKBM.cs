@@ -8,6 +8,7 @@ namespace DS4Windows.Services
     {
         string ErrorMessage { get; }
         string Version { get; }
+        bool fakeKeyRepeat { get; set; }
 
         bool Connect();
         bool Disconnect();

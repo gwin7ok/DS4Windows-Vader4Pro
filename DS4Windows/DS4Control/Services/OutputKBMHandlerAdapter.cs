@@ -10,6 +10,11 @@ namespace DS4Windows.Services
     {
         public string ErrorMessage => Global.outputKBMHandler?.ErrorMessage ?? string.Empty;
         public string Version => Global.outputKBMHandler?.Version ?? "0.0.0.0";
+        public bool fakeKeyRepeat
+        {
+            get => Global.outputKBMHandler?.fakeKeyRepeat ?? false;
+            set { if (Global.outputKBMHandler != null) Global.outputKBMHandler.fakeKeyRepeat = value; }
+        }
 
         public bool Connect() => Global.outputKBMHandler?.Connect() ?? false;
         public bool Disconnect() => Global.outputKBMHandler?.Disconnect() ?? false;
