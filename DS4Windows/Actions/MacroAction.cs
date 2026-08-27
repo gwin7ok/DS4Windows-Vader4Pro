@@ -1,5 +1,6 @@
 using System;
 using DS4Windows.Services;
+using DS4WinWPF;
 
 namespace DS4Windows.Actions
 {

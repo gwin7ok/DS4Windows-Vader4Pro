@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using DS4Windows.Services;
+using DS4WinWPF;
 
 namespace DS4Windows.Actions
 {
@@ -34,7 +35,7 @@ namespace DS4Windows.Actions
                     arguments = $"/c \"{path}\" {arguments}".Trim();
                 }
 
-                _launcher.Launch(targetPath, arguments, asAdmin: false, useShellExecute: true);
+                _launcher.Launch(targetPath, arguments, false, true);
                 try { AppLogger.LogTrace($"LaunchProcessAction.Execute: id={Id} target={targetPath}"); } catch { }
             }
             catch (Exception ex)
