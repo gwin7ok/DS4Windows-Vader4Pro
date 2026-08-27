@@ -1,70 +1,52 @@
-using System;
-using Microsoft.Extensions.Configuration;
+using DS4Windows.DS4Control.Services;
+using DS4Windows.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using DS4Windows.Actions;
 
-namespace DS4Windows.DI
+namespace DS4Windows
 {
     public static class AppHost
     {
         private static IHost _host;
 
+        public static IHost Host => _host;
         public static IServiceProvider Services => _host?.Services;
 
-        /// <summary>
-        /// App.xaml.cs から IConfigurationRoot を受け取ってホストを初期化するエントリーポイント
-        /// </summary>
-        public static IHost CreateHost(IConfigurationRoot configuration)
+        public static void Initialize()
         {
-            Initialize(configuration);
-            return _host;
-        }
-
-        public static IHost CreateHost(string[] args = null)
-        {
-            Initialize(args: args);
-            return _host;
-        }
-
-        public static void Initialize(IConfigurationRoot configuration = null, string[] args = null)
-        {
-            if (_host != null) return;
-
-            var builder = Host.CreateDefaultBuilder(args ?? Array.Empty<string>());
-
-            if (configuration != null)
-            {
-                builder.ConfigureAppConfiguration((context, configBuilder) =>
+            _host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                .ConfigureServices((context, services) =>
                 {
-                    configBuilder.AddConfiguration(configuration);
-                });
-            }
-
-            builder.ConfigureServices((context, services) =>
-            {
-                // Actions サブシステムのサービス登録
-                services.AddSingleton<IProcessLauncher, DefaultProcessLauncher>();
-                services.AddSingleton<IMacroPlayer, DefaultMacroPlayer>();
-                services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
-                services.AddSingleton<IActionFactory, DefaultActionFactory>();
-            });
-
-            _host = builder.Build();
-
-            // Bridge to ServiceProviderHolder for legacy/hybrid access
-            ServiceProviderHolder.SetProvider(_host.Services);
+                    ConfigureServices(services);
+                })
+                .Build();
         }
 
-        public static void Shutdown()
+        private static void ConfigureServices(IServiceCollection services)
         {
-            try
-            {
-                _host?.Dispose();
-                _host = null;
-                ServiceProviderHolder.SetProvider(null);
-            }
-            catch { }
+            // Phase 0: Services
+            services.AddSingleton<IProfileSettingsService, DummyProfileSettingsService>();
+
+            // Phase 1: Action executors
+            services.AddTransient<IKeyOutputAction, KeyOutputActionAdapter>();
+            services.AddTransient<IMacroPlayer, DefaultMacroPlayer>();
+            services.AddTransient<IProfileSwitcher, DefaultProfileSwitcher>();
+            services.AddTransient<IProcessLauncher, DefaultProcessLauncher>();
+
+            // Phase 2: Virtual KBM Output
+            services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
+
+            // ViewModels, etc.
+        }
+
+        public static T GetService<T>() where T : class
+        {
+            return Services?.GetService<T>();
+        }
+
+        public static T GetRequiredService<T>() where T : class
+        {
+            return Services?.GetRequiredService<T>();
         }
     }
 }
