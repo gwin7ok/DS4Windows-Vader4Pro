@@ -1,3 +1,4 @@
+﻿using DS4Windows.Services;
 using System;
 using System.Collections.Generic;
 using DS4Windows.Actions;
@@ -21,8 +22,8 @@ namespace DS4Windows.Actions.Tests
         public void ClearAllToggledOn() { }
         public void ClearAllEntries() { }
         public void ClearDeviceState(int device) { }
-        public bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler) => false;
-        public bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler) => false;
+        public bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler) => false;
+        public bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler) => false;
         public void SetToggledOn(SpecialAction action, int device, bool value) { }
 
         public void RegisterAction(string actionName, IActionBinding binding)

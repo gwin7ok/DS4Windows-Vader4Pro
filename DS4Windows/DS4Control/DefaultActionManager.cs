@@ -1,3 +1,4 @@
+﻿using DS4Windows.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -288,7 +289,7 @@ namespace DS4Windows.Actions
 
         // NotifyTriggerReleased removed; use DispatchTriggerReleased or DispatchTriggerEdge instead.
 
-        public bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        public bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler)
         {
             try
             {
@@ -320,7 +321,7 @@ namespace DS4Windows.Actions
             }
         }
 
-        public bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        public bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler)
         {
             try
             {
