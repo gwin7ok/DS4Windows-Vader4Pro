@@ -1,3 +1,4 @@
+using DS4Windows.Services;
 using DS4Windows;
 
 namespace DS4Windows.Actions
