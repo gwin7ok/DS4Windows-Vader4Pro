@@ -1,4 +1,4 @@
-using DS4Windows.Services;
+﻿using DS4Windows.Services;
 // ToggleActionController removed — replaced by per-device `KeyButtonActionController` implementations.
 // This file is retained as a harmless informational stub to ease transition.
 using System;
