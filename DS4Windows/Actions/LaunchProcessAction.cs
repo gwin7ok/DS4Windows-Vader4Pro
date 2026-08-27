@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using DS4Windows.Services;
 
@@ -13,7 +12,7 @@ namespace DS4Windows.Actions
         public LaunchProcessAction(SpecialAction sa, IProcessLauncher launcher = null)
         {
             this.sa = sa;
-            this._launcher = launcher ?? new DefaultProcessLauncher();
+            this._launcher = launcher ?? AppHost.GetService<IProcessLauncher>() ?? new DefaultProcessLauncher();
         }
 
         public string Id => sa?.name ?? "LaunchProcess";
@@ -22,14 +21,12 @@ namespace DS4Windows.Actions
         {
             try
             {
-                if (sa == null) return;
+                if (sa == null || string.IsNullOrWhiteSpace(sa.details)) return;
 
-                string path = !string.IsNullOrEmpty(sa.details) ? sa.details : sa.customAction;
-                if (string.IsNullOrWhiteSpace(path)) return;
-
+                string path = sa.details;
                 string ext = Path.GetExtension(path).ToLowerInvariant();
                 string targetPath = path;
-                string arguments = sa.arguments ?? string.Empty;
+                string arguments = sa.extra ?? string.Empty;
 
                 if (ext == ".bat" || ext == ".cmd")
                 {
@@ -37,7 +34,7 @@ namespace DS4Windows.Actions
                     arguments = $"/c \"{path}\" {arguments}".Trim();
                 }
 
-                _launcher.Launch(targetPath, arguments);
+                _launcher.Launch(targetPath, arguments, asAdmin: false, useShellExecute: true);
                 try { AppLogger.LogTrace($"LaunchProcessAction.Execute: id={Id} target={targetPath}"); } catch { }
             }
             catch (Exception ex)

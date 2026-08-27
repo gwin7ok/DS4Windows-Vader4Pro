@@ -6,12 +6,18 @@ namespace DS4Windows.Actions
     public class MacroAction : IOutputAction
     {
         private readonly SpecialAction sa;
+        private readonly int deviceIndex;
         private readonly IMacroPlayer _macroPlayer;
 
-        public MacroAction(SpecialAction sa, IMacroPlayer macroPlayer = null)
+        public MacroAction(SpecialAction sa, int deviceIndex = -1, IMacroPlayer macroPlayer = null)
         {
             this.sa = sa;
-            this._macroPlayer = macroPlayer ?? new DefaultMacroPlayer();
+            this.deviceIndex = deviceIndex;
+            this._macroPlayer = macroPlayer ?? AppHost.GetService<IMacroPlayer>() ?? new DefaultMacroPlayer();
+        }
+
+        public MacroAction(SpecialAction sa, IMacroPlayer macroPlayer) : this(sa, -1, macroPlayer)
+        {
         }
 
         public string Id => sa?.name ?? "MacroAction";
@@ -21,9 +27,9 @@ namespace DS4Windows.Actions
             try
             {
                 if (sa == null) return;
-                int device = ctx?.Device ?? 0;
-                _macroPlayer.Play(device, sa);
-                try { AppLogger.LogTrace($"MacroAction.Execute: id={Id} device={device}"); } catch { }
+                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx?.Device ?? 0);
+                _macroPlayer.Play(dev, sa);
+                try { AppLogger.LogTrace($"MacroAction.Execute: id={Id} device={dev}"); } catch { }
             }
             catch (Exception ex)
             {
@@ -36,9 +42,9 @@ namespace DS4Windows.Actions
             try
             {
                 if (sa == null) return;
-                int device = ctx?.Device ?? 0;
-                _macroPlayer.Stop(device);
-                try { AppLogger.LogTrace($"MacroAction.Stop: id={Id} device={device}"); } catch { }
+                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx?.Device ?? 0);
+                _macroPlayer.Stop(dev);
+                try { AppLogger.LogTrace($"MacroAction.Stop: id={Id} device={dev}"); } catch { }
             }
             catch (Exception ex)
             {
