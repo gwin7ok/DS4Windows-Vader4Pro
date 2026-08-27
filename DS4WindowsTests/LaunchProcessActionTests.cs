@@ -18,8 +18,8 @@ namespace DS4WindowsTests
 
             action.Execute(ctx);
 
-            Assert.Single(mock.LaunchedProcesses);
-            Assert.Contains("cmd.exe", mock.LaunchedProcesses[0].Path);
+            Assert.Single(mock.Calls);
+            Assert.Contains("cmd.exe", mock.Calls[0].FileName);
         }
 
         [Fact]
@@ -35,7 +35,7 @@ namespace DS4WindowsTests
             action.Execute(ctx);
             action.Execute(ctx);
 
-            Assert.Equal(2, mock.LaunchedProcesses.Count);
+            Assert.Equal(2, mock.Calls.Count);
         }
     }
 }
