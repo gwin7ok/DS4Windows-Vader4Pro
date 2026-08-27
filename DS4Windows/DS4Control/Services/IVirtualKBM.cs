@@ -2,42 +2,35 @@ namespace DS4Windows.Services
 {
     /// <summary>
     /// 仮想キーボード・マウス（KBM）出力の抽象化インターフェース。
-    /// SendInput / FakerInput / vMulti などの具象出力をカプセル化する。
+    /// SendInput / FakerInput 等の具象出力をカプセル化する。
     /// </summary>
     public interface IVirtualKBM
     {
-        // --- 接続・ライフサイクル ---
+        string ErrorMessage { get; }
+        string Version { get; }
+
         bool Connect();
-        void Disconnect();
-        bool InUse();
+        bool Disconnect();
 
-        // --- マウスカーソル移動 ---
-        void MoveCursor(int x, int y);
-        void MoveCursorBy(int x, int y);
-        void MoveCursorTo(int x, int y);
-        void MoveRelative(int x, int y);
-        void MoveAbsolute(int x, int y);
+        void MoveRelativeMouse(int x, int y);
+        void MoveAbsoluteMouse(double x, double y);
 
-        // --- マウスホイールスクロール ---
-        void Scroll(int delta);
-        void HScroll(int delta);
-        void MouseWheel(int delta);
-        void MouseHWheel(int delta);
+        void PerformMouseWheelEvent(int vertical, int horizontal);
+        void PerformMouseButtonEvent(uint mouseButton);
+        void PerformMouseButtonEventAlt(uint mouseButton, int type);
 
-        // --- マウスボタン ---
-        void MouseDown(int mouseButton);
-        void MouseUp(int mouseButton);
-        void MouseClick(int mouseButton);
-        void MouseDoubleClick(int mouseButton);
+        void PerformMouseButtonPress(uint mouseButton);
+        void PerformMouseButtonRelease(uint mouseButton);
 
-        // --- キーボード入力 ---
-        void KeyDown(uint keyScanCode, bool extended = false);
-        void KeyUp(uint keyScanCode, bool extended = false);
-        void KeyPress(uint keyScanCode, bool extended = false);
+        void PerformKeyPress(uint key);
+        void PerformKeyPressAlt(uint key);
+        void PerformKeyRelease(uint key);
+        void PerformKeyReleaseAlt(uint key);
 
-        // --- 状態管理・デバイス情報 ---
         void Sync();
-        void Reset();
-        string GetDeviceType();
+
+        string GetDisplayName();
+        string GetIdentifier();
+        string GetFullDisplayName();
     }
 }
