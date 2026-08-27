@@ -1,3 +1,4 @@
+﻿using DS4Windows.Services;
 using System;
 using System.Collections.Generic;
 using DS4Windows.Actions;
@@ -16,8 +17,8 @@ namespace DS4Windows.Actions
         void ClearAllEntries();
         void ClearDeviceState(int device);
         // Dispatch variants return true if an Action instance was invoked to handle the trigger
-        bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler);
-        bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler);
+        bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler);
+        bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler);
         // Set the toggled-on flag for given action/device and notify listeners.
         void SetToggledOn(SpecialAction action, int device, bool value);
     }

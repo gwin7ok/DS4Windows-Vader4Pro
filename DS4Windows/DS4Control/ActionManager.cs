@@ -1,4 +1,4 @@
-using DS4Windows.Services;
+﻿using DS4Windows.Services;
 using System;
 using System.Diagnostics;
 using System.Linq;

@@ -1,3 +1,4 @@
+﻿using DS4Windows.Services;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace DS4Windows.DS4Control
         private readonly ushort kvpKey;
         private readonly uint nativeKey;
         private readonly bool useScanCode;
-        private readonly VirtualKBMBase handler;
+        private readonly IVirtualKBM handler;
         private readonly int controllerId;
         private readonly Timer timer;
         private int disposed;
@@ -28,7 +29,7 @@ namespace DS4Windows.DS4Control
         // intervalMillis: repeat period in milliseconds (50ms typical)
         // sendFirstImmediate: if true, send one immediate KeyPress now and then start periodic sends
         //                     if false, first KeyPress will be issued after intervalMillis
-        public RepeatHelper(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler, int intervalMillis = 50, bool sendFirstImmediate = true, int controllerId = -1)
+        public RepeatHelper(int device, ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler, int intervalMillis = 50, bool sendFirstImmediate = true, int controllerId = -1)
         {
             this.device = device;
             this.kvpKey = kvpKey;
@@ -51,7 +52,7 @@ namespace DS4Windows.DS4Control
         }
 
         // Convenience ctor that reads the default repeat interval from KeyboardSettings
-        public RepeatHelper(int device, ushort kvpKey, uint nativeKey, bool useScanCode, VirtualKBMBase handler, bool sendFirstImmediate = true)
+        public RepeatHelper(int device, ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler, bool sendFirstImmediate = true)
             : this(device, kvpKey, nativeKey, useScanCode, handler, DS4Windows.KeyboardSettings.RepeatIntervalMs, sendFirstImmediate)
         {
         }
