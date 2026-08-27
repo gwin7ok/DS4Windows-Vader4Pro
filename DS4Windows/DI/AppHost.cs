@@ -1,9 +1,10 @@
 using System;
-using DS4Windows.Services;
+using DS4WinWPF.DI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace DS4Windows
+namespace DS4WinWPF
 {
     public static class AppHost
     {
@@ -12,31 +13,16 @@ namespace DS4Windows
         public static IHost Host => _host;
         public static IServiceProvider Services => _host?.Services;
 
-        public static void Initialize()
+        public static IHost CreateHost(IConfiguration configuration = null)
         {
             _host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
                 .ConfigureServices((context, services) =>
                 {
-                    ConfigureServices(services);
+                    services.AddAppServices(configuration ?? context.Configuration);
                 })
                 .Build();
-        }
 
-        private static void ConfigureServices(IServiceCollection services)
-        {
-            // Phase 0: Services
-            services.AddSingleton<IProfileSettingsService, DummyProfileSettingsService>();
-
-            // Phase 1: Action executors
-            services.AddTransient<IKeyOutputAction, KeyOutputActionAdapter>();
-            services.AddTransient<IMacroPlayer, DefaultMacroPlayer>();
-            services.AddTransient<IProfileSwitcher, DefaultProfileSwitcher>();
-            services.AddTransient<IProcessLauncher, DefaultProcessLauncher>();
-
-            // Phase 2: Virtual KBM Output
-            services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
-
-            // ViewModels, etc.
+            return _host;
         }
 
         public static T GetService<T>() where T : class
