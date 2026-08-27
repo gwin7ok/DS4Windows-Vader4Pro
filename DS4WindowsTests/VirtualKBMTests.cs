@@ -1,42 +1,40 @@
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using DS4Windows.Services;
 using DS4Windows.Actions;
 using DS4Windows.DS4Control;
 
 namespace DS4WindowsTests
 {
-    [TestFixture]
+    [TestClass]
     public class VirtualKBMTests
     {
-        [Test]
+        [TestMethod]
         public void OutputKBMHandlerAdapter_NullSafe_WhenHandlerIsNull()
         {
             // Global.outputKBMHandler が null の場合でも例外を投げないことを確認
             var adapter = new OutputKBMHandlerAdapter();
 
-            Assert.DoesNotThrow(() =>
-            {
-                bool connected = adapter.Connect();
-                Assert.IsFalse(connected);
+            bool connected = adapter.Connect();
+            Assert.IsFalse(connected);
 
-                bool disconnected = adapter.Disconnect();
-                Assert.IsFalse(disconnected);
+            bool disconnected = adapter.Disconnect();
+            Assert.IsFalse(disconnected);
 
-                adapter.MoveRelativeMouse(10, 20);
-                adapter.MoveAbsoluteMouse(0.5, 0.5);
-                adapter.PerformMouseButtonPress(1);
-                adapter.PerformMouseButtonRelease(1);
-                adapter.PerformKeyPress(0x41);
-                adapter.PerformKeyRelease(0x41);
-                adapter.PerformMouseWheelEvent(120, 0);
-                adapter.Sync();
-            });
+            // 各操作が例外なく実行できることを検証
+            adapter.MoveRelativeMouse(10, 20);
+            adapter.MoveAbsoluteMouse(0.5, 0.5);
+            adapter.PerformMouseButtonPress(1);
+            adapter.PerformMouseButtonRelease(1);
+            adapter.PerformKeyPress(0x41);
+            adapter.PerformKeyRelease(0x41);
+            adapter.PerformMouseWheelEvent(120, 0);
+            adapter.Sync();
 
             Assert.AreEqual(string.Empty, adapter.ErrorMessage);
             Assert.AreEqual("0.0.0.0", adapter.Version);
         }
 
-        [Test]
+        [TestMethod]
         public void MockVirtualKBM_RecordsEventsAccurately()
         {
             var mock = new MockVirtualKBM();
@@ -60,7 +58,7 @@ namespace DS4WindowsTests
             Assert.AreEqual(1, mock.KeyReleaseCalls.Count);
         }
 
-        [Test]
+        [TestMethod]
         public void DefaultMacroPlayer_StateTracking_WorksProperly()
         {
             var player = new DefaultMacroPlayer();
@@ -70,11 +68,11 @@ namespace DS4WindowsTests
             Assert.IsFalse(player.IsPlaying(4));
 
             // Stop を呼んでも安全に動作する
-            Assert.DoesNotThrow(() => player.Stop(0));
+            player.Stop(0);
             Assert.IsFalse(player.IsPlaying(0));
         }
 
-        [Test]
+        [TestMethod]
         public void MouseOutputAction_WithMock_ExecutesWithoutException()
         {
             var mockKbm = new MockVirtualKBM();
@@ -89,8 +87,8 @@ namespace DS4WindowsTests
                 OutputHandler = mockKbm
             };
 
-            Assert.DoesNotThrow(() => action.Execute(ctx));
-            Assert.DoesNotThrow(() => action.Stop(ctx));
+            action.Execute(ctx);
+            action.Stop(ctx);
         }
     }
 }
