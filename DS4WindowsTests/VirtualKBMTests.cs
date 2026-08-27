@@ -76,7 +76,7 @@ namespace DS4WindowsTests
         public void MouseOutputAction_WithMock_ExecutesWithoutException()
         {
             var mockKbm = new MockVirtualKBM();
-            var sa = new SpecialAction("TestMouseAction");
+            var sa = new SpecialAction("TestMouseAction", "Cross", "Key", "Key", 0, "");
             var action = new MouseOutputAction(sa, mockKbm);
 
             Assert.Equal("TestMouseAction", action.Id);
