@@ -13,7 +13,9 @@
 - §2.2 機能100%維持、§2.3 ログ維持、§3.1 コンストラクタインジェクション、§3.2 巨大ファイルはピンポイント置換のみ、
   §4.1 マイクロステップ、§4.2 自己解決禁止、§4.3 ビルドエラー直ちに修正、§4.4 調査結果を.mdで文書化（本ファイル含む）。
 - §5（新設）: 指示は段階的に実施し、1フェーズ完了ごとに確認を挟む／受け渡しzipはフォルダパス付きで生成する。
-  → 本計画書もこの方針に従い、Step 2-1〜2-5 の**各ステップ完了ごとにチェックポイントを設ける**構成とする。
+  → 本計画書もこの方針に従い、Step 2-1〜2-6 の**各ステップ完了ごとにチェックポイントを設ける**構成とする。
+  特にStep 2-5（通常マッピング48箇所の置換）は影響範囲が大きいため、**着手前に必ずユーザーの明示的な
+  承認を得ること**。
 
 ---
 
@@ -51,6 +53,11 @@ Phase2着手にあたり、実コードを調査した結果、当初想定さ�
 残り**48箇所は通常の1入力→1出力マッピング処理内**（`Mapping.cs` の中核データフロー、
 `DI-App-Wide-Migration-Plan.md` の3層モデルでいう2-a/3-b相当）に存在する。
 
+**この48箇所の扱いについて（2026-08-27改訂）**: 当初は「Phase2スコープ外、全体計画書§5.5の
+『再評価チェックポイント』に委ねる」としていたが、ユーザーとの協議の結果、**Phase2内の独立した
+ステップ（Step 2-5）として対応する**方針に変更した。全体計画書 `DI-App-Wide-Migration-Plan.md` §6.4も
+同様に改訂済み。詳細は §1.2・§2・§3のStep 2-5を参照。
+
 ### 0.4 `outputKBMHandler` の生成タイミングに関する制約
 `Global.outputKBMHandler` への実際の代入は `ScpUtil.cs` 3540行目 `outputKBMHandler = VirtualKBMFactory.DetermineHandler(identifier);`
 で行われる。これは環境判定（`Global.fakerInputInstalled` 等）に依存し、**アプリ起動シーケンスの中盤**
@@ -78,18 +85,20 @@ Phase2着手にあたり、実コードを調査した結果、当初想定さ�
 `Actions/` サブシステム（`KeyOutputAction`, `MouseOutputAction`, マクロ実行経路）が
 DI経由でモック可能なKBM出力を利用できるようにする。
 
-### 1.2 スコープ（`DI-App-Wide-Migration-Plan.md` §6.4 の完了判定基準に準拠）
+### 1.2 スコープ（2026-08-27改訂: 通常マッピング48箇所を独立ステップとして追加）
 元の全体計画書の完了判定基準は「**`Actions/` 配下が `IVirtualKBM` のみを参照し、モックによる単体テストが
-可能なこと**」であり、`Mapping.cs` 全体の書き換えは要求していない。§0.3の調査結果を踏まえ、
+可能なこと**」であったが、ユーザーとの協議の結果、**通常の1:1マッピング処理48箇所も、マクロ実行14箇所とは
+別の独立したステップ（Step 2-5）としてPhase2内で対応する**方針に変更した。§0.3の調査結果を踏まえ、
 本計画では以下のようにスコープを明確化する。
 
-| 対象 | Phase2で対応するか | 理由 |
-|---|---|---|
-| `Actions/` 配下（`KeyOutputAction`, `MouseOutputAction` 等）の `IOutputContext.OutputHandler` | **対応する** | 元計画の完了判定基準そのもの |
-| `PlayMacro`/`EndMacro`（`Mapping.cs` 6527-6960、14箇所） | **対応する** | 元計画書§6.4に「マクロの逐次送出もこのフェーズで`IVirtualKBM`経由に統合する」と明記されている |
-| 通常の1:1マッピング処理（`Mapping.cs` の残り48箇所） | **対応しない（Phase2スコープ外）** | 影響範囲が大きく（`Mapping.cs` 中核ロジック）、既存の全体計画書でも「フェーズ1完了済みなら `Mapping.cs` 側の変更は不要」と明記されている。Phase3以降で`Mapping`の整理と合わせて再評価する。 |
-| `InputMethods.cs` | **対応しない** | 実質デッドコード（§0.2）。触る理由がない。 |
-| `MouseOutputAction.cs` の空実装解消 | **任意（推奨、必須ではない）** | Phase2の主目的ではないが、同じファイルを触るため §4.3 で扱う。 |
+| 対象 | Phase2で対応するか | 対応ステップ | 理由 |
+|---|---|---|---|
+| `Actions/` 配下（`KeyOutputAction`, `MouseOutputAction` 等）の `IOutputContext.OutputHandler` | **対応する** | Step 2-4 | 元計画の完了判定基準そのもの |
+| `PlayMacro`/`EndMacro`（`Mapping.cs` 6527-6960、14箇所） | **対応する** | Step 2-4 | 元計画書§6.4に「マクロの逐次送出もこのフェーズで`IVirtualKBM`経由に統合する」と明記されている。影響範囲が`PlayMacro`内に閉じるため相対的に低リスク |
+| 通常の1:1マッピング処理（`Mapping.cs` の残り48箇所） | **対応する（独立ステップ）** | **Step 2-5（新設）** | `Mapping.cs` の中核データフロー（毎フレーム・毎ボタン押下で実行される経路）であり、マクロ実行14箇所より影響範囲・リスクが大きいため、**マクロ実行とは別のステップとして分離**し、機能カテゴリ別にPRを分割・段階的に実施する（詳細は Step 2-5 参照） |
+| `InputMethods.cs` | **対応しない** | - | 実質デッドコード（§0.2）。触る理由がない。 |
+| `MouseOutputAction.cs` の空実装解消 | **任意（推奨、必須ではない）** | Step 2-4 or 2-5 | Phase2の主目的ではないが、同じファイルを触るため §4.3 で扱う。 |
+
 
 ### 1.3 `IVirtualKBM` インターフェース設計方針
 `VirtualKBMBase` の **public abstract/virtual メソッドをそのまま反映**する（振る舞い変更なし、
@@ -117,18 +126,20 @@ public class VirtualKBMHandlerAdapter : IVirtualKBM
 
 ---
 
-## 2. ステップ分割（5ステップ、添付画像の構成を実態に合わせて修正）
+## 2. ステップ分割（6ステップ、2026-08-27改訂: 通常マッピング処理を独立ステップ2-5として追加）
 
 | ステップ | 内容 | 完了基準 | PR粒度 |
 |---|---|---|---|
 | **2-1** | `IVirtualKBM` インターフェースの設計・新設 | `VirtualKBMBase` の public メソッド一覧と完全一致するインターフェースを作成、コンパイル成功 | 1インターフェース |
 | **2-2** | `VirtualKBMBase` に `IVirtualKBM` を実装させる + `VirtualKBMHandlerAdapter`（遅延委譲アダプタ）の新設 | `SendInputHandler`/`FakerInputHandler` が無改修でコンパイル成功。アダプタの単体テストで委譲が確認できる | 1件（クラス2つだが1PR） |
 | **2-3** | `AppHost.cs` への `IVirtualKBM` シングルトン登録 | `services.AddSingleton<IVirtualKBM, VirtualKBMHandlerAdapter>();` 追加、既存4サービスと共存してコンパイル成功 | 配線のみ |
-| **2-4** | 呼び出し箇所の `IVirtualKBM` 経由への置換（スコープ: §1.2表の「対応する」列のみ） | `KeyOutputAction`/`MouseOutputAction` の `IOutputContext.OutputHandler` 型を `IVirtualKBM` に変更。`PlayMacro`/`EndMacro` 内の14箇所を `IVirtualKBM` 解決に置換（フォールバックとして直接 `outputKBMHandler` 参照を保持） | `Mapping.cs` の該当14箇所のみピンポイント置換。48箇所は変更しない |
-| **2-5** | 単体テスト（`MockVirtualKBM` を用いた出力テスト）の実装と検証 | `DS4WindowsTests` に `MockVirtualKBM.cs` + `VirtualKBMHandlerAdapterTests.cs` を追加、`dotnet test` 全件成功 | テスト1式 |
+| **2-4** | 呼び出し箇所の `IVirtualKBM` 経由への置換（`Actions/` 配下 + マクロ実行14箇所） | `KeyOutputAction`/`MouseOutputAction` の `IOutputContext.OutputHandler` 型を `IVirtualKBM` に変更。`PlayMacro`/`EndMacro` 内の14箇所を `IVirtualKBM` 解決に置換（フォールバックとして直接 `outputKBMHandler` 参照を保持） | `Mapping.cs` の該当14箇所のみピンポイント置換 |
+| **2-5（新設）** | 通常の1:1マッピング処理（`Mapping.cs` 残り48箇所）の `IVirtualKBM` 経由への置換 | 48箇所すべてが `IVirtualKBM` 解決経由に置換され、フォールバックが保持されている。実機での連打・同時押し回帰確認済み | 機能カテゴリ別に3〜4PRへ分割（§3のStep 2-5参照）。**着手前に必ずユーザー承認を得ること** |
+| **2-6** | 単体テスト（`MockVirtualKBM` を用いた出力テスト）の実装と検証 | `DS4WindowsTests` に `MockVirtualKBM.cs` + `VirtualKBMHandlerAdapterTests.cs` を追加、`dotnet test` 全件成功 | テスト1式 |
 
 **§5ルール（段階的実施）に従い、各ステップ完了後にユーザー確認を挟んでから次ステップに進むこと。**
-一度に全ステップを実装しない。
+一度に全ステップを実装しない。**特にStep 2-5は影響範囲が大きいため、着手前に必ずユーザーの明示的な承認を得ること。**
+
 
 ---
 
@@ -191,7 +202,7 @@ public abstract class VirtualKBMBase : IVirtualKBM
 services.AddSingleton<IVirtualKBM, VirtualKBMHandlerAdapter>();
 ```
 
-### Step 2-4: 呼び出し箇所の置換
+### Step 2-4: 呼び出し箇所の置換（`Actions/` 配下 + マクロ実行14箇所）
 
 #### 2-4-a: `Actions/` 配下
 - `IOutputContext.cs` の `VirtualKBMBase OutputHandler { get; }` を `IVirtualKBM OutputHandler { get; }` に変更。
@@ -211,7 +222,40 @@ services.AddSingleton<IVirtualKBM, VirtualKBMHandlerAdapter>();
 `Mapping.cs` は8,800行超の巨大ファイルのため、§3.2ルールに従い**該当14箇所のみを機械的な文字列一致で
 ピンポイント置換**する（Pythonでの厳密一致置換を推奨、C5-2実装時と同じ手法）。
 
-### Step 2-5: 単体テスト
+### Step 2-5（新設）: 通常の1:1マッピング処理（48箇所）の置換
+
+**このステップはマクロ実行（Step 2-4）とは別の独立したステップとして扱う。着手前に必ずユーザーの
+明示的な承認を得ること。** `Mapping.cs` の中核データフロー（毎フレーム・毎ボタン押下で実行されるリアル
+タイム経路）を対象とするため、Step 2-4よりも影響範囲・リスクが大きい。
+
+#### 2-5-a: 対象箇所の最新棚卸し
+着手時点で `grep -n "outputKBMHandler\." DS4Windows/DS4Control/Mapping.cs` を再実行し、
+Step 2-4完了後に残っている48箇所（Step 2-4で対応した14箇所を除いた全て）の正確な行番号・関数名を
+一覧化する（Phase1のStep D等、他の変更で行番号がずれている可能性があるため、実装直前の再棚卸しを必須とする）。
+
+#### 2-5-b: 機能カテゴリ別のPR分割方針
+1回のPRで48箇所すべてを置換するとレビュー・回帰確認が困難になるため、以下のカテゴリ単位で
+PRを分割する（2026-08-27時点の内訳、実装時は2-5-aの再棚卸し結果を正とする）：
+
+| バッチ | 対象メソッド群 | 件数目安 | 優先度 |
+|---|---|---|---|
+| バッチ1 | `PerformKeyPress`/`PerformKeyPressAlt`/`PerformKeyRelease`/`PerformKeyReleaseAlt` | 約17件 | 高（キー出力、最も使用頻度が高い） |
+| バッチ2 | `PerformMouseButtonEvent`/`PerformMouseButtonEventAlt` | 約26件 | 高（マウスボタン出力、件数最大） |
+| バッチ3 | `PerformMouseWheelEvent`/`MoveAbsoluteMouse`/`MoveRelativeMouse`/`Sync`/`fakeKeyRepeat` | 約9件 | 中（ホイール・カーソル移動・同期系） |
+
+各バッチは §2.1修正版のフォールバックパターン（`IVirtualKBM` 解決失敗時は既存 `outputKBMHandler`
+直接呼び出しへフォールバック）を踏襲する。置換方式はStep 2-4-bと同じくPythonによる厳密一致置換を用いる。
+
+#### 2-5-c: 実機回帰確認（必須）
+本ステップはリアルタイム入力経路そのものを変更するため、各バッチ完了ごとに以下を確認する：
+- 通常のボタン単発押下・離しが正しく動作すること
+- 連打（高速な押下/離しの繰り返し）でタイミングのズレが生じないこと
+- 複数ボタン同時押しで意図しない入力欠落が生じないこと
+- マウスボタン/ホイール/タッチパッドをマウスとして使う設定で違和感がないこと
+
+`docs-forDIMG/MadeByAgent/Phase2-Step2-5-Verification.md`（新規）に確認結果を記録すること。
+
+### Step 2-6: 単体テスト
 
 `DS4WindowsTests/MockVirtualKBM.cs`（新規）: `IVirtualKBM` の全メソッド呼び出しを記録するモック
 （既存の `MockProcessLauncher.cs`/`MockMacroPlayer.cs` と同じスタイル）。
@@ -224,18 +268,24 @@ services.AddSingleton<IVirtualKBM, VirtualKBMHandlerAdapter>();
 `PlayMacro`/`EndMacro` 経路のテスト（Step 2-4-bの検証）は、既存の `MacroActionTests.cs`（Phase1 C3成果物）に
 追加する形で、`MockVirtualKBM` を使った出力検証テストを1〜2件追加することを推奨する
 （`DefaultMacroPlayer` → `Mapping.PlayMacroDirect` → `PlayMacro` という既存の呼び出し階層を踏まえ、
-テストの実装可否は着手時に要判断）。
+テストの実装可否は着手時に要判断）。Step 2-5（通常マッピング48箇所）についても、可能な範囲で
+`MockVirtualKBM` を使った呼び出し検証テストを追加することを推奨する。
+
+---
+
 
 ---
 
 ## 4. リスクと回避策
 
-| リスク | 回避策 |
-|---|---|
-| `outputKBMHandler` は物理リソース（ドライバハンドル）を保持しており、初期化タイミング依存の参照が他にもある可能性 | §1.4の遅延委譲アダプタ方式により、DIコンテナ側は状態を持たないため、初期化順序の問題が発生しない設計にした |
-| `IOutputContext.OutputHandler` の型変更が `KeyActionBinding`/`TriggerContextImpl` 等、Phase1で作った複数クラスに波及する | Step 2-4-a着手前に `grep -rn "VirtualKBMBase" DS4Windows/Actions/` で全参照箇所を洗い出し、影響範囲を確定してから着手する |
-| `Mapping.cs` の14箇所置換で `PlayMacro` の連打・リピート挙動に回帰が生じる（既存の全体計画書§8でも指摘済みのリスク） | 置換前後で `MacroActionTests.cs` の既存テストが通ることを確認。可能であれば実機での連打・ホールド動作を回帰テスト項目化 |
-| `MouseOutputAction.cs` が空スタブのままだと `IOutputContext.OutputHandler` の型変更のみ行っても実質的な動作確認ができない | §4.3（任意対応）で扱う。Phase2の必須完了条件ではないため、時間があれば対応、なければ既知の残課題として記録する |
+| リスク | 該当ステップ | 回避策 |
+|---|---|---|
+| `outputKBMHandler` は物理リソース（ドライバハンドル）を保持しており、初期化タイミング依存の参照が他にもある可能性 | 2-2/2-3 | §1.4の遅延委譲アダプタ方式により、DIコンテナ側は状態を持たないため、初期化順序の問題が発生しない設計にした |
+| `IOutputContext.OutputHandler` の型変更が `KeyActionBinding`/`TriggerContextImpl` 等、Phase1で作った複数クラスに波及する | 2-4 | Step 2-4-a着手前に `grep -rn "VirtualKBMBase" DS4Windows/Actions/` で全参照箇所を洗い出し、影響範囲を確定してから着手する |
+| `Mapping.cs` の14箇所置換で `PlayMacro` の連打・リピート挙動に回帰が生じる（既存の全体計画書§8でも指摘済みのリスク） | 2-4 | 置換前後で `MacroActionTests.cs` の既存テストが通ることを確認。可能であれば実機での連打・ホールド動作を回帰テスト項目化 |
+| **48箇所の置換によりリアルタイム入力経路（毎フレーム実行）にタイミング遅延や入力欠落が生じる** | **2-5** | **機能カテゴリ別（バッチ1〜3）に分割し、各バッチ完了ごとに実機回帰確認を必須とする（§3 Step 2-5-c）。1回の巨大PRにしない** |
+| **48箇所は行数・参照箇所が多く、ピンポイント置換の際に取り違え・重複置換が発生するリスク** | **2-5** | 着手直前に `grep` で最新の行番号を再棚卸し（2-5-a）。Python等による厳密な文字列一致置換を用い、目視レビューを徹底する |
+| `MouseOutputAction.cs` が空スタブのままだと `IOutputContext.OutputHandler` の型変更のみ行っても実質的な動作確認ができない | 2-4/2-5 | §4.3（任意対応）で扱う。Phase2の必須完了条件ではないため、時間があれば対応、なければ既知の残課題として記録する |
 
 ---
 
@@ -248,7 +298,9 @@ services.AddSingleton<IVirtualKBM, VirtualKBMHandlerAdapter>();
       直接参照せず `IVirtualKBM` のみを参照する
 - [ ] `Mapping.cs` の `PlayMacro`/`EndMacro`（14箇所）が `IVirtualKBM` 経由に置換され、
       フォールバック（既存の直接参照）が保持されている
-- [ ] `Mapping.cs` の通常マッピング処理48箇所には**一切変更を加えていない**（Phase2スコープ外の明示的な確認）
+- [ ] `Mapping.cs` の通常マッピング処理48箇所**すべて**が `IVirtualKBM` 経由に置換され、
+      フォールバックが保持されている（Step 2-5完了、バッチ1〜3すべて完了）
+- [ ] Step 2-5の各バッチ完了ごとに実機回帰確認が実施され、`Phase2-Step2-5-Verification.md` に記録されている
 - [ ] `MockVirtualKBM` を用いた単体テストが `DS4WindowsTests` に追加され、`dotnet test` で全件成功
 - [ ] 本ファイルおよび各ステップの実装記録（`Phase2-Step2-x-Implementation.md` 等）が
       `docs-forDIMG/MadeByAgent/` に記録されている
