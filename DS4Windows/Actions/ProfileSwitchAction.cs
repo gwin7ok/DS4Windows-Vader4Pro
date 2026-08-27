@@ -1,74 +1,46 @@
 using System;
-using DS4Windows;
-using DS4Windows.DI;
+using DS4Windows.Services;
+using DS4WinWPF;
 
 namespace DS4Windows.Actions
 {
-    /// <summary>
-    /// プロファイル切り替えアクション（IOutputAction 実装）
-    /// DI（IProfileSwitcher）経由で切り替え/復帰を実行し、未解決時は Mapping.ApplyProfileDirect / RestoreProfileDirect へフォールバック
-    /// </summary>
     public class ProfileSwitchAction : IOutputAction
     {
         private readonly SpecialAction sa;
         private readonly int deviceIndex;
+        private readonly IProfileSwitcher _profileSwitcher;
 
-        public ProfileSwitchAction(SpecialAction sa, int deviceIndex = 0)
+        public ProfileSwitchAction(SpecialAction sa, IProfileSwitcher profileSwitcher = null)
+            : this(sa, -1, profileSwitcher)
+        {
+        }
+
+        public ProfileSwitchAction(SpecialAction sa, int deviceIndex, IProfileSwitcher profileSwitcher = null)
         {
             this.sa = sa;
             this.deviceIndex = deviceIndex;
+            this._profileSwitcher = profileSwitcher ?? AppHost.GetService<IProfileSwitcher>() ?? new DefaultProfileSwitcher();
         }
 
         public string Id => sa?.name ?? "ProfileSwitch";
-        public SpecialAction SpecialAction => sa;
-        public int DeviceIndex => deviceIndex;
 
         public void Execute(IOutputContext ctx)
         {
-            if (sa == null) return;
-
-            int dev = deviceIndex;
-            bool executedViaDI = false;
-
-            // DI コンテナからの IProfileSwitcher 解決試行
-            var sp = ServiceProviderHolder.Provider;
-            if (sp != null)
+            try
             {
-                var switcher = sp.GetService(typeof(IProfileSwitcher)) as IProfileSwitcher;
-                if (switcher != null)
-                {
-                    switcher.SwitchProfile(dev, sa);
-                    executedViaDI = true;
-                }
+                if (sa == null) return;
+                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx?.Device ?? 0);
+                _profileSwitcher.SwitchProfile(dev, sa);
+                try { AppLogger.LogTrace($"ProfileSwitchAction.Execute: id={Id} device={dev}"); } catch { }
             }
-
-            // フォールバック: DI未登録時は従来の直接呼び出し
-            if (!executedViaDI)
+            catch (Exception ex)
             {
-                Mapping.ApplyProfileDirect(dev, sa);
+                try { AppLogger.LogTrace($"ProfileSwitchAction.Execute failed: {ex}"); } catch { }
             }
         }
 
         public void Stop(IOutputContext ctx)
         {
-            int dev = deviceIndex;
-            bool restoredViaDI = false;
-
-            var sp = ServiceProviderHolder.Provider;
-            if (sp != null)
-            {
-                var switcher = sp.GetService(typeof(IProfileSwitcher)) as IProfileSwitcher;
-                if (switcher != null)
-                {
-                    switcher.RestoreProfile(dev);
-                    restoredViaDI = true;
-                }
-            }
-
-            if (!restoredViaDI)
-            {
-                Mapping.RestoreProfileDirect(dev);
-            }
         }
     }
 }
