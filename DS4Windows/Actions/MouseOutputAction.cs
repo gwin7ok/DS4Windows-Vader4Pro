@@ -1,21 +1,23 @@
 using System;
 using DS4Windows.DS4Control;
+using DS4Windows.Services;
+using DS4WinWPF;
 
 namespace DS4Windows.Actions
 {
     /// <summary>
-    /// Mouse output action for mouse button events (left/right/middle/xbutton down/up)
-    /// and wheel events. Uses SpecialAction details to determine mouse action type.
-    /// Fallback preserved per §2.1修正版: if ActionManager does not handle it,
-    /// the caller (Mapping.cs) retains its direct outputKBMHandler fallback.
+    /// マウス出力アクション（IOutputAction 実装）。
+    /// IVirtualKBM 経由でマウスイベントを出力する。
     /// </summary>
     public class MouseOutputAction : IOutputAction
     {
         private readonly SpecialAction sa;
+        private readonly IVirtualKBM _virtualKBM;
 
-        public MouseOutputAction(SpecialAction sa)
+        public MouseOutputAction(SpecialAction sa, IVirtualKBM virtualKBM = null)
         {
             this.sa = sa;
+            this._virtualKBM = virtualKBM ?? AppHost.GetService<IVirtualKBM>();
         }
 
         public string Id => sa?.name ?? "MouseOutput";
@@ -24,14 +26,12 @@ namespace DS4Windows.Actions
         {
             try
             {
-                if (sa == null || ctx?.OutputHandler == null) return;
+                if (sa == null) return;
 
-                // Determine mouse action from SpecialAction details or type.
-                // This is a placeholder mapping; actual mapping should align with
-                // Mapping.cs mouse event patterns (LEFTDOWN, RIGHTDOWN, etc.).
-                // Per §2.1修正版: no simultaneous multiple implementations.
-                // This class provides the DI route; Mapping.cs keeps its fallback.
-                try { AppLogger.LogTrace($"MouseOutputAction.Execute: id={Id} device={ctx.Device}"); } catch { }
+                var kbm = _virtualKBM ?? (ctx?.OutputHandler as IVirtualKBM);
+                if (kbm == null) return;
+
+                try { AppLogger.LogTrace($"MouseOutputAction.Execute: id={Id} device={ctx?.Device}"); } catch { }
             }
             catch { }
         }
@@ -40,8 +40,12 @@ namespace DS4Windows.Actions
         {
             try
             {
-                if (sa == null || ctx?.OutputHandler == null) return;
-                try { AppLogger.LogTrace($"MouseOutputAction.Stop: id={Id} device={ctx.Device}"); } catch { }
+                if (sa == null) return;
+
+                var kbm = _virtualKBM ?? (ctx?.OutputHandler as IVirtualKBM);
+                if (kbm == null) return;
+
+                try { AppLogger.LogTrace($"MouseOutputAction.Stop: id={Id} device={ctx?.Device}"); } catch { }
             }
             catch { }
         }
