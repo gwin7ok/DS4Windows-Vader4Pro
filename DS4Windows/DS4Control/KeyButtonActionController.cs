@@ -1,3 +1,4 @@
+using DS4Windows.Services;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -107,10 +108,10 @@ namespace DS4Windows
         // Internal interface for per-mode controllers
         private interface IKeyController
         {
-            void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction);
-            void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler);
+            void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler, bool isSpecialAction);
+            void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler);
             // Invoked when a Toggle-mode action is explicitly toggled OFF (controller-level stop + release).
-            void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler);
+            void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler);
             void Clear(ushort kvpKey);
             void ClearAll();
         }
@@ -126,7 +127,7 @@ namespace DS4Windows
             {
                 public uint nativeKey;
                 public bool useScanCode;
-                public DS4Windows.DS4Control.VirtualKBMBase handler;
+                public IVirtualKBM handler;
                 public IRepeater repeater;
             }
 
@@ -139,7 +140,7 @@ namespace DS4Windows
                 this.assignedActionDef = assignedActionDef;
             }
 
-            public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
+            public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler, bool isSpecialAction)
             {
                 if (!entries.TryGetValue(kvpKey, out Entry e))
                 {
@@ -186,14 +187,14 @@ namespace DS4Windows
                 catch { }
             }
 
-            public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+            public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler)
             {
                     // For Toggle mode, input-edge release should not stop repeaters or clear IsToggledOn.
                     // Ignore input-level release here; rely on explicit toggle-off path.
                 try { SyntheticDispatcher.ResetKeyTiming(device, kvpKey); } catch { }
             }
 
-            public void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+            public void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler)
             {
                 if (entries.TryGetValue(kvpKey, out Entry e) && e.repeater != null)
                 {
@@ -271,7 +272,7 @@ namespace DS4Windows
                 public bool isPressed;
                 public uint nativeKey;
                 public bool useScanCode;
-                public DS4Windows.DS4Control.VirtualKBMBase handler;
+                public IVirtualKBM handler;
                 public IRepeater repeater;
                 public CancellationTokenSource delayCts;
             }
@@ -279,7 +280,7 @@ namespace DS4Windows
 
             public PressImpl(int device, int controllerId) { this.device = device; this.controllerId = controllerId; }
 
-            public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
+            public void OnDown(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler, bool isSpecialAction)
             {
                 if (!entries.TryGetValue(kvpKey, out Entry e))
                 {
@@ -333,7 +334,7 @@ namespace DS4Windows
 
             }
 
-            public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+            public void OnUp(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler)
             {
                 if (entries.TryGetValue(kvpKey, out Entry e) && e.isPressed)
                 {
@@ -358,7 +359,7 @@ namespace DS4Windows
                 }
             }
 
-            public void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+            public void OnToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler)
             {
                 // For press-mode controller, treat toggle-off as a clear of any press state.
                 try { Clear(kvpKey); } catch { }
@@ -400,7 +401,7 @@ namespace DS4Windows
         }
 
         // New, clearer API names reflecting Mapping-trigger notifications
-        public void OnSATriggerEstablished(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler, bool isSpecialAction)
+        public void OnSATriggerEstablished(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler, bool isSpecialAction)
         {
             try
             {
@@ -410,7 +411,7 @@ namespace DS4Windows
             impl.OnDown(kvpKey, nativeKey, useScanCode, handler, isSpecialAction);
         }
 
-        public void OnSATriggerReleased(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+        public void OnSATriggerReleased(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler)
         {
             try
             {
@@ -422,7 +423,7 @@ namespace DS4Windows
         }
 
         // Explicit API to indicate Toggle OFF (called by KeyAction when it decides to toggle off)
-        public void OnSATriggerToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, DS4Windows.DS4Control.VirtualKBMBase handler)
+        public void OnSATriggerToggleOff(ushort kvpKey, uint nativeKey, bool useScanCode, IVirtualKBM handler)
         {
             try
             {

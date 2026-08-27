@@ -1,3 +1,4 @@
+using DS4Windows.Services;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -398,7 +399,7 @@ namespace DS4Windows
         }
 
         // Dispatch that returns true if an Action instance existed and was invoked to handle the trigger.
-        public static bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        public static bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler)
         {
             try
             {
@@ -439,7 +440,7 @@ namespace DS4Windows
 
         // NOTE: NotifyTriggerReleased removed — use DispatchTriggerReleased or DispatchTriggerEdge
 
-        public static bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, VirtualKBMBase outputKBMHandler)
+        public static bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler)
         {
             try
             {
