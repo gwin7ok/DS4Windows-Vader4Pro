@@ -1,4 +1,5 @@
 using Xunit;
+using DS4Windows;
 using DS4Windows.Services;
 using DS4Windows.Actions;
 using DS4Windows.DS4Control;
@@ -80,11 +81,7 @@ namespace DS4WindowsTests
 
             Assert.Equal("TestMouseAction", action.Id);
 
-            var ctx = new OutputContextImpl
-            {
-                Device = 0,
-                OutputHandler = mockKbm
-            };
+            var ctx = new OutputContextImpl(0, mockKbm);
 
             action.Execute(ctx);
             action.Stop(ctx);
