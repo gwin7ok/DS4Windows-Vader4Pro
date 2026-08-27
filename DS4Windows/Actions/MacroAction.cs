@@ -1,73 +1,48 @@
 using System;
-using DS4Windows;
-using DS4Windows.DI;
+using DS4Windows.Services;
 
 namespace DS4Windows.Actions
 {
-    /// <summary>
-    /// マクロ再生アクション（IOutputAction 実装）
-    /// DI（IMacroPlayer）経由で再生/停止を実行し、未解決時は Mapping.PlayMacroDirect / EndMacroDirect へフォールバック
-    /// </summary>
     public class MacroAction : IOutputAction
     {
         private readonly SpecialAction sa;
-        private readonly int deviceIndex;
+        private readonly IMacroPlayer _macroPlayer;
 
-        public MacroAction(SpecialAction sa, int deviceIndex = 0)
+        public MacroAction(SpecialAction sa, IMacroPlayer macroPlayer = null)
         {
             this.sa = sa;
-            this.deviceIndex = deviceIndex;
+            this._macroPlayer = macroPlayer ?? new DefaultMacroPlayer();
         }
 
-        public string Id => sa?.name ?? "Macro";
-        public SpecialAction SpecialAction => sa;
-        public int DeviceIndex => deviceIndex;
+        public string Id => sa?.name ?? "MacroAction";
 
         public void Execute(IOutputContext ctx)
         {
-            if (sa == null) return;
-
-            int dev = deviceIndex;
-            bool executedViaDI = false;
-
-            // DI コンテナからの IMacroPlayer 解決試行
-            var sp = ServiceProviderHolder.Provider;
-            if (sp != null)
+            try
             {
-                var player = sp.GetService(typeof(IMacroPlayer)) as IMacroPlayer;
-                if (player != null)
-                {
-                    player.Play(dev, sa);
-                    executedViaDI = true;
-                }
+                if (sa == null) return;
+                int device = ctx?.Device ?? 0;
+                _macroPlayer.Play(device, sa);
+                try { AppLogger.LogTrace($"MacroAction.Execute: id={Id} device={device}"); } catch { }
             }
-
-            // フォールバック: DI未登録時は従来の直接呼び出し
-            if (!executedViaDI)
+            catch (Exception ex)
             {
-                Mapping.PlayMacroDirect(dev, sa);
+                try { AppLogger.LogTrace($"MacroAction.Execute failed: {ex}"); } catch { }
             }
         }
 
         public void Stop(IOutputContext ctx)
         {
-            int dev = deviceIndex;
-            bool stoppedViaDI = false;
-
-            var sp = ServiceProviderHolder.Provider;
-            if (sp != null)
+            try
             {
-                var player = sp.GetService(typeof(IMacroPlayer)) as IMacroPlayer;
-                if (player != null)
-                {
-                    player.Stop(dev);
-                    stoppedViaDI = true;
-                }
+                if (sa == null) return;
+                int device = ctx?.Device ?? 0;
+                _macroPlayer.Stop(device);
+                try { AppLogger.LogTrace($"MacroAction.Stop: id={Id} device={device}"); } catch { }
             }
-
-            if (!stoppedViaDI)
+            catch (Exception ex)
             {
-                Mapping.EndMacroDirect(dev);
+                try { AppLogger.LogTrace($"MacroAction.Stop failed: {ex}"); } catch { }
             }
         }
     }
