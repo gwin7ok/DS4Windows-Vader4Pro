@@ -1,4 +1,6 @@
-﻿/*
+using DS4Windows.Services;
+using DS4WinWPF;
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -37,6 +39,7 @@ namespace DS4Windows
 {
     public class Mapping
     {
+        private static IVirtualKBM VirtualKBM => AppHost.GetService<IVirtualKBM>() ?? Global.outputKBMHandler;
         // SpecialAction名ごとのエラーログ抑制用（1プロファイル切り替えごとに1回だけ）
         // private static HashSet<string> loggedInvalidActions = new HashSet<string>();
 
