@@ -6450,7 +6450,7 @@ namespace DS4Windows
         internal static void PlayMacroDirect(int device, SpecialAction action)
         {
             if (device < 0 || device >= 4 || action == null) return;
-            PlayMacro(device, new bool[4], action.name, action.macro, new int[0], DS4Controls.None, action.keyType, action, null);
+            PlayMacro(device, new bool[4], String.Empty, action.macro, null, DS4Controls.None, action.keyType, action, null);
         }
 
         /// <summary>
