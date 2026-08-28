@@ -27,9 +27,9 @@ namespace DS4WindowsTests
 
             action.Execute(ctx);
 
-            Assert.Single(mockSwitcher.SwitchCalls);
-            Assert.Equal(0, mockSwitcher.SwitchCalls[0].Device);
-            Assert.Same(sa, mockSwitcher.SwitchCalls[0].Action);
+            Assert.Single(mockSwitcher.SwitchProfileCalls);
+            Assert.Equal(0, mockSwitcher.SwitchProfileCalls[0].deviceIndex);
+            Assert.Same(sa, mockSwitcher.SwitchProfileCalls[0].action);
         }
 
         [Fact]
@@ -43,8 +43,8 @@ namespace DS4WindowsTests
 
             action.Execute(ctx);
 
-            Assert.Single(mockSwitcher.SwitchCalls);
-            Assert.Equal(3, mockSwitcher.SwitchCalls[0].Device);
+            Assert.Single(mockSwitcher.SwitchProfileCalls);
+            Assert.Equal(3, mockSwitcher.SwitchProfileCalls[0].deviceIndex);
         }
 
         [Fact]
@@ -58,8 +58,8 @@ namespace DS4WindowsTests
 
             action.Stop(ctx);
 
-            Assert.Single(mockSwitcher.RestoreCalls);
-            Assert.Equal(1, mockSwitcher.RestoreCalls[0]);
+            Assert.Single(mockSwitcher.RestoreProfileCalls);
+            Assert.Equal(1, mockSwitcher.RestoreProfileCalls[0]);
         }
 
         [Fact]
@@ -74,11 +74,11 @@ namespace DS4WindowsTests
             action.Execute(ctx);
             action.Execute(ctx);
 
-            Assert.Equal(2, mockSwitcher.SwitchCalls.Count);
+            Assert.Equal(2, mockSwitcher.SwitchProfileCalls.Count);
 
             mockSwitcher.Reset();
-            Assert.Empty(mockSwitcher.SwitchCalls);
-            Assert.Empty(mockSwitcher.RestoreCalls);
+            Assert.Empty(mockSwitcher.SwitchProfileCalls);
+            Assert.Empty(mockSwitcher.RestoreProfileCalls);
         }
     }
 }
