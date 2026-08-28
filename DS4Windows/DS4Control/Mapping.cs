@@ -990,7 +990,7 @@ namespace DS4Windows
         // TODO When we disconnect, process a null/dead state to release any keys or buttons.
         public static DateTime oldnow = DateTime.UtcNow;
         private static bool pressagain = false;
-        private static int wheel = 0, keyshelddown = 0;
+        private static int wheel = 0;
 
         // Data needed to calculate Stick to Mouse Wheel conversion
         private static double stickWheel = 0.0, stickWheelRemainder = 0.0;
@@ -1505,109 +1505,6 @@ namespace DS4Windows
                 }
             }
 
-            // Merge and synthesize all key presses/releases that are present in this device's mapping.
-            Dictionary<UInt16, SyntheticState.KeyPresses>.KeyCollection kvpKeys = state.keyPresses.Keys;
-            for (var keyEnum = kvpKeys.GetEnumerator(); keyEnum.MoveNext();)
-            {
-                UInt16 kvpKey = keyEnum.Current;
-                SyntheticState.KeyPresses kvpValue = state.keyPresses[kvpKey];
-
-                SyntheticState.KeyPresses gkp;
-                if (globalState.keyPresses.TryGetValue(kvpKey, out gkp))
-                {
-                    gkp.current.vkCount += kvpValue.current.vkCount - kvpValue.previous.vkCount;
-                    gkp.current.scanCodeCount += kvpValue.current.scanCodeCount - kvpValue.previous.scanCodeCount;
-                    gkp.current.repeatCount += kvpValue.current.repeatCount - kvpValue.previous.repeatCount;
-                }
-                else
-                {
-                    gkp = new SyntheticState.KeyPresses();
-                    gkp.current = kvpValue.current;
-                    globalState.keyPresses[kvpKey] = gkp;
-                }
-
-                uint nativeKey = state.nativeKeyAlias[kvpKey];
-                bool useScan = gkp.current.scanCodeCount != 0 || gkp.previous.scanCodeCount != 0;
-
-                // Controlタブの設定からToggle設定の有無を取得（SpecialActionがある場合はそれを優先）
-                SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
-                bool isToggle = false;
-                if (sa != null)
-                {
-                    isToggle = sa.keyType.HasFlag(DS4KeyType.Toggle);
-                }
-                else
-                {
-                    // Controlタブのキー設定からToggleフラグを取得
-                    var dcsGroup = GetControlSettingsGroup(device);
-                    // 設定にToggleが含まれているか、または合成Action取得時に判定
-                    sa = GetOrCreateSyntheticKeyAction(device, (int)kvpKey, nativeKey, toggle: GetDS4CSetting(device, held[device])?.keyType.HasFlag(DS4KeyType.Toggle) ?? false, useScan: useScan);
-                }
-
-                // ■ 物理ボタンが押された瞬間（立ち上がりエッジ）
-                if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
-                {
-                    long nowTicksSend = DateTime.UtcNow.Ticks;
-                    long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                    oldnow = DateTime.UtcNow;
-                    if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
-                    {
-                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress");
-
-                        bool handled = false;
-                        try
-                        {
-                            if (sa != null)
-                            {
-                                handled = ActionManager.DispatchTriggerEstablished(sa, device, (ushort)kvpKey, nativeKey, useScan, VirtualKBM);
-                            }
-                        }
-                        catch { }
-
-                        if (!handled)
-                        {
-                            if (useScan)
-                                VirtualKBM.PerformKeyPressAlt(nativeKey);
-                            else
-                                VirtualKBM.PerformKeyPress(nativeKey);
-                        }
-
-                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                    }
-                    pressagain = false;
-                    keyshelddown = kvpKey;
-                }
-                // ■ 物理ボタンが離された瞬間（立ち下がりエッジ）
-                else if (gkp.current.vkCount + gkp.current.scanCodeCount == 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount != 0)
-                {
-                    long nowTicksSend = DateTime.UtcNow.Ticks;
-                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-
-                    bool handled = false;
-                    try
-                    {
-                        if (sa != null)
-                        {
-                            handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, useScan, VirtualKBM);
-                        }
-                    }
-                    catch { }
-
-                    if (!handled)
-                    {
-                        if (useScan)
-                            VirtualKBM.PerformKeyReleaseAlt(nativeKey);
-                        else
-                            VirtualKBM.PerformKeyRelease(nativeKey);
-                    }
-
-                    gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                    gkp.previous.vkCount = 0;
-                    gkp.previous.scanCodeCount = 0;
-                    gkp.previous.repeatCount = 0;
-                    pressagain = false;
-                }
-            }
             globalState.SaveToPrevious(false);
 
             syncStateLock.ExitWriteLock();
