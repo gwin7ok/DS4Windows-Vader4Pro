@@ -3,7 +3,7 @@
 ## 1. 概要
 - **目的**: `Mapping.cs` および `Actions/` 配下で直接 `Global.outputKBMHandler` 等を呼び出している仮想キーボード・マウス（KBM）操作を `IVirtualKBM` インターフェース経由に抽象化し、DIによる疎結合化とテスタビリティ向上を図る。
 - **開始日**: 2026-08-28
-- **現在のステータス**: **フェーズ2 全ステップ完了 (Phase 2 Completed)**
+- **現在のステータス**: **フェーズ2 全ステップ完了 (Phase 2 Completed - 安定化・完全一本化完了)**
 
 ---
 
@@ -17,3 +17,4 @@
 | **Step 2-4** | 呼び出し箇所置換 (Actions + マクロ14箇所) | **完了** | `MouseOutputAction.cs`<br>`Mapping.cs` (マクロ部) |
 | **Step 2-5** | 通常1:1マッピング (48箇所) の置換 | **完了** | `Mapping.cs`<br>`ActionManager.cs` 等 |
 | **Step 2-6** | 単体テスト整備・結合検証 | **完了** | `MockVirtualKBM.cs`<br>`VirtualKBMTests.cs`<br>`Phase2-Completion-Report.md` |
+| **Step 2-7** | Controlタブ キー処理の ActionManager 完全一本化と安定化 | **完了** | `Mapping.cs`<br>`ControlTabAndSpecialActionKeyTests.cs`<br>`Phase2-Step2-7-Report.md` |
