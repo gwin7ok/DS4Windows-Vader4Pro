@@ -8,8 +8,8 @@ namespace DS4Windows.Actions
         private readonly MacroAction _inner;
 
         public MacroActionAdapter(SpecialAction sa, int deviceIndex = -1, IMacroPlayer macroPlayer = null)
-            : base(sa)
         {
+            ActionDef = sa;
             _inner = new MacroAction(sa, deviceIndex, macroPlayer);
         }
 
@@ -22,12 +22,12 @@ namespace DS4Windows.Actions
 
         public override void OnTrigger(int device, MappingContext ctx)
         {
-            _inner.Execute(ctx);
+            _inner.Execute(new OutputContextImpl(device, ctx?.OutputHandler));
         }
 
         public override void OnRelease(int device, MappingContext ctx)
         {
-            _inner.Stop(ctx);
+            _inner.Stop(new OutputContextImpl(device, ctx?.OutputHandler));
         }
 
         public void Execute(IOutputContext ctx) => _inner.Execute(ctx);
