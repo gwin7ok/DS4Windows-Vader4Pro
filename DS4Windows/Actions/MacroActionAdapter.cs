@@ -1,38 +1,32 @@
-using System;
-using DS4Windows;
+﻿using System;
+using DS4Windows.Services;
 
 namespace DS4Windows.Actions
 {
-    /// <summary>
-    /// マクロアクションのアダプター
-    /// Mapping.cs のトリガー判定から MacroAction へのディスパッチを中継
-    /// </summary>
-    public class MacroActionAdapter : Action
+    public class MacroActionAdapter : IOutputAction
     {
-        private readonly SpecialAction sa;
-        private readonly MacroAction action;
-        private readonly int deviceIndex;
+        private readonly MacroAction _inner;
 
-        public MacroActionAdapter(SpecialAction sa, int deviceIndex = 0)
+        public MacroActionAdapter(SpecialAction sa, int deviceIndex = -1, IMacroPlayer macroPlayer = null)
         {
-            this.sa = sa;
-            this.deviceIndex = deviceIndex;
-            this.action = new MacroAction(sa, deviceIndex);
+            _inner = new MacroAction(sa, deviceIndex, macroPlayer);
         }
 
-        public string ActionType => "Macro";
-        public SpecialAction SpecialAction => sa;
-        public MacroAction OutputAction => action;
-
-        public override void OnTrigger(int device, MappingContext context)
+        public MacroActionAdapter(SpecialAction sa, IMacroPlayer macroPlayer)
+            : this(sa, -1, macroPlayer)
         {
-            if (sa == null) return;
-            action.Execute(null);
         }
 
-        public override void OnRelease(int device, MappingContext context)
+        public string Id => _inner.Id;
+
+        public void Execute(IOutputContext ctx)
         {
-            action.Stop(null);
+            _inner.Execute(ctx);
+        }
+
+        public void Stop(IOutputContext ctx)
+        {
+            _inner.Stop(ctx);
         }
     }
 }

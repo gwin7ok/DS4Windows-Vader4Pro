@@ -30,6 +30,7 @@ namespace DS4Windows.Actions
             if (ActionDef == null || _macroPlayer == null) return;
             int dev = (DeviceIndex >= 0) ? DeviceIndex : (ctx != null ? ctx.Device : 0);
             _macroPlayer.Play(dev, ActionDef);
+            try { AppLogger.LogTrace($"MacroAction.Execute: id={Id} device={dev}"); } catch { }
         }
 
         public void Stop(IOutputContext ctx)
@@ -37,6 +38,7 @@ namespace DS4Windows.Actions
             if (ActionDef == null || _macroPlayer == null) return;
             int dev = (DeviceIndex >= 0) ? DeviceIndex : (ctx != null ? ctx.Device : 0);
             _macroPlayer.Stop(dev);
+            try { AppLogger.LogTrace($"MacroAction.Stop: id={Id} device={dev}"); } catch { }
         }
     }
 }

@@ -1,38 +1,32 @@
-using System;
-using DS4Windows;
+﻿using System;
+using DS4Windows.Services;
 
 namespace DS4Windows.Actions
 {
-    /// <summary>
-    /// プロファイル切り替えアクションのアダプター（Action 派生）
-    /// Mapping.cs のトリガー判定から ProfileSwitchAction へのディスパッチを中継
-    /// </summary>
-    public class ProfileSwitchActionAdapter : Action
+    public class ProfileSwitchActionAdapter : IOutputAction
     {
-        private readonly SpecialAction sa;
-        private readonly ProfileSwitchAction action;
-        private readonly int deviceIndex;
+        private readonly ProfileSwitchAction _inner;
 
-        public ProfileSwitchActionAdapter(SpecialAction sa, int deviceIndex = 0)
+        public ProfileSwitchActionAdapter(SpecialAction sa, int deviceIndex = -1, IProfileSwitcher profileSwitcher = null)
         {
-            this.sa = sa;
-            this.deviceIndex = deviceIndex;
-            this.action = new ProfileSwitchAction(sa, deviceIndex);
+            _inner = new ProfileSwitchAction(sa, deviceIndex, profileSwitcher);
         }
 
-        public string ActionType => "Profile";
-        public SpecialAction SpecialAction => sa;
-        public ProfileSwitchAction OutputAction => action;
-
-        public override void OnTrigger(int device, MappingContext context)
+        public ProfileSwitchActionAdapter(SpecialAction sa, IProfileSwitcher profileSwitcher)
+            : this(sa, -1, profileSwitcher)
         {
-            if (sa == null) return;
-            action.Execute(null);
         }
 
-        public override void OnRelease(int device, MappingContext context)
+        public string Id => _inner.Id;
+
+        public void Execute(IOutputContext ctx)
         {
-            action.Stop(null);
+            _inner.Execute(ctx);
+        }
+
+        public void Stop(IOutputContext ctx)
+        {
+            _inner.Stop(ctx);
         }
     }
 }
