@@ -56,9 +56,9 @@ namespace DS4WindowsTests
             var sa = new SpecialAction("Key_Toggle_Test", "Cross", "Key", "Key", 0, "");
             sa.typeID = SpecialAction.ActionTypeId.Key;
             sa.details = "30";
-            sa.keyToggle = true;
 
-            var adapter = new KeyButtonActionControllerAdapter(0, sa);
+            var inner = new KeyButtonActionController(0, KeyButtonActionController.Mode.Toggle, "Key_Toggle_Test");
+            var adapter = new KeyButtonActionControllerAdapter(inner);
             var binding = new KeyActionBinding(sa);
 
             var triggerDown = new TriggerContextImpl
