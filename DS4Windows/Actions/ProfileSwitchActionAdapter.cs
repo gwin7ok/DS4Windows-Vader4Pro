@@ -9,7 +9,7 @@ namespace DS4Windows.Actions
 
         public ProfileSwitchActionAdapter(SpecialAction sa, int index) : base(sa, index)
         {
-            _inner = new ProfileSwitchAction(sa, index);
+            _inner = new ProfileSwitchAction(sa, index, null);
         }
 
         public ProfileSwitchActionAdapter(SpecialAction sa, IProfileSwitcher profileSwitcher) : base(sa, -1)
@@ -26,12 +26,24 @@ namespace DS4Windows.Actions
 
         public override void OnTrigger(int device, MappingContext ctx)
         {
-            _inner.Execute(new OutputContextImpl(device, ctx?.OutputHandler));
+            try
+            {
+                if (_inner == null) return;
+                var outCtx = new OutputContextImpl(device, ctx?.OutputHandler);
+                _inner.Execute(outCtx);
+            }
+            catch { }
         }
 
         public override void OnRelease(int device, MappingContext ctx)
         {
-            _inner.Stop(new OutputContextImpl(device, ctx?.OutputHandler));
+            try
+            {
+                if (_inner == null) return;
+                var outCtx = new OutputContextImpl(device, ctx?.OutputHandler);
+                _inner.Stop(outCtx);
+            }
+            catch { }
         }
 
         public void Execute(IOutputContext ctx) => _inner.Execute(ctx);
