@@ -26,24 +26,12 @@ namespace DS4Windows.Actions
 
         public override void OnTrigger(int device, MappingContext ctx)
         {
-            try
-            {
-                if (_inner == null) return;
-                var outCtx = new OutputContextImpl(device, ctx?.OutputHandler);
-                _inner.Execute(outCtx);
-            }
-            catch { }
+            _inner.Execute(new OutputContextImpl(device, ctx?.OutputHandler));
         }
 
         public override void OnRelease(int device, MappingContext ctx)
         {
-            try
-            {
-                if (_inner == null) return;
-                var outCtx = new OutputContextImpl(device, ctx?.OutputHandler);
-                _inner.Stop(outCtx);
-            }
-            catch { }
+            _inner.Stop(new OutputContextImpl(device, ctx?.OutputHandler));
         }
 
         public void Execute(IOutputContext ctx) => _inner.Execute(ctx);
