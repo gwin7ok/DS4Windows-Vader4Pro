@@ -50,10 +50,10 @@ namespace DS4Windows
             return _syntheticActionCache.GetOrAdd(cacheKey, k =>
             {
                 var sa = new SpecialAction($"Synthetic_Key_{k.dev}_{k.key}", "Synthetic", "Key", "Key", 0, "");
-                sa.typeCode = SpecialAction.ActionTypeId.Key;
+                sa.typeID = SpecialAction.ActionTypeId.Key;
+                sa.type = "Key";
                 sa.details = outputKey.ToString();
-                sa.keyType = useScan ? DS4KeyType.ScanCode : DS4KeyType.VirtualKey;
-                sa.pressOnce = !toggle;
+                sa.keyType = useScan ? DS4KeyType.ScanCode : (DS4KeyType)0;
                 return sa;
             });
         }

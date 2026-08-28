@@ -14,9 +14,8 @@ namespace DS4WindowsTests
         {
             var mockKbm = new MockVirtualKBM();
             var sa = new SpecialAction("Key_Press_Test", "Cross", "Key", "Key", 0, "");
-            sa.typeCode = SpecialAction.ActionTypeId.Key;
+            sa.typeID = SpecialAction.ActionTypeId.Key;
             sa.details = "30"; // 0x1E
-            sa.pressOnce = true;
 
             var controller = new KeyButtonActionController(0, sa, mockKbm);
 
@@ -34,9 +33,8 @@ namespace DS4WindowsTests
         {
             var mockKbm = new MockVirtualKBM();
             var sa = new SpecialAction("Key_Toggle_Test", "Cross", "Key", "Key", 0, "");
-            sa.typeCode = SpecialAction.ActionTypeId.Key;
+            sa.typeID = SpecialAction.ActionTypeId.Key;
             sa.details = "30";
-            sa.pressOnce = false;
 
             var toggleController = new ToggleController(0, sa, mockKbm);
 
@@ -56,7 +54,7 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void ControlTab_SyntheticSpecialAction_PressAndToggle_Construction()
+        public void ControlTab_SyntheticSpecialAction_Construction()
         {
             Mapping.ClearSyntheticActionCache();
 
@@ -64,14 +62,14 @@ namespace DS4WindowsTests
             var pressSa = Mapping.GetOrCreateSyntheticKeyAction(0, 1, 0x41, toggle: false, useScan: false);
             Assert.Equal("Synthetic_Key_0_1", pressSa.name);
             Assert.Equal("65", pressSa.details);
-            Assert.True(pressSa.pressOnce);
-            Assert.Equal(DS4KeyType.VirtualKey, pressSa.keyType);
+            Assert.Equal(SpecialAction.ActionTypeId.Key, pressSa.typeID);
+            Assert.Equal((DS4KeyType)0, pressSa.keyType);
 
             // トグルキー（Toggle ON）の合成SpecialAction
             var toggleSa = Mapping.GetOrCreateSyntheticKeyAction(0, 2, 0x42, toggle: true, useScan: true);
             Assert.Equal("Synthetic_Key_0_2", toggleSa.name);
             Assert.Equal("66", toggleSa.details);
-            Assert.False(toggleSa.pressOnce);
+            Assert.Equal(SpecialAction.ActionTypeId.Key, toggleSa.typeID);
             Assert.Equal(DS4KeyType.ScanCode, toggleSa.keyType);
 
             // キャッシュ再利用の検証
