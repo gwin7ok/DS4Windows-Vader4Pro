@@ -10,6 +10,16 @@ namespace DS4Windows.Actions
         private readonly int deviceIndex;
         private readonly IProfileSwitcher _profileSwitcher;
 
+        public ProfileSwitchAction(SpecialAction sa)
+            : this(sa, -1, null)
+        {
+        }
+
+        public ProfileSwitchAction(SpecialAction sa, int deviceIndex)
+            : this(sa, deviceIndex, null)
+        {
+        }
+
         public ProfileSwitchAction(SpecialAction sa, IProfileSwitcher profileSwitcher)
             : this(sa, -1, profileSwitcher)
         {
@@ -20,11 +30,6 @@ namespace DS4Windows.Actions
             this.sa = sa;
             this.deviceIndex = deviceIndex;
             this._profileSwitcher = profileSwitcher ?? AppHost.GetService<IProfileSwitcher>() ?? new DefaultProfileSwitcher();
-        }
-
-        public ProfileSwitchAction(SpecialAction sa)
-            : this(sa, -1, null)
-        {
         }
 
         public string Id => sa?.name ?? "ProfileSwitch";

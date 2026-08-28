@@ -10,6 +10,16 @@ namespace DS4Windows.Actions
         private readonly int deviceIndex;
         private readonly IMacroPlayer _macroPlayer;
 
+        public MacroAction(SpecialAction sa)
+            : this(sa, -1, null)
+        {
+        }
+
+        public MacroAction(SpecialAction sa, int deviceIndex)
+            : this(sa, deviceIndex, null)
+        {
+        }
+
         public MacroAction(SpecialAction sa, IMacroPlayer macroPlayer)
             : this(sa, -1, macroPlayer)
         {
@@ -20,11 +30,6 @@ namespace DS4Windows.Actions
             this.sa = sa;
             this.deviceIndex = deviceIndex;
             this._macroPlayer = macroPlayer ?? AppHost.GetService<IMacroPlayer>() ?? new DefaultMacroPlayer();
-        }
-
-        public MacroAction(SpecialAction sa)
-            : this(sa, -1, null)
-        {
         }
 
         public string Id => sa?.name ?? "MacroAction";
