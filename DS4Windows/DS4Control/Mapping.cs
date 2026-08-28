@@ -1,4 +1,4 @@
-using IVirtualKBM = DS4Windows.Services.IVirtualKBM;
+﻿using IVirtualKBM = DS4Windows.Services.IVirtualKBM;
 using DS4Windows.Services;
 using DS4WinWPF;
 /*
@@ -40,6 +40,28 @@ namespace DS4Windows
 {
     public class Mapping
     {
+        // Controlタブ用の合成 SpecialAction キャッシュ (deviceIndex, kvpKey) -> SpecialAction
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(int dev, int key), SpecialAction> _syntheticActionCache
+            = new System.Collections.Concurrent.ConcurrentDictionary<(int dev, int key), SpecialAction>();
+
+        public static SpecialAction GetOrCreateSyntheticKeyAction(int device, int kvpKey, uint outputKey, bool toggle, bool useScan)
+        {
+            var cacheKey = (device, kvpKey);
+            return _syntheticActionCache.GetOrAdd(cacheKey, k =>
+            {
+                var sa = new SpecialAction($"Synthetic_Key_{k.dev}_{k.key}", "Synthetic", "Key", "Key", 0, "");
+                sa.type = SpecialAction.ActionType.Key;
+                sa.details = outputKey.ToString();
+                sa.keyToggle = toggle;
+                sa.keyType = useScan ? 1 : 0;
+                return sa;
+            });
+        }
+
+        public static void ClearSyntheticActionCache()
+        {
+            _syntheticActionCache.Clear();
+        }
         private static IVirtualKBM VirtualKBM => AppHost.GetService<IVirtualKBM>() ?? Global.outputKBMHandler;
         // SpecialAction名ごとのエラーログ抑制用（1プロファイル切り替えごとに1回だけ）
         // private static HashSet<string> loggedInvalidActions = new HashSet<string>();

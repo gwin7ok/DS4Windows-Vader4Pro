@@ -9,12 +9,13 @@
 - Controlタブのキー設定を `(device, kvpKey)` 単位の「合成SpecialAction」としてキャッシュ生成し、既存の `ActionManager` に合流させる。
 - 出力層ロジックは変更せず、2層（変換層）での橋渡しのみで完結させる。
 
-## 3. 作業スコープ
-- `DS4Windows/DS4Control/Mapping.cs`
-- `docs-forDIMG/MadeByAgent/Bugfix-ControlTab-KeyRepeat-And-Toggle-Plan.md`
-- `docs-forDIMG/MadeByAgent/Bugfix-ControlTab-KeyRepeat-And-Toggle-Report.md`
+## 3. テスト計画 (dotnet test)
+- `DS4WindowsTests/ControlTabAndSpecialActionKeyTests.cs`:
+  1. SpecialActionsタブの Press モードでのキー押下・解放動作検証
+  2. SpecialActionsタブの Toggle モードでの 1回押し保持・2回押し解除動作検証
+  3. Controlタブ用の合成 SpecialAction 生成（Press/Toggle、ScanCode/VirtualKey）およびキャッシュ再利用の検証
 
 ## 4. 完了条件
-- [ ] 通常キー長押し時にキーリピートが機能すること。
-- [ ] トグルキー設定時に1回押しで長押し保持、再押しで解放されること。
-- [ ] `dotnet publish` および `dotnet test` が全件成功すること。
+- [x] 合成 SpecialAction 生成ヘルパー（`GetOrCreateSyntheticKeyAction`）の実装
+- [x] 単体テストコード（`ControlTabAndSpecialActionKeyTests.cs`）の作成
+- [ ] `dotnet build` および `dotnet test` の全件成功
