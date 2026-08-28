@@ -3,31 +3,47 @@ using DS4Windows.Services;
 
 namespace DS4Windows.Actions
 {
-    public class ProfileSwitchActionAdapter : Action, IOutputAction
+    public class ProfileSwitchActionAdapter : SpecialActionBase, IOutputAction
     {
         private readonly ProfileSwitchAction _inner;
 
-        public ProfileSwitchActionAdapter(SpecialAction sa, int deviceIndex = -1, IProfileSwitcher profileSwitcher = null)
+        public ProfileSwitchActionAdapter(SpecialAction sa, int index) : base(sa, index)
         {
-            this.action = sa;
-            _inner = new ProfileSwitchAction(sa, deviceIndex, profileSwitcher);
+            _inner = new ProfileSwitchAction(sa, index);
         }
 
-        public ProfileSwitchActionAdapter(SpecialAction sa, IProfileSwitcher profileSwitcher)
-            : this(sa, -1, profileSwitcher)
+        public ProfileSwitchActionAdapter(SpecialAction sa, IProfileSwitcher profileSwitcher) : base(sa, -1)
         {
+            _inner = new ProfileSwitchAction(sa, -1, profileSwitcher);
+        }
+
+        public ProfileSwitchActionAdapter(SpecialAction sa, int index, IProfileSwitcher profileSwitcher) : base(sa, index)
+        {
+            _inner = new ProfileSwitchAction(sa, index, profileSwitcher);
         }
 
         public string Id => _inner.Id;
 
         public override void OnTrigger(int device, MappingContext ctx)
         {
-            _inner.Execute(new OutputContextImpl(device, ctx?.OutputHandler));
+            try
+            {
+                if (_inner == null) return;
+                var outCtx = new OutputContextImpl(device, ctx?.OutputHandler);
+                _inner.Execute(outCtx);
+            }
+            catch { }
         }
 
         public override void OnRelease(int device, MappingContext ctx)
         {
-            _inner.Stop(new OutputContextImpl(device, ctx?.OutputHandler));
+            try
+            {
+                if (_inner == null) return;
+                var outCtx = new OutputContextImpl(device, ctx?.OutputHandler);
+                _inner.Stop(outCtx);
+            }
+            catch { }
         }
 
         public void Execute(IOutputContext ctx) => _inner.Execute(ctx);
