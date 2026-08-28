@@ -29,8 +29,8 @@ namespace DS4WindowsTests
             action.Execute(ctx);
 
             Assert.Single(mockPlayer.PlayCalls);
-            Assert.Equal(0, mockPlayer.PlayCalls[0].deviceIndex);
-            Assert.Same(sa, mockPlayer.PlayCalls[0].action);
+            Assert.Equal(0, mockPlayer.PlayCalls[0].DeviceIndex);
+            Assert.Same(sa, mockPlayer.PlayCalls[0].Action);
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace DS4WindowsTests
             action.Execute(ctx);
 
             Assert.Single(mockPlayer.PlayCalls);
-            Assert.Equal(2, mockPlayer.PlayCalls[0].deviceIndex);
+            Assert.Equal(2, mockPlayer.PlayCalls[0].DeviceIndex);
         }
 
         [Fact]

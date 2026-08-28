@@ -28,8 +28,8 @@ namespace DS4WindowsTests
             action.Execute(ctx);
 
             Assert.Single(mockSwitcher.SwitchProfileCalls);
-            Assert.Equal(0, mockSwitcher.SwitchProfileCalls[0].deviceIndex);
-            Assert.Same(sa, mockSwitcher.SwitchProfileCalls[0].action);
+            Assert.Equal(0, mockSwitcher.SwitchProfileCalls[0].DeviceIndex);
+            Assert.Same(sa, mockSwitcher.SwitchProfileCalls[0].Action);
         }
 
         [Fact]
@@ -44,7 +44,7 @@ namespace DS4WindowsTests
             action.Execute(ctx);
 
             Assert.Single(mockSwitcher.SwitchProfileCalls);
-            Assert.Equal(3, mockSwitcher.SwitchProfileCalls[0].deviceIndex);
+            Assert.Equal(3, mockSwitcher.SwitchProfileCalls[0].DeviceIndex);
         }
 
         [Fact]
