@@ -18,12 +18,14 @@ namespace DS4Windows.Actions
         {
         }
 
+        public string Id => _inner.Id;
+
         public override void OnTrigger(int device, MappingContext ctx)
         {
             _inner.Execute(ctx);
         }
 
-        public override void OnUntrigger(int device, MappingContext ctx)
+        public override void OnRelease(int device, MappingContext ctx)
         {
             _inner.Stop(ctx);
         }
