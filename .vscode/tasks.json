@@ -137,6 +137,24 @@
             "presentation": {
                 "showReuseMessage": false
             }
+        },
+        {
+            "label": "Execute Test",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "./DS4WindowsTests/DS4Windows.Actions.Tests.csproj",
+                "--logger",
+                "console;verbosity=normal"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "showReuseMessage": false
+            }
         }
     ]
 }
