@@ -35,8 +35,8 @@ namespace DS4Windows.Actions
                 // 現在のプロファイルをバックアップ
                 _previousProfiles[deviceIndex] = Global.ProfilePath[deviceIndex];
 
-                // プロファイル適用 (device, requestSave, service, loadSettings, profile)
-                Global.LoadProfile(deviceIndex, false, Program.rootHub, true, targetProfile);
+                // プロファイル適用: (device, requestSave, service, profile, loadSettings)
+                Global.LoadProfile(deviceIndex, false, Program.rootHub, targetProfile, true);
 
                 try { AppLogger.LogToGui($"Profile switched to '{targetProfile}' on controller {deviceIndex + 1}", false); } catch { }
             }
@@ -55,7 +55,7 @@ namespace DS4Windows.Actions
                 string prevProfile = _previousProfiles[deviceIndex];
                 if (!string.IsNullOrWhiteSpace(prevProfile))
                 {
-                    Global.LoadProfile(deviceIndex, false, Program.rootHub, true, prevProfile);
+                    Global.LoadProfile(deviceIndex, false, Program.rootHub, prevProfile, true);
                     try { AppLogger.LogToGui($"Profile restored to '{prevProfile}' on controller {deviceIndex + 1}", false); } catch { }
                 }
             }
