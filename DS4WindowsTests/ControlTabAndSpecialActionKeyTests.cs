@@ -14,9 +14,9 @@ namespace DS4WindowsTests
         {
             var mockKbm = new MockVirtualKBM();
             var sa = new SpecialAction("Key_Press_Test", "Cross", "Key", "Key", 0, "");
-            sa.type = SpecialAction.ActionType.Key;
+            sa.typeCode = SpecialAction.ActionTypeId.Key;
             sa.details = "30"; // 0x1E
-            sa.keyToggle = false;
+            sa.pressOnce = true;
 
             var controller = new KeyButtonActionController(0, sa, mockKbm);
 
@@ -34,13 +34,13 @@ namespace DS4WindowsTests
         {
             var mockKbm = new MockVirtualKBM();
             var sa = new SpecialAction("Key_Toggle_Test", "Cross", "Key", "Key", 0, "");
-            sa.type = SpecialAction.ActionType.Key;
+            sa.typeCode = SpecialAction.ActionTypeId.Key;
             sa.details = "30";
-            sa.keyToggle = true;
+            sa.pressOnce = false;
 
             var toggleController = new ToggleController(0, sa, mockKbm);
 
-            // 1回目の押下 -> トグルON（キー保持）
+            // 1回目の押下 -> トグルON
             toggleController.Process(0, true, 0x1E, false, mockKbm, false);
             Assert.True(toggleController.isToggledOn);
             Assert.Contains((uint)0x1E, mockKbm.KeyPressCalls);
@@ -49,7 +49,7 @@ namespace DS4WindowsTests
             toggleController.Process(0, false, 0x1E, false, mockKbm, false);
             Assert.True(toggleController.isToggledOn);
 
-            // 2回目の押下 -> トグルOFF（キー解放）
+            // 2回目の押下 -> トグルOFF
             toggleController.Process(0, true, 0x1E, false, mockKbm, false);
             Assert.False(toggleController.isToggledOn);
             Assert.Contains((uint)0x1E, mockKbm.KeyReleaseCalls);
@@ -64,15 +64,15 @@ namespace DS4WindowsTests
             var pressSa = Mapping.GetOrCreateSyntheticKeyAction(0, 1, 0x41, toggle: false, useScan: false);
             Assert.Equal("Synthetic_Key_0_1", pressSa.name);
             Assert.Equal("65", pressSa.details);
-            Assert.False(pressSa.keyToggle);
-            Assert.Equal(0, pressSa.keyType);
+            Assert.True(pressSa.pressOnce);
+            Assert.Equal(DS4KeyType.VirtualKey, pressSa.keyType);
 
             // トグルキー（Toggle ON）の合成SpecialAction
             var toggleSa = Mapping.GetOrCreateSyntheticKeyAction(0, 2, 0x42, toggle: true, useScan: true);
             Assert.Equal("Synthetic_Key_0_2", toggleSa.name);
             Assert.Equal("66", toggleSa.details);
-            Assert.True(toggleSa.keyToggle);
-            Assert.Equal(1, toggleSa.keyType);
+            Assert.False(toggleSa.pressOnce);
+            Assert.Equal(DS4KeyType.ScanCode, toggleSa.keyType);
 
             // キャッシュ再利用の検証
             var cachedSa = Mapping.GetOrCreateSyntheticKeyAction(0, 1, 0x41, toggle: false, useScan: false);
