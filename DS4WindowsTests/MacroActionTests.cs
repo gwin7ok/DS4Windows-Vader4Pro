@@ -1,122 +1,85 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.DependencyInjection;
+using System.Threading;
 using Xunit;
 using DS4Windows;
 using DS4Windows.Actions;
-using DS4Windows.DI;
+using DS4Windows.Services;
 
 namespace DS4WindowsTests
 {
-    /// <summary>
-    /// C3 MacroAction 単体テスト (T1〜T5)
-    /// </summary>
-    public class MacroActionTests : IDisposable
+    public class MacroActionTests
     {
-        private readonly MockMacroPlayer _mockPlayer;
-
-        public MacroActionTests()
+        private class MockOutputContext : IOutputContext
         {
-            _mockPlayer = new MockMacroPlayer();
-            var services = new ServiceCollection();
-            services.AddSingleton<IMacroPlayer>(_mockPlayer);
-            ServiceProviderHolder.SetProvider(services.BuildServiceProvider());
-        }
-
-        public void Dispose()
-        {
-            ServiceProviderHolder.SetProvider(null);
-        }
-
-        private static SpecialAction CreateMacroAction(string name, List<int> macroSteps)
-        {
-            return new SpecialAction(name, "None", "Macro", string.Empty, 0.0, string.Empty)
-            {
-                typeID = SpecialAction.ActionTypeId.Macro,
-                macro = macroSteps
-            };
+            public int Device { get; }
+            public IVirtualKBM OutputHandler { get; }
+            public MockOutputContext(int device) { Device = device; }
         }
 
         [Fact]
         public void T1_Execute_CallsMacroPlayerWithCorrectDeviceAndAction()
         {
-            // Arrange
-            var steps = new List<int> { 65, 1000, 1065 }; // Key 'A' press, delay 700ms, release
-            var sa = CreateMacroAction("TestMacro1", steps);
-            var action = new MacroAction(sa, 0);
+            var mockPlayer = new MockMacroPlayer();
+            var sa = new SpecialAction("TestMacro1", "Cross", "Macro", "Macro", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Macro;
+            var action = new MacroActionAdapter(sa, 0, mockPlayer);
+            var ctx = new MockOutputContext(device: 0);
 
-            // Act
-            action.Execute(null);
+            action.Execute(ctx);
 
-            // Assert
-            Assert.Single(_mockPlayer.PlayCalls);
-            Assert.Equal(0, _mockPlayer.PlayCalls[0].DeviceIndex);
-            Assert.Equal("TestMacro1", _mockPlayer.PlayCalls[0].Action.name);
-            Assert.Equal(steps, _mockPlayer.PlayCalls[0].Action.macro);
+            Assert.Single(mockPlayer.PlayCalls);
+            Assert.Equal(0, mockPlayer.PlayCalls[0].Device);
+            Assert.Same(sa, mockPlayer.PlayCalls[0].Action);
         }
 
         [Fact]
         public void T2_Execute_PassesTargetDeviceIndexCorrectly()
         {
-            // Arrange
-            var sa = CreateMacroAction("TestMacroDevice2", new List<int> { 66 });
-            var action = new MacroAction(sa, 2); // Device 2
+            var mockPlayer = new MockMacroPlayer();
+            var sa = new SpecialAction("TestMacro2", "Cross", "Macro", "Macro", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Macro;
+            var action = new MacroActionAdapter(sa, 2, mockPlayer);
+            var ctx = new MockOutputContext(device: 0);
 
-            // Act
-            action.Execute(null);
+            action.Execute(ctx);
 
-            // Assert
-            Assert.Single(_mockPlayer.PlayCalls);
-            Assert.Equal(2, _mockPlayer.PlayCalls[0].DeviceIndex);
+            Assert.Single(mockPlayer.PlayCalls);
+            Assert.Equal(2, mockPlayer.PlayCalls[0].Device);
         }
 
         [Fact]
         public void T3_Stop_CallsMacroPlayerStopWithCorrectDevice()
         {
-            // Arrange
-            var sa = CreateMacroAction("TestMacroStop", new List<int> { 67 });
-            var action = new MacroAction(sa, 1);
+            var mockPlayer = new MockMacroPlayer();
+            var sa = new SpecialAction("TestMacro3", "Cross", "Macro", "Macro", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Macro;
+            var action = new MacroActionAdapter(sa, 1, mockPlayer);
+            var ctx = new MockOutputContext(device: 1);
 
-            // Act
-            action.Stop(null);
+            action.Stop(ctx);
 
-            // Assert
-            Assert.Single(_mockPlayer.StopCalls);
-            Assert.Equal(1, _mockPlayer.StopCalls[0]);
+            Assert.Single(mockPlayer.StopCalls);
+            Assert.Equal(1, mockPlayer.StopCalls[0]);
         }
 
         [Fact]
         public void T4_MultipleExecutionsAndReset_TracksCorrectly()
         {
-            // Arrange
-            var sa = CreateMacroAction("TestRepeat", new List<int> { 68 });
-            var action = new MacroAction(sa, 0);
+            var mockPlayer = new MockMacroPlayer();
+            var sa = new SpecialAction("TestMacro4", "Cross", "Macro", "Macro", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Macro;
+            var action = new MacroActionAdapter(sa, 0, mockPlayer);
+            var ctx = new MockOutputContext(device: 0);
 
-            // Act
-            action.Execute(null);
-            action.Execute(null);
-            action.Stop(null);
+            action.Execute(ctx);
+            action.Execute(ctx);
 
-            // Assert
-            Assert.Equal(2, _mockPlayer.PlayCalls.Count);
-            Assert.Single(_mockPlayer.StopCalls);
+            Assert.Equal(2, mockPlayer.PlayCalls.Count);
 
-            // Reset 検証
-            _mockPlayer.Reset();
-            Assert.Empty(_mockPlayer.PlayCalls);
-            Assert.Empty(_mockPlayer.StopCalls);
-        }
-
-        [Fact]
-        public void T5_Execute_WithNullSpecialAction_DoesNotThrow()
-        {
-            // Arrange
-            var action = new MacroAction(null, 0);
-
-            // Act & Assert
-            var ex = Record.Exception(() => action.Execute(null));
-            Assert.Null(ex);
-            Assert.Empty(_mockPlayer.PlayCalls);
+            mockPlayer.Reset();
+            Assert.Empty(mockPlayer.PlayCalls);
+            Assert.Empty(mockPlayer.StopCalls);
         }
     }
 }

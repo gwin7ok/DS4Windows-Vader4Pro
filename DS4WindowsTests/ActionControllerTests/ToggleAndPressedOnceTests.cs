@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using DS4Windows.Actions;
 using DS4Windows.DS4Control;
 using Xunit;

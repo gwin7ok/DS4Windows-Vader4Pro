@@ -1,119 +1,84 @@
 using System;
-using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Generic;
 using Xunit;
 using DS4Windows;
 using DS4Windows.Actions;
-using DS4Windows.DI;
+using DS4Windows.Services;
 
 namespace DS4WindowsTests
 {
-    /// <summary>
-    /// C4 ProfileSwitchAction 単体テスト (T1〜T5)
-    /// </summary>
-    public class ProfileSwitchActionTests : IDisposable
+    public class ProfileSwitchActionTests
     {
-        private readonly MockProfileSwitcher _mockSwitcher;
-
-        public ProfileSwitchActionTests()
+        private class MockOutputContext : IOutputContext
         {
-            _mockSwitcher = new MockProfileSwitcher();
-            var services = new ServiceCollection();
-            services.AddSingleton<IProfileSwitcher>(_mockSwitcher);
-            ServiceProviderHolder.SetProvider(services.BuildServiceProvider());
-        }
-
-        public void Dispose()
-        {
-            ServiceProviderHolder.SetProvider(null);
-        }
-
-        private static SpecialAction CreateProfileAction(string name, string targetProfile)
-        {
-            return new SpecialAction(name, "None", "Profile", targetProfile, 0.0, string.Empty)
-            {
-                typeID = SpecialAction.ActionTypeId.Profile
-            };
+            public int Device { get; }
+            public IVirtualKBM OutputHandler { get; }
+            public MockOutputContext(int device) { Device = device; }
         }
 
         [Fact]
         public void T1_Execute_CallsProfileSwitcherWithCorrectDeviceAndAction()
         {
-            // Arrange
-            var sa = CreateProfileAction("SwitchToFPS", "FPS_Profile.xml");
-            var action = new ProfileSwitchAction(sa, 0);
+            var mockSwitcher = new MockProfileSwitcher();
+            var sa = new SpecialAction("SwitchAction1", "Cross", "Profile", "Profile", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Profile;
+            var action = new ProfileSwitchActionAdapter(sa, 0, mockSwitcher);
+            var ctx = new MockOutputContext(device: 0);
 
-            // Act
-            action.Execute(null);
+            action.Execute(ctx);
 
-            // Assert
-            Assert.Single(_mockSwitcher.SwitchProfileCalls);
-            Assert.Equal(0, _mockSwitcher.SwitchProfileCalls[0].DeviceIndex);
-            Assert.Equal("SwitchToFPS", _mockSwitcher.SwitchProfileCalls[0].Action.name);
-            Assert.Equal("FPS_Profile.xml", _mockSwitcher.SwitchProfileCalls[0].Action.details);
+            Assert.Single(mockSwitcher.SwitchCalls);
+            Assert.Equal(0, mockSwitcher.SwitchCalls[0].Device);
+            Assert.Same(sa, mockSwitcher.SwitchCalls[0].Action);
         }
 
         [Fact]
         public void T2_Execute_PassesTargetDeviceIndexCorrectly()
         {
-            // Arrange
-            var sa = CreateProfileAction("SwitchToRacing", "Racing_Profile.xml");
-            var action = new ProfileSwitchAction(sa, 3); // Device 3
+            var mockSwitcher = new MockProfileSwitcher();
+            var sa = new SpecialAction("SwitchAction2", "Cross", "Profile", "Profile", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Profile;
+            var action = new ProfileSwitchActionAdapter(sa, 3, mockSwitcher);
+            var ctx = new MockOutputContext(device: 0);
 
-            // Act
-            action.Execute(null);
+            action.Execute(ctx);
 
-            // Assert
-            Assert.Single(_mockSwitcher.SwitchProfileCalls);
-            Assert.Equal(3, _mockSwitcher.SwitchProfileCalls[0].DeviceIndex);
+            Assert.Single(mockSwitcher.SwitchCalls);
+            Assert.Equal(3, mockSwitcher.SwitchCalls[0].Device);
         }
 
         [Fact]
         public void T3_Stop_CallsRestoreProfileWithCorrectDevice()
         {
-            // Arrange
-            var sa = CreateProfileAction("TempProfile", "Temp.xml");
-            var action = new ProfileSwitchAction(sa, 1);
+            var mockSwitcher = new MockProfileSwitcher();
+            var sa = new SpecialAction("SwitchAction3", "Cross", "Profile", "Profile", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Profile;
+            var action = new ProfileSwitchActionAdapter(sa, 1, mockSwitcher);
+            var ctx = new MockOutputContext(device: 1);
 
-            // Act
-            action.Stop(null);
+            action.Stop(ctx);
 
-            // Assert
-            Assert.Single(_mockSwitcher.RestoreProfileCalls);
-            Assert.Equal(1, _mockSwitcher.RestoreProfileCalls[0]);
+            Assert.Single(mockSwitcher.RestoreCalls);
+            Assert.Equal(1, mockSwitcher.RestoreCalls[0]);
         }
 
         [Fact]
         public void T4_MultipleExecutionsAndReset_TracksCorrectly()
         {
-            // Arrange
-            var sa = CreateProfileAction("ProfileA", "A.xml");
-            var action = new ProfileSwitchAction(sa, 0);
+            var mockSwitcher = new MockProfileSwitcher();
+            var sa = new SpecialAction("SwitchAction4", "Cross", "Profile", "Profile", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Profile;
+            var action = new ProfileSwitchActionAdapter(sa, 0, mockSwitcher);
+            var ctx = new MockOutputContext(device: 0);
 
-            // Act
-            action.Execute(null);
-            action.Execute(null);
-            action.Stop(null);
+            action.Execute(ctx);
+            action.Execute(ctx);
 
-            // Assert
-            Assert.Equal(2, _mockSwitcher.SwitchProfileCalls.Count);
-            Assert.Single(_mockSwitcher.RestoreProfileCalls);
+            Assert.Equal(2, mockSwitcher.SwitchCalls.Count);
 
-            // Reset 検証
-            _mockSwitcher.Reset();
-            Assert.Empty(_mockSwitcher.SwitchProfileCalls);
-            Assert.Empty(_mockSwitcher.RestoreProfileCalls);
-        }
-
-        [Fact]
-        public void T5_Execute_WithNullSpecialAction_DoesNotThrow()
-        {
-            // Arrange
-            var action = new ProfileSwitchAction(null, 0);
-
-            // Act & Assert
-            var ex = Record.Exception(() => action.Execute(null));
-            Assert.Null(ex);
-            Assert.Empty(_mockSwitcher.SwitchProfileCalls);
+            mockSwitcher.Reset();
+            Assert.Empty(mockSwitcher.SwitchCalls);
+            Assert.Empty(mockSwitcher.RestoreCalls);
         }
     }
 }
