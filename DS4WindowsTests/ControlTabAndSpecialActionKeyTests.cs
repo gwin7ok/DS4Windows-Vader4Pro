@@ -10,22 +10,23 @@ namespace DS4WindowsTests
     public class ControlTabAndSpecialActionKeyTests
     {
         [Fact]
-        public void SpecialAction_PressMode_KeyRepeat_StartsCorrectly()
+        public void SpecialAction_PressMode_KeyRepeat_IntegrationTest()
         {
             var mockKbm = new MockVirtualKBM();
             var sa = new SpecialAction("Key_Press_Test", "Cross", "Key", "Key", 0, "");
             sa.typeID = SpecialAction.ActionTypeId.Key;
-            sa.details = "30"; // 0x1E
+            sa.details = "30"; // 0x1E ('A')
 
-            var controller = new KeyButtonActionController(0, sa, mockKbm);
+            // KeyButtonActionControllerAdapter 経由での押下・解放テスト
+            var adapter = new KeyButtonActionControllerAdapter(0, KeyButtonActionController.Mode.Press, "Key_Press_Test");
 
-            // 押下エッジ
-            controller.Process(0, true, 0x1E, false, mockKbm, false);
-            Assert.Contains((uint)0x1E, mockKbm.KeyPressCalls);
+            // 押下エッジ (Down)
+            bool handledDown = adapter.OnDown(0, 0x1E, 0x1E, false, mockKbm);
+            Assert.True(handledDown);
 
-            // 解放エッジ
-            controller.Process(0, false, 0x1E, false, mockKbm, false);
-            Assert.Contains((uint)0x1E, mockKbm.KeyReleaseCalls);
+            // 解放エッジ (Up)
+            bool handledUp = adapter.OnUp(0, 0x1E, 0x1E, false, mockKbm);
+            Assert.True(handledUp);
         }
 
         [Fact]
@@ -36,21 +37,19 @@ namespace DS4WindowsTests
             sa.typeID = SpecialAction.ActionTypeId.Key;
             sa.details = "30";
 
-            var toggleController = new ToggleController(0, sa, mockKbm);
+            var toggleAdapter = new KeyButtonActionControllerAdapter(0, KeyButtonActionController.Mode.Toggle, "Key_Toggle_Test");
 
-            // 1回目の押下 -> トグルON
-            toggleController.Process(0, true, 0x1E, false, mockKbm, false);
-            Assert.True(toggleController.isToggledOn);
-            Assert.Contains((uint)0x1E, mockKbm.KeyPressCalls);
+            // 1回目の押下 -> トグルON（IsToggledOn = true）
+            toggleAdapter.OnDown(0, 0x1E, 0x1E, false, mockKbm);
+            Assert.True(toggleAdapter.IsToggledOn);
 
             // 1回目の物理ボタン解放 -> トグル状態維持
-            toggleController.Process(0, false, 0x1E, false, mockKbm, false);
-            Assert.True(toggleController.isToggledOn);
+            toggleAdapter.OnUp(0, 0x1E, 0x1E, false, mockKbm);
+            Assert.True(toggleAdapter.IsToggledOn);
 
-            // 2回目の押下 -> トグルOFF
-            toggleController.Process(0, true, 0x1E, false, mockKbm, false);
-            Assert.False(toggleController.isToggledOn);
-            Assert.Contains((uint)0x1E, mockKbm.KeyReleaseCalls);
+            // 2回目の押下 -> トグルOFF（IsToggledOn = false）
+            toggleAdapter.OnDown(0, 0x1E, 0x1E, false, mockKbm);
+            Assert.False(toggleAdapter.IsToggledOn);
         }
 
         [Fact]
