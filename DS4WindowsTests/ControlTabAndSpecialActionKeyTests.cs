@@ -13,35 +13,82 @@ namespace DS4WindowsTests
         public void SpecialAction_PressMode_KeyRepeat_IntegrationTest()
         {
             var mockKbm = new MockVirtualKBM();
-            var inner = new KeyButtonActionController(0, KeyButtonActionController.Mode.Press, "Key_Press_Test");
-            var adapter = new KeyButtonActionControllerAdapter(inner);
+            var sa = new SpecialAction("Key_Press_Test", "Cross", "Key", "Key", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Key;
+            sa.details = "30"; // 0x1E ('A')
 
-            // 押下エッジ (isEstablished: true)
-            bool handledDown = adapter.Dispatch(0, 0x1E, 0x1E, false, mockKbm, true);
-            Assert.True(handledDown);
+            var adapter = new KeyButtonActionControllerAdapter(0, sa);
+            var binding = new KeyActionBinding(sa);
 
-            // 解放エッジ (isEstablished: false)
-            bool handledUp = adapter.Dispatch(0, 0x1E, 0x1E, false, mockKbm, false);
-            Assert.True(handledUp);
+            var triggerDown = new TriggerContextImpl
+            {
+                Device = 0,
+                IsEdgeEstablished = true,
+                LogicalValue = 0x1E,
+                NativeValue = 0x1E,
+                OutputHandler = mockKbm,
+                Timestamp = DateTime.UtcNow
+            };
+
+            // 押下エッジ (Start)
+            adapter.Start(binding, triggerDown);
+            var state = ActionManager.GetStateFor(sa, 0);
+            Assert.NotNull(state);
+
+            var triggerUp = new TriggerContextImpl
+            {
+                Device = 0,
+                IsEdgeEstablished = false,
+                LogicalValue = 0x1E,
+                NativeValue = 0x1E,
+                OutputHandler = mockKbm,
+                Timestamp = DateTime.UtcNow
+            };
+
+            // 解放エッジ (Handle: IsEdgeEstablished = false)
+            adapter.Handle(binding, triggerUp);
         }
 
         [Fact]
         public void SpecialAction_ToggleMode_TogglesStateCorrectly()
         {
             var mockKbm = new MockVirtualKBM();
-            var inner = new KeyButtonActionController(0, KeyButtonActionController.Mode.Toggle, "Key_Toggle_Test");
-            var toggleAdapter = new KeyButtonActionControllerAdapter(inner);
+            var sa = new SpecialAction("Key_Toggle_Test", "Cross", "Key", "Key", 0, "");
+            sa.typeID = SpecialAction.ActionTypeId.Key;
+            sa.details = "30";
+            sa.keyToggle = true;
 
-            // 1回目の押下 -> トグルON (isEstablished: true)
-            bool handled1 = toggleAdapter.Dispatch(0, 0x1E, 0x1E, false, mockKbm, true);
-            Assert.True(handled1);
+            var adapter = new KeyButtonActionControllerAdapter(0, sa);
+            var binding = new KeyActionBinding(sa);
 
-            // 1回目の物理ボタン解放 (isEstablished: false) -> トグル状態維持
-            toggleAdapter.Dispatch(0, 0x1E, 0x1E, false, mockKbm, false);
+            var triggerDown = new TriggerContextImpl
+            {
+                Device = 0,
+                IsEdgeEstablished = true,
+                LogicalValue = 0x1E,
+                NativeValue = 0x1E,
+                OutputHandler = mockKbm,
+                Timestamp = DateTime.UtcNow
+            };
 
-            // 2回目の押下 -> トグルOFF (isEstablished: true)
-            bool handled2 = toggleAdapter.Dispatch(0, 0x1E, 0x1E, false, mockKbm, true);
-            Assert.True(handled2);
+            // 1回目の押下 (Start)
+            adapter.Start(binding, triggerDown);
+
+            var triggerUp = new TriggerContextImpl
+            {
+                Device = 0,
+                IsEdgeEstablished = false,
+                LogicalValue = 0x1E,
+                NativeValue = 0x1E,
+                OutputHandler = mockKbm,
+                Timestamp = DateTime.UtcNow
+            };
+
+            // 1回目の解放 (Handle) -> トグル維持
+            adapter.Handle(binding, triggerUp);
+
+            // 2回目の押下/停止 (Stop) -> トグル解除
+            adapter.Stop(binding, triggerDown);
         }
 
         [Fact]
