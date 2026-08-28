@@ -9,7 +9,7 @@ namespace DS4Windows.Actions
 
         public ProfileSwitchActionAdapter(SpecialAction sa, int deviceIndex = -1, IProfileSwitcher profileSwitcher = null)
         {
-            ActionDef = sa;
+            this.action = sa;
             _inner = new ProfileSwitchAction(sa, deviceIndex, profileSwitcher);
         }
 

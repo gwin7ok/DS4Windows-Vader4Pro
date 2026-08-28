@@ -9,7 +9,7 @@ namespace DS4Windows.Actions
 
         public MacroActionAdapter(SpecialAction sa, int deviceIndex = -1, IMacroPlayer macroPlayer = null)
         {
-            ActionDef = sa;
+            this.action = sa;
             _inner = new MacroAction(sa, deviceIndex, macroPlayer);
         }
 
