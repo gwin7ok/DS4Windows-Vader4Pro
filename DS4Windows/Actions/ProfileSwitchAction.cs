@@ -39,7 +39,7 @@ namespace DS4Windows.Actions
             try
             {
                 if (sa == null) return;
-                int dev = (ctx != null && ctx.Device >= 0) ? ctx.Device : (deviceIndex >= 0 ? deviceIndex : 0);
+                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx != null && ctx.Device >= 0 ? ctx.Device : 0);
                 _profileSwitcher.SwitchProfile(dev, sa);
                 try { AppLogger.LogTrace($"ProfileSwitchAction.Execute: id={Id} device={dev}"); } catch { }
             }
@@ -54,7 +54,7 @@ namespace DS4Windows.Actions
             try
             {
                 if (sa == null) return;
-                int dev = (ctx != null && ctx.Device >= 0) ? ctx.Device : (deviceIndex >= 0 ? deviceIndex : 0);
+                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx != null && ctx.Device >= 0 ? ctx.Device : 0);
                 _profileSwitcher.RestoreProfile(dev);
                 try { AppLogger.LogTrace($"ProfileSwitchAction.Stop: id={Id} device={dev}"); } catch { }
             }
