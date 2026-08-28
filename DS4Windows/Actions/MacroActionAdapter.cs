@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using DS4Windows.Services;
 
 namespace DS4Windows.Actions
