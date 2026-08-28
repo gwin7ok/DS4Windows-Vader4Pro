@@ -108,7 +108,7 @@ namespace DS4WindowsTests
             Assert.Equal("Synthetic_Key_0_2", toggleSa.name);
             Assert.Equal("66", toggleSa.details);
             Assert.Equal(SpecialAction.ActionTypeId.Key, toggleSa.typeID);
-            Assert.Equal(DS4KeyType.ScanCode, toggleSa.keyType);
+            Assert.Equal(DS4KeyType.ScanCode | DS4KeyType.Toggle, toggleSa.keyType);
 
             // キャッシュ再利用の検証
             var cachedSa = Mapping.GetOrCreateSyntheticKeyAction(0, 1, 0x41, toggle: false, useScan: false);

@@ -40,22 +40,28 @@ namespace DS4Windows
 {
     public class Mapping
     {
-        // Controlタブ用の合成 SpecialAction キャッシュ (deviceIndex, kvpKey) -> SpecialAction// ==========================================
+        // ==========================================
         // 【修正後】
         // ==========================================
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(int dev, int key, bool useScan), SpecialAction> _syntheticActionCache
-            = new System.Collections.Concurrent.ConcurrentDictionary<(int dev, int key, bool useScan), SpecialAction>();
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(int dev, int key, bool toggle, bool useScan), SpecialAction> _syntheticActionCache
+            = new System.Collections.Concurrent.ConcurrentDictionary<(int dev, int key, bool toggle, bool useScan), SpecialAction>();
 
         public static SpecialAction GetOrCreateSyntheticKeyAction(int device, int kvpKey, uint outputKey, bool toggle, bool useScan)
         {
-            var cacheKey = (device, kvpKey, useScan);
+            // キャッシュキーに toggle を含めて Press用と Toggle用のアクションを分離
+            var cacheKey = (device, kvpKey, toggle, useScan);
             return _syntheticActionCache.GetOrAdd(cacheKey, k =>
             {
+                // 名前はテストの期待通り "Synthetic_Key_{dev}_{key}"
                 var sa = new SpecialAction($"Synthetic_Key_{k.dev}_{k.key}", "Synthetic", "Key", "Key", 0, "");
                 sa.typeID = SpecialAction.ActionTypeId.Key;
                 sa.type = "Key";
                 sa.details = outputKey.ToString();
-                sa.keyType = k.useScan ? DS4KeyType.ScanCode : (DS4KeyType)0;
+
+                DS4KeyType kt = (DS4KeyType)0;
+                if (k.useScan) kt |= DS4KeyType.ScanCode;
+                if (k.toggle) kt |= DS4KeyType.Toggle; // ← ★ActionManager/KeyAction にトグルであることを伝える
+                sa.keyType = kt;
 
                 return sa;
             });
@@ -1500,13 +1506,9 @@ namespace DS4Windows
             }
 
             // Merge and synthesize all key presses/releases that are present in this device's mapping.
-            // TODO what about the rest?  e.g. repeat keys really ought to be on some set schedule
             Dictionary<UInt16, SyntheticState.KeyPresses>.KeyCollection kvpKeys = state.keyPresses.Keys;
-            //foreach (KeyValuePair<UInt16, SyntheticState.KeyPresses> kvp in state.keyPresses)
-            //for (int i = 0, keyCount = kvpKeys.Count; i < keyCount; i++)
             for (var keyEnum = kvpKeys.GetEnumerator(); keyEnum.MoveNext();)
             {
-                //UInt16 kvpKey = kvpKeys.ElementAt(i);
                 UInt16 kvpKey = keyEnum.Current;
                 SyntheticState.KeyPresses kvpValue = state.keyPresses[kvpKey];
 
@@ -1516,14 +1518,6 @@ namespace DS4Windows
                     gkp.current.vkCount += kvpValue.current.vkCount - kvpValue.previous.vkCount;
                     gkp.current.scanCodeCount += kvpValue.current.scanCodeCount - kvpValue.previous.scanCodeCount;
                     gkp.current.repeatCount += kvpValue.current.repeatCount - kvpValue.previous.repeatCount;
-                    gkp.current.toggle = kvpValue.current.toggle;
-                    gkp.current.toggleCount += kvpValue.current.toggleCount - kvpValue.previous.toggleCount;
-                    // propagate pending/timestamp from device state so Commit can honor pending toggles
-                    if (kvpValue.current.pending)
-                    {
-                        gkp.current.pending = true;
-                        gkp.current.lastToggleTimeUtcTicks = kvpValue.current.lastToggleTimeUtcTicks;
-                    }
                 }
                 else
                 {
@@ -1533,284 +1527,32 @@ namespace DS4Windows
                 }
 
                 uint nativeKey = state.nativeKeyAlias[kvpKey];
-                if ((gkp.current.toggleCount != 0 || gkp.current.pending) && gkp.previous.toggleCount == 0 && gkp.current.toggle)
-                {
-                    long nowTicksSend = DateTime.UtcNow.Ticks;
-                    long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                    if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
-                    {
-                        // Use ToggleRepeatController for deterministic toggle-driven press+repeat
-                        AppLogger.LogTrace($"SYNTHETIC TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
-                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(toggle)");
-                        try
-                        {
-                            // SpecialActionが無ければControlタブ用の合成SpecialActionを取得
-                            SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey)
-                                               ?? GetOrCreateSyntheticKeyAction(device, (int)kvpKey, nativeKey, toggle: true, useScan: gkp.current.scanCodeCount != 0);
+                bool useScan = gkp.current.scanCodeCount != 0 || gkp.previous.scanCodeCount != 0;
 
-                            bool handled = false;
-                            try
-                            {
-                                if (sa != null)
-                                {
-                                    handled = ActionManager.DispatchTriggerEstablished(sa, device, (ushort)kvpKey, nativeKey, gkp.current.scanCodeCount != 0, VirtualKBM);
-                                }
-                            }
-                            catch { }
-                            if (!handled)
-                            {
-                                var kbc = (DS4Windows.Actions.IActionController)null;
-                                if (sa != null)
-                                {
-                                    try
-                                    {
-                                        var ctx2 = new DS4Windows.TriggerContext
-                                        {
-                                            ActionDef = sa,
-                                            Device = device,
-                                            LogicalValue = (ushort)kvpKey,
-                                            NativeValue = nativeKey,
-                                            UseScanCode = gkp.current.scanCodeCount != 0,
-                                            OutputHandler = VirtualKBM,
-                                            IsEstablished = true
-                                        };
-                                        handled = DispatchInputEdge(ctx2);
-                                    }
-                                    catch { }
-                                    try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
-                                }
-                                else
-                                {
-                                    AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
-                                }
-                                if (!handled && kbc != null)
-                                {
-                                    var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
-                                    var trig = new DS4Windows.Actions.TriggerContextImpl
-                                    {
-                                        Device = device,
-                                        IsEdgeEstablished = true,
-                                        LogicalValue = (ushort)kvpKey,
-                                        NativeValue = nativeKey,
-                                        OutputHandler = VirtualKBM,
-                                        Timestamp = DateTime.UtcNow
-                                    };
-                                    var binding = new DS4Windows.Actions.KeyActionBinding(sa);
-                                    try { ctrl?.Handle(binding, trig); } catch { }
-                                }
-                            }
-                        }
-                        catch { }
-                        // Clear pending after honoring it and mark last send time
-                        gkp.current.pending = false;
-                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                        try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
-                        // Mark last send time to throttle repeats
-                        gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                    }
-                    else
-                    {
-                        AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
-                    }
-                }
-                else if ((gkp.current.toggleCount != 0 || gkp.current.pending) && gkp.previous.toggleCount == 0 && !gkp.current.toggle)
+                // Controlタブの設定からToggle設定の有無を取得（SpecialActionがある場合はそれを優先）
+                SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey);
+                bool isToggle = false;
+                if (sa != null)
                 {
-                    if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
-                    {
-                        long nowTicksSend = DateTime.UtcNow.Ticks;
-                        long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                        if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
-                        {
-                            long _nowTicksDbg = DateTime.UtcNow.Ticks;
-                            long _deltaSendDbg = gkp.current.lastSyntheticSendUtcTicks == 0 ? -1 : (_nowTicksDbg - gkp.current.lastSyntheticSendUtcTicks) / TimeSpan.TicksPerMillisecond;
-                            AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending} lastSendDeltaMs={_deltaSendDbg} prev_vk={gkp.previous.vkCount} prev_sc={gkp.previous.scanCodeCount} prev_repeat={gkp.previous.repeatCount} prev_toggleCount={gkp.previous.toggleCount} prev_toggle={gkp.previous.toggle}");
-                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyReleaseAlt");
-                            try
-                            {
-                                bool useScan = gkp.previous.scanCodeCount != 0;
-                                SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey)
-                                                   ?? GetOrCreateSyntheticKeyAction(device, (int)kvpKey, nativeKey, toggle: true, useScan: useScan);
-                                bool handled = false;
-                                try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, useScan, VirtualKBM); } catch { }
-                                if (!handled)
-                                {
-                                    var kbc = (DS4Windows.Actions.IActionController)null;
-                                    if (sa != null)
-                                    {
-                                        try
-                                        {
-                                            // Try central dispatch via TriggerContext even when previously attempted via specialized path
-                                            var ctxRel = new DS4Windows.TriggerContext
-                                            {
-                                                ActionDef = sa,
-                                                Device = device,
-                                                LogicalValue = (ushort)kvpKey,
-                                                NativeValue = nativeKey,
-                                                UseScanCode = gkp.current.scanCodeCount != 0,
-                                                OutputHandler = VirtualKBM,
-                                                IsEstablished = false
-                                            };
-                                            handled = DispatchInputEdge(ctxRel);
-                                        }
-                                        catch { }
-                                        try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
-                                    }
-                                    else
-                                    {
-                                        AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
-                                    }
-                                    if (!handled && kbc != null)
-                                    {
-                                        var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
-                                        var trig = new DS4Windows.Actions.TriggerContextImpl
-                                        {
-                                            Device = device,
-                                            IsEdgeEstablished = false,
-                                            LogicalValue = (ushort)kvpKey,
-                                            NativeValue = nativeKey,
-                                            OutputHandler = VirtualKBM,
-                                            Timestamp = DateTime.UtcNow
-                                        };
-                                        var binding = new DS4Windows.Actions.KeyActionBinding(sa);
-                                        try { ctrl?.Handle(binding, trig); } catch { }
-                                    }
-                                    // For Toggle-type SpecialAction, clear toggled-on flag on the physical/untrigger release
-                                    try
-                                    {
-                                        if (sa != null && sa.keyType.HasFlag(DS4KeyType.Toggle))
-                                            ActionManager.SetToggledOn(sa, device, false);
-                                    }
-                                    catch { }
-                                }
-                            }
-                            catch { }
-                            // Mark pending cleared and update last send time
-                            gkp.current.pending = false;
-                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                            try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
-                            // Mark last send time to throttle repeats
-                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                            // Ensure current and previous state reflect released to avoid repeated release sends
-                            gkp.current.vkCount = 0;
-                            gkp.current.scanCodeCount = 0;
-                            gkp.current.repeatCount = 0;
-                            gkp.current.toggleCount = 0;
-                            gkp.current.toggle = false;
-                            gkp.previous.vkCount = 0;
-                            gkp.previous.scanCodeCount = 0;
-                            gkp.previous.repeatCount = 0;
-                            gkp.previous.toggleCount = 0;
-                            gkp.previous.toggle = false;
-                        }
-                        else
-                        {
-                            AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
-                        }
-                    }
-                    else
-                    {
-                        long nowTicksSend = DateTime.UtcNow.Ticks;
-                        long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
-                        if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
-                        {
-                            AppLogger.LogTrace($"RELEASE TRACE device={device} kvpKey={kvpKey} nativeKey={nativeKey} cur_vk={gkp.current.vkCount} cur_sc={gkp.current.scanCodeCount} cur_repeat={gkp.current.repeatCount} cur_toggleCount={gkp.current.toggleCount} cur_toggle={gkp.current.toggle} cur_pending={gkp.current.pending}");
-                            AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-                            try
-                            {
-                                bool useScan = gkp.previous.scanCodeCount != 0;
-                                SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey)
-                                                   ?? GetOrCreateSyntheticKeyAction(device, (int)kvpKey, nativeKey, toggle: true, useScan: useScan);
-                                bool handled = false;
-                                try { handled = ActionManager.DispatchTriggerReleased(sa, device, (ushort)kvpKey, nativeKey, useScan, VirtualKBM); } catch { }
-                                if (!handled)
-                                {
-                                    var kbc = (DS4Windows.Actions.IActionController)null;
-                                    if (sa != null)
-                                    {
-                                        try
-                                        {
-                                            var ctxRel2 = new DS4Windows.TriggerContext
-                                            {
-                                                ActionDef = sa,
-                                                Device = device,
-                                                LogicalValue = (ushort)kvpKey,
-                                                NativeValue = nativeKey,
-                                                UseScanCode = gkp.current.scanCodeCount != 0,
-                                                OutputHandler = VirtualKBM,
-                                                IsEstablished = false
-                                            };
-                                            handled = DispatchInputEdge(ctxRel2);
-                                        }
-                                        catch { }
-                                        try { kbc = ActionManager.GetOrCreateControllerForAction(device, sa); } catch { }
-                                    }
-                                    else
-                                    {
-                                        AppLogger.LogTrace($"SYNTHETIC: no SpecialAction for logicalKey={kvpKey}; controller creation suppressed");
-                                    }
-                                    if (!handled && kbc != null)
-                                    {
-                                        var ctrl = kbc as DS4Windows.Actions.IActionController ?? ActionManager.GetOrCreateControllerForAction(device, sa);
-                                        var trig = new DS4Windows.Actions.TriggerContextImpl
-                                        {
-                                            Device = device,
-                                            IsEdgeEstablished = false,
-                                            LogicalValue = (ushort)kvpKey,
-                                            NativeValue = nativeKey,
-                                            OutputHandler = VirtualKBM,
-                                            Timestamp = DateTime.UtcNow
-                                        };
-                                        var binding = new DS4Windows.Actions.KeyActionBinding(sa);
-                                        try { ctrl?.Stop(binding, trig); } catch { }
-                                    }
-                                }
-                            }
-                            catch { }
-                            // Mark pending cleared and update last send time
-                            gkp.current.pending = false;
-                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                            try { kvpValue.current.pending = false; kvpValue.current.lastSyntheticSendUtcTicks = nowTicksSend; } catch { }
-                            // Mark last send time to throttle repeats and clear device counts
-                            gkp.current.lastSyntheticSendUtcTicks = nowTicksSend;
-                            try
-                            {
-                                kvpValue.current.vkCount = 0;
-                                kvpValue.current.scanCodeCount = 0;
-                                kvpValue.current.repeatCount = 0;
-                                kvpValue.current.toggleCount = 0;
-                                kvpValue.current.toggle = false;
-                            }
-                            catch { }
-                            // Ensure current and previous state reflect released to avoid repeated release sends
-                            gkp.current.vkCount = 0;
-                            gkp.current.scanCodeCount = 0;
-                            gkp.current.repeatCount = 0;
-                            gkp.current.toggleCount = 0;
-                            gkp.current.toggle = false;
-                            gkp.previous.vkCount = 0;
-                            gkp.previous.scanCodeCount = 0;
-                            gkp.previous.repeatCount = 0;
-                            gkp.previous.toggleCount = 0;
-                            gkp.previous.toggle = false;
-                        }
-                        else
-                        {
-                            AppLogger.LogTrace($"SUPPRESS SYNTHETIC (throttle) device={device} kvpKey={kvpKey} nativeKey={nativeKey} delta_ms={(double)deltaSend / TimeSpan.TicksPerMillisecond}");
-                        }
-                    }
+                    isToggle = sa.keyType.HasFlag(DS4KeyType.Toggle);
                 }
-                else if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
+                else
+                {
+                    // Controlタブのキー設定からToggleフラグを取得
+                    var dcsGroup = GetControlSettingsGroup(device);
+                    // 設定にToggleが含まれているか、または合成Action取得時に判定
+                    sa = GetOrCreateSyntheticKeyAction(device, (int)kvpKey, nativeKey, toggle: GetDS4CSetting(device, held[device])?.keyType.HasFlag(DS4KeyType.Toggle) ?? false, useScan: useScan);
+                }
+
+                // ■ 物理ボタンが押された瞬間（立ち上がりエッジ）
+                if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
                 {
                     long nowTicksSend = DateTime.UtcNow.Ticks;
                     long deltaSend = nowTicksSend - gkp.current.lastSyntheticSendUtcTicks;
                     oldnow = DateTime.UtcNow;
                     if (gkp.current.lastSyntheticSendUtcTicks == 0 || deltaSend > TimeSpan.FromMilliseconds(SyntheticSendThrottleMs).Ticks)
                     {
-                        bool useScan = gkp.current.scanCodeCount != 0;
-                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress(press)");
-
-                        SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey)
-                                           ?? GetOrCreateSyntheticKeyAction(device, (int)kvpKey, nativeKey, toggle: false, useScan: useScan);
+                        AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyPress");
 
                         bool handled = false;
                         try
@@ -1824,7 +1566,6 @@ namespace DS4Windows
 
                         if (!handled)
                         {
-                            // フォールバック（ActionManager未初期化時等のみ直接送信）
                             if (useScan)
                                 VirtualKBM.PerformKeyPressAlt(nativeKey);
                             else
@@ -1836,18 +1577,11 @@ namespace DS4Windows
                     pressagain = false;
                     keyshelddown = kvpKey;
                 }
-
-                // ③ レガシー fakeKeyRepeat は RepeatHelper（ActionManagerルート）に一本化されたため削除
-
-                if ((gkp.current.toggleCount == 0 && gkp.previous.toggleCount == 0) && gkp.current.vkCount + gkp.current.scanCodeCount == 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount != 0)
+                // ■ 物理ボタンが離された瞬間（立ち下がりエッジ）
+                else if (gkp.current.vkCount + gkp.current.scanCodeCount == 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount != 0)
                 {
                     long nowTicksSend = DateTime.UtcNow.Ticks;
-                    bool useScan = gkp.previous.scanCodeCount != 0;
-
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} kvpKey={kvpKey} nativeKey={nativeKey} event=KeyRelease");
-
-                    SpecialAction sa = FindSpecialActionForLogicalKey((ushort)kvpKey)
-                                       ?? GetOrCreateSyntheticKeyAction(device, (int)kvpKey, nativeKey, toggle: false, useScan: useScan);
 
                     bool handled = false;
                     try
@@ -1861,7 +1595,6 @@ namespace DS4Windows
 
                     if (!handled)
                     {
-                        // フォールバック
                         if (useScan)
                             VirtualKBM.PerformKeyReleaseAlt(nativeKey);
                         else
@@ -1872,12 +1605,9 @@ namespace DS4Windows
                     gkp.previous.vkCount = 0;
                     gkp.previous.scanCodeCount = 0;
                     gkp.previous.repeatCount = 0;
-                    gkp.previous.toggleCount = 0;
-                    gkp.previous.toggle = false;
                     pressagain = false;
                 }
             }
-
             globalState.SaveToPrevious(false);
 
             syncStateLock.ExitWriteLock();
@@ -4913,39 +4643,17 @@ namespace DS4Windows
                 }
                 else if (actionType == DS4ControlSettings.ActionType.Key)
                 {
-                    ushort value = Convert.ToUInt16(action.actionKey);
-                    if (GetBoolActionMapping(device, dcs.control, cState, eState, tp, fieldMapping))
-                    {
-                        SyntheticState.KeyPresses kp;
-                        if (!deviceState.keyPresses.TryGetValue(value, out kp))
-                        {
-                            deviceState.keyPresses[value] = kp = new SyntheticState.KeyPresses();
-                            deviceState.nativeKeyAlias[value] = actionAlias;
-                        }
+                    ushort key = Convert.ToUInt16(action.actionKey);
+                    uint nativeKey = outputKBMMapping.GetRealEventKey(actionAlias != 0 ? actionAlias : (uint)key);
+                    bool isPressed = GetBoolActionMapping(device, dcs.control, cState, eState, tp, fieldMapping);
+                    bool useScan = keyType.HasFlag(DS4KeyType.ScanCode);
+                    bool isToggle = keyType.HasFlag(DS4KeyType.Toggle);
 
-                        if (keyType.HasFlag(DS4KeyType.ScanCode))
-                            kp.current.scanCodeCount++;
-                        else
-                            kp.current.vkCount++;
+                    // 合成SpecialActionを取得し、SpecialActionsタブと全く同じエッジディスパッチャに投入
+                    SpecialAction sa = FindSpecialActionForLogicalKey(key)
+                                       ?? GetOrCreateSyntheticKeyAction(device, (int)dcs.control, (uint)key, isToggle, useScan);
 
-                        if (keyType.HasFlag(DS4KeyType.Toggle))
-                        {
-                            if (!GetIsToggledOn(value, null, device))
-                            {
-                                kp.current.toggle = !kp.current.toggle;
-                                kp.current.pending = true;
-                                kp.current.lastToggleTimeUtcTicks = DateTime.UtcNow.Ticks;
-                                // Do NOT set IsToggledOn here; Action implementation handles it.
-                            }
-                            kp.current.toggleCount++;
-                        }
-                        kp.current.repeatCount++;
-                    }
-                    else
-                    {
-                        // Do not clear IsToggledOn here; Action implementation manages lifecycle.
-                        // Intentionally left blank.
-                    }
+                    DispatchOrSetBeingTriggered(sa, device, isPressed, key, nativeKey, useScan, VirtualKBM);
 
                     // erase default mappings for things that are remapped
                     ResetToDefaultValue(dcs.control, MappedState, outputfieldMapping);
