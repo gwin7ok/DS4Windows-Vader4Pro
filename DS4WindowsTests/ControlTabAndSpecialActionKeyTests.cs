@@ -17,15 +17,17 @@ namespace DS4WindowsTests
             sa.typeID = SpecialAction.ActionTypeId.Key;
             sa.details = "30"; // 0x1E ('A')
 
-            // KeyButtonActionControllerAdapter 経由での押下・解放テスト
-            var adapter = new KeyButtonActionControllerAdapter(0, KeyButtonActionController.Mode.Press, "Key_Press_Test");
+            var inner = new KeyButtonActionController(0, KeyButtonActionController.Mode.Press, "Key_Press_Test");
+            var adapter = new KeyButtonActionControllerAdapter(inner);
 
-            // 押下エッジ (Down)
-            bool handledDown = adapter.OnDown(0, 0x1E, 0x1E, false, mockKbm);
+            var ctxDown = new TriggerContextImpl(0, 0x1E, 0x1E, false, mockKbm);
+
+            // 押下エッジ (OnTrigger)
+            bool handledDown = adapter.OnTrigger(ctxDown);
             Assert.True(handledDown);
 
-            // 解放エッジ (Up)
-            bool handledUp = adapter.OnUp(0, 0x1E, 0x1E, false, mockKbm);
+            // 解放エッジ (OnUntrigger)
+            bool handledUp = adapter.OnUntrigger(ctxDown);
             Assert.True(handledUp);
         }
 
@@ -37,19 +39,21 @@ namespace DS4WindowsTests
             sa.typeID = SpecialAction.ActionTypeId.Key;
             sa.details = "30";
 
-            var toggleAdapter = new KeyButtonActionControllerAdapter(0, KeyButtonActionController.Mode.Toggle, "Key_Toggle_Test");
+            var inner = new KeyButtonActionController(0, KeyButtonActionController.Mode.Toggle, "Key_Toggle_Test");
+            var toggleAdapter = new KeyButtonActionControllerAdapter(inner);
 
-            // 1回目の押下 -> トグルON（IsToggledOn = true）
-            toggleAdapter.OnDown(0, 0x1E, 0x1E, false, mockKbm);
-            Assert.True(toggleAdapter.IsToggledOn);
+            var ctx = new TriggerContextImpl(0, 0x1E, 0x1E, false, mockKbm);
 
-            // 1回目の物理ボタン解放 -> トグル状態維持
-            toggleAdapter.OnUp(0, 0x1E, 0x1E, false, mockKbm);
-            Assert.True(toggleAdapter.IsToggledOn);
+            // 1回目の押下 -> トグルON (OnTrigger)
+            bool handled1 = toggleAdapter.OnTrigger(ctx);
+            Assert.True(handled1);
 
-            // 2回目の押下 -> トグルOFF（IsToggledOn = false）
-            toggleAdapter.OnDown(0, 0x1E, 0x1E, false, mockKbm);
-            Assert.False(toggleAdapter.IsToggledOn);
+            // 1回目の物理ボタン解放 -> トグル状態維持 (OnUntrigger)
+            toggleAdapter.OnUntrigger(ctx);
+
+            // 2回目の押下 -> トグルOFF (OnTrigger)
+            bool handled2 = toggleAdapter.OnTrigger(ctx);
+            Assert.True(handled2);
         }
 
         [Fact]
