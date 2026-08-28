@@ -145,8 +145,8 @@
             "args": [
                 "test",
                 "./DS4WindowsTests/DS4Windows.Actions.Tests.csproj",
-                "--logger",
-                "console;verbosity=normal"
+                "-v",
+                "normal"
             ],
             "group": {
                 "kind": "test",
