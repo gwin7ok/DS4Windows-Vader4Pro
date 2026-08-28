@@ -36,32 +36,18 @@ namespace DS4Windows.Actions
 
         public void Execute(IOutputContext ctx)
         {
-            try
-            {
-                if (sa == null) return;
-                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx != null && ctx.Device >= 0 ? ctx.Device : 0);
-                _macroPlayer.Play(dev, sa);
-                try { AppLogger.LogTrace($"MacroAction.Execute: id={Id} device={dev}"); } catch { }
-            }
-            catch (Exception ex)
-            {
-                try { AppLogger.LogTrace($"MacroAction.Execute failed: {ex}"); } catch { }
-            }
+            if (sa == null || _macroPlayer == null) return;
+            int dev = (deviceIndex >= 0) ? deviceIndex : (ctx != null ? ctx.Device : 0);
+            _macroPlayer.Play(dev, sa);
+            try { AppLogger.LogTrace($"MacroAction.Execute: id={Id} device={dev}"); } catch { }
         }
 
         public void Stop(IOutputContext ctx)
         {
-            try
-            {
-                if (sa == null) return;
-                int dev = (deviceIndex >= 0) ? deviceIndex : (ctx != null && ctx.Device >= 0 ? ctx.Device : 0);
-                _macroPlayer.Stop(dev);
-                try { AppLogger.LogTrace($"MacroAction.Stop: id={Id} device={dev}"); } catch { }
-            }
-            catch (Exception ex)
-            {
-                try { AppLogger.LogTrace($"MacroAction.Stop failed: {ex}"); } catch { }
-            }
+            if (sa == null || _macroPlayer == null) return;
+            int dev = (deviceIndex >= 0) ? deviceIndex : (ctx != null ? ctx.Device : 0);
+            _macroPlayer.Stop(dev);
+            try { AppLogger.LogTrace($"MacroAction.Stop: id={Id} device={dev}"); } catch { }
         }
     }
 }
