@@ -6,8 +6,8 @@ namespace DS4Windows.Actions
 {
     public class ProfileSwitchAction : IOutputAction
     {
-        public SpecialAction ActionDef { get; }
-        public int DeviceIndex { get; }
+        private readonly SpecialAction _sa;
+        private readonly int _deviceIndex;
         private readonly IProfileSwitcher _profileSwitcher;
 
         public ProfileSwitchAction(SpecialAction sa) : this(sa, -1, null) { }
@@ -18,25 +18,27 @@ namespace DS4Windows.Actions
 
         public ProfileSwitchAction(SpecialAction sa, int deviceIndex, IProfileSwitcher profileSwitcher)
         {
-            this.ActionDef = sa;
-            this.DeviceIndex = deviceIndex;
-            this._profileSwitcher = profileSwitcher ?? AppHost.GetService<IProfileSwitcher>() ?? new DefaultProfileSwitcher();
+            _sa = sa;
+            _deviceIndex = deviceIndex;
+            _profileSwitcher = profileSwitcher ?? AppHost.GetService<IProfileSwitcher>() ?? new DefaultProfileSwitcher();
         }
 
-        public string Id => ActionDef?.name ?? "ProfileSwitch";
+        public string Id => _sa?.name ?? "ProfileSwitch";
 
         public void Execute(IOutputContext ctx)
         {
-            if (ActionDef == null || _profileSwitcher == null) return;
-            int dev = (DeviceIndex >= 0) ? DeviceIndex : (ctx != null ? ctx.Device : 0);
-            _profileSwitcher.SwitchProfile(dev, ActionDef);
+            if (_sa == null || _profileSwitcher == null) return;
+            int dev = (_deviceIndex >= 0) ? _deviceIndex : (ctx != null ? ctx.Device : 0);
+            _profileSwitcher.SwitchProfile(dev, _sa);
+            try { AppLogger.LogTrace($"ProfileSwitchAction.Execute: id={Id} device={dev}"); } catch { }
         }
 
         public void Stop(IOutputContext ctx)
         {
-            if (ActionDef == null || _profileSwitcher == null) return;
-            int dev = (DeviceIndex >= 0) ? DeviceIndex : (ctx != null ? ctx.Device : 0);
+            if (_sa == null || _profileSwitcher == null) return;
+            int dev = (_deviceIndex >= 0) ? _deviceIndex : (ctx != null ? ctx.Device : 0);
             _profileSwitcher.RestoreProfile(dev);
+            try { AppLogger.LogTrace($"ProfileSwitchAction.Stop: id={Id} device={dev}"); } catch { }
         }
     }
 }

@@ -6,8 +6,8 @@ namespace DS4Windows.Actions
 {
     public class MacroAction : IOutputAction
     {
-        public SpecialAction ActionDef { get; }
-        public int DeviceIndex { get; }
+        private readonly SpecialAction _sa;
+        private readonly int _deviceIndex;
         private readonly IMacroPlayer _macroPlayer;
 
         public MacroAction(SpecialAction sa) : this(sa, -1, null) { }
@@ -18,25 +18,25 @@ namespace DS4Windows.Actions
 
         public MacroAction(SpecialAction sa, int deviceIndex, IMacroPlayer macroPlayer)
         {
-            this.ActionDef = sa;
-            this.DeviceIndex = deviceIndex;
-            this._macroPlayer = macroPlayer ?? AppHost.GetService<IMacroPlayer>() ?? new DefaultMacroPlayer();
+            _sa = sa;
+            _deviceIndex = deviceIndex;
+            _macroPlayer = macroPlayer ?? AppHost.GetService<IMacroPlayer>() ?? new DefaultMacroPlayer();
         }
 
-        public string Id => ActionDef?.name ?? "MacroAction";
+        public string Id => _sa?.name ?? "MacroAction";
 
         public void Execute(IOutputContext ctx)
         {
-            if (ActionDef == null || _macroPlayer == null) return;
-            int dev = (DeviceIndex >= 0) ? DeviceIndex : (ctx != null ? ctx.Device : 0);
-            _macroPlayer.Play(dev, ActionDef);
+            if (_sa == null || _macroPlayer == null) return;
+            int dev = (_deviceIndex >= 0) ? _deviceIndex : (ctx != null ? ctx.Device : 0);
+            _macroPlayer.Play(dev, _sa);
             try { AppLogger.LogTrace($"MacroAction.Execute: id={Id} device={dev}"); } catch { }
         }
 
         public void Stop(IOutputContext ctx)
         {
-            if (ActionDef == null || _macroPlayer == null) return;
-            int dev = (DeviceIndex >= 0) ? DeviceIndex : (ctx != null ? ctx.Device : 0);
+            if (_sa == null || _macroPlayer == null) return;
+            int dev = (_deviceIndex >= 0) ? _deviceIndex : (ctx != null ? ctx.Device : 0);
             _macroPlayer.Stop(dev);
             try { AppLogger.LogTrace($"MacroAction.Stop: id={Id} device={dev}"); } catch { }
         }
