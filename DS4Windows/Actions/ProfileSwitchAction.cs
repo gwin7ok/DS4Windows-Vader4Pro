@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using DS4Windows.Services;
 using DS4WinWPF;
 
@@ -15,11 +15,16 @@ namespace DS4Windows.Actions
         {
         }
 
-        public ProfileSwitchAction(SpecialAction sa, int deviceIndex = -1, IProfileSwitcher profileSwitcher = null)
+        public ProfileSwitchAction(SpecialAction sa, int deviceIndex, IProfileSwitcher profileSwitcher)
         {
             this.sa = sa;
             this.deviceIndex = deviceIndex;
             this._profileSwitcher = profileSwitcher ?? AppHost.GetService<IProfileSwitcher>() ?? new DefaultProfileSwitcher();
+        }
+
+        public ProfileSwitchAction(SpecialAction sa)
+            : this(sa, -1, null)
+        {
         }
 
         public string Id => sa?.name ?? "ProfileSwitch";

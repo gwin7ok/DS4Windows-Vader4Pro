@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using DS4Windows.Services;
 using DS4WinWPF;
 
@@ -15,11 +15,16 @@ namespace DS4Windows.Actions
         {
         }
 
-        public MacroAction(SpecialAction sa, int deviceIndex = -1, IMacroPlayer macroPlayer = null)
+        public MacroAction(SpecialAction sa, int deviceIndex, IMacroPlayer macroPlayer)
         {
             this.sa = sa;
             this.deviceIndex = deviceIndex;
             this._macroPlayer = macroPlayer ?? AppHost.GetService<IMacroPlayer>() ?? new DefaultMacroPlayer();
+        }
+
+        public MacroAction(SpecialAction sa)
+            : this(sa, -1, null)
+        {
         }
 
         public string Id => sa?.name ?? "MacroAction";
