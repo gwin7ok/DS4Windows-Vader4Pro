@@ -1,4 +1,4 @@
-using IVirtualKBM = DS4Windows.Services.IVirtualKBM;
+﻿using IVirtualKBM = DS4Windows.Services.IVirtualKBM;
 using DS4Windows.Services;
 using DS4WinWPF;
 /*
@@ -6501,7 +6501,15 @@ namespace DS4Windows
             else if (macroCodeValue >= 1000000)
             {
                 // Rumble event
-                DS4Device d = Program.rootHub.DS4Controllers[device];
+                                DS4Device d = null;
+                try
+                {
+                    var accessor = DS4Windows.DI.ServiceProviderHolder.Provider?
+                        .GetService(typeof(DS4Windows.Services.IDeviceStateAccessor)) as DS4Windows.Services.IDeviceStateAccessor;
+                    if (accessor != null) d = accessor.GetController(device);
+                }
+                catch { }
+                if (d == null) d = Program.rootHub?.DS4Controllers[device];
                 string r = macroCodeValue.ToString().Substring(1);
                 byte heavy = (byte)(int.Parse(r[0].ToString()) * 100 + int.Parse(r[1].ToString()) * 10 + int.Parse(r[2].ToString()));
                 byte light = (byte)(int.Parse(r[3].ToString()) * 100 + int.Parse(r[4].ToString()) * 10 + int.Parse(r[5].ToString()));

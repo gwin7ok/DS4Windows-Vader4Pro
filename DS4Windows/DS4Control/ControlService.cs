@@ -37,7 +37,7 @@ using static DS4Windows.Global;
 namespace DS4Windows
 {
     #pragma warning disable CS0219 // some local variables are assigned but not read in legacy handlers
-    public class ControlService : IInstanceIdentifiable
+    public class ControlService : IInstanceIdentifiable, DS4Windows.Services.IDeviceStateAccessor
     {
         public int InstanceId => this.GetHashCode();
         public ViGEmClient vigemTestClient = null;
@@ -51,6 +51,11 @@ namespace DS4Windows
 #endif
         public static bool USING_MAX_CONTROLLERS = CURRENT_DS4_CONTROLLER_LIMIT == EXPANDED_CONTROLLER_COUNT;
         public DS4Device[] DS4Controllers = new DS4Device[MAX_DS4_CONTROLLER_COUNT];
+        public DS4Device GetController(int deviceIndex)
+        {
+            if (deviceIndex < 0 || deviceIndex >= DS4Controllers.Length) return null;
+            return DS4Controllers[deviceIndex];
+        }
         public int activeControllers = 0;
         public Mouse[] touchPad = new Mouse[MAX_DS4_CONTROLLER_COUNT];
         public bool running = false;

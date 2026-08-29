@@ -1,4 +1,4 @@
-using DS4Windows.DI;
+﻿using DS4Windows.DI;
 using DS4Windows.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +14,9 @@ namespace DS4WinWPF.DI
 
             // Phase 2: Virtual KBM Output
             services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
+
+                        // Phase 3 Step 3-3: DS4 Device Registry
+            services.AddSingleton<IDs4DeviceRegistry, Ds4DeviceRegistryAdapter>();
 
             return services;
         }
