@@ -35,6 +35,7 @@ using System.Windows.Media;
 using WPFLocalizeExtension.Engine;
 using DS4Windows;
 using DS4Windows.DI;
+using DS4Windows.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DS4WinWPF
@@ -738,7 +739,14 @@ namespace DS4WinWPF
         {
             controlThread = new Thread(() =>
             {
-                rootHub = new DS4Windows.ControlService(parser);
+                // Phase 3 Followup Step F-2: registry comes from AppHost (registered in
+                // ServiceRegistration). AppHost.CreateHost() already ran before this method
+                // is called, so GetService should not be null; the null-coalesce is a
+                // startup-order safety net only, and 'new Ds4DeviceRegistryAdapter()' here
+                // is the same adapter class already registered, not a second implementation.
+                var registry = AppHost.GetService<IDs4DeviceRegistry>()
+                    ?? new Ds4DeviceRegistryAdapter();
+                rootHub = new DS4Windows.ControlService(parser, registry);
 
                 DS4Windows.Program.rootHub = rootHub;
                 requestClient = new HttpClient();

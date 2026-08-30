@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using DS4Windows.DS4Control;
+using DS4Windows.Services;
 using DS4WinWPF.DS4Control;
 using Microsoft.Win32;
 using Nefarius.ViGEm.Client;
@@ -93,6 +94,9 @@ namespace DS4Windows
 
         private UdpServer _udpServer;
         private OutputSlotManager outputslotMan;
+
+        // Phase 3 Followup Step F-2: DS4Devices static access routed through DI.
+        private readonly IDs4DeviceRegistry _deviceRegistry;
 
         private HashSet<string> hidDeviceHidingAffectedDevs = new HashSet<string>();
         private HashSet<string> hidDeviceHidingExemptedDevs = new HashSet<string>();
@@ -191,9 +195,10 @@ namespace DS4Windows
             //return meta;
         }
 
-        public ControlService(DS4WinWPF.ArgumentParser cmdParser)
+        public ControlService(DS4WinWPF.ArgumentParser cmdParser, IDs4DeviceRegistry deviceRegistry)
         {
             this.cmdParser = cmdParser;
+            this._deviceRegistry = deviceRegistry;
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 
@@ -233,10 +238,10 @@ namespace DS4Windows
             //outputslotMan.SlotAssigned += OutputslotMan_SlotAssigned;
             deviceOptions = Global.DeviceOptions;
 
-            DS4Devices.RequestElevation += DS4Devices_RequestElevation;
-            DS4Devices.PrepareDS4Init = PrepareDS4DeviceInit;
-            DS4Devices.PostDS4Init = PostDS4DeviceInit;
-            DS4Devices.PreparePendingDevice = CheckForSupportedDevice;
+            _deviceRegistry.RequestElevation += DS4Devices_RequestElevation;
+            _deviceRegistry.PrepareDS4Init = PrepareDS4DeviceInit;
+            _deviceRegistry.PostDS4Init = PostDS4DeviceInit;
+            _deviceRegistry.PreparePendingDevice = CheckForSupportedDevice;
             outputslotMan.ViGEmFailure += OutputslotMan_ViGEmFailure;
 
             Global.UDPServerSmoothingMincutoffChanged += ChangeUdpSmoothingAttrs;
@@ -927,7 +932,7 @@ namespace DS4Windows
 
         public void ChangeMotionEventStatus(bool state)
         {
-            IEnumerable<DS4Device> devices = DS4Devices.getDS4Controllers();
+            IEnumerable<DS4Device> devices = _deviceRegistry.GetDS4Controllers();
             if (state)
             {
                 int i = 0;
@@ -966,7 +971,7 @@ namespace DS4Windows
         public async void UseUDPPort()
         {
             changingUDPPort = true;
-            IEnumerable<DS4Device> devices = DS4Devices.getDS4Controllers();
+            IEnumerable<DS4Device> devices = _deviceRegistry.GetDS4Controllers();
             foreach (DS4Device dev in devices)
             {
                 dev.queueEvent(() =>
@@ -1011,7 +1016,7 @@ namespace DS4Windows
 
         private void WarnExclusiveModeFailure(DS4Device device)
         {
-            if (DS4Devices.isExclusiveMode && !device.isExclusive())
+            if (_deviceRegistry.IsExclusiveMode && !device.isExclusive())
             {
                 string message = DS4WinWPF.Properties.Resources.CouldNotOpenDS4.Replace("*Mac address*", device.getMacAddress()) + " " +
                     DS4WinWPF.Properties.Resources.QuitOtherPrograms;
@@ -1601,14 +1606,14 @@ namespace DS4Windows
                 LogDebug($"Using output KB+M handler: {Global.outputKBMHandler.GetFullDisplayName()}");
                 LogDebug($"Connection to ViGEmBus {Global.vigembusVersion} established");
 
-                DS4Devices.isExclusiveMode = getUseExclusiveMode(); //Re-enable Exclusive Mode
+                _deviceRegistry.IsExclusiveMode = getUseExclusiveMode(); //Re-enable Exclusive Mode
 
                 UpdateHidHiddenAttributes();
 
                 if (showlog)
                 {
                     LogDebug(DS4WinWPF.Properties.Resources.SearchingController);
-                    LogDebug(DS4Devices.isExclusiveMode ? DS4WinWPF.Properties.Resources.UsingExclusive : DS4WinWPF.Properties.Resources.UsingShared);
+                    LogDebug(_deviceRegistry.IsExclusiveMode ? DS4WinWPF.Properties.Resources.UsingExclusive : DS4WinWPF.Properties.Resources.UsingShared);
                 }
 
                 if (isUsingOSCServer() && oscListener == null)
@@ -1637,10 +1642,10 @@ namespace DS4Windows
 
                     eventDispatcher.Invoke(() =>
                     {
-                        DS4Devices.findControllers();
+                        _deviceRegistry.FindControllers();
                     });
 
-                    IEnumerable<DS4Device> devices = DS4Devices.getDS4Controllers();
+                    IEnumerable<DS4Device> devices = _deviceRegistry.GetDS4Controllers();
                     int numControllers = devices.Count();
                     activeControllers = numControllers;
                     DS4LightBar.defaultLight = false;
@@ -1857,7 +1862,7 @@ namespace DS4Windows
                             DS4LightBar.updateLightBar(DS4Controllers[i], i);
                             tempDevice.IsRemoved = true;
                             tempDevice.StopUpdate();
-                            DS4Devices.RemoveDevice(tempDevice);
+                            _deviceRegistry.RemoveDevice(tempDevice);
                             Thread.Sleep(50);
                         }
 
@@ -1884,7 +1889,7 @@ namespace DS4Windows
                 if (showlog)
                     LogDebug(DS4WinWPF.Properties.Resources.StoppingDS4);
 
-                DS4Devices.stopControllers();
+                _deviceRegistry.StopControllers();
                 slotManager.ClearControllerList();
 
                 if (oscListener != null)
@@ -1939,10 +1944,10 @@ namespace DS4Windows
                 loopControllers = true;
                 eventDispatcher.Invoke(() =>
                 {
-                    DS4Devices.findControllers();
+                    _deviceRegistry.FindControllers();
                 });
 
-                IEnumerable<DS4Device> devices = DS4Devices.getDS4Controllers();
+                IEnumerable<DS4Device> devices = _deviceRegistry.GetDS4Controllers();
                 int numControllers = devices.Count();
                 activeControllers = numControllers;
                 InputDevices.JoyConDevice tempPrimaryJoyDev = null;
@@ -2074,9 +2079,9 @@ namespace DS4Windows
                 oscSender.Send(new OscMessage("/ds4windows/monitor/" + index + "/plug", 1));
             }
             device.Removal += this.On_DS4Removal;
-            device.Removal += DS4Devices.On_Removal;
+            device.Removal += _deviceRegistry.OnRemoval;
             device.SyncChange += this.On_SyncChange;
-            device.SyncChange += DS4Devices.UpdateSerial;
+            device.SyncChange += _deviceRegistry.UpdateSerial;
             device.SerialChange += this.On_SerialChange;
             device.ChargingChanged += CheckQuickCharge;
 

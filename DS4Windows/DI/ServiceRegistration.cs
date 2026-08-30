@@ -1,4 +1,5 @@
-﻿using DS4Windows.DI;
+﻿using DS4Windows;
+using DS4Windows.DI;
 using DS4Windows.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
