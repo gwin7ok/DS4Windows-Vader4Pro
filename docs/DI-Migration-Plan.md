@@ -6,7 +6,29 @@
 
 前提:
 - `ActionManager`（および `DefaultActionManager`）は既に DI 登録されており、`DispatchTriggerEdge/Established/Released` API が存在する。
-- まずは「検出(Trigger) → Dispatch(Manager) → Controller.Handle(送出)」というフローを確立し、既存の直接 `outputKBMHandler` 呼び出しなどは段階的に置換する。
+- まずは「検出(Trigger) → 変換・実行指示への分解 → Dispatch(Manager) → 出力系統への振り分け・実行」というフローを確立し、既存の直接 `outputKBMHandler` 呼び出しなどは段階的に置換する。
+
+## 出力アーキテクチャの整理（採用方針）
+
+本計画では、信号変換層と信号・アクション実行層の責務を次のように整理する。
+
+### 2. 信号変換層
+
+入力信号やSpecialActionを、「何を実行するか」を表す実行指示へ分解する。ここでは実際のキー送出、仮想コントローラー操作、プロファイル切替、プロセス起動などの副作用を発生させない。
+
+実行指示には少なくとも種別、対象、値、順序、遅延・実行タイミングを持たせる。したがって、1つのマクロやSpecialActionから、仮想コントローラー出力とKBM出力が混在する指示列を生成できる。
+
+### 3. 信号・アクション実行層
+
+変換層から渡された各実行指示を種別に応じて振り分け、対応する実行コンポーネントへ委譲する。
+
+- **3-a. 仮想コントローラー出力**: DS4／Xbox規格の仮想コントローラーへ出力する。
+- **3-b. KBM出力**: キーボード・マウス入力を `IVirtualKBM` 経由で出力する。マクロの時系列実行もここで行う。
+- **3-c. アプリ内アクション実行**: プロファイル切替、外部プロセス起動など、アプリ内またはOSに対する副作用を実行する。
+
+3-a～3-cは、変換層から渡された実行指示を処理する同じ実行層の下位系統として扱う。3-cは物理的な信号出力ではないが、3-a／3-bと同様に、変換層で決定された指示を実行する副作用担当である。
+
+特に混在マクロでは、変換層が各操作を個別の実行指示へ分解し、実行層のディスパッチャーが各指示を3-a、3-b、3-cへ振り分ける。これにより、変換層は判定・選択・分解に集中し、出力先固有の処理、順序、遅延、キャンセルを実行層へ集約できる。
 
 優先順位（高 → 低）
 - 1) `Mapping.cs` 内の SpecialAction に紐づく外部副作用（例: キー/MOUSE 送出、`specActionLaunchProc`、`PlayMacro`、`Global.ApplyProfile`）
@@ -28,9 +50,9 @@
 ステップ C — 機能別の移行（1機能ずつ安全に）
 - C1: Key send 系（`PerformKeyPress*`, `PerformKeyRelease*`, `PerformKeyPressAlt`）を `KeyOutputAction` に集約。`KeyActionBinding` を介して `OutputContext` を渡し、送出の実装はコントローラに委任する。
 - C2: Mouse / Move 系を同様に `MouseOutputAction` にまとめる。
-- C3: Macro 系は `MacroAction` を実装し、既存の `PlayMacro` ロジックを内部で再利用しつつ `ActionManager` 経由で呼ぶようにする。マクロキュー管理は `MacroController` に移す。
-- C4: `Global.ApplyProfile` は `ProfileSwitchAction` を作り、ActionManager 経由で実行。ApplyProfile が複数場所から呼ばれる場合は、呼び出し元をラップして `ActionManager.Dispatch...` を呼ぶ。
-- C5: SpecialAction による外部プロセス起動（`specActionLaunchProc`）は `LaunchProcessAction` として抽象し、プロセス起動はインターフェース経由（モック可能）にする。
+- C3: Macro 系は `MacroAction` を実装し、既存の `PlayMacro` ロジックを内部で再利用しつつ、各操作を実行指示へ分解して `ActionManager` 経由で呼ぶようにする。キーボード／マウス操作は3-b、仮想コントローラー操作は3-a、アプリ内操作を含む場合は3-cへ振り分ける。マクロキュー管理は `MacroController` に移す。
+- C4: `Global.ApplyProfile` は `ProfileSwitchAction` を作り、3-cのアプリ内アクション実行指示として `ActionManager` 経由で実行する。ApplyProfile が複数場所から呼ばれる場合は、呼び出し元をラップして `ActionManager.Dispatch...` を呼ぶ。
+- C5: SpecialAction による外部プロセス起動（`specActionLaunchProc`）は `LaunchProcessAction` として抽象し、3-cの実行指示として扱う。プロセス起動はインターフェース経由（モック可能）にする。
 
 ステップ D — フォールバックの削除と整流化
 - D1: 上記機能ごとに `handled` 判定が確実に true を返すようコントローラを完成させ、既存の Mapping の直接 send フォールバックを順次削除。
@@ -53,7 +75,7 @@
 - 全体完了（安定化含む）: 2–4 週間（レビュー・テスト含む）
 
 リスクと緩和策
-- リスク: マクロや連打・リピート挙動の微妙な再現差→ 緩和: 既存 `outputKBMHandler` をモックして比較テスト
+- リスク: マクロや連打・リピート挙動の微妙な再現差→ 緩和: 変換層が生成する実行指示列と、既存 `outputKBMHandler` をモックした実行結果を比較テスト
 - リスク: 外部プロセス起動の権限/コンテキスト問題→ 緩和: `LaunchProcessAction` に呼び出し元情報/UseShellExecute フラグ等を明示
 - リスク: UI/Updater 系の起動処理は仕様的に置換不可な場合がある→ 緩和: UI/Updater は対象外とし、別途 Integration note を残す
 
