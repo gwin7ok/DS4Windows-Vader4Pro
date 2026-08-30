@@ -695,6 +695,7 @@ Phase 4 で必ず扱う引継ぎ事項は次の通りである。
 | 3 | `03-目標アーキテクチャ設計.md` | Composition Root、サービスライフタイム、3層モデル対応 |
 | 4 | `04-理想の3層構造と現状のズレ.md` | 3層モデルの理想形と実コードの対応検証（補足ステージ） |
 | 5 | `05-段階移行ロードマップ.md` | フェーズ分割、PR粒度、リスクと回避策、スケジュール見積もり |
+| - | `docs-forDIMG/MadeByAgent/Phase4-Plan.md` | フェーズ4の `Global` 分割、Composition Root 一本化、ViewModel DI／Factory 化の実施計画 |
 | - | `docs/DI-Migration-Plan.md`（既存） | フェーズ1のベースとして採用 |
 | - | `docs/DI-Implementation-Guide.md`（既存） | 推奨パッケージ・導入手順のベースとして採用 |
 | - | `docs/DI/DI-ObjectGraph.md`（既存） | Composition Root設計のベースとして採用 |
