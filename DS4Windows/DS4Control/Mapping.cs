@@ -6504,8 +6504,7 @@ namespace DS4Windows
                                 DS4Device d = null;
                 try
                 {
-                    var accessor = DS4Windows.DI.ServiceProviderHolder.Provider?
-                        .GetService(typeof(DS4Windows.Services.IDeviceStateAccessor)) as DS4Windows.Services.IDeviceStateAccessor;
+                    var accessor = DS4WinWPF.AppHost.GetService<DS4Windows.Services.IDeviceStateAccessor>();
                     if (accessor != null) d = accessor.GetController(device);
                 }
                 catch { }

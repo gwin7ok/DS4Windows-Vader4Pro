@@ -6706,21 +6706,36 @@ namespace DS4Windows
                 if (launchprogram == true && launchProgram[device] != string.Empty)
                 {
                     string programPath = launchProgram[device];
-                    System.Diagnostics.Process[] localAll = System.Diagnostics.Process.GetProcesses();
                     bool procFound = false;
-                    for (int procInd = 0, procsLen = localAll.Length; !procFound && procInd < procsLen; procInd++)
+                    bool handled = false;
+                    try
                     {
-                        try
+                        var inspector = DS4WinWPF.AppHost.GetService<DS4Windows.Services.IProcessInspector>();
+                        if (inspector != null)
                         {
-                            string temp = localAll[procInd].MainModule.FileName;
-                            if (temp == programPath)
-                            {
-                                procFound = true;
-                            }
+                            procFound = inspector.IsProcessRunning(programPath);
+                            handled = true;
                         }
-                        // Ignore any process for which this information
-                        // is not exposed
-                        catch { }
+                    }
+                    catch { }
+
+                    if (!handled)
+                    {
+                        System.Diagnostics.Process[] localAll = System.Diagnostics.Process.GetProcesses();
+                        for (int procInd = 0, procsLen = localAll.Length; !procFound && procInd < procsLen; procInd++)
+                        {
+                            try
+                            {
+                                string temp = localAll[procInd].MainModule.FileName;
+                                if (temp == programPath)
+                                {
+                                    procFound = true;
+                                }
+                            }
+                            // Ignore any process for which this information
+                            // is not exposed
+                            catch { }
+                        }
                     }
 
                     if (!procFound)

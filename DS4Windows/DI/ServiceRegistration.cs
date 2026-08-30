@@ -22,6 +22,15 @@ namespace DS4WinWPF.DI
             // Phase 3 Step 3-5: Elevated Process Launcher
             services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
 
+            // Phase 3 Step 3-6-A: Device State Accessor (ControlService/Program.rootHub への委譲)
+            // 注意: ControlServiceはDIコンテナ管理下ではなく、App.xaml.cs の CreateControlService() で
+            // 手動生成され Program.rootHub に保持される。DIコンテナが独自に新しい ControlService を
+            // 生成しないよう、必ず Program.rootHub を指すファクトリ委譲で登録すること。
+            services.AddSingleton<IDeviceStateAccessor>(sp => (IDeviceStateAccessor)DS4Windows.Program.rootHub);
+
+            // Phase 3 Step 3-6-B: Process Inspector (multi-launch check)
+            services.AddSingleton<IProcessInspector, DefaultProcessInspector>();
+
             return services;
         }
     }
