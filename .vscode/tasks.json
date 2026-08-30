@@ -113,7 +113,7 @@
             }
         },
         {
-            "label": "Build Test",
+            "label": "Build Test (Actions)",
             "type": "shell",
             "command": "dotnet",
             "args": [
@@ -123,16 +123,41 @@
                 "Debug",
                 "/p:platform=x64"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
+            "group": "build",
             "presentation": {
                 "showReuseMessage": false
             }
         },
         {
-            "label": "Execute Test",
+            "label": "Build Test (Standalone)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "./StandaloneTests/StandaloneTests.csproj",
+                "-c",
+                "Debug",
+                "/p:platform=x64"
+            ],
+            "group": "build",
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Build Test",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build Test (Actions)",
+                "Build Test (Standalone)"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Execute Test (Actions)",
             "type": "shell",
             "command": "dotnet",
             "args": [
@@ -144,12 +169,39 @@
                 "-v",
                 "normal"
             ],
+            "group": "test",
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Execute Test (Standalone)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "./StandaloneTests/StandaloneTests.csproj",
+                "-c",
+                "Debug",
+                "/p:platform=x64",
+                "-v",
+                "normal"
+            ],
+            "group": "test",
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Execute Test",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Execute Test (Actions)",
+                "Execute Test (Standalone)"
+            ],
             "group": {
                 "kind": "test",
                 "isDefault": true
-            },
-            "presentation": {
-                "showReuseMessage": false
             }
         }
     ]
