@@ -11,17 +11,17 @@
 
 | ステップ | 内容 | 状況 | 完了日 | 備考 |
 |---|---|---|---|---|
-| **Phase4-Step4-0** | **現状棚卸し・基準テスト** | **未着手** | — | `Global`、ViewModel直接生成、DI起動経路、イベント購読、既存ログを調査し、移行前のビルド・テスト結果を基準値として記録する |
-| **Phase4-Step4-1** | **`IProfileSettingsService` 実装化** | **未着手** | — | `ProfileSettingsServicePlaceholder`を実設定対応へ置換。既定値、保存・読込、変更通知、配列境界を維持する |
-| **Phase4-Step4-2** | **`IProfileRepository` 分離** | **未着手** | — | プロファイル読込・保存・選択・切替を分離。Phase3で残った`ApplyProfileDirect`／`RestoreProfileDirect`の依存を整理する |
-| **Phase4-Step4-3** | **`ISpecialActionRepository` 分離** | **未着手** | — | SpecialActionの取得・保存・正規化をデータアクセスとして分離し、ActionManagerの実行責務と分ける |
-| **Phase4-Step4-4** | **入力・出力・デバイス状態サービス** | **未着手** | — | `IInputBehaviorSettingsService`、`IOutputHandlerSettingsService`、`IDeviceConnectionTracker`を導入する |
-| **Phase4-Step4-5** | **環境・UI・通知サービス** | **未着手** | — | 環境情報、アプリパス、外観・UIレイアウト、通知・キャッシュの責務を必要最小限移行する |
-| **Phase4-Step4-6** | **Composition Root 一本化** | **未着手** | — | `AppHost`／`ServiceRegistration`を正式な本番解決経路とし、`App.xaml.cs`の簡易DIと`ServiceProviderHolder`依存を整理する |
-| **Phase4-Step4-7** | **ViewModel パターンA移行** | **未着手** | — | 引数なしViewModelをDI登録・解決へ移行する |
-| **Phase4-Step4-8** | **ViewModel パターンB移行** | **未着手** | — | 共有依存をコンストラクタ注入し、DataContext、ライフサイクル、イベント解除を維持する |
-| **Phase4-Step4-9** | **ViewModel パターンC Factory化** | **未着手** | — | 実行時引数付きViewModelを`IXxxViewModelFactory.Create(...)`経由へ移行する |
-| **Phase4-Step4-10** | **Phase3引継ぎ再確認・シム整理** | **未着手** | — | 実機未対応項目とDI経路を再確認し、呼び出し元ゼロのシムだけを根拠付きで削除する |
+| **Phase4-Step0** | **現状棚卸し・基準テスト** | **未着手** | — | `Global`、ViewModel直接生成、DI起動経路、イベント購読、既存ログを調査し、移行前のビルド・テスト結果を基準値として記録する |
+| **Phase4-Step1** | **`IProfileSettingsService` 実装化** | **未着手** | — | `ProfileSettingsServicePlaceholder`を実設定対応へ置換。既定値、保存・読込、変更通知、配列境界を維持する |
+| **Phase4-Step2** | **`IProfileRepository` 分離** | **未着手** | — | プロファイル読込・保存・選択・切替を分離。Phase3で残った`ApplyProfileDirect`／`RestoreProfileDirect`の依存を整理する |
+| **Phase4-Step3** | **`ISpecialActionRepository` 分離** | **未着手** | — | SpecialActionの取得・保存・正規化をデータアクセスとして分離し、ActionManagerの実行責務と分ける |
+| **Phase4-Step4** | **入力・出力・デバイス状態サービス** | **未着手** | — | `IInputBehaviorSettingsService`、`IOutputHandlerSettingsService`、`IDeviceConnectionTracker`を導入する |
+| **Phase4-Step5** | **環境・UI・通知サービス** | **未着手** | — | 環境情報、アプリパス、外観・UIレイアウト、通知・キャッシュの責務を必要最小限移行する |
+| **Phase4-Step6** | **Composition Root 一本化** | **未着手** | — | `AppHost`／`ServiceRegistration`を正式な本番解決経路とし、`App.xaml.cs`の簡易DIと`ServiceProviderHolder`依存を整理する |
+| **Phase4-Step7** | **ViewModel パターンA移行** | **未着手** | — | 引数なしViewModelをDI登録・解決へ移行する |
+| **Phase4-Step8** | **ViewModel パターンB移行** | **未着手** | — | 共有依存をコンストラクタ注入し、DataContext、ライフサイクル、イベント解除を維持する |
+| **Phase4-Step9** | **ViewModel パターンC Factory化** | **未着手** | — | 実行時引数付きViewModelを`IXxxViewModelFactory.Create(...)`経由へ移行する |
+| **Phase4-Step10** | **Phase3引継ぎ再確認・シム整理** | **未着手** | — | 実機未対応項目とDI経路を再確認し、呼び出し元ゼロのシムだけを根拠付きで削除する |
 
 全体進捗: 11ステップ中0ステップ完了。**フェーズ4は実施前であり、まだ完了扱いとしない。**
 
@@ -44,7 +44,7 @@ Phase4は、全体計画書で定義した4層モデルのうち、第4層（UI�
 - UI／設定サービスは、3-a／3-b／3-cを直接実行せず、設定・プロファイル・状態をサービス経由で実行時3層へ反映する。
 - 混在マクロの順序・遅延・キャンセルを含む実行責務は実行層に残し、Phase4では依存関係のDI化によってこの境界を壊さない。
 
-確認状況: **着手前（未確認）**。Step 4-0の実コード棚卸しで、UI／ViewModel／設定サービスから実行層への直接呼び出しがないか確認し、各Step完了時に再確認する。
+確認状況: **着手前（未確認）**。Step0の実コード棚卸しで、UI／ViewModel／設定サービスから実行層への直接呼び出しがないか確認し、各Step完了時に再確認する。
 
 ## 4. Phase3からの引継ぎ事項
 
@@ -86,4 +86,4 @@ Phase4は、全体計画書で定義した4層モデルのうち、第4層（UI�
 
 ## 7. 次に着手するStep
 
-次は **Phase4-Step4-0（現状棚卸し・基準テスト）** に着手する。`Phase4-Plan.md` §3の調査項目に従い、`Global`メンバー、全呼び出し元、ViewModel直接生成箇所、DI起動経路、移行前のビルド・テスト結果を確定して本書へ記録する。
+次は **Phase4-Step0（現状棚卸し・基準テスト）** に着手する。`Phase4-Plan.md` §3の調査項目に従い、`Global`メンバー、全呼び出し元、ViewModel直接生成箇所、DI起動経路、移行前のビルド・テスト結果を確定して本書へ記録する。

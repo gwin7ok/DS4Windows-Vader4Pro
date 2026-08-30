@@ -100,17 +100,17 @@ Phase3 の実装と自動テストは完了しているが、次の項目は Pha
 
 | ステップ | 内容 | 完了基準 | PR粒度 |
 |---|---|---|---|
-| **4-0** | 現状棚卸し・基準テスト | `Global` メンバー、全呼び出し元、ViewModel 直接生成箇所、起動順序、イベント購読、既存ログを一覧化。Phase2/3 の自動テスト成功 | 調査・記録1件 |
-| **4-1** | `IProfileSettingsService` 実装化 | Placeholder を実装へ置換し、設定の既定値・保存・読込・変更通知・配列境界を維持 | 1サービス |
-| **4-2** | `IProfileRepository` 分離 | プロファイル読込・保存・選択・切替を移行し、Phase3 の `ApplyProfileDirect`／`RestoreProfileDirect` 依存を整理 | 1サービス |
-| **4-3** | `ISpecialActionRepository` 分離 | SpecialAction の取得・保存・正規化を移行し、`ActionManager` の実行責務と分離 | 1サービス |
-| **4-4** | 入力・出力・デバイス状態サービス | `IInputBehaviorSettingsService`、`IOutputHandlerSettingsService`、`IDeviceConnectionTracker` を責務単位で導入 | 1サービスまたは小機能 |
-| **4-5** | 環境・UI・通知サービス | `IEnvironmentInfoProvider`、`IAppPathsProvider`、`IAppearanceSettingsService`、通知／キャッシュ責務を必要最小限移行 | 1サービス単位 |
-| **4-6** | Composition Root 一本化 | `App.xaml.cs` の簡易 DI と `ServiceProviderHolder` 依存を整理し、`AppHost`／`ServiceRegistration` を正式な解決経路にする | 起動経路1件 |
-| **4-7** | ViewModel パターンA移行 | 引数なし ViewModel の依存を明示し、DI 登録と画面取得へ移行 | 3〜5 ViewModel/PR |
-| **4-8** | ViewModel パターンB移行 | 共有依存をコンストラクタ注入し、画面ライフサイクルとイベント解除を維持 | 3〜5 ViewModel/PR |
-| **4-9** | ViewModel パターンC Factory 化 | 実行時引数付き ViewModel を `IXxxViewModelFactory.Create(...)` 経由へ移行 | 1 ViewModel/PR |
-| **4-10** | Phase3 引継ぎ再確認・シム整理 | `LaunchProgram` 等の引継ぎ項目を DI 経路で再確認し、呼び出し元ゼロのシムだけ削除。残課題は記録 | 検証・整理1件 |
+| **Phase4-Step0** | 現状棚卸し・基準テスト | `Global` メンバー、全呼び出し元、ViewModel 直接生成箇所、起動順序、イベント購読、既存ログを一覧化。Phase2/3 の自動テスト成功 | 調査・記録1件 |
+| **Phase4-Step1** | `IProfileSettingsService` 実装化 | Placeholder を実装へ置換し、設定の既定値・保存・読込・変更通知・配列境界を維持 | 1サービス |
+| **Phase4-Step2** | `IProfileRepository` 分離 | プロファイル読込・保存・選択・切替を移行し、Phase3 の `ApplyProfileDirect`／`RestoreProfileDirect` 依存を整理 | 1サービス |
+| **Phase4-Step3** | `ISpecialActionRepository` 分離 | SpecialAction の取得・保存・正規化を移行し、`ActionManager` の実行責務と分離 | 1サービス |
+| **Phase4-Step4** | 入力・出力・デバイス状態サービス | `IInputBehaviorSettingsService`、`IOutputHandlerSettingsService`、`IDeviceConnectionTracker` を責務単位で導入 | 1サービスまたは小機能 |
+| **Phase4-Step5** | 環境・UI・通知サービス | `IEnvironmentInfoProvider`、`IAppPathsProvider`、`IAppearanceSettingsService`、通知／キャッシュ責務を必要最小限移行 | 1サービス単位 |
+| **Phase4-Step6** | Composition Root 一本化 | `App.xaml.cs` の簡易 DI と `ServiceProviderHolder` 依存を整理し、`AppHost`／`ServiceRegistration` を正式な解決経路にする | 起動経路1件 |
+| **Phase4-Step7** | ViewModel パターンA移行 | 引数なし ViewModel の依存を明示し、DI 登録と画面取得へ移行 | 3〜5 ViewModel/PR |
+| **Phase4-Step8** | ViewModel パターンB移行 | 共有依存をコンストラクタ注入し、画面ライフサイクルとイベント解除を維持 | 3〜5 ViewModel/PR |
+| **Phase4-Step9** | ViewModel パターンC Factory 化 | 実行時引数付き ViewModel を `IXxxViewModelFactory.Create(...)` 経由へ移行 | 1 ViewModel/PR |
+| **Phase4-Step10** | Phase3 引継ぎ再確認・シム整理 | `LaunchProgram` 等の引継ぎ項目を DI 経路で再確認し、呼び出し元ゼロのシムだけ削除。残課題は記録 | 検証・整理1件 |
 
 一つのステップ内でも、対象サービスまたは ViewModel 群ごとに小さな PR に分割する。各 PR で旧経路を削除する場合は、新経路の自動テスト・起動確認・必要な実機確認が済んでいることを前提とする。
 
@@ -118,7 +118,7 @@ Phase3 の実装と自動テストは完了しているが、次の項目は Pha
 
 ## 3. 各ステップの詳細
 
-### Step 4-0: 現状棚卸し・基準テスト
+### Step0: 現状棚卸し・基準テスト
 
 1. `ScpUtil.cs` 内の `Global` メンバーを、プロファイル、入力、出力、デバイス、環境、UI、通知、純粋ヘルパーに分類する。
 2. `rg "Global\\." DS4Windows` で全呼び出し元を抽出し、移行対象サービスと対応 PR を記録する。
@@ -126,25 +126,25 @@ Phase3 の実装と自動テストは完了しているが、次の項目は Pha
 4. `App.xaml.cs`、`AppHost.cs`、`ServiceRegistration.cs`、`ServiceProviderHolder.cs` の起動・解決順を図示する。
 5. 移行前の `dotnet build`、`dotnet test`、主要画面起動、既存ログ出力を基準結果として保存する。
 
-### Step 4-1: `IProfileSettingsService` 実装化
+### Step1: `IProfileSettingsService` 実装化
 
 現状の `ProfileSettingsServicePlaceholder` を廃止対象とし、`Global` の `BackingStore` に存在する設定値を、既存の保存形式・既定値・スロット数・変更通知を保ったままサービスへ移す。`Global` の既存プロパティは当面サービスへ委譲するシムとして残す。
 
 検証対象は設定の読込、保存、既定値、`TEST_PROFILE_ITEM_COUNT` の境界、プロファイル変更通知、異常時の既存ログとする。
 
-### Step 4-2: `IProfileRepository` 分離
+### Step2: `IProfileRepository` 分離
 
 `ProfilePath`、`OlderProfilePath`、`SelectedProfile`、`LinkedProfileUI`、`ProfileActions`、`LoadProfile`、`ApplyProfile`、保存処理を、プロファイルのデータアクセス・切替責務として整理する。
 
 Phase3 で残した `ApplyProfileDirect`／`RestoreProfileDirect` は、`ControlService` 自体を `Global` の API に渡す構造をそのまま新インターフェースへコピーしない。必要な操作をプロファイルサービスの責務として再定義し、`Mapping` が `Program.rootHub` を直接取得しなくて済む境界を設計する。挙動変更を避けるため、既存の切替順序・一時プロファイル・距離プロファイル・ログを比較する。
 
-### Step 4-3: `ISpecialActionRepository` 分離
+### Step3: `ISpecialActionRepository` 分離
 
 SpecialAction の読込・保存・名前正規化・無効アクション記録をリポジトリへ移す。`IActionFactory` はActionの生成を担当し、`IManagedActionManager` は実行指示の実行層へのディスパッチを担当する。リポジトリは定義データの保持だけを担当する。SpecialActionの実行先が3-a／3-b／3-cのいずれであっても、この責務分離を維持する。
 
 `SpecialActionEditor` と `SpecialActionsListViewModel` の既存編集・再表示・削除・無効アクションログを回帰対象とする。
 
-### Step 4-4: 入力・出力・デバイス状態サービス
+### Step4: 入力・出力・デバイス状態サービス
 
 - `IInputBehaviorSettingsService`: タッチパッド、ジャイロ、スティック、トリガー、感度、デッドゾーン、反転、デバウンス等を担当。
 - `IOutputHandlerSettingsService`: 出力タイプ、ViGEm／FakerInput／HidHide の状態、出力先設定を担当。Phase2 の `IVirtualKBM` 自体や3-a／3-bの実行責務は置換しない。設定サービスは実行層が参照する設定を提供するだけとする。
@@ -152,16 +152,16 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 
 リアルタイム入力スレッドと WPF UI スレッドの両方から参照される値は、呼び出し元スレッドを棚卸しし、必要な同期だけを追加する。全 `Global` を一つのロックで囲まない。
 
-### Step 4-5: 環境・UI・通知サービス
+### Step5: 環境・UI・通知サービス
 
 - `IEnvironmentInfoProvider`: バージョン、管理者権限、OS・ドライバー存在判定。
 - `IAppPathsProvider`: exe／AppData パス。Host 構築前に必要な値の初期化順序を管理する。
 - `IAppearanceSettingsService`: 言語、テーマ、MainWindow／ProfileEditor／Controller タブの位置・サイズ・列幅。
-- 通知／キャッシュ責務: `ProfileChanged` 等のイベント、通知選択、UI キャッシュを既存の適切なサービスへ配置し、独立インターフェース化が必要かは Step 4-0 の棚卸しで決定する。静的イベントの購読解除は必ず維持する。
+- 通知／キャッシュ責務: `ProfileChanged` 等のイベント、通知選択、UI キャッシュを既存の適切なサービスへ配置し、独立インターフェース化が必要かは Step0 の棚卸しで決定する。静的イベントの購読解除は必ず維持する。
 
 `Clamp`、バージョン番号計算、単純な変換など副作用のない関数は、テスト可能性のためだけに DI サービスへ移さない。
 
-### Step 4-6: Composition Root 一本化
+### Step6: Composition Root 一本化
 
 1. `ServiceRegistration.AddAppServices` を全サービスの登録先とする。
 2. `App.xaml.cs` の簡易 `ServiceCollection` と `ServiceProviderHolder` の利用箇所を一覧化する。
@@ -169,7 +169,7 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 4. `Program.rootHub` を必要とするサービスは、アプリが `ControlService` を生成した後に遅延解決する。Host 構築時に null の実体を Singleton 化しない。
 5. 正式ルートでの解決確認後、旧 Provider の本番利用を削除する。テストだけが旧 Provider に依存している場合は、テストを先に正式ルートへ移す。
 
-### Step 4-7〜4-9: ViewModel 移行
+### Step7〜Step9: ViewModel 移行
 
 #### パターンA: 引数なし ViewModel
 
@@ -185,7 +185,7 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 
 各 Factory はアプリ共有サービスをコンストラクタで受け取り、`Create` には device、profile、action、settings、version 等の実行時値だけを渡す。`SpecialActionViewModel(5/8/9)` の固定値は呼び出し元に埋め込まず、用途を表す Factory メソッドまたは明示的な purpose 値として管理する。
 
-### Step 4-10: Phase3 引継ぎ再確認・シム整理
+### Step10: Phase3 引継ぎ再確認・シム整理
 
 `Phase3-Step5-RealDevice-Verification-Checklist.md` の `△`／`×`／未実施項目を、Composition Root 一本化後の DI 経路で再確認する。特に `LaunchProgram` は、`IProcessInspector` 解決、プロファイル適用、外部プログラム起動の順に原因を切り分ける。
 
@@ -199,14 +199,14 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 
 | リスク | 該当ステップ | 回避策 |
 |---|---|---|
-| `Global` の初期化順序が変わり設定・出力状態が null になる | 4-1〜4-6 | 遅延委譲、既定値比較、起動ログ比較、サービス解決テストを行う |
-| `ServiceProviderHolder` と `AppHost` が別インスタンスを返す | 4-6 | 正式 Provider を一つに固定し、同一 Singleton 解決テストを追加する |
+| `Global` の初期化順序が変わり設定・出力状態が null になる | Step1〜Step6 | 遅延委譲、既定値比較、起動ログ比較、サービス解決テストを行う |
+| `ServiceProviderHolder` と `AppHost` が別インスタンスを返す | Step6 | 正式 Provider を一つに固定し、同一 Singleton 解決テストを追加する |
 | `ScpUtil.cs` の大規模編集で既存処理を欠損させる | 全ステップ | 対象メンバーのみをピンポイント変更し、毎ステップビルドする |
-| 設定配列のスロット番号・既定値が変わる | 4-1〜4-4 | 境界値・全スロットの単体テストと設定ファイルの保存／再読込比較を行う |
-| UI／入力スレッド間の競合やイベントリークが発生する | 4-4〜4-9 | 呼び出し元スレッドと購読解除を一覧化し、必要最小限の同期を追加する |
-| ViewModel を Singleton 化して画面状態が混線する | 4-7〜4-9 | 画面状態は Transient、実行時引数は Factory、共有状態だけ Singleton とする |
-| `ApplyProfileDirect` の依存解消でプロファイル切替挙動が変わる | 4-2 | 切替順序、一時プロファイル、距離プロファイル、ログ、実機結果を移行前後で比較する |
-| Phase3 の実機未対応項目をサービス移行後も再現できない | 4-10 | 各項目に再現条件・使用デバイス・確認ログ・対応状態を記録する |
+| 設定配列のスロット番号・既定値が変わる | Step1〜Step4 | 境界値・全スロットの単体テストと設定ファイルの保存／再読込比較を行う |
+| UI／入力スレッド間の競合やイベントリークが発生する | Step4〜Step9 | 呼び出し元スレッドと購読解除を一覧化し、必要最小限の同期を追加する |
+| ViewModel を Singleton 化して画面状態が混線する | Step7〜Step9 | 画面状態は Transient、実行時引数は Factory、共有状態だけ Singleton とする |
+| `ApplyProfileDirect` の依存解消でプロファイル切替挙動が変わる | Step2 | 切替順序、一時プロファイル、距離プロファイル、ログ、実機結果を移行前後で比較する |
+| Phase3 の実機未対応項目をサービス移行後も再現できない | Step10 | 各項目に再現条件・使用デバイス・確認ログ・対応状態を記録する |
 
 ---
 
@@ -232,11 +232,11 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 3. `AppHost` の全 Phase0〜4 サービス解決、Singleton 同一性、Host 構築時の null／初期化順序をテストする。
 4. `rg` による `Global.`、`Program.rootHub`、`ServiceProviderHolder.Provider`、`new XxxViewModel(` の残存検査をステップごとに行う。
 5. Phase2/3 の既存自動テストを各ステップで実行し、設定保存・プロファイル切替・主要画面を手動または UI 起動確認する。
-6. Step 4-10 で Phase3-Step5 の実機引継ぎ項目を再確認し、結果を `Phase4-Status.md` または完了報告へ記録する。
+6. Step10 で Phase3-Step5 の実機引継ぎ項目を再確認し、結果を `Phase4-Status.md` または完了報告へ記録する。
 
 ## 7. 次のアクション
 
 1. 本計画書と全体計画書 §6.6 のステップ・サービス名・完了基準を突合する。
-2. Step 4-0 の棚卸し表を作成し、`Global` メンバーと ViewModel の全対象を確定する。
-3. Step 4-1 の `IProfileSettingsService` 実装化に着手する。
+2. Step0 の棚卸し表を作成し、`Global` メンバーと ViewModel の全対象を確定する。
+3. Step1 の `IProfileSettingsService` 実装化に着手する。
 4. 各ステップ完了後にビルド、全自動テスト、必要な実機確認を実施し、結果を `docs-forDIMG/MadeByAgent/` に記録する。
