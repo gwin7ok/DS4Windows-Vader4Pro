@@ -19,6 +19,12 @@
 - §3.2: `ScpUtil.cs`（`Global`）や `Mapping.cs` を全体再生成せず、対象メンバー単位でピンポイント変更する。
 - §4: 1ステップずつ実施し、各ステップのビルド・テスト・結果記録後に確認を挟む。
 
+## 文書の役割と更新方針
+
+本書は Phase4 作業時の詳細計画の正本とする。各 Step の着手前に、対象ファイル・実コード・依存関係・完了基準を再確認し、調査で判明した差分を本書へ反映する。各 Step 完了後は、実施結果、変更したサービス／ViewModel、テスト結果、残課題、次 Step への引継ぎを本書へ追記・更新する。
+
+`docs-forDIMG/DI-App-Wide-Migration-Plan.md` は他フェーズを含む全体像、フェーズ間の依存関係、全体の完了条件を確認するための文書とし、Phase4 の細かな対象一覧や作業手順は重複して管理しない。両文書に差分が生じた場合、Phase4 の実装判断・Step 状態・対象一覧は本書、全体のフェーズ構成・依存関係は全体計画書を更新する。
+
 ---
 
 ## 0. 着手前調査で判明した事実
@@ -72,7 +78,7 @@ Phase3 の実装と自動テストは完了しているが、次の項目は Pha
 | `Global` の SpecialAction 管理 | 対応する | `ISpecialActionRepository` としてデータアクセスを分離。Action 実行責務とは混在させない |
 | 入力・出力設定 | 対応する | `IInputBehaviorSettingsService`、`IOutputHandlerSettingsService` 等へ段階移行 |
 | デバイス接続状態 | 対応する | Phase3 の `IDs4DeviceRegistry`／`IDeviceStateAccessor` と重複しない状態管理サービスにする |
-| 環境情報・UI レイアウト・通知 | 対応する | 必要な責務だけをサービス化し、純粋定数・純粋関数は残す |
+| 環境情報・UI レイアウト・通知 | 対応する | 既存の `IEnvironmentInfoProvider`、`IAppPathsProvider`、`IAppearanceSettingsService` 等へ整理し、純粋定数・純粋関数は残す |
 | ViewModel 直接生成 | 対応する | 引数なしは DI、共有依存はコンストラクタ注入、実行時引数は Factory |
 | `DS4Devices.ReEnableDevice` と昇格サービスの再設計 | 原則対応しない | Phase3 の責務境界を維持し、実機確認・呼び出し元整理に限定 |
 | `Global` の全メンバー一括置換 | 対応しない | 巨大ファイル破損と挙動変更を避け、責務単位・PR単位で移行 |
@@ -88,7 +94,7 @@ Phase3 の実装と自動テストは完了しているが、次の項目は Pha
 | **4-2** | `IProfileRepository` 分離 | プロファイル読込・保存・選択・切替を移行し、Phase3 の `ApplyProfileDirect`／`RestoreProfileDirect` 依存を整理 | 1サービス |
 | **4-3** | `ISpecialActionRepository` 分離 | SpecialAction の取得・保存・正規化を移行し、`ActionManager` の実行責務と分離 | 1サービス |
 | **4-4** | 入力・出力・デバイス状態サービス | `IInputBehaviorSettingsService`、`IOutputHandlerSettingsService`、`IDeviceConnectionTracker` を責務単位で導入 | 1サービスまたは小機能 |
-| **4-5** | 環境・UI・通知サービス | `IApplicationEnvironment`、`IUiLayoutSettingsService`、通知／キャッシュ責務を必要最小限移行 | 1サービス単位 |
+| **4-5** | 環境・UI・通知サービス | `IEnvironmentInfoProvider`、`IAppPathsProvider`、`IAppearanceSettingsService`、通知／キャッシュ責務を必要最小限移行 | 1サービス単位 |
 | **4-6** | Composition Root 一本化 | `App.xaml.cs` の簡易 DI と `ServiceProviderHolder` 依存を整理し、`AppHost`／`ServiceRegistration` を正式な解決経路にする | 起動経路1件 |
 | **4-7** | ViewModel パターンA移行 | 引数なし ViewModel の依存を明示し、DI 登録と画面取得へ移行 | 3〜5 ViewModel/PR |
 | **4-8** | ViewModel パターンB移行 | 共有依存をコンストラクタ注入し、画面ライフサイクルとイベント解除を維持 | 3〜5 ViewModel/PR |
@@ -137,9 +143,10 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 
 ### Step 4-5: 環境・UI・通知サービス
 
-- `IApplicationEnvironment`: exe／AppData パス、バージョン、管理者権限、OS・ドライバー存在判定。
-- `IUiLayoutSettingsService`: MainWindow、ProfileEditor、Controller タブの位置・サイズ・列幅。
-- 通知／キャッシュサービス: `ProfileChanged` 等のイベント、通知選択、UI キャッシュ。静的イベントの購読解除を明示する。
+- `IEnvironmentInfoProvider`: バージョン、管理者権限、OS・ドライバー存在判定。
+- `IAppPathsProvider`: exe／AppData パス。Host 構築前に必要な値の初期化順序を管理する。
+- `IAppearanceSettingsService`: 言語、テーマ、MainWindow／ProfileEditor／Controller タブの位置・サイズ・列幅。
+- 通知／キャッシュ責務: `ProfileChanged` 等のイベント、通知選択、UI キャッシュを既存の適切なサービスへ配置し、独立インターフェース化が必要かは Step 4-0 の棚卸しで決定する。静的イベントの購読解除は必ず維持する。
 
 `Clamp`、バージョン番号計算、単純な変換など副作用のない関数は、テスト可能性のためだけに DI サービスへ移さない。
 
@@ -219,4 +226,3 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 2. Step 4-0 の棚卸し表を作成し、`Global` メンバーと ViewModel の全対象を確定する。
 3. Step 4-1 の `IProfileSettingsService` 実装化に着手する。
 4. 各ステップ完了後にビルド、全自動テスト、必要な実機確認を実施し、結果を `docs-forDIMG/MadeByAgent/` に記録する。
-

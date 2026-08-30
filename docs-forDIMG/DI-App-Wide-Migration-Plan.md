@@ -520,91 +520,32 @@ Viewの改修は最小限に抑えられる。17件全てに個別インター�
 
 ### 6.6 フェーズ4: `Global` 分割と ViewModel DI 化（横断/UI 層、6〜8週間）
 
-#### 6.6.1 着手前の実態と目的
+#### 6.6.1 フェーズ4の位置づけ
 
-フェーズ4開始時点の実コードを再調査し、計画の基準を次の通りとする。
+フェーズ4は、`DS4Windows/DS4Control/ScpUtil.cs` 内の巨大な静的 `Global` と、`DS4Windows/DS4Forms` の ViewModel 直接生成を、責務別サービス・`AppHost`・Factory へ段階移行するフェーズである。既存機能、ログ、配列インデックス、初期化順序を維持し、旧 API は新経路の確認まで互換シムとして残す。
 
-- `Global` は独立した `Global.cs` ではなく `DS4Windows/DS4Control/ScpUtil.cs` 内の巨大な `Global` クラスであり、プロファイル設定、入力設定、出力設定、実行環境情報、UI レイアウト値、イベント・キャッシュ、ヘルパーを静的メンバーとして保持している。
-- `DS4Windows/DI/ServiceRegistration.cs` には Phase 0〜3 のサービスと `IProfileSettingsService` の Placeholder が登録済みだが、実設定ストアを分離した実装にはなっていない。
-- `App.xaml.cs` は `ServiceProviderHolder` 用の簡易 `ServiceCollection` を構築した後に、`AppHost.CreateHost()` を検証呼び出ししている。両方が本番の解決経路になり得るため、ViewModel 移行前に Composition Root を一本化する必要がある。
-- ViewModel は `DS4Windows/DS4Forms` 配下の少なくとも16個の XAML コードビハインドから直接 `new` されている。引数なし、アプリ共有状態を受け取るもの、device/profile 等の実行時パラメータを受け取るものが混在している。
-- フェーズ3からは `ApplyProfileDirect`／`RestoreProfileDirect` の `Program.rootHub` 依存、`LaunchProgram` の実機動作不具合、実機の `△`／`×`／未実施項目が引き継がれている。これらはサービス移行後の実動作確認と必要な境界整理の対象に含める。
+実コードの棚卸し、具体的なサービス境界、対象 ViewModel、Step ごとの作業手順は [Phase4-Plan.md](MadeByAgent/Phase4-Plan.md) を正本とする。
 
-目的は `Global` を一度に置換することではなく、責務ごとのサービスを一つずつ導入し、既存静的 API を薄いシムとして残したまま呼び出し元を段階移行することである。既存機能、ログ、配列インデックス、初期化順序、スレッド上の暗黙の前提は変更しない。
+#### 6.6.2 全体から見た実施項目
 
-#### 6.6.2 フェーズ4のステップ分割
+詳細な Step 番号・対象ファイル・完了基準は単体計画書で管理し、全体計画書では次の大項目だけを追跡する。
 
-| ステップ | 内容 | 完了基準 | 主な対象 |
-|---|---|---|---|
-| 4-0 | 現状棚卸し・基準テスト・Composition Root 方針確定 | `Global` メンバーを責務別に分類し、全 `Global.` 呼び出し元、ViewModel の直接生成箇所、起動順序、ログを一覧化。既存の全自動テストが成功 | `ScpUtil.cs`, `App.xaml.cs`, `DI/*`, `DS4Forms/*.xaml.cs` |
-| 4-1 | `IProfileSettingsService` Placeholder の実装化 | 現在の `BackingStore`／設定保存・読込・既定値・変更通知を挙動変更なく実装へ移し、`ServiceRegistration` の Placeholder を置換。旧 `Global` プロパティはシムとして残す | `IProfileSettingsService`, `ProfileSettingsServicePlaceholder.cs`, `Global` の設定プロパティ |
-| 4-2 | プロファイル・SpecialAction リポジトリの分離 | `IProfileRepository` と `ISpecialActionRepository` を導入し、`ProfilePath`、`SelectedProfile`、`ProfileActions`、`ApplyProfile`／`LoadProfile` 系と SpecialAction の読書きを段階移行。Phase3 の `ApplyProfileDirect`／`RestoreProfileDirect` の `ControlService` 型依存をこの境界で解消 | `ScpUtil.cs`, `ProfileList.cs`, `ProfileEntity.cs`, `ProfileSwitchAction.cs`, `Mapping.cs` |
-| 4-3 | 入力・デバイス状態と出力設定の分離 | `IDeviceConnectionTracker`、`IInputBehaviorSettingsService`、`IOutputHandlerSettingsService` を導入し、接続状態・タッチ／ジャイロ／スティック／トリガー設定・出力先設定を個別に移行。Phase3 の実機 `△`／未実施項目をこの段階の DI 経路で再確認 | `ControlService.cs`, `Mapping.cs`, `DS4Devices.cs`, `ScpUtil.cs` |
-| 4-4 | 環境・UI レイアウト・通知責務の分離 | 実行ファイル／AppData／OS・ドライバー判定、ProfileEditor／Controller タブのレイアウト、通知・イベント／キャッシュをそれぞれ必要最小限のサービスへ移行。単なる定数・純粋ヘルパーは無理にサービス化しない | `Global` の環境情報・レイアウトプロパティ・イベント／キャッシュ、`App.xaml.cs`, `MainWindow.xaml.cs` |
-| 4-5 | Composition Root の一本化 | `App.xaml.cs` の簡易 `ServiceCollection` と `ServiceProviderHolder` 依存を、新しい `AppHost`／`ServiceRegistration` の単一プロバイダーへ段階的に統合。起動初期化、遅延生成、`Program.rootHub` 委譲の順序を維持し、二重登録・別インスタンス生成を防止 | `App.xaml.cs`, `AppHost.cs`, `ServiceRegistration.cs`, `ServiceProviderHolder.cs` |
-| 4-6 | ViewModel パターンAの移行 | 依存が少ない引数なし ViewModel を DI 登録し、XAML コードビハインドの `new` を `GetRequiredService` または画面生成ファクトリへ置換。MainWindow の共有 ViewModel は Singleton／画面単位のものは Transient とし、ライフタイムを個別に固定 | `MainWindowsViewModel`, `SettingsViewModel`, `LogViewModel`, `ChangelogViewModel`, `LanguagePackViewModel`, `PresetOptionViewModel`, `RenameProfileViewModel`, SpecialActions の引数なし ViewModel |
-| 4-7 | ViewModel パターンBの移行 | `ControlService`、`ProfileList`、`OutputSlotManager` 等のアプリ共有依存をコンストラクタ注入へ移行。既存の画面再表示・DataContext 解除・イベント購読解除を維持 | `ControllerListViewModel`, `TrayIconViewModel`, `CurrentOutDeviceViewModel`, `AutoProfilesViewModel`, `FirstLauchUtilViewModel`, `ControllerRegDeviceOptsViewModel` |
-| 4-8 | ViewModel パターンCの Factory 化 | `deviceNum`、`device`、`SpecialAction`、`DS4ControlSettings`、`version` 等の実行時値を受け取る ViewModel は直接 Singleton 化せず、`IXxxViewModelFactory.Create(...)` で生成。固定 purpose ID の `SpecialActionViewModel(5/8/9)` も用途別 Factory の生成引数として明示 | `BindingWindowViewModel`, `ProfileSettingsViewModel`, `MappingListViewModel`, `SpecialActionsListViewModel`, `SpecialActEditorViewModel`, `RecordBoxViewModel`, `TouchButtonUserControlViewModel`, `UpdaterWindowViewModel`, `LoadProfileViewModel` |
-| 4-9 | 移行済み経路の検証とシム整理 | DI 経路で全 UI を起動・操作でき、全自動テスト成功、実機の Phase3 引継ぎ項目を再確認。呼び出し元がゼロになった旧シムだけを個別判断で削除し、未移行シムは残す | 全 Phase4 対象、`Phase3-Step5-RealDevice-Verification-Checklist.md` |
+1. `IProfileSettingsService` Placeholder の実装化。
+2. プロファイル／SpecialAction 管理の `IProfileRepository`／`ISpecialActionRepository` 分離。
+3. 入力・出力・デバイス状態・環境・UI レイアウト・通知の責務分離。
+4. `AppHost`／`ServiceRegistration` への Composition Root 一本化。
+5. ViewModel の DI／コンストラクタ注入／Factory 化。
+6. Phase3 の積み残し（プロファイル適用時の `Program.rootHub`、`LaunchProgram`、実機確認項目）の再確認。
 
-#### 6.6.3 `Global` の責務分割方針
+#### 6.6.3 全体レベルの完了条件
 
-新しいインターフェース名と責務は次を基準とし、実装着手時のメンバー棚卸しで漏れを防ぐ。既存コードの全メンバーを機械的に一つのサービスへ移すことは禁止する。
+- `Global` の主要責務がサービスへ分割され、`ServiceRegistration` から解決できる。
+- `IProfileSettingsService` の Placeholder と本番の二重 Composition Root が解消される。
+- ViewModel の DI／Factory 化が完了し、画面のライフサイクルと既存機能が維持される。
+- Phase3 からの積み残しが解消済み、または再現条件・理由・次の対応先とともに文書化される。
+- Phase2/3 を含む全自動テスト、ビルド、主要画面の起動・操作確認が成功する。
 
-| サービス | 移行対象の責務 | 移行時の注意 |
-|---|---|---|
-| `IProfileSettingsService` | `BackingStore` に保持される設定値の読書き、既定値、保存・変更通知 | 既存 Placeholder を実装へ置換。配列のスロット数と既定値を完全維持 |
-| `IProfileRepository` | プロファイルパス、選択状態、読込・保存、プロファイル切替・適用 | `Global.ApplyProfile` 等の引数に残る `ControlService` 依存を境界内で整理。ログと切替順序を維持 |
-| `ISpecialActionRepository` | `ProfileActions`、SpecialAction の取得・保存・正規化 | Phase1/2 の `ActionManager` との責務を重複させず、データアクセスだけを担当 |
-| `IInputBehaviorSettingsService` | タッチパッド、ジャイロ、スティック、トリガー、感度、デッドゾーン等 | 実行中の `Mapping` が読む値のスレッド安全性とスロット単位の更新を確認 |
-| `IOutputHandlerSettingsService` | 出力タイプ、ViGEm／FakerInput／HidHide 状態、出力設定、`outputKBMMapping` 関連 | Phase2 の `IVirtualKBM` と混同せず、設定・環境判定と出力実装を分離 |
-| `IDeviceConnectionTracker` | 接続状態、初回接続フラグ、選択デバイス、デバイス単位の一時状態 | Phase3 の `IDs4DeviceRegistry`／`IDeviceStateAccessor` を再ラップせず、状態管理の責務だけを持たせる |
-| `IApplicationEnvironment` | exe／AppData パス、バージョン、管理者権限、OS・ドライバー存在判定 | 起動初期に必要な値の遅延初期化と、テスト時の環境差し替えを明示 |
-| `IUiLayoutSettingsService` | ProfileEditor、Controller、MainWindow の位置・サイズ・列幅 | WPF UI スレッドからのアクセスと保存タイミングを維持 |
-| `INotificationStateService` | ProfileChanged 等のイベント、通知選択、UI キャッシュ | イベント購読者の寿命と解除を確認し、静的イベントのリークを増やさない |
-| `IGlobalCalculationService`（必要な場合のみ） | Clamp、変換、バージョン計算など副作用のないヘルパー | 純粋関数は通常の static／既存ユーティリティとして残し、DI 化を目的化しない |
-
-各サービスは、①対象メンバーと全呼び出し元を棚卸し、②インターフェースと実装を追加、③`ServiceRegistration` に登録、④既存 `Global` API を薄い委譲シム化、⑤呼び出し元を小単位で移行、⑥単体・起動・実機確認、の順で進める。1 PR で複数サービスの呼び出し元を一括置換しない。
-
-#### 6.6.4 ViewModel の生成・ライフタイム方針
-
-- 引数なしでも `Global` や静的イベントを内部参照する ViewModel は、先に依存を明示してから登録する。単に `AddSingleton<ViewModel>()` するだけの移行は禁止。
-- 実行時引数を持つ ViewModel は DI コンテナへ直接 Singleton 登録せず、Factory を Singleton 登録する。Factory はアプリ共有サービスを受け取り、`Create` の引数は device/profile/action/version などの実行時データに限定する。
-- WPF の画面・UserControl の既存ライフサイクルを維持する。画面を閉じた後にイベント購読やタイマーが残らないよう、既存の解除処理をテスト対象とする。
-- `MainWindow` などアプリ全体で一つだけ必要な状態は Singleton、編集画面・ダイアログの状態は原則 Transient とする。既存の再利用挙動がある場合はコード上の実態を優先して個別に固定する。
-
-#### 6.6.5 フェーズ3からの引継ぎ項目
-
-Phase 4 で必ず扱う引継ぎ事項は次の通りである。
-
-1. `Mapping.cs` の `ApplyProfileDirect`／`RestoreProfileDirect` に残る `Program.rootHub` と `ControlService` 型引数依存を、`IProfileRepository` の設計と合わせて解消する。
-2. `LaunchProgram` の実機確認で `×` となった起動・多重起動防止経路を、`IProcessInspector` の DI 解決確認、プロファイル適用経路、外部プロセス起動の順に調査し、必要な修正と回帰テストを実施する。
-3. Bluetooth 切断後の再接続、非管理者 UAC 経路、ラムブル、`IDeviceStateAccessor` の実使用確認など、Phase3-Step5 の `△`／未実施項目を、DI 経路が一本化された状態で再確認する。
-4. `IDs4DeviceRegistry.ReEnableDevice` と `IElevatedProcessLauncher` の責務境界は Phase3 の設計を維持し、Phase4 では再統合せず、必要な実機確認と呼び出し元の責務だけを整理する。
-
-#### 6.6.6 完了判定基準・テスト・リスク
-
-**完了判定基準**:
-
-- `Global` の対象責務が上記サービスへ分割され、各サービスが `ServiceRegistration` から解決できる。Placeholder と二重 Composition Root が残っていない。
-- 移行対象の UI コードビハインドに直接の `new XxxViewModel(...)` が残らず、引数なし ViewModel は DI、実行時引数付き ViewModel は Factory 経由で生成される。
-- Phase3 から引き継いだ `ApplyProfileDirect`／`RestoreProfileDirect`、`LaunchProgram`、実機確認項目について、対応済みまたは理由・次フェーズ・再現条件が文書化されている。
-- 既存の設定保存、プロファイル切替、デバイス入力、KBM 出力、ログ、WPF 画面操作に機能差がなく、全自動テストと起動回帰確認が成功する。
-
-**テスト計画**:
-
-- 各サービスに、既定値、読書き、保存、スロット境界、イベント通知、例外時の既存挙動を検証する単体テストを追加する。
-- 各 Factory に、実行時引数が正しく ViewModel へ渡ること、DI 依存が差し替え可能なこと、画面再生成時に状態が混線しないことを検証する。
-- `AppHost` の全 Phase0〜4 サービス解決テスト、旧 `ServiceProviderHolder` 経由が不要になったことの静的検査、主要画面の起動・DataContext 検査を行う。
-- Phase2/3 の全自動テストを毎ステップ実行し、DI 化完了後に Phase3-Step5 の実機引継ぎ項目を再実施する。
-
-**主要リスクと対策**:
-
-- `Global` の配列・静的状態をサービス化した際の初期化順序変更 → 遅延委譲シム、既定値比較、起動ログ比較を必須とする。
-- `ServiceProviderHolder` と `AppHost` の二重化による別インスタンス → Phase4-5 で解決経路を一つにし、サービス解決テストで検知する。
-- WPF UI スレッドとバックグラウンド入力スレッドの競合 → 呼び出し元スレッドを棚卸しし、必要な同期だけを追加する。全体ロックは導入しない。
-- 巨大な `ScpUtil.cs`／`Mapping.cs` の編集による欠損 → 指示書 §3.2 に従い、対象メソッド・プロパティ単位の小さなパッチに限定する。
-- ViewModel の Singleton 化による画面状態共有 → Factory／Transient を基本とし、Singleton は共有状態が実証されたものに限定する。
+詳細なサービス境界、Step 別完了基準、テストケース、リスク対策は [Phase4-Plan.md](MadeByAgent/Phase4-Plan.md) の更新内容を正とする。
 
 ### 6.7 フェーズ5: 仕上げ・整流化（3-a層+全体、1〜2週間）
 
