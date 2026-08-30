@@ -126,9 +126,7 @@
                 "./DS4WindowsTests/DS4Windows.Actions.Tests.csproj",
                 "-c",
                 "Debug",
-                "/p:platform=x64",
-                "-o",
-                "./DS4WindowsTests/bin/x64/Debug"
+                "/p:platform=x64"
             ],
             "group": {
                 "kind": "build",

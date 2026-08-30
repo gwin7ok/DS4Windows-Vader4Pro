@@ -1,4 +1,4 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Runtime.Serialization;
 using System.Threading;
@@ -10,6 +10,17 @@ namespace StandaloneTests
     [TestClass]
     public class ToggleRepeatStopTests
     {
+        private class TestServiceProvider : IServiceProvider
+        {
+            private readonly object svc;
+            public TestServiceProvider(object svc) { this.svc = svc; }
+            public object GetService(Type serviceType)
+            {
+                if (svc != null && serviceType.IsInstanceOfType(svc)) return svc;
+                return null;
+            }
+        }
+
         private class TestVirtualKBM : VirtualKBMBase
         {
             public int PressCount = 0;
@@ -54,46 +65,55 @@ namespace StandaloneTests
         [TestMethod]
         public void Toggle_OnThenOff_StopsRepeater()
         {
-            // Arrange
-            int device = 0;
-            ushort logicalKey = 70;
+            var dam = new DS4Windows.Actions.DefaultActionManager();
+            var srv = new TestServiceProvider(dam);
+            DS4Windows.DI.ServiceProviderHolder.SetProvider(srv);
 
-            // Create a SpecialAction via public constructor with safe defaults and mark it as Toggle
-            var sa = TestHelpers.CreateToggleAction(logicalKey);
+            try
+            {
+                int device = 0;
+                ushort logicalKey = 70;
 
-            // Initialize registry with our action
-            ActionRegistry.Initialize(new SpecialAction[] { sa });
+                var sa = TestHelpers.CreateToggleAction(logicalKey);
+                ActionRegistry.Initialize(new SpecialAction[] { sa });
 
-            // Ensure mapping/controller dict is clean for device
-            ActionManager.ClearDeviceState(device);
+                dam.ClearAllToggledOn();
+                dam.ClearAllEntries();
+                ActionManager.ClearDeviceState(device);
 
-            var handler = new TestVirtualKBM();
+                var handler = new TestVirtualKBM();
 
-            // Act: dispatch via ActionManager (canonical path)
-            bool dispatched = ActionManager.DispatchTriggerEstablished(sa, device, logicalKey, logicalKey, false, handler);
-            Assert.IsTrue(dispatched, "Expected dispatch to succeed");
+                // 1st trigger: Turns Toggle ON
+                bool dispatched = ActionManager.DispatchTriggerEstablished(sa, device, logicalKey, logicalKey, false, handler);
+                Assert.IsTrue(dispatched, "Expected dispatch to succeed");
+                ActionManager.DispatchTriggerReleased(sa, device, logicalKey, logicalKey, false, handler);
 
-            // Allow a few repeat intervals to occur
-            Thread.Sleep(160);
+                // Allow repeat intervals while toggle is ON
+                Thread.Sleep(160);
 
-            int pressesBefore = handler.PressCount;
-            Assert.IsTrue(pressesBefore >= 1, "Expected at least one synthetic press before release");
+                int pressesBefore = handler.PressCount;
+                Assert.IsTrue(pressesBefore >= 1, "Expected at least one synthetic press before toggle off");
 
-            // Now send release via ActionManager
-            bool released = ActionManager.DispatchTriggerReleased(sa, device, logicalKey, logicalKey, false, handler);
-            Assert.IsTrue(released, "Expected release dispatch to succeed");
+                // 2nd trigger: Turns Toggle OFF
+                bool toggleOffDispatched = ActionManager.DispatchTriggerEstablished(sa, device, logicalKey, logicalKey, false, handler);
+                Assert.IsTrue(toggleOffDispatched, "Expected toggle-off dispatch to succeed");
+                ActionManager.DispatchTriggerReleased(sa, device, logicalKey, logicalKey, false, handler);
 
-            // Wait to observe whether repeats continue
-            Thread.Sleep(250);
+                // Wait to observe repeats have stopped
+                Thread.Sleep(250);
 
-            int pressesAfter = handler.PressCount;
+                int pressesAfter = handler.PressCount;
 
-            // Assert: no further presses after release (allowing 1 extra in-flight)
-            Assert.IsTrue(pressesAfter - pressesBefore <= 1, $"Expected repeater to stop after release (before={pressesBefore}, after={pressesAfter})");
+                // Assert: no further presses after turning toggle off
+                Assert.IsTrue(pressesAfter - pressesBefore <= 1, $"Expected repeater to stop after toggle off (before={pressesBefore}, after={pressesAfter})");
 
-            // Cleanup
-            ActionManager.ClearDeviceState(device);
-            ActionRegistry.Initialize(null);
+                ActionManager.ClearDeviceState(device);
+                ActionRegistry.Initialize(null);
+            }
+            finally
+            {
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(null);
+            }
         }
     }
 }
