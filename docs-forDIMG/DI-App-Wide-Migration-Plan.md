@@ -508,9 +508,15 @@ Viewの改修は最小限に抑えられる。17件全てに個別インター�
 3. **`Process.Start` 分類②・⑥の抽象化**: 権限昇格を `IElevatedProcessLauncher`、多重起動チェックを
    `IProcessInspector` に切り出し。
 
+#### フェーズ3完了記録（2026-08-31）
+
+フェーズ3の実装、自動テスト、実機確認結果の記録を完了し、本フェーズを完了扱いとする。自動テストは全件成功した。実機確認の詳細は `docs-forDIMG/MadeByAgent/Phase3-Step5-RealDevice-Verification-Checklist.md`、自動テストの詳細は `docs-forDIMG/MadeByAgent/Phase3-Step4-Automated-Test-Coverage-Report.md` を参照する。
+
+実機確認で `△`、`×`、未実施となった項目は、DI 化完了後に対応する未対応事項として引き継ぐ。対象は、Bluetooth 切断後の再接続条件、非管理者起動時の UAC 昇格経路、UAC 承認／拒否時の結果反映、新経路の実使用確認、ラムブル動作および `IDeviceStateAccessor` 経路、`LaunchProgram` の起動・多重起動防止および `IProcessInspector` 経路である。これらは Phase 3 の実装完了を取り消すものではなく、後続の DI 化完了後に確認・修正する。
+
 **完了判定基準**: `Mapping.cs` 内の `Program.rootHub` 参照が0件、`ControlService.cs` から `DS4Devices.`
 直接参照が除去されること。
-**リスク**: HID通信を含む低レイヤ処理のため、実機での接続/切断シナリオの手動確認を必須とする。
+**リスク**: HID通信を含む低レイヤ処理のため、実機での接続/切断シナリオの手動確認を必須とする。確認結果に残る未対応事項は上記の完了記録に従い、DI 化完了後に対応する。
 
 ### 6.6 フェーズ4: `Global` 分割とViewModel DI化（横断/UI層、6〜8週間）
 

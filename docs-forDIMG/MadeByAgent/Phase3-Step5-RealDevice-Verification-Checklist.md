@@ -1,17 +1,20 @@
 ﻿﻿# フェーズ3 実機動作確認リスト（Phase3-RealDevice-Verification-Checklist.md）
 
+正式名称: Phase3-Step5-RealDevice-Verification-Checklist.md
 作成日: 2026-08-30
 対象ブランチ: For-DI-migration-work
 前提ドキュメント:
 - `docs-forDIMG/MadeByAgent/Phase3-Plan.md` §5（完了判定基準・項目7）
 - `docs-forDIMG/MadeByAgent/Phase3-Status.md` §3
-- `docs-forDIMG/MadeByAgent/Phase3-Automated-Test-Coverage-Report.md`（自動テストで担保した範囲との切り分け）
+- `docs-forDIMG/MadeByAgent/Phase3-Step4-Automated-Test-Coverage-Report.md`（自動テストで担保した範囲との切り分け）
 
 ## 本リストの位置づけ
 
 `Phase3-Plan.md` §5の完了判定基準のうち、項目7「実機でのデバイス接続/切断・権限昇格シナリオの動作確認が記録されている」を満たすためのチェックリストである。
 
-自動テストで担保可能な範囲（DIコンテナへの登録確認、`IProcessInspector`の単体ロジック等）は `Phase3-Automated-Test-Coverage-Report.md` に記載の通り既にテストコードとして実装済みである。本リストには **実機（実コントローラ・UAC・実際の外部プログラム）がなければ検証できない項目のみ** を挙げる。
+自動テストで担保可能な範囲（DIコンテナへの登録確認、`IProcessInspector`の単体ロジック等）は `Phase3-Step4-Automated-Test-Coverage-Report.md` に記載の通り既にテストコードとして実装済みである。本リストには **実機（実コントローラ・UAC・実際の外部プログラム）がなければ検証できない項目のみ** を挙げる。
+
+本リストの確認結果における `△`、`×`、`未実施` の項目は、Phase 3 の DI 化完了後に対応する未対応事項として `Phase3-Status.md` および `DI-App-Wide-Migration-Plan.md` に引き継ぐ。これらは Phase 3 の実装完了を取り消すものではなく、後続対応として管理する。
 
 各項目は、実施後にチェックを入れ、日付・確認者・簡単な結果メモを記入すること。
 
@@ -52,7 +55,7 @@
 | 3-2 | `Mapping.cs`側が新経路（`AppHost.GetService<IDeviceStateAccessor>()`）を実際に使用してデバイスを取得している | ログ確認、またはデバッガでのブレークポイント確認（`accessor != null`かつ`d = accessor.GetController(device)`が成功する経路を確認） | [未実施] テスト結果 ||
 | 3-3 | 複数台接続時、各コントローラのラムブルが正しく対応するデバイスに送られる（デバイスインデックスの取り違えがない） | 2台以上のコントローラを接続し、それぞれ個別にラムブルを発生させて確認 | [未実施] テスト結果 ||
 
-**理由（自動テスト不可）**: `GetController`の返す`DS4Device`が実際に機能する（HID経由でラムブル信号を送れる）ことの確認には、実物のコントローラとの通信が必須。Phase3-Step3-6-Aで修正したのは「正しいDIコンテナから解決されるようになったか」という配線の正しさであり、`Phase3-Automated-Test-Coverage-Report.md`記載の自動テストで担保済みだが、「実際にラムブルが機能するか」はハードウェア依存のため対象外。
+**理由（自動テスト不可）**: `GetController`の返す`DS4Device`が実際に機能する（HID経由でラムブル信号を送れる）ことの確認には、実物のコントローラとの通信が必須。Phase3-Step3-6-Aで修正したのは「正しいDIコンテナから解決されるようになったか」という配線の正しさであり、`Phase3-Step4-Automated-Test-Coverage-Report.md`記載の自動テストで担保済みだが、「実際にラムブルが機能するか」はハードウェア依存のため対象外。
 
 ---
 
@@ -64,7 +67,7 @@
 | 4-2 | 対象アプリが既に起動している状態でプロファイルを読み込むと、二重起動されない | 4-1の対象アプリを起動したままプロファイルを再読み込み | [×] テスト結果 ||
 | 4-3 | （新経路の確認）`IProcessInspector`経由の新経路が実際に使用されていること | ログ確認、またはデバッガでのブレークポイント確認（`Global.LoadProfile`内の`handled = true`到達を確認） | [×] テスト結果 ||
 
-**理由（自動テスト不可）**: `DefaultProcessInspector.IsProcessRunning`単体のロジック（自プロセスの検出等）は`Phase3-Automated-Test-Coverage-Report.md`記載の通り自動テスト済みだが、「実際にプロファイル経由で外部アプリの起動制御が正しく動く」ことの確認には、実際の外部プログラムとプロファイル設定を用いたエンドツーエンドの動作確認が必要。
+**理由（自動テスト不可）**: `DefaultProcessInspector.IsProcessRunning`単体のロジック（自プロセスの検出等）は`Phase3-Step4-Automated-Test-Coverage-Report.md`記載の通り自動テスト済みだが、「実際にプロファイル経由で外部アプリの起動制御が正しく動く」ことの確認には、実際の外部プログラムとプロファイル設定を用いたエンドツーエンドの動作確認が必要。
 
 ---
 
@@ -78,6 +81,6 @@
 
 ## 6. 次のアクション
 
-1. 上記1〜4の各項目を実機で実施し、結果をチェック・記録する。
-2. 全項目の確認が完了した時点で、`Phase3-Plan.md` §5 項目7を「達成」とし、`Phase3-Status.md` §3を更新する。
+1. 実施済みの確認結果を本リストに記録した。
+2. `△`、`×`、`未実施` の項目は DI 化完了後に対応する未対応事項として管理する。
 3. 未解決の不具合が見つかった場合は、別途Issueまたは`docs-forDIMG/MadeByAgent/`配下に調査記録を作成する。

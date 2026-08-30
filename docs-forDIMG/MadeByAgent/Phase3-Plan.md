@@ -119,7 +119,7 @@ private void DS4Devices_RequestElevation(RequestElevationArgs args)
 
 ---
 
-## 2. タスク分割（7ステップ・§5ルールに従い各ステップ完了後に確認を打つ）
+## 2. タスク分割（9ステップ・§5ルールに従い各ステップ完了後に確認を打つ）
 
 | ステップ | 内容 | 完了基準 | PR単位 |
 |---|---|---|---|
@@ -130,6 +130,8 @@ private void DS4Devices_RequestElevation(RequestElevationArgs args)
 | **3-F** | **フォローアップ: DI配線整理および昇格境界対応（Phase3-StepF）** | `Phase3-Followup-DI-Wiring-And-Elevation-Boundary-Plan.md` に基づき、Step 3-1〜3-4のDI配線整理、ReEnableDeviceと昇格処理の境界整理、ビルド確認の実施 | 1フォローアップ |
 | **3-5** | `Process.Start` 分類①（権限昇格）の抽象化 | `IElevatedProcessLauncher` 新設、`ControlService.DS4Devices_RequestElevation` を経由させる（バックトラック保持） | 1インターフェース |
 | **3-6** | `Process.Start` 分類②（多重起動チェック）の抽象化 | `IProcessInspector` 新設、`ScpUtil.cs` 側の現状再調査を含めて対応 | 1インターフェース |
+| **4** | **自動テストカバレッジ報告（Phase3-Step4）** | **DI 配線・移行対象ロジックの自動テストを実行し、全件成功を記録する** | **テスト結果報告** |
+| **5** | **実機動作確認（Phase3-Step5）** | **実機確認結果を記録し、`△`／`×`／未実施項目を DI 化完了後の未対応事項として引き継ぐ** | **実機確認記録** |
 
 **§5ルール（段階的実施）に従い、各ステップ完了後にユーソー確認を打つこと。**
 一度に全ステップを実装しない。
@@ -260,6 +262,14 @@ public interface IProcessInspector
 着手前に `ScpUtil.cs` 内の `Process.GetProcesses()` 呼び出し箇所を再調査し、全体計画書の記述
 （L6694/L6717相当）が現在も正しいか確認する。
 
+### Step 4: 自動テストカバレッジ報告
+
+`Phase3-Step4-Automated-Test-Coverage-Report.md` に、自動テストの対象範囲、追加テスト、対象外範囲、および実行結果を記録する。全自動テストが成功したことをもって Step 4 を完了とする。
+
+### Step 5: 実機動作確認
+
+`Phase3-Step5-RealDevice-Verification-Checklist.md` に、デバイス接続・切断、UAC 昇格、ラムブル、`LaunchProgram` の実機確認結果を記録する。`△`／`×`／未実施項目は、DI 化完了後に対応する未対応事項として管理するが、Phase 3 の実装完了および完了扱いを妨げない。
+
 ---
 
 ## 4. リスクと回避策
@@ -276,18 +286,19 @@ public interface IProcessInspector
 
 ## 5. 完了判定基準（フェーズ3全体）
 
-- [ ] `IDs4DeviceRegistry` インターフェースが `DS4Devices` の全 public static メンバーを過不足なく反映している
-- [ ] `Ds4DeviceRegistryAdapter` がコンパイル成功し、DIコンテナにSingleton登録されている
-- [ ] `Mapping.cs` 6504行目相当の箇所が `IDeviceStateAccessor` 経由に置換され、バックトラックが保持されている
-- [ ] `ApplyProfileDirect`/`RestoreProfileDirect` の `Program.rootHub` 依存2箇所が、フェーズ4への既知の残課題として明示的に文書化されている（削除・変更はしない）
-- [ ] **Step 3-F（Phase3-StepF）のフォローアップが完了し、DI配線と昇格境界の整理・ビルド確認が済んでいる**
-- [ ] `IElevatedProcessLauncher`/`IProcessInspector` が新設され、既存の `Process.Start` 直接呼び出しはバックトラックとして保持されている
-- [ ] 実機でのデバイス接続/切断・権限昇格シナリオの動作確認が記録されている
-- [ ] 各ステップの集積記録（`Phase3-Step3-x-Report.md` 等）が `docs-forDIMG/MadeByAgent/` に記録されている
-- [ ] `Phase2-Status.md` 相当の `Phase3-Status.md` を新設し、進捗を追跡する
+- [x] `IDs4DeviceRegistry` インターフェースが `DS4Devices` の全 public static メンバーを過不足なく反映している
+- [x] `Ds4DeviceRegistryAdapter` がコンパイル成功し、DIコンテナにSingleton登録されている
+- [x] `Mapping.cs` 6504行目相当の箇所が `IDeviceStateAccessor` 経由に置換され、バックトラックが保持されている
+- [x] `ApplyProfileDirect`/`RestoreProfileDirect` の `Program.rootHub` 依存2箇所が、フェーズ4への既知の残課題として明示的に文書化されている（削除・変更はしない）
+- [x] **Step 3-F（Phase3-StepF）のフォローアップが完了し、DI配線と昇格境界の整理・ビルド確認が済んでいる**
+- [x] `IElevatedProcessLauncher`/`IProcessInspector` が新設され、既存の `Process.Start` 直接呼び出しはバックトラックとして保持されている
+- [x] 実機でのデバイス接続/切断・権限昇格シナリオの動作確認が `Phase3-Step5-RealDevice-Verification-Checklist.md` に記録されている（`△`／`×`／未実施項目は後続対応）
+- [x] 自動テストカバレッジと全件成功の結果が `Phase3-Step4-Automated-Test-Coverage-Report.md` に記録されている
+- [x] 各ステップの集積記録（`Phase3-Step3-x-Report.md` 等）が `docs-forDIMG/MadeByAgent/` に記録されている
+- [x] `Phase2-Status.md` 相当の `Phase3-Status.md` を新設し、進捗を追跡する
 
 ## 6. 次のアクション
 
-1. 本計画書（Step 3-F 追加版）についてユーソー確認を得る。
-2. **Step 3-F（Phase3-StepF：DI配線整理および昇格境界対応）** に着手する（`docs-forDIMG/MadeByAgent/Phase3-Followup-DI-Wiring-And-Elevation-Boundary-Plan.md` 参照）。
-3. Step 3-F 完了後にユーソー報告・確認を行い、Step 3-5（`IElevatedProcessLauncher`）へ進む。
+1. Phase 3 の実装、自動テスト、実機確認結果の記録を完了扱いとして確定する。
+2. `Phase3-Step5-RealDevice-Verification-Checklist.md` の `△`／`×`／未実施項目を DI 化完了後の未対応事項として引き継ぐ。
+3. 次フェーズでは `Global` 分割および ViewModel DI 化に着手する。

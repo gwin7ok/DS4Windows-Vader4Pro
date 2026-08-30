@@ -1,18 +1,19 @@
 ﻿﻿# フェーズ3 自動テスト追加報告書（Phase3-Automated-Test-Coverage-Report.md）
 
+正式名称: Phase3-Step4-Automated-Test-Coverage-Report.md
 作成日: 2026-08-30
 対象ブランチ: For-DI-migration-work
 前提ドキュメント:
 - `docs-forDIMG/MadeByAgent/Phase3-Plan.md` §5（完了判定基準）
 - `docs-forDIMG/MadeByAgent/Phase3-Status.md` §3
-- `docs-forDIMG/MadeByAgent/Phase3-RealDevice-Verification-Checklist.md`（本報告書と対をなす実機確認リスト）
+- `docs-forDIMG/MadeByAgent/Phase3-Step5-RealDevice-Verification-Checklist.md`（本報告書と対をなす実機確認リスト）
 
 ## 1. 目的
 
 `Phase3-Plan.md` §5 項目7「実機でのデバイス接続/切断・権限昇格シナリオの動作確認が記録されている」への対応にあたり、
 
 - **自動テストで検証可能な範囲**はテストコードとして実装し、CI／`dotnet test`で継続的に検証できるようにする
-- **実機（実コントローラ・UAC・実際の外部プログラム）がなければ検証できない範囲**は`Phase3-RealDevice-Verification-Checklist.md`にチェックリストとして切り出す
+- **実機（実コントローラ・UAC・実際の外部プログラム）がなければ検証できない範囲**は`Phase3-Step5-RealDevice-Verification-Checklist.md`にチェックリストとして切り出す
 
 という方針で切り分けを行った。本書は前者（自動テストで担保した範囲）の内容と、その判断根拠を記録する。
 
@@ -58,7 +59,7 @@ Phase3-Step3-5／Phase3-Step3-6でAppHost（正式DIルート）に追加登録�
 | `IDs4DeviceRegistry`経由の実HID通信（接続・切断検知） | 実際のUSB/Bluetooth通信に依存 |
 | `LaunchProgram`のエンドツーエンド動作（プロファイル設定→実際の外部アプリ起動制御） | 実在する外部プログラムパスとプロファイル設定を用いた統合的な動作確認が必要 |
 
-これらは`Phase3-RealDevice-Verification-Checklist.md`に実機確認項目として記載した。
+これらは `Phase3-Step5-RealDevice-Verification-Checklist.md` に実機確認項目として記載した。
 
 **今後の課題（フェーズ4以降で検討）**: `ControlService.DS4Devices_RequestElevation`および`Global.LoadProfile`の`handled`分岐ロジック自体をテスト可能にするには、`LaunchProcessAction`と同様のコンストラクタ注入パターン（`IElevatedProcessLauncher`/`IProcessInspector`をオプション引数として受け取れるようにする）へのリファクタリングが有効と考えられる。ただし`ControlService`のコンストラクタ変更は影響範囲が大きく、`Global`クラスの構造変更は§3.2の制約に触れるため、フェーズ4（`Global`分割）と合わせて検討することを推奨する。
 
@@ -66,10 +67,14 @@ Phase3-Step3-5／Phase3-Step3-6でAppHost（正式DIルート）に追加登録�
 
 - 新規: `DS4WindowsTests/ProcessInspectorTests.cs`
 - 新規: `DS4WindowsTests/Phase3ServiceRegistrationTests.cs`
-- 新規: `docs-forDIMG/MadeByAgent/Phase3-RealDevice-Verification-Checklist.md`（対をなす実機確認リスト）
+- `docs-forDIMG/MadeByAgent/Phase3-Step5-RealDevice-Verification-Checklist.md`（対をなす実機確認リスト）
 
 ## 5. 次のアクション
 
-1. `dotnet test` でビルド・テスト実行し、全件成功することを確認する。
-2. `Phase3-RealDevice-Verification-Checklist.md` に基づき実機確認を実施する。
-3. 実機確認完了後、`Phase3-Plan.md` §5 項目7を「達成」として`Phase3-Status.md`を更新し、フェーズ3を正式完了とする。
+1. `dotnet test` でビルド・テスト実行し、全件成功することを確認した。
+2. `Phase3-Step5-RealDevice-Verification-Checklist.md` に基づく実機確認結果を記録した。
+3. 実機確認で `×` または未実施となった項目は、DI 化完了後に対応する未対応事項として引き継ぐ。
+
+## 6. Step 4 完了結果
+
+自動テストは全件成功した。これにより、Step 4 の自動テスト実装・実行および DI 配線の回帰確認を完了とする。
