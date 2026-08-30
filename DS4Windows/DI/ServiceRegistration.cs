@@ -19,6 +19,9 @@ namespace DS4WinWPF.DI
                         // Phase 3 Step 3-3: DS4 Device Registry
             services.AddSingleton<IDs4DeviceRegistry, Ds4DeviceRegistryAdapter>();
 
+            // Phase 3 Step 3-5: Elevated Process Launcher
+            services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
+
             return services;
         }
     }

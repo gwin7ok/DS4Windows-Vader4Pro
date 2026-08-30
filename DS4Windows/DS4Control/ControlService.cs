@@ -635,27 +635,48 @@ namespace DS4Windows
 
         private void DS4Devices_RequestElevation(RequestElevationArgs args)
         {
-            // Launches an elevated child process to re-enable device
-            ProcessStartInfo startInfo =
-                new ProcessStartInfo(Global.exelocation);
-            startInfo.Verb = "runas";
-            startInfo.Arguments = "re-enabledevice " + args.InstanceId;
-            startInfo.UseShellExecute = true;
-
+            // Phase 3 Step 3-5: try DI-based IElevatedProcessLauncher first,
+            // fall back to the original direct Process.Start implementation.
+            bool handled = false;
             try
             {
-                Process child = Process.Start(startInfo);
-                if (!child.WaitForExit(30000))
+                var launcher = DS4WinWPF.AppHost.GetService<IElevatedProcessLauncher>();
+                if (launcher != null)
                 {
-                    child.Kill();
+                    int? exitCode = launcher.RelaunchElevated("re-enabledevice " + args.InstanceId, 30000);
+                    if (exitCode.HasValue)
+                    {
+                        args.StatusCode = exitCode.Value;
+                    }
+                    handled = true;
                 }
-                else
-                {
-                    args.StatusCode = child.ExitCode;
-                }
-                child.Dispose();
             }
             catch { }
+
+            if (!handled)
+            {
+                // Launches an elevated child process to re-enable device
+                ProcessStartInfo startInfo =
+                    new ProcessStartInfo(Global.exelocation);
+                startInfo.Verb = "runas";
+                startInfo.Arguments = "re-enabledevice " + args.InstanceId;
+                startInfo.UseShellExecute = true;
+
+                try
+                {
+                    Process child = Process.Start(startInfo);
+                    if (!child.WaitForExit(30000))
+                    {
+                        child.Kill();
+                    }
+                    else
+                    {
+                        args.StatusCode = child.ExitCode;
+                    }
+                    child.Dispose();
+                }
+                catch { }
+            }
         }
 
         public void CheckHidHidePresence(string ExePath = "", string ExeName = "Autoprofile Exe", bool AddExe = true) // Default value for D4W Startup

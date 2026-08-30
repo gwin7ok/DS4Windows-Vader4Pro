@@ -429,13 +429,6 @@
 		</Reference>
 	</ItemGroup>
 
-	<Target Name="IgnoreCsErrors" AfterTargets="Build">
-	  <Message Text="Ignoring errors from .cs files" Importance="high" />
-	  <ItemGroup>
-	    <Compile Remove="**/*.cs" />
-	  </ItemGroup>
-	</Target>
-
 	<!-- Ensure generated editorconfig used by IDE includes our project-level suppressions
 	     This appends suppression lines to the GeneratedMSBuildEditorConfig.editorconfig
 	     after MSBuild writes it, so OmniSharp/Roslyn will see the same suppressions

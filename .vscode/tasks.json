@@ -4,16 +4,11 @@
         {
             "label": "Release win-x64",
             "type": "shell",
-            "command": "dotnet",
+            "command": "pwsh",
             "args": [
-                "publish",
-                "./DS4Windows/DS4WinWPF.csproj",
-                "-c",
-                "Release",
-                "/p:platform=x64",
-                "/p:AppendTargetFrameworkToOutputPath=false",
-                "-o",
-                "./DS4Windows/bin/x64/Release"
+                "-NoProfile",
+                "-File",
+                "./scripts/publish-win-x64.ps1"
             ],
             "group": "build",
             "presentation": {

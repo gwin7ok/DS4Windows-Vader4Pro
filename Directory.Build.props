@@ -4,6 +4,7 @@
     <!-- Moved diagnostic suppression to .editorconfig (editor-level) per repository policy. -->
     <WarningsAsErrors />
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <UseSharedCompilation>false</UseSharedCompilation>
     <!-- Versioning: set the project's canonical version here. -->
     <!-- Canonical project version -->
     <Version>3.11.7</Version>
