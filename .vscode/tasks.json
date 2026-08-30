@@ -41,7 +41,7 @@
                 "post-build-x64"
             ],
             "group": {
-                "kind": "build",
+                "kind": "build"
             }
         },
         {
@@ -148,12 +148,12 @@
             "label": "Build Test",
             "dependsOrder": "sequence",
             "dependsOn": [
+                "Build Debug",
                 "Build Test (Actions)",
                 "Build Test (Standalone)"
             ],
             "group": {
-                "kind": "build",
-                "isDefault": true
+                "kind": "build"
             }
         },
         {
