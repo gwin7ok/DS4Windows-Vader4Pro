@@ -649,6 +649,7 @@ Viewの改修は最小限に抑えられる。17件全てに個別インター�
 | 4 | `04-理想の3層構造と現状のズレ.md` | 3層モデルの理想形と実コードの対応検証（補足ステージ） |
 | 5 | `05-段階移行ロードマップ.md` | フェーズ分割、PR粒度、リスクと回避策、スケジュール見積もり |
 | - | `docs-forDIMG/MadeByAgent/Phase4-Plan.md` | フェーズ4の `Global` 分割、Composition Root 一本化、ViewModel DI／Factory 化の実施計画 |
+| - | `docs-forDIMG/MadeByAgent/Phase4-Status.md` | フェーズ4のStep別進捗、Phase3からの引継ぎ、検証結果、残課題の管理 |
 | - | `docs/DI-Migration-Plan.md`（既存） | フェーズ1のベースとして採用 |
 | - | `docs/DI-Implementation-Guide.md`（既存） | 推奨パッケージ・導入手順のベースとして採用 |
 | - | `docs/DI/DI-ObjectGraph.md`（既存） | Composition Root設計のベースとして採用 |
