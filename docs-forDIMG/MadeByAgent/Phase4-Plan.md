@@ -71,6 +71,14 @@ Phase3 の実装と自動テストは完了しているが、次の項目は Pha
 
 `Global` の横断的な責務をサービスへ段階分割し、ViewModel の生成を `AppHost`／Factory 経由に統一する。最終的には UI 層が `Global`、`Program.rootHub`、旧 `ServiceProviderHolder`、直接生成に依存しない状態を目指す。
 
+### 1.1.1 全体4層モデルとの責務境界
+
+全体計画書で採用した4層モデルに従い、Phase4は第4層（UI層）と、UI層から実行時3層へ設定・状態を渡すサービス境界を主対象とする。入力監視層、信号変換層、信号・アクション実行層（3-a／3-b／3-c）の実行順序と責務を、Phase4のサービスやViewModelへ移動・重複させない。
+
+- UI層は設定・プロファイル・デバイス状態を表示・編集し、サービス経由で実行時3層へ反映する。UIやViewModelが直接キー送出、仮想コントローラー出力、プロファイル切替、プロセス起動を実行しない。
+- 信号変換層は入力やSpecialActionを、種別・対象・値・順序・タイミングを持つ実行指示へ分解する。Phase4のリポジトリはSpecialActionの定義データを管理するが、実行指示の生成・実行そのものは担当しない。
+- 信号・アクション実行層は実行指示を3-a（仮想コントローラー）、3-b（KBM）、3-c（アプリ内アクション）へ振り分けて実行する。混在マクロの順序・遅延・キャンセルを含む実行責務はこの層に残す。
+
 ### 1.2 対応対象
 
 | 対象 | Phase4での扱い | 方針 |
@@ -84,6 +92,7 @@ Phase3 の実装と自動テストは完了しているが、次の項目は Pha
 | ViewModel 直接生成 | 対応する | 引数なしは DI、共有依存はコンストラクタ注入、実行時引数は Factory |
 | `DS4Devices.ReEnableDevice` と昇格サービスの再設計 | 原則対応しない | Phase3 の責務境界を維持し、実機確認・呼び出し元整理に限定 |
 | `Global` の全メンバー一括置換 | 対応しない | 巨大ファイル破損と挙動変更を避け、責務単位・PR単位で移行 |
+| 信号変換層・信号／アクション実行層の再設計 | 原則対応しない | 4層モデルの境界を維持し、UI・設定サービスが3-a／3-b／3-cの実行責務を直接持たないことを確認 |
 
 ---
 
@@ -131,14 +140,14 @@ Phase3 で残した `ApplyProfileDirect`／`RestoreProfileDirect` は、`Control
 
 ### Step 4-3: `ISpecialActionRepository` 分離
 
-SpecialAction の読込・保存・名前正規化・無効アクション記録をリポジトリへ移す。`IActionFactory`／`IManagedActionManager` は Action の生成・実行を担当し、リポジトリはデータ保持だけを担当する。
+SpecialAction の読込・保存・名前正規化・無効アクション記録をリポジトリへ移す。`IActionFactory` はActionの生成を担当し、`IManagedActionManager` は実行指示の実行層へのディスパッチを担当する。リポジトリは定義データの保持だけを担当する。SpecialActionの実行先が3-a／3-b／3-cのいずれであっても、この責務分離を維持する。
 
 `SpecialActionEditor` と `SpecialActionsListViewModel` の既存編集・再表示・削除・無効アクションログを回帰対象とする。
 
 ### Step 4-4: 入力・出力・デバイス状態サービス
 
 - `IInputBehaviorSettingsService`: タッチパッド、ジャイロ、スティック、トリガー、感度、デッドゾーン、反転、デバウンス等を担当。
-- `IOutputHandlerSettingsService`: 出力タイプ、ViGEm／FakerInput／HidHide の状態、出力先設定を担当。Phase2 の `IVirtualKBM` 自体は置換しない。
+- `IOutputHandlerSettingsService`: 出力タイプ、ViGEm／FakerInput／HidHide の状態、出力先設定を担当。Phase2 の `IVirtualKBM` 自体や3-a／3-bの実行責務は置換しない。設定サービスは実行層が参照する設定を提供するだけとする。
 - `IDeviceConnectionTracker`: 初回接続フラグ、接続中状態、デバイス単位の一時状態を担当。HID 列挙そのものは Phase3 の `IDs4DeviceRegistry` に残す。
 
 リアルタイム入力スレッドと WPF UI スレッドの両方から参照される値は、呼び出し元スレッドを棚卸しし、必要な同期だけを追加する。全 `Global` を一つのロックで囲まない。
@@ -180,6 +189,8 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 
 `Phase3-Step5-RealDevice-Verification-Checklist.md` の `△`／`×`／未実施項目を、Composition Root 一本化後の DI 経路で再確認する。特に `LaunchProgram` は、`IProcessInspector` 解決、プロファイル適用、外部プログラム起動の順に原因を切り分ける。
 
+あわせて、UI／設定サービスから3-a／3-b／3-cを直接実行していないこと、混在マクロやSpecialActionの実行指示が既存の実行層へ渡ることを確認する。
+
 旧 `Global` シム、旧 Provider、フォールバックは呼び出し元とテストがゼロになったものだけを個別に削除する。残す場合は、残置理由・削除条件・対象フェーズを Status または完了報告へ記録する。
 
 ---
@@ -210,6 +221,7 @@ SpecialAction の読込・保存・名前正規化・無効アクション記録
 - [ ] Phase3 の `LaunchProgram`、UAC、Bluetooth 再接続、ラムブル等の引継ぎ項目が確認済み、または未対応事項として文書化されている
 - [ ] Phase2/3 を含む全自動テスト、ビルド、主要画面の起動・操作確認が成功している
 - [ ] 新経路の確認前に旧シムを削除しておらず、削除したシムには削除根拠がある
+- [ ] UI／設定サービスが実行時3層の実行責務を直接持たず、SpecialAction／混在マクロの実行指示が3-a／3-b／3-cへ正しく引き渡される
 
 ---
 
