@@ -16,8 +16,8 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 2 | IProfileRepository 分離 | **完了** | 2026-08-31 | `IProfileRepository.cs`, `ProfileRepository.cs`, DI登録, Globalシム, `ProfileRepositoryTests.cs` |
 | Step 3 | ISpecialActionRepository 分離 | **完了** | 2026-08-31 | `ISpecialActionRepository.cs`, `SpecialActionRepository.cs`, DI登録, Globalシム, `SpecialActionRepositoryTests.cs`, **実機検証CP1全件合格** |
 | **実機CP1** | **データ中核層 実機検証** | **完了** | 2026-08-31 | `Phase4-Step3-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
-| Step 4 | 入力・出力・デバイス状態サービス | **未着手 (次)** | - | Input/Output/DeviceState 各サービスの分離 |
-| Step 5 | 環境・UI・通知サービス | 未着手 | - | Path/Environment/UI/Notification 各サービスの分離 |
+| Step 4 | 入力・出力・デバイス状態サービス | **完了** | 2026-08-31 | `IDeviceStateService.cs`, `IOutputSlotService.cs`, `DeviceStateService.cs`, `OutputSlotService.cs`, DI登録, Globalシム, 各単体テスト |
+| Step 5 | 環境・UI・通知サービス | **未着手 (次)** | - | Path/Environment/UI/Notification 各サービスの分離 |
 | Step 6 | Composition Root 一本化 | 未着手 | - | DIコンテナ二重起動解消・一本化 |
 | **実機CP2** | **全バックエンドDI＋Root一本化 実機検証** | 未着手 | - | バックエンド完成・全サービス結合実機検証（Step6完了時） |
 | Step 7 | ViewModel DI 移行 (Pattern A) | 未着手 | - | 引数なし ViewModel の DI 登録・移行 |
@@ -32,23 +32,35 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 ## 2. 詳細ステータス
 
 ### Step 1: IProfileSettingsService 実装化 (完了)
-- **DI契約 (永続資産)**: `DS4Windows/DI/IProfileSettingsService.cs`（名前空間 `DS4Windows.DI`）を本番仕様に拡張。
+- **DI契約 (永続資産)**: `DS4Windows/DI/IProfileSettingsService.cs`（第4層 4-c、名前空間 `DS4Windows.DI`）を本番仕様に拡張。
 - **サービス実装 (永続資産)**: `DS4Windows/DS4Control/Services/ProfileSettingsService.cs`（スロット別配列、既定値、変更イベント、排他制御）。
 - **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `ProfileSettingsService` を Singleton 登録。
 - **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` 内の `Global` プロパティを `ProfileSettingsServiceInstance` へのシム委譲へピンポイント置換。
 - **単体テスト**: `DS4WindowsTests/ProfileSettingsServiceTests.cs`（全件通過、回帰ゼロ）。
 
 ### Step 2: IProfileRepository 分離 (完了)
-- **DI契約 (永続資産)**: `DS4Windows/DI/IProfileRepository.cs`（名前空間 `DS4Windows.DI`）を新規作成。プロファイル XML 入出力、パス解決、一覧取得、切替（`ApplyProfileDirect` / `RestoreProfileDirect`）を定義。
+- **DI契約 (永続資産)**: `DS4Windows/DI/IProfileRepository.cs`（第4層 4-c、名前空間 `DS4Windows.DI`）を新規作成。プロファイル XML 入出力、パス解決、一覧取得、切替（`ApplyProfileDirect` / `RestoreProfileDirect`）を定義。
 - **サービス実装 (永続資産)**: `DS4Windows/DS4Control/Services/ProfileRepository.cs`（`IProfileSettingsService` をコンストラクタ注入、スレッドセーフなファイル操作、プロファイル切替ロジック）。
 - **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `ProfileRepository` を Singleton 登録。
 - **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` に `Global.ProfileRepositoryInstance` プロパティ（安全なフォールバック付き）を追加。
 - **単体テスト**: `DS4WindowsTests/ProfileRepositoryTests.cs`（全件通過、回帰ゼロ）。
 
 ### Step 3: ISpecialActionRepository 分離 & 実機検証CP1 (完了)
-- **DI契約 (永続資産)**: `DS4Windows/DI/ISpecialActionRepository.cs`（名前空間 `DS4Windows.DI`）を新規作成。SpecialAction の XML 永続化・CRUD・変更通知を定義。
+- **DI契約 (永続資産)**: `DS4Windows/DI/ISpecialActionRepository.cs`（第4層 4-c、名前空間 `DS4Windows.DI`）を新規作成。SpecialAction の XML 永続化・CRUD・変更通知を定義。
 - **サービス実装 (永続資産)**: `DS4Windows/DS4Control/Services/SpecialActionRepository.cs`（スレッドセーフな CRUD 操作、XML 永続化、`ActionsChanged` イベント通知）。
 - **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `SpecialActionRepository` を Singleton 登録。
 - **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` に `Global.SpecialActionRepositoryInstance` プロパティ（安全なフォールバック付き）を追加。
 - **単体テスト**: `DS4WindowsTests/SpecialActionRepositoryTests.cs`（全件通過、回帰ゼロ）。
 - **実機動作検証 (Checkpoint 1)**: `Phase4-Step3-RealDevice-Verification-Checklist.md` に基づき、実機コントローラー・UI・物理 XML ファイル（`Profiles/*.xml`, `Actions.xml`）の結合動作を検証。**全12項目すべて ○（正常動作）で合格**。
+
+### Step 4: 入力・出力・デバイス状態サービス (完了)
+- **DI契約 (永続資産)**:
+  - `DS4Windows/DI/IDeviceStateService.cs`: 第1層（入力監視層）の物理デバイス状態を第4層 4-c へ提供する契約。
+  - `DS4Windows/DI/IOutputSlotService.cs`: 第3層（信号出力層 3-a. 仮想コントローラー出力）の出力スロット管理を第4層 4-c へ提供する契約。
+- **サービス実装 (永続資産)**:
+  - `DS4Windows/DS4Control/Services/DeviceStateService.cs`: スレッドセーフな内部配列 `_devices`、接続数カウント、変更イベント通知を実装。
+  - `DS4Windows/DS4Control/Services/OutputSlotService.cs`: 仮想コントローラー出力スロット管理、出力タイプ（`OutContType.X360` / `DS4`）管理、変更イベント通知を実装。
+- **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `IDeviceStateService` および `IOutputSlotService` を Singleton 登録。
+- **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` に `Global.DeviceStateServiceInstance` および `Global.OutputSlotServiceInstance` プロパティを追加。
+- **単体テスト**: `DS4WindowsTests/DeviceStateServiceTests.cs` および `DS4WindowsTests/OutputSlotServiceTests.cs`（全件通過、回帰ゼロ）。
+- **ビルド・テスト検証**: 全プロジェクトビルド警告0・エラー0、既存テスト（31件/13件）および新設テスト全件成功。
