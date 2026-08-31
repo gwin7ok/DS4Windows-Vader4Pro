@@ -770,6 +770,38 @@ namespace DS4Windows
             set => profileRepository = value;
         }
 
+                // =========================================================================
+        // Phase4-Step3: ISpecialActionRepository DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        private static DS4Windows.DI.ISpecialActionRepository specialActionRepository = null;
+        private static readonly DS4Windows.DI.ISpecialActionRepository fallbackSpecialActionRepository = new SpecialActionRepository();
+
+        public static DS4Windows.DI.ISpecialActionRepository SpecialActionRepositoryInstance
+        {
+            get
+            {
+                if (specialActionRepository != null)
+                    return specialActionRepository;
+
+                try
+                {
+                    var service = AppHost.GetService<DS4Windows.DI.ISpecialActionRepository>();
+                    if (service != null)
+                    {
+                        specialActionRepository = service;
+                        return specialActionRepository;
+                    }
+                }
+                catch
+                {
+                    // DIコンテナ未初期化時の安全なフォールバック
+                }
+
+                return fallbackSpecialActionRepository;
+            }
+            set => specialActionRepository = value;
+        }
+
         public static string[] tempprofilename
         {
             get => ProfileSettingsServiceInstance.TempProfileNameArray;
