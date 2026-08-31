@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -27,7 +27,8 @@ namespace DS4WinWPF
                     });
 
                 _host = builder.Build();
-                AppLogger.LogToGui("[DI] AppHost.CreateHost: Host initialized and all services registered", false, true);
+                if (AppLogger.IsTraceEnabled)
+                    AppLogger.LogTrace("[DI] AppHost.CreateHost: Host initialized and all services registered");
                 return _host;
             }
         }
@@ -46,7 +47,8 @@ namespace DS4WinWPF
                     });
 
                 _host = builder.Build();
-                AppLogger.LogToGui("[DI] AppHost.CreateHost: Host initialized with args", false, true);
+                if (AppLogger.IsTraceEnabled)
+                    AppLogger.LogTrace("[DI] AppHost.CreateHost: Host initialized with args");
                 return _host;
             }
         }
@@ -65,9 +67,9 @@ namespace DS4WinWPF
             }
 
             var service = _host?.Services.GetService<T>();
-            if (service != null)
+            if (service != null && AppLogger.IsTraceEnabled)
             {
-                AppLogger.LogToGui($"[DI] AppHost.GetService: Resolved {typeof(T).Name}", false, true);
+                AppLogger.LogTrace($"[DI] AppHost.GetService: Resolved {typeof(T).Name}");
             }
             return service;
         }
@@ -86,9 +88,9 @@ namespace DS4WinWPF
             }
 
             var service = _host?.Services.GetService(serviceType);
-            if (service != null)
+            if (service != null && AppLogger.IsTraceEnabled)
             {
-                AppLogger.LogToGui($"[DI] AppHost.GetService: Resolved {serviceType.Name}", false, true);
+                AppLogger.LogTrace($"[DI] AppHost.GetService: Resolved {serviceType.Name}");
             }
             return service;
         }
@@ -102,7 +104,8 @@ namespace DS4WinWPF
                     try
                     {
                         _host.Dispose();
-                        AppLogger.LogToGui("[DI] AppHost.Dispose: Host disposed", false, true);
+                        if (AppLogger.IsTraceEnabled)
+                            AppLogger.LogTrace("[DI] AppHost.Dispose: Host disposed");
                     }
                     catch { }
                     finally

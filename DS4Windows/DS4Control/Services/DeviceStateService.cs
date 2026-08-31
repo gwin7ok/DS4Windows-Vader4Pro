@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using DS4Windows.DI;
 
@@ -77,7 +77,8 @@ namespace DS4Windows
                 lock (_syncLock)
                 {
                     _devices[slotIndex] = device;
-                    AppLogger.LogToGui($"[DI] DeviceStateService.SetDevice: Slot {slotIndex}, Device {(device != null ? "Connected" : "Disconnected")}", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] DeviceStateService.SetDevice: Slot {slotIndex}, Device {(device != null ? "Connected" : "Disconnected")}");
                     NotifyDeviceStateChanged(slotIndex, device != null);
                 }
             }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using DS4Windows.DI;
 
 namespace DS4Windows
@@ -65,7 +65,8 @@ namespace DS4Windows
                 lock (_syncLock)
                 {
                     _deviceTypes[slotIndex] = deviceType;
-                    AppLogger.LogToGui($"[DI] OutputSlotService.SetOutputDeviceType: Slot {slotIndex} = {deviceType}", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDeviceType: Slot {slotIndex} = {deviceType}");
                 }
             }
         }
@@ -77,7 +78,8 @@ namespace DS4Windows
                 lock (_syncLock)
                 {
                     _outputDevices[slotIndex] = outputDevice;
-                    AppLogger.LogToGui($"[DI] OutputSlotService.SetOutputDevice: Slot {slotIndex} output device updated", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDevice: Slot {slotIndex} output device updated");
                     OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, outputDevice));
                 }
             }

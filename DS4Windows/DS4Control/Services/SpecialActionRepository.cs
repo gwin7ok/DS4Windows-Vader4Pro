@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -50,7 +50,8 @@ namespace DS4Windows
                         return false;
 
                     Global.LoadActions();
-                    AppLogger.LogToGui("[DI] SpecialActionRepository.LoadActions: Actions.xml loaded via DI", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace("[DI] SpecialActionRepository.LoadActions: Actions.xml loaded via DI");
                     OnActionsChanged();
                     return true;
                 }
@@ -68,7 +69,8 @@ namespace DS4Windows
                 try
                 {
                     Global.SaveActions();
-                    AppLogger.LogToGui("[DI] SpecialActionRepository.SaveActions: Actions.xml saved via DI", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace("[DI] SpecialActionRepository.SaveActions: Actions.xml saved via DI");
                     return true;
                 }
                 catch
@@ -121,7 +123,8 @@ namespace DS4Windows
                 {
                     _actions.Add(action);
                 }
-                AppLogger.LogToGui($"[DI] SpecialActionRepository.AddAction: Action '{action.name}' added via DI", false, true);
+                if (AppLogger.IsTraceEnabled)
+                    AppLogger.LogTrace($"[DI] SpecialActionRepository.AddAction: Action '{action.name}' added via DI");
                 OnActionsChanged();
                 return true;
             }
@@ -138,7 +141,8 @@ namespace DS4Windows
                 if (index >= 0)
                 {
                     _actions.RemoveAt(index);
-                    AppLogger.LogToGui($"[DI] SpecialActionRepository.RemoveAction: Action '{actionName}' removed via DI", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] SpecialActionRepository.RemoveAction: Action '{actionName}' removed via DI");
                     OnActionsChanged();
                     return true;
                 }
@@ -157,7 +161,8 @@ namespace DS4Windows
                 if (index >= 0)
                 {
                     _actions[index] = newAction;
-                    AppLogger.LogToGui($"[DI] SpecialActionRepository.ReplaceAction: Action '{oldActionName}' replaced via DI", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] SpecialActionRepository.ReplaceAction: Action '{oldActionName}' replaced via DI");
                     OnActionsChanged();
                     return true;
                 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using DS4Windows.DI;
 
@@ -20,7 +20,8 @@ namespace DS4Windows
                         _appDataPath = !string.IsNullOrEmpty(Global.appdatapath)
                             ? Global.appdatapath
                             : AppContext.BaseDirectory;
-                        AppLogger.LogToGui($"[DI] PathService: AppDataPath resolved to '{_appDataPath}'", false, true);
+                        if (AppLogger.IsTraceEnabled)
+                            AppLogger.LogTrace($"[DI] PathService: AppDataPath resolved to '{_appDataPath}'");
                     }
                     return _appDataPath;
                 }
@@ -30,7 +31,8 @@ namespace DS4Windows
                 lock (_syncLock)
                 {
                     _appDataPath = value;
-                    AppLogger.LogToGui($"[DI] PathService: AppDataPath explicitly set to '{value}'", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] PathService: AppDataPath explicitly set to '{value}'");
                 }
             }
         }
@@ -61,14 +63,16 @@ namespace DS4Windows
                 profileName += ".xml";
 
             string resolvedPath = Path.Combine(ProfilesPath, profileName);
-            AppLogger.LogToGui($"[DI] PathService.GetProfilePath: Profile '{profileName}' -> '{resolvedPath}'", false, true);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] PathService.GetProfilePath: Profile '{profileName}' -> '{resolvedPath}'");
             return resolvedPath;
         }
 
         public string GetAutoProfilesPath()
         {
             string path = Path.Combine(AppDataPath, "Auto Profiles.xml");
-            AppLogger.LogToGui($"[DI] PathService.GetAutoProfilesPath: '{path}'", false, true);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] PathService.GetAutoProfilesPath: '{path}'");
             return path;
         }
     }

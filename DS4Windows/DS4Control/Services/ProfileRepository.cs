@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -86,7 +86,8 @@ namespace DS4Windows
                         return false;
 
                     Global.LoadProfile(deviceIndex, false, null, false);
-                    AppLogger.LogToGui($"[DI] ProfileRepository.LoadProfile: Slot {deviceIndex}, Profile '{profileName}' loaded via DI", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] ProfileRepository.LoadProfile: Slot {deviceIndex}, Profile '{profileName}' loaded via DI");
                     return true;
                 }
                 catch
@@ -107,7 +108,8 @@ namespace DS4Windows
                         return false;
 
                     Global.SaveProfile(deviceIndex, profileName);
-                    AppLogger.LogToGui($"[DI] ProfileRepository.SaveProfile: Slot {deviceIndex}, Profile '{profileName}' saved via DI", false, true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] ProfileRepository.SaveProfile: Slot {deviceIndex}, Profile '{profileName}' saved via DI");
                     return true;
                 }
                 catch
@@ -120,7 +122,8 @@ namespace DS4Windows
         public bool LoadDefaultProfile(int deviceIndex)
         {
             _profileSettings?.ResetToDefaults(deviceIndex);
-            AppLogger.LogToGui($"[DI] ProfileRepository.LoadDefaultProfile: Slot {deviceIndex} reset to defaults via DI", false, true);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] ProfileRepository.LoadDefaultProfile: Slot {deviceIndex} reset to defaults via DI");
             return true;
         }
 
@@ -144,7 +147,8 @@ namespace DS4Windows
 
             _profileSettings?.SetUseTempProfile(deviceIndex, true);
             _profileSettings?.SetTempProfileName(deviceIndex, profileName);
-            AppLogger.LogToGui($"[DI] ProfileRepository.ApplyProfileDirect: Slot {deviceIndex}, Temp Profile '{profileName}' applied via DI", false, true);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] ProfileRepository.ApplyProfileDirect: Slot {deviceIndex}, Temp Profile '{profileName}' applied via DI");
             return LoadProfile(deviceIndex, profileName);
         }
 
@@ -155,7 +159,8 @@ namespace DS4Windows
 
             _profileSettings?.SetUseTempProfile(deviceIndex, false);
             _profileSettings?.SetTempProfileName(deviceIndex, string.Empty);
-            AppLogger.LogToGui($"[DI] ProfileRepository.RestoreProfileDirect: Slot {deviceIndex} restored via DI", false, true);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] ProfileRepository.RestoreProfileDirect: Slot {deviceIndex} restored via DI");
             return LoadProfile(deviceIndex, string.Empty);
         }
     }
