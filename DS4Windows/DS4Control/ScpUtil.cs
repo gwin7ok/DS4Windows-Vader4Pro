@@ -706,7 +706,7 @@ namespace DS4Windows
         public static string appDataPpath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\DS4Windows";
         public static string localAppDataPpath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DS4Windows");
         public static bool runHotPlug = false;
-        // =========================================================================
+                // =========================================================================
         // Phase4-Step1: IProfileSettingsService DI シム (Strangler Fig 移行用)
         // =========================================================================
         private static DS4Windows.DI.IProfileSettingsService profileSettingsService = null;
@@ -733,12 +733,13 @@ namespace DS4Windows
                     // DIコンテナ未初期化時の安全なフォールバック
                 }
 
+                AppLogger.LogToGui("[Legacy] Global.ProfileSettingsServiceInstance: Fallback instance used", false, true);
                 return fallbackProfileSettingsService;
             }
             set => profileSettingsService = value;
         }
 
-                // =========================================================================
+        // =========================================================================
         // Phase4-Step2: IProfileRepository DI シム (Strangler Fig 移行用)
         // =========================================================================
         private static DS4Windows.DI.IProfileRepository profileRepository = null;
@@ -748,9 +749,7 @@ namespace DS4Windows
         {
             get
             {
-                if (profileRepository != null)
-                    return profileRepository;
-
+                if (profileRepository != null) return profileRepository;
                 try
                 {
                     var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>();
@@ -760,17 +759,15 @@ namespace DS4Windows
                         return profileRepository;
                     }
                 }
-                catch
-                {
-                    // DIコンテナ未初期化時の安全なフォールバック
-                }
+                catch { }
 
+                AppLogger.LogToGui("[Legacy] Global.ProfileRepositoryInstance: Fallback instance used", false, true);
                 return fallbackProfileRepository;
             }
             set => profileRepository = value;
         }
 
-                // =========================================================================
+        // =========================================================================
         // Phase4-Step3: ISpecialActionRepository DI シム (Strangler Fig 移行用)
         // =========================================================================
         private static DS4Windows.DI.ISpecialActionRepository specialActionRepository = null;
@@ -780,9 +777,7 @@ namespace DS4Windows
         {
             get
             {
-                if (specialActionRepository != null)
-                    return specialActionRepository;
-
+                if (specialActionRepository != null) return specialActionRepository;
                 try
                 {
                     var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.ISpecialActionRepository>();
@@ -792,17 +787,15 @@ namespace DS4Windows
                         return specialActionRepository;
                     }
                 }
-                catch
-                {
-                    // DIコンテナ未初期化時の安全なフォールバック
-                }
+                catch { }
 
+                AppLogger.LogToGui("[Legacy] Global.SpecialActionRepositoryInstance: Fallback instance used", false, true);
                 return fallbackSpecialActionRepository;
             }
             set => specialActionRepository = value;
         }
 
-                // =========================================================================
+        // =========================================================================
         // Phase4-Step4: IDeviceStateService & IOutputSlotService DI シム (Strangler Fig 移行用)
         // =========================================================================
         private static DS4Windows.DI.IDeviceStateService deviceStateService = null;
@@ -812,9 +805,7 @@ namespace DS4Windows
         {
             get
             {
-                if (deviceStateService != null)
-                    return deviceStateService;
-
+                if (deviceStateService != null) return deviceStateService;
                 try
                 {
                     var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IDeviceStateService>();
@@ -824,11 +815,9 @@ namespace DS4Windows
                         return deviceStateService;
                     }
                 }
-                catch
-                {
-                    // DIコンテナ未初期化時の安全なフォールバック
-                }
+                catch { }
 
+                AppLogger.LogToGui("[Legacy] Global.DeviceStateServiceInstance: Fallback instance used", false, true);
                 return fallbackDeviceStateService;
             }
             set => deviceStateService = value;
@@ -841,9 +830,7 @@ namespace DS4Windows
         {
             get
             {
-                if (outputSlotService != null)
-                    return outputSlotService;
-
+                if (outputSlotService != null) return outputSlotService;
                 try
                 {
                     var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IOutputSlotService>();
@@ -853,17 +840,15 @@ namespace DS4Windows
                         return outputSlotService;
                     }
                 }
-                catch
-                {
-                    // DIコンテナ未初期化時の安全なフォールバック
-                }
+                catch { }
 
+                AppLogger.LogToGui("[Legacy] Global.OutputSlotServiceInstance: Fallback instance used", false, true);
                 return fallbackOutputSlotService;
             }
             set => outputSlotService = value;
         }
 
-                // =========================================================================
+        // =========================================================================
         // Phase4-Step5: IPathService, IEnvironmentService, INotificationService DI シム
         // =========================================================================
         private static DS4Windows.DI.IPathService pathService = null;
@@ -880,6 +865,8 @@ namespace DS4Windows
                     if (service != null) { pathService = service; return pathService; }
                 }
                 catch { }
+
+                AppLogger.LogToGui("[Legacy] Global.PathServiceInstance: Fallback instance used", false, true);
                 return fallbackPathService;
             }
             set => pathService = value;
@@ -899,6 +886,8 @@ namespace DS4Windows
                     if (service != null) { environmentService = service; return environmentService; }
                 }
                 catch { }
+
+                AppLogger.LogToGui("[Legacy] Global.EnvironmentServiceInstance: Fallback instance used", false, true);
                 return fallbackEnvironmentService;
             }
             set => environmentService = value;
@@ -918,6 +907,8 @@ namespace DS4Windows
                     if (service != null) { notificationService = service; return notificationService; }
                 }
                 catch { }
+
+                AppLogger.LogToGui("[Legacy] Global.NotificationServiceInstance: Fallback instance used", false, true);
                 return fallbackNotificationService;
             }
             set => notificationService = value;
@@ -925,33 +916,81 @@ namespace DS4Windows
 
         public static string[] tempprofilename
         {
-            get => ProfileSettingsServiceInstance.TempProfileNameArray;
-            set => ProfileSettingsServiceInstance.TempProfileNameArray = value;
+            get
+            {
+                AppLogger.LogToGui("[Legacy] Global.tempprofilename getter accessed via static shim", false, true);
+                return ProfileSettingsServiceInstance.TempProfileNameArray;
+            }
+            set
+            {
+                AppLogger.LogToGui("[Legacy] Global.tempprofilename setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.TempProfileNameArray = value;
+            }
         }
         public static bool[] useTempProfile
         {
-            get => ProfileSettingsServiceInstance.UseTempProfileArray;
-            set => ProfileSettingsServiceInstance.UseTempProfileArray = value;
+            get
+            {
+                AppLogger.LogToGui("[Legacy] Global.useTempProfile getter accessed via static shim", false, true);
+                return ProfileSettingsServiceInstance.UseTempProfileArray;
+            }
+            set
+            {
+                AppLogger.LogToGui("[Legacy] Global.useTempProfile setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.UseTempProfileArray = value;
+            }
         }
         public static bool[] tempprofileDistance
         {
-            get => ProfileSettingsServiceInstance.TempProfileDistanceArray;
-            set => ProfileSettingsServiceInstance.TempProfileDistanceArray = value;
+            get
+            {
+                AppLogger.LogToGui("[Legacy] Global.tempprofileDistance getter accessed via static shim", false, true);
+                return ProfileSettingsServiceInstance.TempProfileDistanceArray;
+            }
+            set
+            {
+                AppLogger.LogToGui("[Legacy] Global.tempprofileDistance setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.TempProfileDistanceArray = value;
+            }
         }
         public static bool[] useDInputOnly
         {
-            get => ProfileSettingsServiceInstance.UseDInputOnlyArray;
-            set => ProfileSettingsServiceInstance.UseDInputOnlyArray = value;
+            get
+            {
+                AppLogger.LogToGui("[Legacy] Global.useDInputOnly getter accessed via static shim", false, true);
+                return ProfileSettingsServiceInstance.UseDInputOnlyArray;
+            }
+            set
+            {
+                AppLogger.LogToGui("[Legacy] Global.useDInputOnly setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.UseDInputOnlyArray = value;
+            }
         }
         public static bool[] linkedProfileCheck
         {
-            get => ProfileSettingsServiceInstance.LinkedProfileCheckArray;
-            set => ProfileSettingsServiceInstance.LinkedProfileCheckArray = value;
+            get
+            {
+                AppLogger.LogToGui("[Legacy] Global.linkedProfileCheck getter accessed via static shim", false, true);
+                return ProfileSettingsServiceInstance.LinkedProfileCheckArray;
+            }
+            set
+            {
+                AppLogger.LogToGui("[Legacy] Global.linkedProfileCheck setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.LinkedProfileCheckArray = value;
+            }
         }
         public static bool[] touchpadActive
         {
-            get => ProfileSettingsServiceInstance.TouchpadActiveArray;
-            set => ProfileSettingsServiceInstance.TouchpadActiveArray = value;
+            get
+            {
+                AppLogger.LogToGui("[Legacy] Global.touchpadActive getter accessed via static shim", false, true);
+                return ProfileSettingsServiceInstance.TouchpadActiveArray;
+            }
+            set
+            {
+                AppLogger.LogToGui("[Legacy] Global.touchpadActive setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.TouchpadActiveArray = value;
+            }
         }
 
         // First connection detection methods
