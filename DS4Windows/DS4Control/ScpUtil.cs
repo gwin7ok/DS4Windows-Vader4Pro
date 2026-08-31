@@ -802,6 +802,67 @@ namespace DS4Windows
             set => specialActionRepository = value;
         }
 
+                // =========================================================================
+        // Phase4-Step4: IDeviceStateService & IOutputSlotService DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        private static DS4Windows.DI.IDeviceStateService deviceStateService = null;
+        private static readonly DS4Windows.DI.IDeviceStateService fallbackDeviceStateService = new DeviceStateService();
+
+        public static DS4Windows.DI.IDeviceStateService DeviceStateServiceInstance
+        {
+            get
+            {
+                if (deviceStateService != null)
+                    return deviceStateService;
+
+                try
+                {
+                    var service = AppHost.GetService<DS4Windows.DI.IDeviceStateService>();
+                    if (service != null)
+                    {
+                        deviceStateService = service;
+                        return deviceStateService;
+                    }
+                }
+                catch
+                {
+                    // DIコンテナ未初期化時の安全なフォールバック
+                }
+
+                return fallbackDeviceStateService;
+            }
+            set => deviceStateService = value;
+        }
+
+        private static DS4Windows.DI.IOutputSlotService outputSlotService = null;
+        private static readonly DS4Windows.DI.IOutputSlotService fallbackOutputSlotService = new OutputSlotService();
+
+        public static DS4Windows.DI.IOutputSlotService OutputSlotServiceInstance
+        {
+            get
+            {
+                if (outputSlotService != null)
+                    return outputSlotService;
+
+                try
+                {
+                    var service = AppHost.GetService<DS4Windows.DI.IOutputSlotService>();
+                    if (service != null)
+                    {
+                        outputSlotService = service;
+                        return outputSlotService;
+                    }
+                }
+                catch
+                {
+                    // DIコンテナ未初期化時の安全なフォールバック
+                }
+
+                return fallbackOutputSlotService;
+            }
+            set => outputSlotService = value;
+        }
+
         public static string[] tempprofilename
         {
             get => ProfileSettingsServiceInstance.TempProfileNameArray;
