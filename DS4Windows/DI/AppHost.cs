@@ -100,15 +100,3 @@ namespace DS4WinWPF
         }
     }
 }
-
-namespace DS4Windows
-{
-    public static class AppHost
-    {
-        public static Microsoft.Extensions.Hosting.IHost Host => DS4WinWPF.AppHost.Host;
-        public static Microsoft.Extensions.Hosting.IHost CreateHost(string[] args = null) => DS4WinWPF.AppHost.CreateHost(args);
-        public static T GetService<T>() where T : class => DS4WinWPF.AppHost.GetService<T>();
-        public static object GetService(Type serviceType) => DS4WinWPF.AppHost.GetService(serviceType);
-        public static void Dispose() => DS4WinWPF.AppHost.Dispose();
-    }
-}

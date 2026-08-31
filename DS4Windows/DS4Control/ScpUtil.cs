@@ -721,7 +721,7 @@ namespace DS4Windows
 
                 try
                 {
-                    var service = AppHost.GetService<DS4Windows.DI.IProfileSettingsService>();
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>();
                     if (service != null)
                     {
                         profileSettingsService = service;
@@ -753,7 +753,7 @@ namespace DS4Windows
 
                 try
                 {
-                    var service = AppHost.GetService<DS4Windows.DI.IProfileRepository>();
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>();
                     if (service != null)
                     {
                         profileRepository = service;
@@ -785,7 +785,7 @@ namespace DS4Windows
 
                 try
                 {
-                    var service = AppHost.GetService<DS4Windows.DI.ISpecialActionRepository>();
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.ISpecialActionRepository>();
                     if (service != null)
                     {
                         specialActionRepository = service;
@@ -817,7 +817,7 @@ namespace DS4Windows
 
                 try
                 {
-                    var service = AppHost.GetService<DS4Windows.DI.IDeviceStateService>();
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IDeviceStateService>();
                     if (service != null)
                     {
                         deviceStateService = service;
@@ -846,7 +846,7 @@ namespace DS4Windows
 
                 try
                 {
-                    var service = AppHost.GetService<DS4Windows.DI.IOutputSlotService>();
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IOutputSlotService>();
                     if (service != null)
                     {
                         outputSlotService = service;
@@ -876,7 +876,7 @@ namespace DS4Windows
                 if (pathService != null) return pathService;
                 try
                 {
-                    var service = AppHost.GetService<DS4Windows.DI.IPathService>();
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IPathService>();
                     if (service != null) { pathService = service; return pathService; }
                 }
                 catch { }
@@ -895,7 +895,7 @@ namespace DS4Windows
                 if (environmentService != null) return environmentService;
                 try
                 {
-                    var service = AppHost.GetService<DS4Windows.DI.IEnvironmentService>();
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IEnvironmentService>();
                     if (service != null) { environmentService = service; return environmentService; }
                 }
                 catch { }
@@ -914,7 +914,7 @@ namespace DS4Windows
                 if (notificationService != null) return notificationService;
                 try
                 {
-                    var service = AppHost.GetService<DS4Windows.DI.INotificationService>();
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.INotificationService>();
                     if (service != null) { notificationService = service; return notificationService; }
                 }
                 catch { }
