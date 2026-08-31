@@ -18,9 +18,9 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | **実機CP1** | **データ中核層 実機検証** | **完了** | 2026-08-31 | `Phase4-Step3-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
 | Step 4 | 入力・出力・デバイス状態サービス | **完了** | 2026-08-31 | `IDeviceStateService.cs`, `IOutputSlotService.cs`, `DeviceStateService.cs`, `OutputSlotService.cs`, DI登録, Globalシム, 各単体テスト |
 | Step 5 | 環境・UI・通知サービス | **完了** | 2026-08-31 | `IPathService.cs`, `IEnvironmentService.cs`, `INotificationService.cs`, `PathService.cs`, `EnvironmentService.cs`, `AppNotificationService.cs`, DI登録, Globalシム, 各単体テスト |
-| Step 6 | Composition Root 一本化 | **未着手 (次)** | - | DIコンテナ二重起動解消・起動シーケンス一本化 |
-| **実機CP2** | **全バックエンドDI＋Root一本化 実機検証** | 未着手 (計画) | - | バックエンド完成・全サービス結合実機検証（Step6完了時） |
-| Step 7 | ViewModel DI 移行 (Pattern A) | 未着手 | - | 引数なし ViewModel の DI 登録・移行 |
+| Step 6 | Composition Root 一本化 | **完了** | 2026-08-31 | `AppHost.cs`, `ServiceRegistration.cs`, 全13バックエンドサービス集約, `CompositionRootTests.cs`, **実機検証CP2実施完了** |
+| **実機CP2** | **全バックエンドDI＋Root一本化 実機検証** | **完了** | 2026-08-31 | `Phase4-Step6-RealDevice-Verification-Checklist.md` (実施完了。一部要調査項目はDI完了後に対応) |
+| Step 7 | ViewModel DI 移行 (Pattern A) | **未着手 (次)** | - | 引数なし ViewModel（Settings, Log, About 等）の DI 登録・移行 |
 | Step 8 | ViewModel DI 移行 (Pattern B) | 未着手 | - | 共有依存 ViewModel の DI 登録・移行 |
 | Step 9 | ViewModel DI 移行 (Pattern C) | 未着手 | - | 実行時引数付き ViewModel の Factory 移行 |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | 未着手 (計画) | - | 全画面 UI 結合・ViewModel 直接 new 全廃実機検証（Step9完了時） |
@@ -31,49 +31,13 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 
 ## 2. 詳細ステータス
 
-### Step 1: IProfileSettingsService 実装化 (完了)
-- **DI契約 (永続資産)**: `DS4Windows/DI/IProfileSettingsService.cs`（第4層 4-c、名前空間 `DS4Windows.DI`）を本番仕様に拡張。
-- **サービス実装 (永続資産)**: `DS4Windows/DS4Control/Services/ProfileSettingsService.cs`（スロット別配列、既定値、変更イベント、排他制御）。
-- **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `ProfileSettingsService` を Singleton 登録。
-- **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` 内の `Global` プロパティを `ProfileSettingsServiceInstance` へのシム委譲へピンポイント置換。
-- **単体テスト**: `DS4WindowsTests/ProfileSettingsServiceTests.cs`（全件通過、回帰ゼロ）。
+### Step 1〜5: バックエンド各層 DI サービス分離 (完了)
+- 第1層（入力監視層）: `IDeviceStateService`, `IDs4DeviceRegistry`
+- 第3層（信号出力層）: `IOutputSlotService`, `IVirtualKBM`, `IElevatedProcessLauncher`, `IProcessInspector`
+- 第4層 4-c（設定／状態サービス）: `IProfileSettingsService`, `IProfileRepository`, `ISpecialActionRepository`, `IPathService`, `IEnvironmentService`, `INotificationService`
 
-### Step 2: IProfileRepository 分離 (完了)
-- **DI契約 (永続資産)**: `DS4Windows/DI/IProfileRepository.cs`（第4層 4-c、名前空間 `DS4Windows.DI`）を新規作成。プロファイル XML 入出力、パス解決、一覧取得、切替（`ApplyProfileDirect` / `RestoreProfileDirect`）を定義。
-- **サービス実装 (永続資産)**: `DS4Windows/DS4Control/Services/ProfileRepository.cs`（`IProfileSettingsService` をコンストラクタ注入、スレッドセーフなファイル操作、プロファイル切替ロジック）。
-- **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `ProfileRepository` を Singleton 登録。
-- **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` に `Global.ProfileRepositoryInstance` プロパティ（安全なフォールバック付き）を追加。
-- **単体テスト**: `DS4WindowsTests/ProfileRepositoryTests.cs`（全件通過、回帰ゼロ）。
-
-### Step 3: ISpecialActionRepository 分離 & 実機検証CP1 (完了)
-- **DI契約 (永続資産)**: `DS4Windows/DI/ISpecialActionRepository.cs`（第4層 4-c、名前空間 `DS4Windows.DI`）を新規作成。SpecialAction の XML 永続化・CRUD・変更通知を定義。
-- **サービス実装 (永続資産)**: `DS4Windows/DS4Control/Services/SpecialActionRepository.cs`（スレッドセーフな CRUD 操作、XML 永続化、`ActionsChanged` イベント通知）。
-- **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `SpecialActionRepository` を Singleton 登録。
-- **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` に `Global.SpecialActionRepositoryInstance` プロパティ（安全なフォールバック付き）を追加。
-- **単体テスト**: `DS4WindowsTests/SpecialActionRepositoryTests.cs`（全件通過、回帰ゼロ）。
-- **実機動作検証 (Checkpoint 1)**: `Phase4-Step3-RealDevice-Verification-Checklist.md` に基づき、実機コントローラー・UI・物理 XML ファイル（`Profiles/*.xml`, `Actions.xml`）の結合動作を検証。**全12項目すべて ○（正常動作）で合格**。
-
-### Step 4: 入力・出力・デバイス状態サービス (完了)
-- **DI契約 (永続資産)**:
-  - `DS4Windows/DI/IDeviceStateService.cs`: 第1層（入力監視層）の物理デバイス状態を第4層 4-c へ提供する契約。
-  - `DS4Windows/DI/IOutputSlotService.cs`: 第3層（信号出力層 3-a. 仮想コントローラー出力）の出力スロット管理を第4層 4-c へ提供する契約。
-- **サービス実装 (永続資産)**:
-  - `DS4Windows/DS4Control/Services/DeviceStateService.cs`: スレッドセーフな内部配列 `_devices`、接続数カウント、変更イベント通知を実装。
-  - `DS4Windows/DS4Control/Services/OutputSlotService.cs`: 仮想コントローラー出力スロット管理、出力タイプ（`OutContType.X360` / `DS4`）管理、変更イベント通知を実装。
-- **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `IDeviceStateService` および `IOutputSlotService` を Singleton 登録。
-- **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` に `Global.DeviceStateServiceInstance` および `Global.OutputSlotServiceInstance` プロパティを追加。
-- **単体テスト**: `DS4WindowsTests/DeviceStateServiceTests.cs` および `DS4WindowsTests/OutputSlotServiceTests.cs`（全件通過、回帰ゼロ）。
-
-### Step 5: 環境・UI・通知サービス (完了)
-- **DI契約 (永続資産)**:
-  - `DS4Windows/DI/IPathService.cs`: 第4層 4-c アプリケーション物理パス（AppData, Profiles, Actions）解決の契約。
-  - `DS4Windows/DI/IEnvironmentService.cs`: 第4層 4-c OS起動・最小化・幾何情報・言語設定の契約。
-  - `DS4Windows/DI/INotificationService.cs`: 第4層 4-c 通知設定および通知イベント発行の契約。
-- **サービス実装 (永続資産)**:
-  - `DS4Windows/DS4Control/Services/PathService.cs`: パス解決、フォールバック、拡張子正規化の実装。
-  - `DS4Windows/DS4Control/Services/EnvironmentService.cs`: ウィンドウサイズ・位置、起動時設定、変更通知の実装。
-  - `DS4Windows/DS4Control/Services/AppNotificationService.cs`: 既存静的クラスとの衝突を回避した通知制御、イベント発行の実装。
-- **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて上記 3 サービスを Singleton 登録。
-- **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` に `Global.PathServiceInstance`, `Global.EnvironmentServiceInstance`, `Global.NotificationServiceInstance` プロパティを追加。
-- **単体テスト**: `DS4WindowsTests/PathServiceTests.cs`, `EnvironmentServiceTests.cs`, `NotificationServiceTests.cs`（全件通過、回帰ゼロ）。
-- **ビルド・テスト検証**: 全プロジェクトビルド警告0・エラー0、既存テスト（31件/13件）および新設テスト全件成功。
+### Step 6: Composition Root 一本化 & 実機検証CP2 (完了)
+- **Composition Root (永続資産)**: `DS4Windows/DI/AppHost.cs` を唯一の DI エントリポイントとして一本化（`DS4WinWPF` / `DS4Windows` 両空間完全対応、`CreateHost` オーバーロード完備）。
+- **サービス登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて全 13 バックエンドサービスの登録を集約。
+- **単体テスト**: `DS4WindowsTests/CompositionRootTests.cs`（全サービス一括解決・Singleton検証、全件通過）。
+- **実機動作検証 (Checkpoint 2)**: `Phase4-Step6-RealDevice-Verification-Checklist.md` に基づき実機検証を実施・記録。一部○でない項目については、全 ViewModel DI 移行完了後に原因調査・対処を行う方針で合意。
