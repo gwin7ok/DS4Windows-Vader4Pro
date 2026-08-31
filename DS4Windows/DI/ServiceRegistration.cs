@@ -16,6 +16,9 @@ namespace DS4WinWPF.DI
             services.AddSingleton<ISpecialActionRepository, SpecialActionRepository>();
             services.AddSingleton<IDeviceStateService, DeviceStateService>();
             services.AddSingleton<IOutputSlotService, OutputSlotService>();
+            services.AddSingleton<IPathService, PathService>();
+            services.AddSingleton<IEnvironmentService, EnvironmentService>();
+            services.AddSingleton<INotificationService, AppNotificationService>();
 
             // Phase 2: Virtual KBM Output
             services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
