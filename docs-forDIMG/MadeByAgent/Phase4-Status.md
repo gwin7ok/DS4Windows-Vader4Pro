@@ -1,6 +1,6 @@
 ﻿# フェーズ4 進捗管理表: Global 分割と ViewModel DI 化
 
-最終更新日: 2026-08-31
+最終更新日: 2026-09-01
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
@@ -22,20 +22,26 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | **実機CP2** | **全バックエンドDI＋Root一本化 実機検証** | **完了** | 2026-08-31 | `Phase4-Step6-RealDevice-Verification-Checklist.md` (実施完了。一部要調査項目はDI完了後に対応) |
 | Step 7 | ViewModel DI 移行 (Pattern A) | **完了** | 2026-08-31 | `SettingsViewModel`, `LogViewModel`, `AboutViewModel` の DI 化完了、`PatternAViewModelTests.cs`（**RecordBoxViewModel は Step 9 Pattern C に正式引継ぎ**） |
 | Step 8 | ViewModel DI 移行 (Pattern B) | **完了** | 2026-08-31 | `ControllersViewModel.cs` 新設、`MainWindowsViewModel` DI化、`MainWindow.xaml.cs` DI解決化、`PatternBViewModelTests.cs` |
-| Step 9 | ViewModel DI 移行 (Pattern C) | **未着手 (次)** | - | 実行時引数付き ViewModel（ProfileEditViewModel, **RecordBoxViewModel**, SpecialActionsViewModel, KBMEditorViewModel 等）の Factory 移行 |
-| **実機CP3** | **全ViewModel DI移行完了 実機検証** | 未着手 (計画) | - | 全画面 UI 結合・ViewModel 直接 new 全廃実機検証（Step9完了時） |
-| Step 10 | Phase3 引継ぎ再確認・シム整理 | 未着手 | - | 残存シムの監査と全体健全性確認 |
+| Step 9 | ViewModel DI 移行 (Pattern C) | **完了** | 2026-09-01 | `IViewModelFactory.cs`, `ViewModelFactory.cs`, DI登録, View直接new全廃, `PatternCViewModelTests.cs`, **Step9-4-α監査合格**, **実機検証CP3全件合格** |
+| **実機CP3** | **全ViewModel DI移行完了 実機検証** | **完了** | 2026-09-01 | `Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
+| Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **未着手 (次)** | - | [DI] Trace ログ出力の整備、残存シム監査・整理、**最終総合実機検証 CP4** |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10完了時） |
 
 ---
 
 ## 2. 詳細ステータス
 
-### Step 8: ViewModel DI 移行 (Pattern B: 共有依存 ViewModel) (完了)
-- **ViewModel DI 化 (永続資産)**:
-  - `ControllersViewModel`: 全画面 MVVM 対称性向上のため新設（`IDeviceStateService`, `IProfileSettingsService`, `IProfileRepository` をコンストラクタ注入）。
-  - `MainWindowsViewModel`: アプリケーション全体共有 ViewModel として `ServiceRegistration.cs` に Singleton 登録。
-- **View DataContext DI 解決 (永続資産)**:
-  - `MainWindow.xaml.cs`: `mainWinVM = new MainWindowsViewModel()` を全廃し、`DS4WinWPF.AppHost.GetService<MainWindowsViewModel>()` 経由の DI 解決へ移行。
-- **単体テスト**: `DS4WindowsTests/PatternBViewModelTests.cs`（ControllersViewModel, MainWindowsViewModel の解決および Singleton 検証、全件通過）。
-- **ビルド・テスト検証**: 全プロジェクトビルド警告0・エラー0、既存テスト全件成功（77/77件, 13/13件）。
+### Step 9: ViewModel DI 移行 (Pattern C: Factory DI) & 実機検証CP3 (完了)
+- **Factory 契約・実装 (永続資産)**:
+  - `DS4Windows/DI/IViewModelFactory.cs` (第4層 4-c Factory 契約)
+  - `DS4Windows/DS4Control/Services/ViewModelFactory.cs` (DI永続Factoryサービス実装)
+  - `ServiceRegistration.cs` にて `IViewModelFactory` を Singleton 登録。
+- **View 直接 new の全廃 (第4層 4-a / 4-b 結合)**:
+  - `ProfileEditor.xaml.cs`: `IViewModelFactory.CreateProfileSettingsViewModel`
+  - `RecordBox.xaml.cs`: `IViewModelFactory.CreateRecordBoxViewModel`
+  - `SpecialActionEditor.xaml.cs`: `IViewModelFactory.CreateSpecialActEditorViewModel`
+  - `AutoProfiles.xaml.cs`: `IViewModelFactory.CreateAutoProfilesViewModel`
+  - 全 29 箇所の ViewModel 直接 new 生成を完全全廃。
+- **Step 9-4-α 全体監査**: `Phase4-Step9-Audit-Report.md`（全 4 層モデル・全 13 サービス・全 ViewModel の移行漏れゼロを確認・合格）。
+- **単体テスト**: `DS4WindowsTests/PatternCViewModelTests.cs`（全件通過、回帰ゼロ、83/83件パス）。
+- **実機動作検証 (Checkpoint 3)**: `Phase4-Step9-RealDevice-Verification-Checklist.md` に基づき全画面 UI 結合検証を実施。全 12 項目すべて合格（○）。
