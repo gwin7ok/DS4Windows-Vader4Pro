@@ -29,22 +29,6 @@ namespace DS4WindowsTests
                 catch { }
             }
 
-            if (Application.Current != null)
-            {
-                try
-                {
-                    string[] resourceKeys = new string[] { "KeyDownImg", "KeyUpImg", "KeyWaitImg", "KeyHoldImg", "MouseImg", "CustomKeyImg" };
-                    foreach (var key in resourceKeys)
-                    {
-                        if (!Application.Current.Resources.Contains(key))
-                        {
-                            Application.Current.Resources[key] = "";
-                        }
-                    }
-                }
-                catch { }
-            }
-
             if (Application.ResourceAssembly == null)
             {
                 try
@@ -52,6 +36,33 @@ namespace DS4WindowsTests
                     Application.ResourceAssembly = typeof(DS4WinWPF.AppHost).Assembly;
                 }
                 catch { }
+            }
+
+            if (Application.Current != null)
+            {
+                try
+                {
+                    var uri = new Uri("pack://application:,,,/DS4Windows;component/Resources/Resources.xaml", UriKind.Absolute);
+                    var dict = new ResourceDictionary { Source = uri };
+                    Application.Current.Resources.MergedDictionaries.Add(dict);
+                }
+                catch { }
+
+                string[] resourceKeys = new string[]
+                {
+                    "KeyDownImg", "KeyUpImg", "KeyWaitImg", "KeyHoldImg",
+                    "ClockImg", "MouseImg", "CustomKeyImg", "TouchpadImg",
+                    "GyroImg", "WheelImg", "UnboundImg", "WaitImg", "HoldImg",
+                    "LeftImg", "RightImg", "MiddleImg", "Clock", "Mouse", "CustomKey"
+                };
+
+                foreach (var key in resourceKeys)
+                {
+                    if (!Application.Current.Resources.Contains(key))
+                    {
+                        Application.Current.Resources[key] = "";
+                    }
+                }
             }
         }
 
