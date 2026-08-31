@@ -100,7 +100,7 @@ namespace DS4WinWPF.DS4Forms
             logMinLevelComboBox.ItemsSource = new string[] { "Trace", "Debug", "Info", "Warn", "Error", "Fatal" };
             logMinLevelComboBox.SelectedValue = Global.LogMinLevel;
 
-            mainWinVM = new MainWindowsViewModel();
+            mainWinVM = DS4WinWPF.AppHost.GetService<DS4WinWPF.DS4Forms.ViewModels.MainWindowsViewModel>() ?? new DS4WinWPF.DS4Forms.ViewModels.MainWindowsViewModel();
             DataContext = mainWinVM;
 
             App root = Application.Current as App;

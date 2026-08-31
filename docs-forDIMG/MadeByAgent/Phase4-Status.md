@@ -21,8 +21,8 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 6 | Composition Root 一本化 | **完了** | 2026-08-31 | `AppHost.cs`, `ServiceRegistration.cs`, 全13バックエンドサービス集約, `CompositionRootTests.cs`, **実機検証CP2実施完了** |
 | **実機CP2** | **全バックエンドDI＋Root一本化 実機検証** | **完了** | 2026-08-31 | `Phase4-Step6-RealDevice-Verification-Checklist.md` (実施完了。一部要調査項目はDI完了後に対応) |
 | Step 7 | ViewModel DI 移行 (Pattern A) | **完了** | 2026-08-31 | `SettingsViewModel`, `LogViewModel`, `AboutViewModel` の DI 化完了、`PatternAViewModelTests.cs`（**RecordBoxViewModel は Step 9 Pattern C に正式引継ぎ**） |
-| Step 8 | ViewModel DI 移行 (Pattern B) | **未着手 (次)** | - | 共有依存 ViewModel（ControllersViewModel, MainWindowsViewModel 等）の DI 登録・移行 |
-| Step 9 | ViewModel DI 移行 (Pattern C) | 未着手 | - | 実行時引数付き ViewModel（ProfileEditViewModel, **RecordBoxViewModel**, SpecialActionsViewModel, KBMEditorViewModel 等）の Factory 移行 |
+| Step 8 | ViewModel DI 移行 (Pattern B) | **完了** | 2026-08-31 | `ControllersViewModel.cs` 新設、`MainWindowsViewModel` DI化、`MainWindow.xaml.cs` DI解決化、`PatternBViewModelTests.cs` |
+| Step 9 | ViewModel DI 移行 (Pattern C) | **未着手 (次)** | - | 実行時引数付き ViewModel（ProfileEditViewModel, **RecordBoxViewModel**, SpecialActionsViewModel, KBMEditorViewModel 等）の Factory 移行 |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | 未着手 (計画) | - | 全画面 UI 結合・ViewModel 直接 new 全廃実機検証（Step9完了時） |
 | Step 10 | Phase3 引継ぎ再確認・シム整理 | 未着手 | - | 残存シムの監査と全体健全性確認 |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10完了時） |
@@ -31,17 +31,11 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 
 ## 2. 詳細ステータス
 
-### Step 1〜6: バックエンド全層 DI サービス＆Composition Root 一本化 (完了)
-- 全 13 バックエンドサービスの DI 化および `AppHost` Composition Root 一本化が完了し、実機検証 CP1/CP2 実施済み。
-
-### Step 7: ViewModel DI 移行 (Pattern A: 引数なし ViewModel) (完了)
+### Step 8: ViewModel DI 移行 (Pattern B: 共有依存 ViewModel) (完了)
 - **ViewModel DI 化 (永続資産)**:
-  - `SettingsViewModel`: `IEnvironmentService`, `IPathService`, `IProfileSettingsService` をコンストラクタ注入。
-  - `LogViewModel`: 引数なし既定コンストラクタを整備し DI 登録。
-  - `AboutViewModel`: 全画面 MVVM 構造統一のため新設し、`IPathService` をコンストラクタ注入。
+  - `ControllersViewModel`: 全画面 MVVM 対称性向上のため新設（`IDeviceStateService`, `IProfileSettingsService`, `IProfileRepository` をコンストラクタ注入）。
+  - `MainWindowsViewModel`: アプリケーション全体共有 ViewModel として `ServiceRegistration.cs` に Singleton 登録。
 - **View DataContext DI 解決 (永続資産)**:
-  - `SettingsUserControl.xaml.cs`, `LogUserControl.xaml.cs`, `AboutUserControl.xaml.cs` における直接 `new` を全廃し、`AppHost.GetService<T>()` 経由へ移行。
-- **RecordBoxViewModel の Step 9 正式引継ぎ**:
-  - `RecordBoxViewModel` はコンストラクタ引数 `(int device, DS4ControlSettings controlSettings, bool recordMacro, bool extraHold)` を持つため、引数なし ViewModel（Pattern A）ではなく **「Pattern C: 実行時引数付き ViewModel（Factory / Parameter DI）」** に分類し、Step 9 での正式移行対象として引継ぎを完了。
-- **単体テスト**: `DS4WindowsTests/PatternAViewModelTests.cs`（全件通過、回帰ゼロ、75/75件パス）。
-- **ビルド・テスト検証**: 全プロジェクトビルド警告0・エラー0、既存テスト全件成功。
+  - `MainWindow.xaml.cs`: `mainWinVM = new MainWindowsViewModel()` を全廃し、`DS4WinWPF.AppHost.GetService<MainWindowsViewModel>()` 経由の DI 解決へ移行。
+- **単体テスト**: `DS4WindowsTests/PatternBViewModelTests.cs`（ControllersViewModel, MainWindowsViewModel の解決および Singleton 検証、全件通過）。
+- **ビルド・テスト検証**: 全プロジェクトビルド警告0・エラー0、既存テスト全件成功（77/77件, 13/13件）。
