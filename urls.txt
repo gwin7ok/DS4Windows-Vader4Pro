@@ -62,6 +62,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/AppHost.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IProfileRepository.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IProfileSettingsService.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/ISpecialActionRepository.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/ServiceProviderHolder.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/ServiceRegistration.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Action.cs
@@ -147,6 +148,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/OutputKBMHandlerAdapter.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/ProfileRepository.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/ProfileSettingsService.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/SpecialActionRepository.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/SpecialActionBase.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/StickOutCurve.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/SyntheticDispatcher.cs
@@ -567,6 +569,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step1-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step2-Completion-Report.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step2-Plan.md
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step3-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Action-Class-Design.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Action-Subsystem-API.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Actions-Interface-Spec.md
