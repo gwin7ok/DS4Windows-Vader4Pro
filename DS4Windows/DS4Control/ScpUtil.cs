@@ -738,6 +738,38 @@ namespace DS4Windows
             set => profileSettingsService = value;
         }
 
+                // =========================================================================
+        // Phase4-Step2: IProfileRepository DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        private static DS4Windows.DI.IProfileRepository profileRepository = null;
+        private static readonly DS4Windows.DI.IProfileRepository fallbackProfileRepository = new ProfileRepository(ProfileSettingsServiceInstance);
+
+        public static DS4Windows.DI.IProfileRepository ProfileRepositoryInstance
+        {
+            get
+            {
+                if (profileRepository != null)
+                    return profileRepository;
+
+                try
+                {
+                    var service = AppHost.GetService<DS4Windows.DI.IProfileRepository>();
+                    if (service != null)
+                    {
+                        profileRepository = service;
+                        return profileRepository;
+                    }
+                }
+                catch
+                {
+                    // DIコンテナ未初期化時の安全なフォールバック
+                }
+
+                return fallbackProfileRepository;
+            }
+            set => profileRepository = value;
+        }
+
         public static string[] tempprofilename
         {
             get => ProfileSettingsServiceInstance.TempProfileNameArray;
