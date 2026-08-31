@@ -35,9 +35,9 @@ namespace DS4Windows
             return new SpecialActEditorViewModel(device, action);
         }
 
-        public AutoProfilesViewModel CreateAutoProfilesViewModel()
+        public AutoProfilesViewModel CreateAutoProfilesViewModel(AutoProfileHolder autoProfileHolder, ProfileList profileList)
         {
-            return new AutoProfilesViewModel();
+            return new AutoProfilesViewModel(autoProfileHolder, profileList);
         }
     }
 }

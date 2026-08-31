@@ -50,7 +50,7 @@ namespace DS4WindowsTests
             var factory = DS4WinWPF.AppHost.GetService<IViewModelFactory>();
             Assert.NotNull(factory);
 
-            var vm = factory.CreateAutoProfilesViewModel();
+            var vm = factory.CreateAutoProfilesViewModel(null, null);
             Assert.NotNull(vm);
         }
     }

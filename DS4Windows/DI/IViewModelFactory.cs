@@ -9,6 +9,6 @@ namespace DS4Windows.DI
         ProfileSettingsViewModel CreateProfileSettingsViewModel(int device);
         RecordBoxViewModel CreateRecordBoxViewModel(int device, DS4ControlSettings controlSettings, bool recordMacro = true, bool extraHold = false);
         SpecialActEditorViewModel CreateSpecialActEditorViewModel(int device, SpecialAction action = null);
-        AutoProfilesViewModel CreateAutoProfilesViewModel();
+        AutoProfilesViewModel CreateAutoProfilesViewModel(AutoProfileHolder autoProfileHolder, ProfileList profileList);
     }
 }
