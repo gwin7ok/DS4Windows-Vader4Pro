@@ -57,8 +57,8 @@ namespace DS4WinWPF.DS4Forms
         public RecordBox(int deviceNum, DS4Windows.DS4ControlSettings controlSettings, bool shift, bool showscan = true, bool repeatable = true)
         {
             InitializeComponent();
-
-            recordBoxVM = new RecordBoxViewModel(deviceNum, controlSettings, shift, repeatable);
+var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            recordBoxVM = vmFactory != null ? vmFactory.CreateRecordBoxViewModel(deviceNum, controlSettings, shift, repeatable) : new RecordBoxViewModel(deviceNum, controlSettings, shift, repeatable);
             mouseButtonsPanel.Visibility = Visibility.Hidden;
             extraConPanel.Visibility = Visibility.Hidden;
             macroModeCombo.IsEnabled = repeatable;

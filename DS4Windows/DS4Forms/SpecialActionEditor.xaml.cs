@@ -85,8 +85,8 @@ namespace DS4WinWPF.DS4Forms
                 unloadSwipeRightTrigCk, unloadTiltUpTrigCk, unloadTiltDownTrigCk, unloadTiltLeftTrigCk,
                 unloadTiltRightTrigCk,unloadTouchStartedTrigCk, unloadTouchEndedTrigCk,
             };
-
-            specialActVM = new SpecialActEditorViewModel(deviceNum, specialAction);
+var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            specialActVM = vmFactory != null ? vmFactory.CreateSpecialActEditorViewModel(deviceNum, specialAction) : new SpecialActEditorViewModel(deviceNum, specialAction);
             macroActVM = new MacroViewModel();
             launchProgVM = new LaunchProgramViewModel();
             loadProfileVM = new LoadProfileViewModel(profileList);

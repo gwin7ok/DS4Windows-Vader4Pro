@@ -278,7 +278,8 @@ namespace DS4WinWPF.DS4Forms
 
             deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;
-            profileSettingsVM = new ProfileSettingsViewModel(device);
+var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            profileSettingsVM = vmFactory != null ? vmFactory.CreateProfileSettingsViewModel(device) : new ProfileSettingsViewModel(device);
             picBoxHover.Visibility = Visibility.Hidden;
             picBoxHover2.Visibility = Visibility.Hidden;
 

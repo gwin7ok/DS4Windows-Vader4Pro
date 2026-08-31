@@ -91,7 +91,8 @@ namespace DS4WinWPF.DS4Forms
 
         public void SetupDataContext(ProfileList profileList)
         {
-            autoProfVM = new AutoProfilesViewModel(autoProfileHolder, profileList);
+            var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            autoProfVM = vmFactory != null ? vmFactory.CreateAutoProfilesViewModel(autoProfileHolder, profileList) : new AutoProfilesViewModel(autoProfileHolder, profileList);
             programListLV.DataContext = autoProfVM;
             programListLV.ItemsSource = autoProfVM.ProgramColl;
             
