@@ -239,6 +239,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/ChangelogViewModel.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/ControllerListViewModel.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/ControllerRegDeviceOptsViewModel.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/ControllersViewModel.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/CurrentOutDeviceViewModel.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/FirstLauchUtilViewModel.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/LanguagePackViewModel.cs
@@ -489,6 +490,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/OutputSlotServiceTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/PathServiceTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/PatternAViewModelTests.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/PatternBViewModelTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/Phase3ServiceRegistrationTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ProcessInspectorTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ProfileRepositoryTests.cs
