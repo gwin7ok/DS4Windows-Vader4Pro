@@ -1,6 +1,7 @@
 ﻿# フェーズ4-Step7 計画書: ViewModel DI 移行 (Pattern A: 引数なし ViewModel)
 
 作成日: 2026-08-31
+最終更新日: 2026-08-31
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §3.3, §4.1, §5, §6.6（全体計画書・全体4層モデル定義）
@@ -24,7 +25,7 @@
   - ViewModel は `DS4Windows/DI/ServiceRegistration.cs` に登録する（**DI永続資産**）。
   - 第4層 4-c サービス（`IProfileSettingsService`, `IEnvironmentService`, `IPathService` 等）をコンストラクタ注入する。
 - **§3.2 巨大ファイルの編集方針**:
-  - 各 View（`SettingsUserControl.xaml.cs`, `LogUserControl.xaml.cs` 等）の `DataContext` 設定箇所のみをピンポイントで置換する。
+  - 各 View（`SettingsUserControl.xaml.cs`, `LogUserControl.xaml.cs`, `AboutUserControl.xaml.cs` 等）の `DataContext` 設定箇所のみをピンポイントで置換する。
 - **資材のライフサイクル識別**:
   - DI永続資産（残るもの）と過渡期シム（Strangler Fig 移行用）を明確に区別して管理する。
 
@@ -40,8 +41,8 @@
     1. `SettingsViewModel`（設定画面）
     2. `LogViewModel`（ログ画面）
     3. `AboutViewModel`（アプリ情報画面）
-    4. `RecordBoxViewModel`（マクロ記録ダイアログ）
-  - View（UserControl / Window）内の直接 `new ViewModel()` を全廃し、DI コンテナ（`AppHost.GetService<T>()`）経由の注入に切り替える。
+  - ※なお、`RecordBoxViewModel` はコンストラクタで 4 つの実行時引数 `(int device, DS4ControlSettings controlSettings, bool recordMacro, bool extraHold)` を必要とするため、引数なし ViewModel（Pattern A）ではなく、**Step 9（Pattern C: 実行時引数付き ViewModel の Factory 移行）の対象** として正式に引継ぎを行う。
+  - View（UserControl）内の直接 `new ViewModel()` を全廃し、DI コンテナ（`AppHost.GetService<T>()`）経由の注入に切り替える。
 
 ### 0.2 全体4層モデルにおける責務境界と本Stepの位置づけ（全体計画書 §3.3 準拠）
 全体計画書（`DI-App-Wide-Migration-Plan.md` §3.3）および Phase4 計画書（`Phase4-Plan.md` §1.1.1）で規定された **全体4層モデル（実行時3層 ＋ UI層）** に基づき、本Step（Step 7）の位置づけを以下のように整理する：
@@ -54,7 +55,7 @@
    - 決定された内容を実際に副作用として実行する（3-a 仮想コントローラー出力, 3-b KBM出力, 3-c アプリ内アクション実行）。
 4. **第4層: UI層（制御面） 【★本Step対象】**
    - ユーザーが設定・プロファイル・状態を操作し、サービス経由で実行時3層へ設定を反映する。
-   - **4-a. View 【★本Step対象】**: WPF の画面・UserControl（`SettingsUserControl`, `LogUserControl`, `AboutUserControl`, `RecordBox`）。
+   - **4-a. View 【★本Step対象】**: WPF の画面・UserControl（`SettingsUserControl`, `LogUserControl`, `AboutUserControl`）。
    - **4-b. ViewModel 【★本Step対象】**: Pattern A の各 ViewModel。第4層 4-c サービスをコンストラクタ注入して動作。
    - **4-c. 設定／状態サービス**: Step 1〜5 で構築済みの各 DI サービス（注入元）。
 
@@ -86,9 +87,9 @@ public class SettingsViewModel : INotifyPropertyChanged
 
     // 既存互換用フォールバックコンストラクタ
     public SettingsViewModel() : this(
-        AppHost.GetService<IEnvironmentService>(),
-        AppHost.GetService<IPathService>(),
-        AppHost.GetService<IProfileSettingsService>())
+        DS4WinWPF.AppHost.GetService<IEnvironmentService>(),
+        DS4WinWPF.AppHost.GetService<IPathService>(),
+        DS4WinWPF.AppHost.GetService<IProfileSettingsService>())
     {
     }
 }
@@ -104,7 +105,7 @@ public partial class SettingsUserControl : UserControl
     public SettingsUserControl()
     {
         InitializeComponent();
-        DataContext = AppHost.GetService<SettingsViewModel>() ?? new SettingsViewModel();
+        DataContext = DS4WinWPF.AppHost.GetService<SettingsViewModel>() ?? new SettingsViewModel();
     }
 }
 ```
@@ -117,7 +118,6 @@ public partial class SettingsUserControl : UserControl
 services.AddTransient<SettingsViewModel>();
 services.AddTransient<LogViewModel>();
 services.AddTransient<AboutViewModel>();
-services.AddTransient<RecordBoxViewModel>();
 ```
 
 ---
@@ -126,36 +126,33 @@ services.AddTransient<RecordBoxViewModel>();
 
 | ファイルパス | 種別 | ライフサイクル | 内容 |
 |---|---|---|---|
-| `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | 更新 | **DI永続資産** | 第4層 4-c サービス（環境・パス・設定）のコンストラクタ注入対応 |
-| `DS4Windows/DS4Forms/ViewModels/LogViewModel.cs` | 更新 | **DI永続資産** | コンストラクタ DI 対応 |
-| `DS4Windows/DS4Forms/ViewModels/AboutViewModel.cs` | 更新 | **DI永続資産** | コンストラクタ DI 対応 |
-| `DS4Windows/DS4Forms/ViewModels/RecordBoxViewModel.cs` | 更新 | **DI永続資産** | コンストラクタ DI 対応 |
+| `DS4Windows/DS4Forms/ViewModels/AboutViewModel.cs` | 新規 | **DI永続資産** | 全画面の MVVM 統一のため新設。バージョン文字列・リンクプロパティを公開 |
+| `DS4Windows/DS4Forms/ViewModels/LogViewModel.cs` | 更新 | **DI永続資産** | 引数なし既定コンストラクタを追加 |
 | `DS4Windows/DS4Forms/SettingsUserControl.xaml.cs` | 更新 | **DI永続資産** | 直接 new を全廃し DI 解決へ移行 |
 | `DS4Windows/DS4Forms/LogUserControl.xaml.cs` | 更新 | **DI永続資産** | 直接 new を全廃し DI 解決へ移行 |
-| `DS4Windows/DS4Forms/AboutUserControl.xaml.cs` | 更新 | **DI永続資産** | 直接 new を全廃し DI 解決へ移行 |
-| `DS4Windows/DS4Forms/RecordBox.xaml.cs` | 更新 | **DI永続資産** | 直接 new を全廃し DI 解決へ移行 |
+| `DS4Windows/DS4Forms/AboutUserControl.xaml.cs` | 更新 | **DI永続資産** | DataContext に AboutViewModel をバインド |
 | `DS4Windows/DI/ServiceRegistration.cs` | 更新 | **DI永続資産** | Pattern A ViewModel の Transient 登録 |
 | `DS4WindowsTests/PatternAViewModelTests.cs` | 新規 | **テスト資産** | Pattern A ViewModel の DI 解決・サービス注入検証単体テスト |
-| `docs-forDIMG/MadeByAgent/Phase4-Step7-Plan.md` | 新規 | ドキュメント | 本計画書 |
+| `docs-forDIMG/MadeByAgent/Phase4-Step7-Plan.md` | 更新 | ドキュメント | 本計画書（RecordBoxViewModel の Step 9 引継ぎを反映） |
 | `docs-forDIMG/MadeByAgent/Phase4-Step7-Completion-Report.md` | 新規 | ドキュメント | Step7完了報告書 |
-| `docs-forDIMG/MadeByAgent/Phase4-Status.md` | 更新 | ドキュメント | Step7進捗ステータス更新 |
+| `docs-forDIMG/MadeByAgent/Phase4-Status.md` | 更新 | ドキュメント | Step7進捗ステータス更新（Step9対象明記） |
 
 ---
 
 ## 3. 作業手順（マイクロタスク分割）
 
 ### タスク Step7-1: Pattern A ViewModel のコンストラクタ DI 化
-- `SettingsViewModel`, `LogViewModel`, `AboutViewModel`, `RecordBoxViewModel` に DI コンストラクタと安全なフォールバックコンストラクタを整備。
+- `SettingsViewModel`, `LogViewModel`, `AboutViewModel` に DI コンストラクタと安全なフォールバックコンストラクタを整備。
 
 ### タスク Step7-2: DI コンテナ登録追加
 - `DS4Windows/DI/ServiceRegistration.cs` に Pattern A ViewModel の `AddTransient` 登録を追加。
 
-### タスク Step7-3: View（UserControl/Window）の DataContext DI 化
-- `SettingsUserControl`, `LogUserControl`, `AboutUserControl`, `RecordBox` における直接 `new ViewModel()` を全廃し、`AppHost.GetService<T>()` 経由へピンポイント置換。
+### タスク Step7-3: View（UserControl）の DataContext DI 化
+- `SettingsUserControl`, `LogUserControl`, `AboutUserControl` における直接 `new ViewModel()` を全廃し、`AppHost.GetService<T>()` 経由へピンポイント置換。
 
 ### タスク Step7-4: 単体テスト作成と自動テスト実行
 - `DS4WindowsTests/PatternAViewModelTests.cs` を作成し、各 ViewModel が DI コンテナから正常解決され、サービスが注入されることを検証。
-- 回帰テスト（`Actions.Tests` 71件, `StandaloneTests` 13件, 全新設テスト）の通過を確認。
+- 回帰テスト（`Actions.Tests` 75件, `StandaloneTests` 13件, 全新設テスト）の通過を確認。
 
 ### タスク Step7-5: ビルド検証、進捗更新、完了報告書の作成
 - `dotnet build DS4WindowsWPF.sln --nologo` を実行し警告0・エラー0を確認。
@@ -175,9 +172,10 @@ services.AddTransient<RecordBoxViewModel>();
 
 ## 5. 完了判定基準
 
-- [ ] Pattern A ViewModel（Settings, Log, About, RecordBox）が DI コンストラクタを備えている（DI永続資産）。
+- [ ] Pattern A ViewModel（Settings, Log, About）が DI コンストラクタを備えている（DI永続資産）。
 - [ ] `ServiceRegistration.cs` に Pattern A ViewModel が登録されている（DI永続資産）。
 - [ ] 各 View における直接 `new ViewModel()` が全廃され、DI 解決に移行している。
+- [ ] `RecordBoxViewModel` が Step 9（Pattern C）の対象として計画書・進捗表に正式に記録されている。
 - [ ] 新設した `PatternAViewModelTests` および既存の全回帰テストが成功する。
 - [ ] ソリューションビルドが警告0・エラー0で成功する。
 - [ ] `Phase4-Status.md` が更新され、`Phase4-Step7-Completion-Report.md` が作成されている。
