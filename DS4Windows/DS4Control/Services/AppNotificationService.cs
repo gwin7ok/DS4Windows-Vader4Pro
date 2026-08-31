@@ -29,7 +29,9 @@ namespace DS4Windows
             if (!NotificationsEnabled)
                 return;
 
-            AppLogger.LogToGui($"[DI] AppNotificationService.SendNotification: '{title}' - '{message}'", false, true);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] AppNotificationService.SendNotification: '{title}' - '{message}'");
+
             NotificationTriggered?.Invoke(this, new NotificationEventArgs(title, message, isToast));
         }
     }

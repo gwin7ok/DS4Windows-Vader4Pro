@@ -1,22 +1,4 @@
-﻿/*
-DS4Windows
-Copyright (C) 2023  Travis Nickles
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Threading;
@@ -29,7 +11,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
     {
         public LogViewModel() { }
 
-        //private object _colLockobj = new object();
         private ReaderWriterLockSlim _logListLocker = new ReaderWriterLockSlim();
         private ObservableCollection<LogItem> logItems = new ObservableCollection<LogItem>();
 
@@ -47,8 +28,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             logItems.Add(new LogItem { Datetime = DateTime.Now, Message = $"OS Release ID: {DS4Windows.Util.GetOSReleaseId()}" });
             logItems.Add(new LogItem { Datetime = DateTime.Now, Message = $"System Architecture: {(Environment.Is64BitOperatingSystem ? "x64" : "x32")}" });
 
-            //logItems.Add(new LogItem { Datetime = DateTime.Now, Message = "DS4Windows version 2.0" });
-            //BindingOperations.EnableCollectionSynchronization(logItems, _colLockobj);
             BindingOperations.EnableCollectionSynchronization(logItems, _logListLocker, LogLockCallback);
             service.Debug += AddLogMessage;
             DS4Windows.AppLogger.GuiLog += AddLogMessage;
@@ -74,14 +53,17 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void AddLogMessage(object sender, DS4Windows.DebugEventArgs e)
         {
+            // 一時ログや [DI]/[Legacy] トレースログは GUI 画面には表示せずファイル出力のみとする
+            if (e.Temporary)
+                return;
+
+            if (!string.IsNullOrEmpty(e.Data) && (e.Data.StartsWith("[DI]") || e.Data.StartsWith("[Legacy]")))
+                return;
+
             LogItem item = new LogItem { Datetime = e.Time, Message = e.Data, Warning = e.Warning };
             _logListLocker.EnterWriteLock();
             logItems.Add(item);
             _logListLocker.ExitWriteLock();
-            //lock (_colLockobj)
-            //{
-            //    logItems.Add(item);
-            //}
         }
     }
 }
