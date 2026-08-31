@@ -11,7 +11,7 @@ namespace DS4WinWPF.DI
         public static IServiceCollection AddAppServices(this IServiceCollection services, IConfiguration configuration)
         {
             // Phase 0: Profile Settings Service
-            services.AddSingleton<IProfileSettingsService, ProfileSettingsServicePlaceholder>();
+            services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
 
             // Phase 2: Virtual KBM Output
             services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
