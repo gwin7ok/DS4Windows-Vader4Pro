@@ -27,6 +27,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 {
     public class LogViewModel
     {
+        public LogViewModel() { }
+
         //private object _colLockobj = new object();
         private ReaderWriterLockSlim _logListLocker = new ReaderWriterLockSlim();
         private ObservableCollection<LogItem> logItems = new ObservableCollection<LogItem>();
