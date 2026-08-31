@@ -559,6 +559,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step0-Global-Member-Inventory.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step0-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step0-ViewModel-Inventory.md
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step1-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Action-Class-Design.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Action-Subsystem-API.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Actions-Interface-Spec.md
@@ -675,6 +676,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scrip
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/release-tag.ps1
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/test-ipc.ps1
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/update-summary.ps1
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/urls.txt
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/user_guide.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/utils/convert_profile_to_old.py
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/utils/emit-missing-action-test/Program.cs
