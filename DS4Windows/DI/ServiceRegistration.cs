@@ -29,6 +29,9 @@ namespace DS4Windows.DI
             services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
             services.AddSingleton<IProcessInspector, DefaultProcessInspector>();
 
+            // 第4層 4-c ViewModel Factory (Pattern C: 実行時引数付き ViewModel 生成)
+            services.AddSingleton<IViewModelFactory, ViewModelFactory>();
+
             // 第4層 4-b ViewModel (Pattern A: 引数なし ViewModel)
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<LogViewModel>();
