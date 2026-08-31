@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using DS4Windows;
 using DS4Windows.DI;
 using DS4Windows.Services;
+using DS4WinWPF;
+using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4Windows.DI
 {
@@ -26,6 +28,12 @@ namespace DS4Windows.DI
             services.AddSingleton<IOutputSlotService, OutputSlotService>();
             services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
             services.AddSingleton<IProcessInspector, DefaultProcessInspector>();
+
+            // 第4層 4-b ViewModel (Pattern A: 引数なし ViewModel)
+            services.AddTransient<SettingsViewModel>();
+            services.AddTransient<LogViewModel>();
+            services.AddTransient<AboutViewModel>();
+            services.AddTransient<RecordBoxViewModel>();
         }
     }
 }
