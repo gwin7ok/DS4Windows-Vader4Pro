@@ -33,6 +33,10 @@ namespace DS4Windows.DI
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<LogViewModel>();
             services.AddTransient<AboutViewModel>();
+
+            // 第4層 4-b ViewModel (Pattern B: 共有依存 ViewModel)
+            services.AddSingleton<ControllersViewModel>();
+            services.AddSingleton<MainWindowsViewModel>();
         }
     }
 }
