@@ -1,7 +1,7 @@
 ﻿# フェーズ4 計画書: Global 分割と ViewModel DI 化
 
 作成日: 2026-08-31
-最終更新日: 2026-08-31
+最終更新日: 2026-09-01
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 前提ドキュメント:
@@ -23,7 +23,7 @@
 - **§2.2 現在の機能の完全維持 (No Feature Drop)**:
   - プロファイル設定の既定値、配列境界（`TEST_PROFILE_ITEM_COUNT` = 9, `MAX_DS4_CONTROLLER_COUNT` = 8）、カルチャ（`configFileDecimalCulture` = en-US）、特殊状態フラグの挙動を 100% 維持する。
 - **§2.3 ログ出力の厳格な維持**:
-  - `AppLogger.LogToGui` 等の既存ログ関数およびログレベルを厳格に維持する。
+  - `AppLogger.LogToGui` 等の既存ログ関数およびログレベルを厳格に維持しつつ、DI 実行経路に Trace レベルの `[DI]` 監査ログを付与する。
 - **§3.1 DI (Dependency Injection) の実装**:
   - インターフェース契約は `DS4Windows/DI/`（名前空間 `DS4Windows.DI`）に配置（**DI永続資産**）。
   - 実装クラスは `DS4Windows/DS4Control/Services/`（名前空間 `DS4Windows`）に配置（**DI永続資産**）。
@@ -41,6 +41,7 @@
 - `Global` クラス（`ScpUtil.cs` 内、棚卸し実測値 442 件）に集中している設定・状態・I/O 責務を機能別 DI サービス群へ分割・移行する。
 - View / UserControl による ViewModel 直接生成（棚卸し実測値 29 件）を DI コンテナ注入 / ファクトリ方式へ切り替える。
 - `AppHost`（DIコンテナ）起動シーケンスを一本化し、UI およびバックエンド全体で安全に DI サービスを利用可能にする。
+- 新方式 DI 実行経路の稼働状況を客観的に可視化・監査するための `[DI]` Trace 監査ログを整備する。
 
 ### 1.1.1 全体4層モデルとの責務境界（全体計画書 §3.3 準拠）
 全体計画書（`DI-App-Wide-Migration-Plan.md` §3.3）で規定された **全体4層モデル（実行時3層 ＋ UI層）** に基づき、フェーズ4における各サービスの責務境界を統一管理する：
@@ -62,7 +63,7 @@
    - ユーザーが設定・プロファイル・状態を操作し、サービス経由で実行時3層へ設定を反映する。
    - **4-a. View**: WPF の画面・UserControl。
    - **4-b. ViewModel**: 画面状態、入力値検証、画面イベントの調整。
-   - **4-c. 設定／状態サービス**: プロファイル（`IProfileSettingsService`, `IProfileRepository`）、SpecialAction（`ISpecialActionRepository`）、入力・出力設定、デバイス状態（`IDeviceStateService`, `IOutputSlotService`）、環境情報をDI管理。
+   - **4-c. 設定／状態サービス & Factory**: プロファイル（`IProfileSettingsService`, `IProfileRepository`）、SpecialAction（`ISpecialActionRepository`）、入力・出力設定、デバイス状態（`IDeviceStateService`, `IOutputSlotService`）、環境・通知（`IPathService`, `IEnvironmentService`, `INotificationService`）、ViewModel Factory（`IViewModelFactory`）をDI管理。
 
 ---
 
@@ -77,26 +78,41 @@
 | **実機CP1** | **データ中核層 実機検証** | **設定・プロファイル・Action の実機接続・UI連動・物理XML永続化を検証** | **`Phase4-Step3-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格)** | **完了** |
 | Step 4 | 入力・出力・デバイス状態サービス | デバイス状態（第1層/第4層 4-c: `IDeviceStateService`）、出力スロット管理（第3層 3-a/第4層 4-c: `IOutputSlotService`）の DI 分離 | `IDeviceStateService`, `IOutputSlotService` | **完了** |
 | Step 5 | 環境・UI・通知サービス | パス解決、環境情報、トースト通知、UI状態（第4層 4-c）の DI 分離 | Path/Env/Notification/UI サービス | **完了** |
-| Step 6 | Composition Root 一本化 | DI コンテナ二重起動の解消・起動シーケンス一本化（第4層 4-c） | `AppHost.cs`, `App.xaml.cs` 一本化 | **完了** |
-| **実機CP2** | **全バックエンドDI＋Root一本化 実機検証** | **バックエンド完成段階での起動シーケンス・HID通信・仮想コントローラー出力・UAC昇格検証** | **実機検証チェックリスト CP2 (実施完了)** | **完了** |
+| Step 6 | Composition Root 一本化 | DI コンテナ二重起動の解消・起動シーケンス一本化（第4層 4-c） | `AppHost.cs`, `ServiceRegistration.cs` 一本化 | **完了** |
+| **実機CP2** | **全バックエンドDI＋Root一本化 実機検証** | **バックエンド完成段階での起動シーケンス・HID通信・仮想コントローラー出力・UAC昇格検証** | **`Phase4-Step6-RealDevice-Verification-Checklist.md` (実施完了)** | **完了** |
 | Step 7 | ViewModel DI 移行 (Pattern A) | 引数なし ViewModel（Settings, Log, About: 第4層 4-b）の DI 移行 | View x:Static / GetService 注入 | **完了** |
-| Step 8 | ViewModel DI 移行 (Pattern B) | 共有依存 ViewModel（Controllers, Main 等: 第4層 4-b）の DI 移行 | 共有サービス経由注入 | **未着手 (次)** |
-| Step 9 | ViewModel DI 移行 (Pattern C) | 実行時引数付き ViewModel（ProfileEdit, **RecordBox**, SpecialActions, KBMEditor 等: 第4層 4-b）の Factory 移行 | Factory パターン注入 | 未着手 (計画) |
-| **実機CP3** | **全ViewModel DI移行完了 実機検証** | **全画面 UI 結合・ViewModel 直接 new 全廃後の UI バインディング・画面遷移検証** | **実機検証チェックリスト CP3** | 未着手 (計画) |
-| Step 10 | Phase3 引継ぎ再確認・シム整理 | 残存シムの安全監査、Phase3引継ぎ事項（第2層・第3層境界）の完全解消確認 | 監査レポート、不要シム整理 | 未着手 (計画) |
-| **実機CP4** | **Phase4 最終総合 E2E 実機検証** | **シム整理後の Phase 4 最終総合結合テスト（長時間接続・負荷・安定性）** | **実機検証チェックリスト CP4** | 未着手 (計画) |
+| Step 8 | ViewModel DI 移行 (Pattern B) | 共有依存 ViewModel（Controllers, Main 等: 第4層 4-b）の DI 移行 | 共有サービス経由注入 | **完了** |
+| Step 9 | ViewModel DI 移行 (Pattern C) | 実行時引数付き ViewModel（ProfileSettings, **RecordBox**, SpecialActEditor, AutoProfiles 等: 第4層 4-b）の Factory 移行 | Factory パターン注入, **Step9-4-α監査合格** | **完了** |
+| **実機CP3** | **全ViewModel DI移行完了 実機検証** | **全画面 UI 結合・ViewModel 直接 new 全廃後の UI バインディング・画面遷移検証** | **`Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格)** | **完了** |
+| Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]監査ログ整備 | DI 実行経路への `[DI]` Trace 監査ログ出力整備、残存シムの安全監査、Phase3引継ぎ事項の完全解消確認 | 各サービス・Factoryへのログ導入、監査レポート | **未着手 (次)** |
+| **実機CP4** | **Phase4 最終総合 E2E 実機検証** | **Trace ログを活用したシム整理後・Phase 4 完了総合実機検証（長時間接続・負荷・安定性）** | **実機検証チェックリスト CP4** | 未着手 (計画) |
 
 ---
 
-## 3. テスト計画
+## 3. 各ステップの詳細
 
-### 3.1 単体テスト（ユニットテスト）
-- 各ステップで新設するサービスおよびリポジトリに対する専用テストを作成し、機能・境界・イベント通知を検証する。
+### Step 10: Phase3引継ぎ再確認・シム整理・[DI]監査ログ整備 & 最終実機検証 CP4
+- **1. [DI] Trace 監査ログの整備（タスク Step10-1）**:
+  - 各 DI サービス（設定、プロファイル、Action、デバイス状態、出力スロット、パス、環境、通知）、`ViewModelFactory`、および `AppHost` の主要エントリポイントに、`[DI] <クラス名>.<メソッド名>: <詳細情報>` 形式の Trace レベルログを導入。
+  - アプリ実行時に新方式 DI 経路を通って処理が行われていることをログ上で完全に可視化・証明可能にする。
+- **2. Phase 3 引継ぎ事項の完全解消確認（タスク Step10-2）**:
+  - 第2層（信号変換層）と第3層（信号出力層）の責務境界が正しく維持されていることを再確認。
+- **3. 残存シムの安全監査と不要シム整理（タスク Step10-3）**:
+  - `Global` のシム呼び出し状況を監査し、可能な箇所の直接 DI 化と安全なシム維持の総点検を実施。
+- **4. 最終総合実機動作確認 Checkpoint 4 の実施（タスク Step10-4）**:
+  - `Phase4-Step10-RealDevice-Verification-Checklist.md` を作成し、Trace ログを確認しながら最終 E2E 総合テストを実施。
 
-### 3.2 回帰テスト
-- `DS4Windows.Actions.Tests` (75件) および `StandaloneTests` (13件) を各ステップ完了毎に実行し、回帰ゼロ（全件パス）を維持する。
+---
 
-### 3.3 実機動作確認チェックポイント計画（実機検証 CP1〜CP4）
+## 4. テスト計画
+
+### 4.1 単体テスト（ユニットテスト）
+- 各ステップで新設するサービス、リポジトリ、および Factory に対する専用テストを作成し、機能・境界・イベント通知・引数結合を検証する。
+
+### 4.2 回帰テスト
+- `DS4Windows.Actions.Tests` (83件) および `StandaloneTests` (13件) を各ステップ完了毎に実行し、回帰ゼロ（全件パス）を維持する。
+
+### 4.3 実機動作確認チェックポイント計画（実機検証 CP1〜CP4）
 
 実機コントローラー（Vader 4 Pro / DS4 等）および実際の Windows / WPF 実行環境を用いて、以下の 4 大マイルストーンで実機動作検証を実施する：
 
@@ -108,9 +124,11 @@
    - **対象**: 第1層〜第3層を制御する全バックエンドサービス群（デバイス、出力スロット、仮想KBM、環境、通知）＋一本化された `AppHost`
    - **検証内容**: アプリ起動シーケンスの完全性、コントローラー実機の接続・切断検知、仮想コントローラー出力（ViGEmBus: 3-a）、仮想KBM送出（3-b）、UAC 昇格実行（3-c）、トースト通知、ログ出力。
    - **成果物**: `Phase4-Step6-RealDevice-Verification-Checklist.md`
-3. **Checkpoint 3 (Step 9 完了時: 全 ViewModel DI 化＆UI 結合確認) 【計画】**:
-   - **対象**: 第4層 4-a (View) / 4-b (ViewModel) における全 29 箇所の直接 new の全廃（Pattern A, B, C 全網羅、**RecordBoxViewModel 含む**）、DI コンテナ / Factory 経由の UI バインディング
-   - **検証内容**: 全画面（メイン、Controllers、Profiles、Special Actions、Settings、Log、RecordBox、KBMEditor）のデータバインディング、ダイアログ表示、画面遷移、直接 new の残存ゼロ確認。
+3. **Checkpoint 3 (Step 9 完了時: 全 ViewModel DI 化＆UI 結合確認) 【完了・全12項目合格】**:
+   - **対象**: 第4層 4-a (View) / 4-b (ViewModel) における全 29 箇所の直接 new の全廃（Pattern A, B, C 全網羅）、DI コンテナ / Factory 経由の UI バインディング
+   - **検証内容**: 全画面（メイン、Controllers、Profiles、Special Actions、Settings、Log、RecordBox、AutoProfiles）のデータバインディング、ダイアログ表示、画面遷移、直接 new の残存ゼロ確認。
+   - **成果物**: `Phase4-Step9-RealDevice-Verification-Checklist.md`
 4. **Checkpoint 4 (Step 10 完了時: Phase 4 最終総合 E2E 検証) 【計画】**:
-   - **対象**: 過渡期シム整理後の DS4Windows 全体（第1層〜第4層の完全統合）
-   - **検証内容**: 総合 E2E テスト（長時間ゲームプレイ、プロファイル切替、マクロ再生、複数コントローラー接続、スリープ復帰、エラーログゼロ確認）。
+   - **対象**: 過渡期シム整理後・`[DI]` 監査ログ導入後の DS4Windows 全体（第1層〜第4層の完全統合）
+   - **検証内容**: `[DI]` Trace ログの出力を確認しながらの総合 E2E テスト（長時間ゲームプレイ、プロファイル切替、マクロ再生、複数コントローラー接続、スリープ復帰、エラーログゼロ確認）。
+   - **成果物**: `Phase4-Step10-RealDevice-Verification-Checklist.md`
