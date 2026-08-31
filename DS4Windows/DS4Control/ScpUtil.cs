@@ -706,12 +706,68 @@ namespace DS4Windows
         public static string appDataPpath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\DS4Windows";
         public static string localAppDataPpath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DS4Windows");
         public static bool runHotPlug = false;
-        public static string[] tempprofilename = new string[TEST_PROFILE_ITEM_COUNT] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
-        public static bool[] useTempProfile = new bool[TEST_PROFILE_ITEM_COUNT] { false, false, false, false, false, false, false, false, false };
-        public static bool[] tempprofileDistance = new bool[TEST_PROFILE_ITEM_COUNT] { false, false, false, false, false, false, false, false, false };
-        public static bool[] useDInputOnly = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
-        public static bool[] linkedProfileCheck = new bool[MAX_DS4_CONTROLLER_COUNT] { false, false, false, false, false, false, false, false };
-        public static bool[] touchpadActive = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
+        // =========================================================================
+        // Phase4-Step1: IProfileSettingsService DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        private static DS4Windows.DI.IProfileSettingsService profileSettingsService = null;
+        private static readonly DS4Windows.DI.IProfileSettingsService fallbackProfileSettingsService = new ProfileSettingsService();
+
+        public static DS4Windows.DI.IProfileSettingsService ProfileSettingsServiceInstance
+        {
+            get
+            {
+                if (profileSettingsService != null)
+                    return profileSettingsService;
+
+                try
+                {
+                    var service = AppHost.GetService<DS4Windows.DI.IProfileSettingsService>();
+                    if (service != null)
+                    {
+                        profileSettingsService = service;
+                        return profileSettingsService;
+                    }
+                }
+                catch
+                {
+                    // DIコンテナ未初期化時の安全なフォールバック
+                }
+
+                return fallbackProfileSettingsService;
+            }
+            set => profileSettingsService = value;
+        }
+
+        public static string[] tempprofilename
+        {
+            get => ProfileSettingsServiceInstance.TempProfileNameArray;
+            set => ProfileSettingsServiceInstance.TempProfileNameArray = value;
+        }
+        public static bool[] useTempProfile
+        {
+            get => ProfileSettingsServiceInstance.UseTempProfileArray;
+            set => ProfileSettingsServiceInstance.UseTempProfileArray = value;
+        }
+        public static bool[] tempprofileDistance
+        {
+            get => ProfileSettingsServiceInstance.TempProfileDistanceArray;
+            set => ProfileSettingsServiceInstance.TempProfileDistanceArray = value;
+        }
+        public static bool[] useDInputOnly
+        {
+            get => ProfileSettingsServiceInstance.UseDInputOnlyArray;
+            set => ProfileSettingsServiceInstance.UseDInputOnlyArray = value;
+        }
+        public static bool[] linkedProfileCheck
+        {
+            get => ProfileSettingsServiceInstance.LinkedProfileCheckArray;
+            set => ProfileSettingsServiceInstance.LinkedProfileCheckArray = value;
+        }
+        public static bool[] touchpadActive
+        {
+            get => ProfileSettingsServiceInstance.TouchpadActiveArray;
+            set => ProfileSettingsServiceInstance.TouchpadActiveArray = value;
+        }
 
         // First connection detection methods
         public static bool IsFirstConnection(int index)
