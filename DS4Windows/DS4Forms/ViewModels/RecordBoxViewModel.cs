@@ -33,9 +33,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 {
     public class RecordBoxViewModel
     {
-        public RecordBoxViewModel() : this(0) { }
-
-        private Stopwatch sw = new Stopwatch();
+private Stopwatch sw = new Stopwatch();
         private int deviceNum;
         public int DeviceNum { get => deviceNum; }
 

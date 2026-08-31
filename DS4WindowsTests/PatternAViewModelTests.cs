@@ -40,15 +40,6 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void AppHost_ShouldResolve_RecordBoxViewModel()
-        {
-            DS4WinWPF.AppHost.CreateHost();
-
-            var vm = DS4WinWPF.AppHost.GetService<RecordBoxViewModel>();
-            Assert.NotNull(vm);
-        }
-
-        [Fact]
         public void PatternAViewModels_ShouldBeTransient()
         {
             DS4WinWPF.AppHost.CreateHost();

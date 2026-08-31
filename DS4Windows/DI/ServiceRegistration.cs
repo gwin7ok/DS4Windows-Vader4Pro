@@ -31,9 +31,8 @@ namespace DS4Windows.DI
 
             // 第4層 4-b ViewModel (Pattern A: 引数なし ViewModel)
             services.AddTransient<SettingsViewModel>();
-            services.AddTransient<LogViewModel>(sp => new LogViewModel());
+            services.AddTransient<LogViewModel>();
             services.AddTransient<AboutViewModel>();
-            services.AddTransient<RecordBoxViewModel>(sp => new RecordBoxViewModel());
         }
     }
 }
