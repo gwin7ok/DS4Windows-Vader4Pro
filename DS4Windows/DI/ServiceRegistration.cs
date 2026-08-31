@@ -13,6 +13,7 @@ namespace DS4WinWPF.DI
             // Phase 0: Profile Settings Service
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();
+            services.AddSingleton<ISpecialActionRepository, SpecialActionRepository>();
 
             // Phase 2: Virtual KBM Output
             services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
