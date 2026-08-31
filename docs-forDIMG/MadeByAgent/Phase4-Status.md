@@ -13,8 +13,8 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 |---|---|---|---|---|
 | Step 0 | 現状棚卸し・基準テスト | **完了** | 2026-08-31 | `Phase4-Step0-Plan.md`, `Phase4-Step0-Completion-Report.md`, Globalメンバー442件/ViewModel生成29件棚卸し |
 | Step 1 | IProfileSettingsService 実装化 | **完了** | 2026-08-31 | `IProfileSettingsService.cs`, `ProfileSettingsService.cs`, DI登録, Globalシム, `ProfileSettingsServiceTests.cs` |
-| Step 2 | IProfileRepository 分離 | **未着手 (次)** | - | プロファイルXML読込・保存・切替の分離, `ApplyProfileDirect`/`RestoreProfileDirect` 依存整理 |
-| Step 3 | ISpecialActionRepository 分離 | 未着手 | - | SpecialAction 管理の分離 |
+| Step 2 | IProfileRepository 分離 | **完了** | 2026-08-31 | `IProfileRepository.cs`, `ProfileRepository.cs`, DI登録, Globalシム, `ProfileRepositoryTests.cs` |
+| Step 3 | ISpecialActionRepository 分離 | **未着手 (次)** | - | SpecialAction 管理・永続化の分離 |
 | Step 4 | 入力・出力・デバイス状態サービス | 未着手 | - | Input/Output/DeviceState 各サービスの分離 |
 | Step 5 | 環境・UI・通知サービス | 未着手 | - | Path/Environment/UI/Notification 各サービスの分離 |
 | Step 6 | Composition Root 一本化 | 未着手 | - | DIコンテナ二重起動解消・一本化 |
@@ -33,4 +33,11 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 - **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `ProfileSettingsService` を Singleton 登録。
 - **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` 内の `Global` プロパティを `ProfileSettingsServiceInstance` へのシム委譲へピンポイント置換。
 - **単体テスト**: `DS4WindowsTests/ProfileSettingsServiceTests.cs`（全件通過、回帰ゼロ）。
+
+### Step 2: IProfileRepository 分離 (完了)
+- **DI契約 (永続資産)**: `DS4Windows/DI/IProfileRepository.cs`（名前空間 `DS4Windows.DI`）を新規作成。プロファイル XML 入出力、パス解決、一覧取得、切替（`ApplyProfileDirect` / `RestoreProfileDirect`）を定義。
+- **サービス実装 (永続資産)**: `DS4Windows/DS4Control/Services/ProfileRepository.cs`（`IProfileSettingsService` をコンストラクタ注入、スレッドセーフなファイル操作、プロファイル切替ロジック）。
+- **DI登録 (永続資産)**: `DS4Windows/DI/ServiceRegistration.cs` にて `ProfileRepository` を Singleton 登録。
+- **過渡期シム (Strangler Fig)**: `DS4Windows/DS4Control/ScpUtil.cs` に `Global.ProfileRepositoryInstance` プロパティ（安全なフォールバック付き）を追加。
+- **単体テスト**: `DS4WindowsTests/ProfileRepositoryTests.cs`（全件通過、回帰ゼロ）。
 - **ビルド・テスト検証**: 全プロジェクトビルド警告0・エラー0、既存テスト（31件/13件）および新設テスト全件成功。
