@@ -999,29 +999,16 @@ namespace DS4Windows
                 ProfileSettingsServiceInstance.LinkedProfileCheckArray = value;
             }
         }
-        public static bool[] touchpadActive
+        public static bool[] TouchpadActive
         {
-            get
-            {
-                AppLogger.LogToTrace("[Legacy] Global.touchpadActive getter accessed via static shim");
-                AppLogger.LogToGui("[Legacy] Global.touchpadActive getter accessed via static shim", false, true);
-                return ProfileSettingsServiceInstance.TouchpadActiveArray;
-            }
+            get => ProfileSettingsServiceInstance.TouchpadActive;
             set
             {
-                AppLogger.LogToTrace("[Legacy] Global.touchpadActive setter accessed via static shim");
-                AppLogger.LogToGui("[Legacy] Global.touchpadActive setter accessed via static shim", false, true);
-                ProfileSettingsServiceInstance.TouchpadActiveArray = value;
+                if (AppLogger.IsTraceEnabled)
+                    AppLogger.LogTrace("[Legacy] Global.touchpadActive setter accessed via static shim");
+                ProfileSettingsServiceInstance.TouchpadActive = value;
             }
         }
-            set
-            {
-                AppLogger.LogToGui("[Legacy] Global.touchpadActive setter accessed via static shim", false, true);
-                ProfileSettingsServiceInstance.TouchpadActiveArray = value;
-            }
-        }
-
-        // First connection detection methods
         public static bool IsFirstConnection(int index)
         {
             return m_Config.firstConnectionAfterStartup[index];

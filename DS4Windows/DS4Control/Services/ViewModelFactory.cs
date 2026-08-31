@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using DS4Windows.DI;
+using DS4WinWPF;
 using DS4WinWPF.DS4Forms.ViewModels;
 using DS4WinWPF.DS4Forms.ViewModels.SpecialActions;
 
