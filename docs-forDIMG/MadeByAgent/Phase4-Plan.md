@@ -23,7 +23,7 @@
 - **§2.2 現在の機能の完全維持 (No Feature Drop)**:
   - プロファイル設定の既定値、配列境界（`TEST_PROFILE_ITEM_COUNT` = 9, `MAX_DS4_CONTROLLER_COUNT` = 8）、カルチャ（`configFileDecimalCulture` = en-US）、特殊状態フラグの挙動を 100% 維持する。
 - **§2.3 ログ出力の厳格な維持**:
-  - `AppLogger.LogToGui` 等の既存ログ関数およびログレベルを厳格に維持しつつ、DI 実行経路に Trace レベルの `[DI]` 監査ログを付与する。
+  - `AppLogger.LogToGui` 等の既存ログ関数およびログレベルを厳格に維持しつつ、DI 実行経路に `[DI]`、従来経路（静的シム等）に `[Legacy]` の Trace レベル監査ログを付与する。
 - **§3.1 DI (Dependency Injection) の実装**:
   - インターフェース契約は `DS4Windows/DI/`（名前空間 `DS4Windows.DI`）に配置（**DI永続資産**）。
   - 実装クラスは `DS4Windows/DS4Control/Services/`（名前空間 `DS4Windows`）に配置（**DI永続資産**）。
@@ -41,7 +41,7 @@
 - `Global` クラス（`ScpUtil.cs` 内、棚卸し実測値 442 件）に集中している設定・状態・I/O 責務を機能別 DI サービス群へ分割・移行する。
 - View / UserControl による ViewModel 直接生成（棚卸し実測値 29 件）を DI コンテナ注入 / ファクトリ方式へ切り替える。
 - `AppHost`（DIコンテナ）起動シーケンスを一本化し、UI およびバックエンド全体で安全に DI サービスを利用可能にする。
-- 新方式 DI 実行経路の稼働状況を客観的に可視化・監査するための `[DI]` Trace 監査ログを整備する。
+- 新方式 DI 実行経路（`[DI]`）および従来シム経路（`[Legacy]`）の稼働状況を客観的に可視化・比較監査するための Trace ログを整備する。
 
 ### 1.1.1 全体4層モデルとの責務境界（全体計画書 §3.3 準拠）
 全体計画書（`DI-App-Wide-Migration-Plan.md` §3.3）で規定された **全体4層モデル（実行時3層 ＋ UI層）** に基づき、フェーズ4における各サービスの責務境界を統一管理する：
@@ -84,23 +84,24 @@
 | Step 8 | ViewModel DI 移行 (Pattern B) | 共有依存 ViewModel（Controllers, Main 等: 第4層 4-b）の DI 移行 | 共有サービス経由注入 | **完了** |
 | Step 9 | ViewModel DI 移行 (Pattern C) | 実行時引数付き ViewModel（ProfileSettings, **RecordBox**, SpecialActEditor, AutoProfiles 等: 第4層 4-b）の Factory 移行 | Factory パターン注入, **Step9-4-α監査合格** | **完了** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **全画面 UI 結合・ViewModel 直接 new 全廃後の UI バインディング・画面遷移検証** | **`Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格)** | **完了** |
-| Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]監査ログ整備 | DI 実行経路への `[DI]` Trace 監査ログ出力整備、残存シムの安全監査、Phase3引継ぎ事項の完全解消確認 | 各サービス・Factoryへのログ導入、監査レポート | **未着手 (次)** |
-| **実機CP4** | **Phase4 最終総合 E2E 実機検証** | **Trace ログを活用したシム整理後・Phase 4 完了総合実機検証（長時間接続・負荷・安定性）** | **実機検証チェックリスト CP4** | 未着手 (計画) |
+| Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]/[Legacy]ログ整備 | DI 実行経路（`[DI]`）および従来経路（`[Legacy]`）の Trace 監査ログ整備、残存シムの安全監査、Phase3引継ぎ事項の完全解消確認 | 各サービス・シムへのログ導入、監査レポート | **未着手 (次)** |
+| **実機CP4** | **Phase4 最終総合 E2E 実機検証** | **`[DI]` および `[Legacy]` ログを活用したシム整理後・Phase 4 完了総合実機検証（長時間接続・負荷・安定性）** | **実機検証チェックリスト CP4** | 未着手 (計画) |
 
 ---
 
 ## 3. 各ステップの詳細
 
-### Step 10: Phase3引継ぎ再確認・シム整理・[DI]監査ログ整備 & 最終実機検証 CP4
-- **1. [DI] Trace 監査ログの整備（タスク Step10-1）**:
-  - 各 DI サービス（設定、プロファイル、Action、デバイス状態、出力スロット、パス、環境、通知）、`ViewModelFactory`、および `AppHost` の主要エントリポイントに、`[DI] <クラス名>.<メソッド名>: <詳細情報>` 形式の Trace レベルログを導入。
-  - アプリ実行時に新方式 DI 経路を通って処理が行われていることをログ上で完全に可視化・証明可能にする。
+### Step 10: Phase3引継ぎ再確認・シム整理・[DI]/[Legacy]ログ整備 & 最終実機検証 CP4
+- **1. [DI] および [Legacy] Trace 監査ログの整備（タスク Step10-1）**:
+  - **新方式 DI 経路**: `AppHost.GetService`、全 DI サービス、`ViewModelFactory` に `[DI] <クラス名>.<メソッド名>: <詳細>` ログを出力。
+  - **従来レガシー経路**: `Global`（`ScpUtil.cs`）の各静的シム（`touchpadActive`, `LoadProfile`, `SaveProfile`, `actions`, `devices` 等）に `[Legacy] Global.<メンバー名>: <詳細>` ログを出力。
+  - アプリ実行時に「どの処理が DI 新経路を通り、どの処理がまだ古いシムを経由しているか」をログ上で完全に可視化・比較可能にする。
 - **2. Phase 3 引継ぎ事項の完全解消確認（タスク Step10-2）**:
   - 第2層（信号変換層）と第3層（信号出力層）の責務境界が正しく維持されていることを再確認。
 - **3. 残存シムの安全監査と不要シム整理（タスク Step10-3）**:
   - `Global` のシム呼び出し状況を監査し、可能な箇所の直接 DI 化と安全なシム維持の総点検を実施。
 - **4. 最終総合実機動作確認 Checkpoint 4 の実施（タスク Step10-4）**:
-  - `Phase4-Step10-RealDevice-Verification-Checklist.md` を作成し、Trace ログを確認しながら最終 E2E 総合テストを実施。
+  - `Phase4-Step10-RealDevice-Verification-Checklist.md` を作成し、`[DI]` / `[Legacy]` ログを確認しながら最終 E2E 総合テストを実施。
 
 ---
 
@@ -129,6 +130,6 @@
    - **検証内容**: 全画面（メイン、Controllers、Profiles、Special Actions、Settings、Log、RecordBox、AutoProfiles）のデータバインディング、ダイアログ表示、画面遷移、直接 new の残存ゼロ確認。
    - **成果物**: `Phase4-Step9-RealDevice-Verification-Checklist.md`
 4. **Checkpoint 4 (Step 10 完了時: Phase 4 最終総合 E2E 検証) 【計画】**:
-   - **対象**: 過渡期シム整理後・`[DI]` 監査ログ導入後の DS4Windows 全体（第1層〜第4層の完全統合）
-   - **検証内容**: `[DI]` Trace ログの出力を確認しながらの総合 E2E テスト（長時間ゲームプレイ、プロファイル切替、マクロ再生、複数コントローラー接続、スリープ復帰、エラーログゼロ確認）。
+   - **対象**: 過渡期シム整理後・`[DI]` / `[Legacy]` ログ導入後の DS4Windows 全体（第1層〜第4層の完全統合）
+   - **検証内容**: `[DI]` および `[Legacy]` Trace ログの出力を確認しながらの総合 E2E テスト（長時間ゲームプレイ、プロファイル切替、マクロ再生、複数コントローラー接続、スリープ復帰、エラーログゼロ確認）。
    - **成果物**: `Phase4-Step10-RealDevice-Verification-Checklist.md`
