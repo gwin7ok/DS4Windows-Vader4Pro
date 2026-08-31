@@ -232,6 +232,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/UpdaterWindow.xaml
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/UpdaterWindow.xaml.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/UtilMethods.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/AboutViewModel.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/AutoProfilesViewModel.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/AxialStickControlViewModel.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Forms/ViewModels/BindingWindowViewModel.cs
