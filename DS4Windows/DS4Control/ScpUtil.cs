@@ -863,6 +863,66 @@ namespace DS4Windows
             set => outputSlotService = value;
         }
 
+                // =========================================================================
+        // Phase4-Step5: IPathService, IEnvironmentService, INotificationService DI シム
+        // =========================================================================
+        private static DS4Windows.DI.IPathService pathService = null;
+        private static readonly DS4Windows.DI.IPathService fallbackPathService = new PathService();
+
+        public static DS4Windows.DI.IPathService PathServiceInstance
+        {
+            get
+            {
+                if (pathService != null) return pathService;
+                try
+                {
+                    var service = AppHost.GetService<DS4Windows.DI.IPathService>();
+                    if (service != null) { pathService = service; return pathService; }
+                }
+                catch { }
+                return fallbackPathService;
+            }
+            set => pathService = value;
+        }
+
+        private static DS4Windows.DI.IEnvironmentService environmentService = null;
+        private static readonly DS4Windows.DI.IEnvironmentService fallbackEnvironmentService = new EnvironmentService();
+
+        public static DS4Windows.DI.IEnvironmentService EnvironmentServiceInstance
+        {
+            get
+            {
+                if (environmentService != null) return environmentService;
+                try
+                {
+                    var service = AppHost.GetService<DS4Windows.DI.IEnvironmentService>();
+                    if (service != null) { environmentService = service; return environmentService; }
+                }
+                catch { }
+                return fallbackEnvironmentService;
+            }
+            set => environmentService = value;
+        }
+
+        private static DS4Windows.DI.INotificationService notificationService = null;
+        private static readonly DS4Windows.DI.INotificationService fallbackNotificationService = new AppNotificationService();
+
+        public static DS4Windows.DI.INotificationService NotificationServiceInstance
+        {
+            get
+            {
+                if (notificationService != null) return notificationService;
+                try
+                {
+                    var service = AppHost.GetService<DS4Windows.DI.INotificationService>();
+                    if (service != null) { notificationService = service; return notificationService; }
+                }
+                catch { }
+                return fallbackNotificationService;
+            }
+            set => notificationService = value;
+        }
+
         public static string[] tempprofilename
         {
             get => ProfileSettingsServiceInstance.TempProfileNameArray;
