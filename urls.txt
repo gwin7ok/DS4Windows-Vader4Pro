@@ -473,6 +473,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ActionControllerTests/MockManagedActionManager.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ActionControllerTests/TestActionControllerTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ActionControllerTests/ToggleAndPressedOnceTests.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/CompositionRootTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ControlTabAndSpecialActionKeyTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/DS4Windows.Actions.Tests.csproj
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/DeviceStateServiceTests.cs
