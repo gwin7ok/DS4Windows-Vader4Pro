@@ -1001,12 +1001,12 @@ namespace DS4Windows
         }
         public static bool[] touchpadActive
         {
-            get => ProfileSettingsServiceInstance.touchpadActive;
+            get => ProfileSettingsServiceInstance.TouchpadActiveArray;
             set
             {
                 if (AppLogger.IsTraceEnabled)
                     AppLogger.LogTrace("[Legacy] Global.touchpadActive setter accessed via static shim");
-                ProfileSettingsServiceInstance.touchpadActive = value;
+                ProfileSettingsServiceInstance.TouchpadActiveArray = value;
             }
         }
         public static bool IsFirstConnection(int index)
