@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using System.Windows;
 using Xunit;
@@ -14,6 +15,11 @@ namespace DS4WindowsTests
     {
         static PatternCViewModelTests()
         {
+            if (string.IsNullOrEmpty(Global.appdatapath))
+            {
+                Global.appdatapath = AppContext.BaseDirectory;
+            }
+
             if (Application.Current == null)
             {
                 try
@@ -22,6 +28,23 @@ namespace DS4WindowsTests
                 }
                 catch { }
             }
+
+            if (Application.Current != null)
+            {
+                try
+                {
+                    string[] resourceKeys = new string[] { "KeyDownImg", "KeyUpImg", "KeyWaitImg", "KeyHoldImg", "MouseImg", "CustomKeyImg" };
+                    foreach (var key in resourceKeys)
+                    {
+                        if (!Application.Current.Resources.Contains(key))
+                        {
+                            Application.Current.Resources[key] = "";
+                        }
+                    }
+                }
+                catch { }
+            }
+
             if (Application.ResourceAssembly == null)
             {
                 try
