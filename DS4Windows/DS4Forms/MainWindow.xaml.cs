@@ -345,6 +345,12 @@ namespace DS4WinWPF.DS4Forms
 
         private void ShowNotification(object sender, DS4Windows.DebugEventArgs e)
         {
+            if (e.Temporary)
+                return;
+
+            if (!string.IsNullOrEmpty(e.Data) && (e.Data.StartsWith("[DI]") || e.Data.StartsWith("[Legacy]")))
+                return;
+
             Dispatcher.BeginInvoke((Action)(() =>
             {
                 if (Global.Notifications == 2 ||
@@ -378,10 +384,6 @@ namespace DS4WinWPF.DS4Forms
             }
             catch { /* プロファイル通知失敗は無視 */ }
         }
-
-
-
-
 
         private void SetupEvents()
         {
@@ -708,6 +710,12 @@ Suspend support not enabled.", true);
 
         private void UpdateLastStatusMessage(object sender, DS4Windows.DebugEventArgs e)
         {
+            if (e.Temporary)
+                return;
+
+            if (!string.IsNullOrEmpty(e.Data) && (e.Data.StartsWith("[DI]") || e.Data.StartsWith("[Legacy]")))
+                return;
+
             lastLogMsg.Message = e.Data;
             lastLogMsg.Warning = e.Warning;
         }
