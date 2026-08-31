@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO.Packaging;
+using System.Windows;
 using Xunit;
 using DS4Windows;
 using DS4Windows.DI;
@@ -9,6 +11,18 @@ namespace DS4WindowsTests
 {
     public class PatternCViewModelTests
     {
+        public PatternCViewModelTests()
+        {
+            if (Application.Current == null)
+            {
+                try
+                {
+                    new Application();
+                }
+                catch { }
+            }
+        }
+
         [Fact]
         public void AppHost_ShouldResolve_IViewModelFactory()
         {
@@ -38,7 +52,8 @@ namespace DS4WindowsTests
             var factory = DS4WinWPF.AppHost.GetService<IViewModelFactory>();
             Assert.NotNull(factory);
 
-            var vm = factory.CreateRecordBoxViewModel(0, null, true, false);
+            var settings = new DS4ControlSettings(DS4Controls.Cross);
+            var vm = factory.CreateRecordBoxViewModel(0, settings, true, false);
             Assert.NotNull(vm);
         }
 
@@ -50,7 +65,9 @@ namespace DS4WindowsTests
             var factory = DS4WinWPF.AppHost.GetService<IViewModelFactory>();
             Assert.NotNull(factory);
 
-            var vm = factory.CreateAutoProfilesViewModel(null, null);
+            var profileList = new ProfileList();
+            var holder = new AutoProfileHolder(new ControlService());
+            var vm = factory.CreateAutoProfilesViewModel(holder, profileList);
             Assert.NotNull(vm);
         }
     }
