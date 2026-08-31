@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using DS4Windows;
 
 namespace DS4WinWPF
 {
@@ -26,6 +27,7 @@ namespace DS4WinWPF
                     });
 
                 _host = builder.Build();
+                AppLogger.LogToGui("[DI] AppHost.CreateHost: Host initialized and all services registered", false, true);
                 return _host;
             }
         }
@@ -44,6 +46,7 @@ namespace DS4WinWPF
                     });
 
                 _host = builder.Build();
+                AppLogger.LogToGui("[DI] AppHost.CreateHost: Host initialized with args", false, true);
                 return _host;
             }
         }
@@ -61,7 +64,12 @@ namespace DS4WinWPF
                 }
             }
 
-            return _host?.Services.GetService<T>();
+            var service = _host?.Services.GetService<T>();
+            if (service != null)
+            {
+                AppLogger.LogToGui($"[DI] AppHost.GetService: Resolved {typeof(T).Name}", false, true);
+            }
+            return service;
         }
 
         public static object GetService(Type serviceType)
@@ -77,7 +85,12 @@ namespace DS4WinWPF
                 }
             }
 
-            return _host?.Services.GetService(serviceType);
+            var service = _host?.Services.GetService(serviceType);
+            if (service != null)
+            {
+                AppLogger.LogToGui($"[DI] AppHost.GetService: Resolved {serviceType.Name}", false, true);
+            }
+            return service;
         }
 
         public static void Dispose()
@@ -89,6 +102,7 @@ namespace DS4WinWPF
                     try
                     {
                         _host.Dispose();
+                        AppLogger.LogToGui("[DI] AppHost.Dispose: Host disposed", false, true);
                     }
                     catch { }
                     finally
@@ -98,5 +112,17 @@ namespace DS4WinWPF
                 }
             }
         }
+    }
+}
+
+namespace DS4Windows
+{
+    public static class AppHost
+    {
+        public static Microsoft.Extensions.Hosting.IHost Host => DS4WinWPF.AppHost.Host;
+        public static Microsoft.Extensions.Hosting.IHost CreateHost(string[] args = null) => DS4WinWPF.AppHost.CreateHost(args);
+        public static T GetService<T>() where T : class => DS4WinWPF.AppHost.GetService<T>();
+        public static object GetService(Type serviceType) => DS4WinWPF.AppHost.GetService(serviceType);
+        public static void Dispose() => DS4WinWPF.AppHost.Dispose();
     }
 }

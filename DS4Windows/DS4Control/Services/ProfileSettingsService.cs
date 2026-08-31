@@ -365,6 +365,7 @@ namespace DS4Windows
 
         protected virtual void OnProfileSettingChanged(int deviceIndex, string settingName, object oldValue, object newValue)
         {
+            AppLogger.LogToGui($"[DI] ProfileSettingsService.SettingChanged: Slot {deviceIndex}, {settingName}", false, true);
             ProfileSettingChanged?.Invoke(this, new ProfileSettingChangedEventArgs(deviceIndex, settingName, oldValue, newValue));
         }
     }

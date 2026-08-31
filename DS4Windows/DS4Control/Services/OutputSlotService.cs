@@ -65,6 +65,7 @@ namespace DS4Windows
                 lock (_syncLock)
                 {
                     _deviceTypes[slotIndex] = deviceType;
+                    AppLogger.LogToGui($"[DI] OutputSlotService.SetOutputDeviceType: Slot {slotIndex} = {deviceType}", false, true);
                 }
             }
         }
@@ -76,6 +77,7 @@ namespace DS4Windows
                 lock (_syncLock)
                 {
                     _outputDevices[slotIndex] = outputDevice;
+                    AppLogger.LogToGui($"[DI] OutputSlotService.SetOutputDevice: Slot {slotIndex} output device updated", false, true);
                     OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, outputDevice));
                 }
             }

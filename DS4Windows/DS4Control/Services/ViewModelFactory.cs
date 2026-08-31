@@ -25,21 +25,25 @@ namespace DS4Windows
 
         public ProfileSettingsViewModel CreateProfileSettingsViewModel(int device)
         {
+            AppLogger.LogToGui($"[DI] ViewModelFactory: Created ProfileSettingsViewModel for Device {device}", false, true);
             return new ProfileSettingsViewModel(device);
         }
 
         public RecordBoxViewModel CreateRecordBoxViewModel(int device, DS4ControlSettings controlSettings, bool recordMacro = true, bool extraHold = false)
         {
+            AppLogger.LogToGui($"[DI] ViewModelFactory: Created RecordBoxViewModel for Device {device}", false, true);
             return new RecordBoxViewModel(device, controlSettings, recordMacro, extraHold);
         }
 
         public SpecialActEditorViewModel CreateSpecialActEditorViewModel(int device, SpecialAction action = null)
         {
+            AppLogger.LogToGui($"[DI] ViewModelFactory: Created SpecialActEditorViewModel for Device {device}", false, true);
             return new SpecialActEditorViewModel(device, action);
         }
 
         public AutoProfilesViewModel CreateAutoProfilesViewModel(AutoProfileHolder autoProfileHolder, ProfileList profileList)
         {
+            AppLogger.LogToGui("[DI] ViewModelFactory: Created AutoProfilesViewModel", false, true);
             return new AutoProfilesViewModel(autoProfileHolder, profileList);
         }
     }
