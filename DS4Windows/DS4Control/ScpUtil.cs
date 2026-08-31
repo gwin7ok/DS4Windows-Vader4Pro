@@ -735,7 +735,7 @@ namespace DS4Windows
                     // DIコンテナ未初期化時の安全なフォールバック
                 }
 
-                AppLogger.LogToTrace("[Legacy] Global.ProfileSettingsServiceInstance: Fallback instance used");
+                AppLogger.LogTrace("[Legacy] Global.ProfileSettingsServiceInstance: Fallback instance used");
                 AppLogger.LogToGui("[Legacy] Global.ProfileSettingsServiceInstance: Fallback instance used", false, true);
                 return fallbackProfileSettingsService;
             }
@@ -764,7 +764,7 @@ namespace DS4Windows
                 }
                 catch { }
 
-                AppLogger.LogToTrace("[Legacy] Global.ProfileRepositoryInstance: Fallback instance used");
+                AppLogger.LogTrace("[Legacy] Global.ProfileRepositoryInstance: Fallback instance used");
                 AppLogger.LogToGui("[Legacy] Global.ProfileRepositoryInstance: Fallback instance used", false, true);
                 return fallbackProfileRepository;
             }
@@ -793,7 +793,7 @@ namespace DS4Windows
                 }
                 catch { }
 
-                AppLogger.LogToTrace("[Legacy] Global.SpecialActionRepositoryInstance: Fallback instance used");
+                AppLogger.LogTrace("[Legacy] Global.SpecialActionRepositoryInstance: Fallback instance used");
                 AppLogger.LogToGui("[Legacy] Global.SpecialActionRepositoryInstance: Fallback instance used", false, true);
                 return fallbackSpecialActionRepository;
             }
@@ -822,7 +822,7 @@ namespace DS4Windows
                 }
                 catch { }
 
-                AppLogger.LogToTrace("[Legacy] Global.DeviceStateServiceInstance: Fallback instance used");
+                AppLogger.LogTrace("[Legacy] Global.DeviceStateServiceInstance: Fallback instance used");
                 AppLogger.LogToGui("[Legacy] Global.DeviceStateServiceInstance: Fallback instance used", false, true);
                 return fallbackDeviceStateService;
             }
@@ -848,7 +848,7 @@ namespace DS4Windows
                 }
                 catch { }
 
-                AppLogger.LogToTrace("[Legacy] Global.OutputSlotServiceInstance: Fallback instance used");
+                AppLogger.LogTrace("[Legacy] Global.OutputSlotServiceInstance: Fallback instance used");
                 AppLogger.LogToGui("[Legacy] Global.OutputSlotServiceInstance: Fallback instance used", false, true);
                 return fallbackOutputSlotService;
             }
@@ -873,7 +873,7 @@ namespace DS4Windows
                 }
                 catch { }
 
-                AppLogger.LogToTrace("[Legacy] Global.PathServiceInstance: Fallback instance used");
+                AppLogger.LogTrace("[Legacy] Global.PathServiceInstance: Fallback instance used");
                 AppLogger.LogToGui("[Legacy] Global.PathServiceInstance: Fallback instance used", false, true);
                 return fallbackPathService;
             }
@@ -895,7 +895,7 @@ namespace DS4Windows
                 }
                 catch { }
 
-                AppLogger.LogToTrace("[Legacy] Global.EnvironmentServiceInstance: Fallback instance used");
+                AppLogger.LogTrace("[Legacy] Global.EnvironmentServiceInstance: Fallback instance used");
                 AppLogger.LogToGui("[Legacy] Global.EnvironmentServiceInstance: Fallback instance used", false, true);
                 return fallbackEnvironmentService;
             }
@@ -917,7 +917,7 @@ namespace DS4Windows
                 }
                 catch { }
 
-                AppLogger.LogToTrace("[Legacy] Global.NotificationServiceInstance: Fallback instance used");
+                AppLogger.LogTrace("[Legacy] Global.NotificationServiceInstance: Fallback instance used");
                 AppLogger.LogToGui("[Legacy] Global.NotificationServiceInstance: Fallback instance used", false, true);
                 return fallbackNotificationService;
             }
@@ -928,13 +928,13 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogToTrace("[Legacy] Global.tempprofilename getter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.tempprofilename getter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.tempprofilename getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.TempProfileNameArray;
             }
             set
             {
-                AppLogger.LogToTrace("[Legacy] Global.tempprofilename setter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.tempprofilename setter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.tempprofilename setter accessed via static shim", false, true);
                 ProfileSettingsServiceInstance.TempProfileNameArray = value;
             }
@@ -943,13 +943,13 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogToTrace("[Legacy] Global.useTempProfile getter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.useTempProfile getter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.useTempProfile getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.UseTempProfileArray;
             }
             set
             {
-                AppLogger.LogToTrace("[Legacy] Global.useTempProfile setter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.useTempProfile setter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.useTempProfile setter accessed via static shim", false, true);
                 ProfileSettingsServiceInstance.UseTempProfileArray = value;
             }
@@ -958,13 +958,13 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogToTrace("[Legacy] Global.tempprofileDistance getter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.tempprofileDistance getter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.tempprofileDistance getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.TempProfileDistanceArray;
             }
             set
             {
-                AppLogger.LogToTrace("[Legacy] Global.tempprofileDistance setter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.tempprofileDistance setter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.tempprofileDistance setter accessed via static shim", false, true);
                 ProfileSettingsServiceInstance.TempProfileDistanceArray = value;
             }
@@ -973,13 +973,13 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogToTrace("[Legacy] Global.useDInputOnly getter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.useDInputOnly getter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.useDInputOnly getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.UseDInputOnlyArray;
             }
             set
             {
-                AppLogger.LogToTrace("[Legacy] Global.useDInputOnly setter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.useDInputOnly setter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.useDInputOnly setter accessed via static shim", false, true);
                 ProfileSettingsServiceInstance.UseDInputOnlyArray = value;
             }
@@ -988,25 +988,25 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogToTrace("[Legacy] Global.linkedProfileCheck getter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.linkedProfileCheck getter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.linkedProfileCheck getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.LinkedProfileCheckArray;
             }
             set
             {
-                AppLogger.LogToTrace("[Legacy] Global.linkedProfileCheck setter accessed via static shim");
+                AppLogger.LogTrace("[Legacy] Global.linkedProfileCheck setter accessed via static shim");
                 AppLogger.LogToGui("[Legacy] Global.linkedProfileCheck setter accessed via static shim", false, true);
                 ProfileSettingsServiceInstance.LinkedProfileCheckArray = value;
             }
         }
-        public static bool[] TouchpadActive
+        public static bool[] touchpadActive
         {
-            get => ProfileSettingsServiceInstance.TouchpadActive;
+            get => ProfileSettingsServiceInstance.touchpadActive;
             set
             {
                 if (AppLogger.IsTraceEnabled)
                     AppLogger.LogTrace("[Legacy] Global.touchpadActive setter accessed via static shim");
-                ProfileSettingsServiceInstance.TouchpadActive = value;
+                ProfileSettingsServiceInstance.touchpadActive = value;
             }
         }
         public static bool IsFirstConnection(int index)
