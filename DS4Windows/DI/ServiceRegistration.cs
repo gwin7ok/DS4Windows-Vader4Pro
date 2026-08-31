@@ -1,44 +1,31 @@
-﻿using DS4Windows;
+﻿using System;
+using Microsoft.Extensions.DependencyInjection;
+using DS4Windows;
 using DS4Windows.DI;
 using DS4Windows.Services;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace DS4WinWPF.DI
+namespace DS4Windows.DI
 {
     public static class ServiceRegistration
     {
-        public static IServiceCollection AddAppServices(this IServiceCollection services, IConfiguration configuration)
+        public static void RegisterServices(IServiceCollection services)
         {
-            // Phase 0: Profile Settings Service
+            // 第4層 4-c 設定・プロファイル・アクション・環境・通知サービス
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();
             services.AddSingleton<ISpecialActionRepository, SpecialActionRepository>();
-            services.AddSingleton<IDeviceStateService, DeviceStateService>();
-            services.AddSingleton<IOutputSlotService, OutputSlotService>();
             services.AddSingleton<IPathService, PathService>();
             services.AddSingleton<IEnvironmentService, EnvironmentService>();
             services.AddSingleton<INotificationService, AppNotificationService>();
 
-            // Phase 2: Virtual KBM Output
-            services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
-
-                        // Phase 3 Step 3-3: DS4 Device Registry
+            // 第1層 入力監視層・デバイス状態管理サービス
+            services.AddSingleton<IDeviceStateService, DeviceStateService>();
             services.AddSingleton<IDs4DeviceRegistry, Ds4DeviceRegistryAdapter>();
 
-            // Phase 3 Step 3-5: Elevated Process Launcher
+            // 第3層 信号出力層（仮想コントローラー出力スロット・プロセス起動）
+            services.AddSingleton<IOutputSlotService, OutputSlotService>();
             services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
-
-            // Phase 3 Step 3-6-A: Device State Accessor (ControlService/Program.rootHub への委譲)
-            // 注意: ControlServiceはDIコンテナ管理下ではなく、App.xaml.cs の CreateControlService() で
-            // 手動生成され Program.rootHub に保持される。DIコンテナが独自に新しい ControlService を
-            // 生成しないよう、必ず Program.rootHub を指すファクトリ委譲で登録すること。
-            services.AddSingleton<IDeviceStateAccessor>(sp => (IDeviceStateAccessor)DS4Windows.Program.rootHub);
-
-            // Phase 3 Step 3-6-B: Process Inspector (multi-launch check)
             services.AddSingleton<IProcessInspector, DefaultProcessInspector>();
-
-            return services;
         }
     }
 }
