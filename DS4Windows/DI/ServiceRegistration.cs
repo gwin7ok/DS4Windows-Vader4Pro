@@ -14,6 +14,8 @@ namespace DS4WinWPF.DI
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();
             services.AddSingleton<ISpecialActionRepository, SpecialActionRepository>();
+            services.AddSingleton<IDeviceStateService, DeviceStateService>();
+            services.AddSingleton<IOutputSlotService, OutputSlotService>();
 
             // Phase 2: Virtual KBM Output
             services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
