@@ -1,10 +1,11 @@
 ﻿# フェーズ4-Step4 計画書: 入力・出力・デバイス状態サービス
 
 作成日: 2026-08-31
+最終更新日: 2026-08-31
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
-- `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.1, §5, §6.6（全体計画）
-- `docs-forDIMG/MadeByAgent/Phase4-Plan.md` §1.2, §2, §3 Step4（Phase4詳細計画）
+- `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §3.3, §4.1, §5, §6.6（全体計画書・全体4層モデル定義）
+- `docs-forDIMG/MadeByAgent/Phase4-Plan.md` §1.1.1, §1.2, §2, §3 Step4（Phase4詳細計画書）
 - `docs-forDIMG/MadeByAgent/Phase4-Status.md`（Phase4進捗管理）
 - `docs-forDIMG/MadeByAgent/Phase4-Step3-Completion-Report.md`（Step3完了報告）
 - `docs-forDIMG/MadeByAgent/Phase4-Step3-RealDevice-Verification-Checklist.md`（実機CP1全件合格）
@@ -36,24 +37,39 @@
 
 ### 0.1 Step0〜Step3の成果とStep4のスコープ
 - **Step1〜Step3 で完了したこと**:
-  - 設定・プロファイル・SpecialAction の 3 大データ中核基盤が DI 化され、実機検証（Checkpoint 1）で全 12 項目が合格。
+  - 第4層 4-c（設定／状態サービス）のうち、設定（`IProfileSettingsService`）、プロファイル永続化（`IProfileRepository`）、SpecialAction永続化（`ISpecialActionRepository`）が DI 化され、実機検証（Checkpoint 1）で全 12 項目が合格。
 - **Step4 で行うこと**:
   - `Global`（`ScpUtil.cs`）に集中している「デバイス・コントローラー状態（29件）」および「出力・仮想コントローラー状態（47件）」を DI サービスとして分離・構築する。
-  - 第2層（ドメイン・デバイス状態: `IDeviceStateService`）および第3層（信号・出力スロット: `IOutputSlotService`）の境界を明確化する。
+  - **第1層（入力監視層）** の物理デバイス状態および **第3層（信号出力層 3-a. 仮想コントローラー出力）** の出力スロット状態を、**第4層 4-c（設定／状態サービス）** へ安全に提供する DI サービス群（`IDeviceStateService`, `IOutputSlotService`）を確立する。
 
-### 0.2 4層モデルにおける責務境界（全体計画書 §3）
-- **第2層（ドメイン・デバイス層）: `IDeviceStateService`**:
-  - 実機コントローラーの接続状態、接続台数、スロット別 `DS4Device` 参照取得、バッテリー状態、接続種別（BT/USB）の型安全アクセス。
-- **第3層（信号・アクション実行層）: `IOutputSlotService` / `IVirtualKBM`**:
-  - 仮想コントローラー（ViGEmBus: Xbox 360 / DS4）出力スロットの管理、プラグイン/プラグアウト状態の管理、仮想 KBM 送出管理。
-- **第4層（UI/Application層）**:
-  - UI ViewModel はこれらのサービスを通じてコントローラー状態や出力スロット状態を取得・表示する。
+### 0.2 全体4層モデルにおける責務境界と本Stepの位置づけ（全体計画書 §3.3 準拠）
+全体計画書（`DI-App-Wide-Migration-Plan.md` §3.3）および Phase4 計画書（`Phase4-Plan.md` §1.1.1）で規定された **全体4層モデル（実行時3層 ＋ UI層）** に基づき、各層の正確な定義および本Step（Step 4）の対象範囲を以下のように整理する：
+
+1. **第1層: 入力監視層**
+   - コントローラーの機種差を吸収し、`DS4State` に正規化して上位へ渡す。
+   - **【★本Step関連】**: 物理コントローラーの接続・切断検知、バッテリー残量、通信種別（BT/USB）のデバイス状態を `IDeviceStateService` を通じて第4層 4-c へ公開する。
+2. **第2層: 信号変換層（拡張版）**
+   - 入力から「何を出力すべきか」を決定する（副作用の実行は行わない）。
+   - **2-a. 基本マッピング決定**: 1入力→1出力（コントローラー信号／KBM信号）の対応表引き。
+   - **2-b. SpecialActionトリガー判定**: 複数入力の組み合わせで成立/解除を判定し、元入力の出力を抑制するか決定。
+   - **2-c. アクション選択・パラメータ決定**: 成立したSpecialActionが「マクロ／プロファイル切替／プロセス起動／KBM出力」のどれかを判定し、実行に必要なパラメータを確定。
+   - **2-d. マクロの分解**: トリガーされたマクロを時系列のKBM出力信号列に分解。
+3. **第3層: 信号出力層（拡張版）**
+   - 決定された内容を実際に副作用として実行する。
+   - **3-a. 仮想コントローラー出力 【★本Step対象】**: 2-aの結果をDS4/Xbox360規格で実出力（`outputDevices[ind]`）。本Stepで仮想コントローラー出力スロット管理（`IOutputSlotService`）を DI 化して第4層 4-c へ公開する。
+   - **3-b. KBM出力**: 2-aの結果、および2-dで分解されたマクロの信号列を実際に時系列で送出（`outputKBMHandler` / `IVirtualKBM`）。
+   - **3-c. アプリ内アクション実行**: 2-cで決定されたプロファイル切替・プロセス起動を実際に実行。
+4. **第4層: UI層（制御面）**
+   - ユーザーが設定・プロファイル・状態を操作し、サービス経由で実行時3層へ設定を反映する。
+   - **4-a. View**: WPF の画面・UserControl。
+   - **4-b. ViewModel**: 画面状態、入力値検証、画面イベントの調整。
+   - **4-c. 設定／状態サービス 【★本Step対象】**: プロファイル（`IProfileSettingsService`, `IProfileRepository`: 完了）、SpecialAction（`ISpecialActionRepository`: 完了）、デバイス状態（`IDeviceStateService`: 本Step）、出力スロット状態（`IOutputSlotService`: 本Step）を DI 管理。
 
 ---
 
 ## 1. 設計方針とアーキテクチャ
 
-### 1.1 `IDeviceStateService` インターフェース設計 (第2層)
+### 1.1 `IDeviceStateService` インターフェース設計 (第1層デバイス状態 → 第4層 4-c サービス)
 契約インターフェースは `DS4Windows/DI/IDeviceStateService.cs`（名前空間 `DS4Windows.DI`）に定義する。
 
 ```csharp
@@ -75,7 +91,7 @@ namespace DS4Windows.DI
 }
 ```
 
-### 1.2 `IOutputSlotService` インターフェース設計 (第3層)
+### 1.2 `IOutputSlotService` インターフェース設計 (第3層 3-a 出力スロット → 第4層 4-c サービス)
 契約インターフェースは `DS4Windows/DI/IOutputSlotService.cs`（名前空間 `DS4Windows.DI`）に定義する。
 
 ```csharp
@@ -152,8 +168,8 @@ public static DS4Windows.DI.IOutputSlotService OutputSlotServiceInstance
 
 | ファイルパス | 種別 | ライフサイクル | 内容 |
 |---|---|---|---|
-| `DS4Windows/DI/IDeviceStateService.cs` | 新規 | **DI永続資産** | デバイス状態アクセスの契約インターフェース |
-| `DS4Windows/DI/IOutputSlotService.cs` | 新規 | **DI永続資産** | 出力スロット・仮想コントローラー管理の契約インターフェース |
+| `DS4Windows/DI/IDeviceStateService.cs` | 新規 | **DI永続資産** | 第1層デバイス状態を第4層へ公開する契約インターフェース |
+| `DS4Windows/DI/IOutputSlotService.cs` | 新規 | **DI永続資産** | 第3層 3-a 仮想出力スロット管理の契約インターフェース |
 | `DS4Windows/DS4Control/Services/DeviceStateService.cs` | 新規 | **DI永続資産** | `IDeviceStateService` の本番実装クラス |
 | `DS4Windows/DS4Control/Services/OutputSlotService.cs` | 新規 | **DI永続資産** | `IOutputSlotService` の本番実装クラス |
 | `DS4Windows/DI/ServiceRegistration.cs` | 更新 | **DI永続資産** | `IDeviceStateService`, `IOutputSlotService` の Singleton 登録 |
@@ -169,7 +185,7 @@ public static DS4Windows.DI.IOutputSlotService OutputSlotServiceInstance
 ## 3. 作業手順（マイクロタスク分割）
 
 ### タスク Step4-1: インターフェース定義（契約）
-- `DS4Windows/DI/IDeviceStateService.cs` および `DS4Windows/DI/IOutputSlotService.cs` を新規作成（名前空間: `DS4Windows.DI`）。
+- `DS4Windows/DI/IDeviceStateService.cs`（第1層/第4層 4-c）および `DS4Windows/DI/IOutputSlotService.cs`（第3層 3-a/第4層 4-c）を新規作成（名前空間: `DS4Windows.DI`）。
 
 ### タスク Step4-2: 実装クラス作成（実体）
 - `DS4Windows/DS4Control/Services/DeviceStateService.cs` および `OutputSlotService.cs` を新規作成（名前空間: `DS4Windows`）。
@@ -210,4 +226,3 @@ public static DS4Windows.DI.IOutputSlotService OutputSlotServiceInstance
 - [ ] 新設した単体テストおよび既存の回帰テストが全件成功する。
 - [ ] ソリューションビルドが警告0・エラー0で成功する。
 - [ ] `Phase4-Status.md` が更新され、`Phase4-Step4-Completion-Report.md` が作成されている。
-
