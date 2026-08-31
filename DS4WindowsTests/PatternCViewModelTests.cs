@@ -1,23 +1,32 @@
 ﻿using System;
-using System.IO.Packaging;
+using System.Reflection;
 using System.Windows;
 using Xunit;
 using DS4Windows;
 using DS4Windows.DI;
 using DS4WinWPF;
+using DS4WinWPF.DS4Forms;
 using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4WindowsTests
 {
     public class PatternCViewModelTests
     {
-        public PatternCViewModelTests()
+        static PatternCViewModelTests()
         {
             if (Application.Current == null)
             {
                 try
                 {
-                    new Application();
+                    _ = new Application();
+                }
+                catch { }
+            }
+            if (Application.ResourceAssembly == null)
+            {
+                try
+                {
+                    Application.ResourceAssembly = typeof(DS4WinWPF.AppHost).Assembly;
                 }
                 catch { }
             }
@@ -66,7 +75,7 @@ namespace DS4WindowsTests
             Assert.NotNull(factory);
 
             var profileList = new ProfileList();
-            var holder = new AutoProfileHolder(new ControlService());
+            var holder = new AutoProfileHolder();
             var vm = factory.CreateAutoProfilesViewModel(holder, profileList);
             Assert.NotNull(vm);
         }
