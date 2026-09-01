@@ -85,6 +85,8 @@ namespace DS4Windows
                     if (!File.Exists(path))
                         return false;
 
+                    string normalizedName = Path.GetFileNameWithoutExtension(profileName);
+                    Global.ProfilePath[deviceIndex] = normalizedName;
                     Global.LoadProfile(deviceIndex, false, null, false);
                     if (AppLogger.IsTraceEnabled)
                         AppLogger.LogTrace($"[DI] ProfileRepository.LoadProfile: Slot {deviceIndex}, Profile '{profileName}' loaded via DI");

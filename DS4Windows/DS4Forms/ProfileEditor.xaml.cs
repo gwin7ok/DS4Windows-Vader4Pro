@@ -36,10 +36,10 @@ namespace DS4WinWPF.DS4Forms
     {
         // ...既存フィールド...
 
-    public string ActiveSortButtonContent => GetSortButtonContent("Active", currentSortColumn, currentSortAsc);
-    public string NameSortButtonContent => GetSortButtonContent("Name", currentSortColumn, currentSortAsc);
-    public string TriggerSortButtonContent => GetSortButtonContent("Trigger", currentSortColumn, currentSortAsc);
-    public string ActionSortButtonContent => GetSortButtonContent("Action", currentSortColumn, currentSortAsc);
+        public string ActiveSortButtonContent => GetSortButtonContent("Active", currentSortColumn, currentSortAsc);
+        public string NameSortButtonContent => GetSortButtonContent("Name", currentSortColumn, currentSortAsc);
+        public string TriggerSortButtonContent => GetSortButtonContent("Trigger", currentSortColumn, currentSortAsc);
+        public string ActionSortButtonContent => GetSortButtonContent("Action", currentSortColumn, currentSortAsc);
 
         private string GetSortButtonContent(string col, string currentCol, bool asc)
         {
@@ -149,21 +149,22 @@ namespace DS4WinWPF.DS4Forms
 
         private int deviceNum;
         private ProfileSettingsViewModel profileSettingsVM;
+        private readonly DS4Windows.DI.IProfileRepository profileRepository;
         private MappingListViewModel mappingListVM;
         private ProfileEntity currentProfile;
         private SpecialActionsListViewModel specialActionsVM;
         // Active 列の初期幅は BackingStore の定数を使う（プロファイルに永続化しない）
-    // フラグ: 初期ヘッダー更新を一度だけ行うためのガード
-    #pragma warning disable CS0414 // initialHeaderUpdated assigned but not read directly; used as a guard
-    private bool initialHeaderUpdated = false;
-    #pragma warning restore CS0414
+        // フラグ: 初期ヘッダー更新を一度だけ行うためのガード
+#pragma warning disable CS0414 // initialHeaderUpdated assigned but not read directly; used as a guard
+        private bool initialHeaderUpdated = false;
+#pragma warning restore CS0414
         // カラムヘッダーの Loaded 発火を数えるためのカウンタ
         private int specialActionsHeaderLoadedCount = 0;
         // ヘッダーテンプレート割当が既に行われているかを示すガード
         private bool specialActionsHeadersAssigned = false;
-    // Special Actions ヘッダー内の TextBlock 参照を保持しておき、後で直接更新できるようにする
-    // indices: 0=Active,1=Name,2=Trigger,3=Action
-    private TextBlock[] specialActionsHeaderTextBlocks = new TextBlock[4];
+        // Special Actions ヘッダー内の TextBlock 参照を保持しておき、後で直接更新できるようにする
+        // indices: 0=Active,1=Name,2=Trigger,3=Action
+        private TextBlock[] specialActionsHeaderTextBlocks = new TextBlock[4];
 
         public event EventHandler Closed;
 
@@ -269,6 +270,9 @@ namespace DS4WinWPF.DS4Forms
 
             InitializeComponent();
 
+            profileRepository = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>()
+                ?? new DS4Windows.ProfileRepository();
+
             // SpecialActionsリスト表示前にカルチャを明示的に再設定
             var lang = DS4Windows.Global.UseLang;
             var ci = System.Globalization.CultureInfo.GetCultureInfo(lang);
@@ -278,7 +282,7 @@ namespace DS4WinWPF.DS4Forms
 
             deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;
-var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
             profileSettingsVM = vmFactory != null ? vmFactory.CreateProfileSettingsViewModel(device) : new ProfileSettingsViewModel(device);
             picBoxHover.Visibility = Visibility.Hidden;
             picBoxHover2.Visibility = Visibility.Hidden;
@@ -732,7 +736,7 @@ var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
                 size = new Size(circleConBtn.Width, circleConBtn.Height)
             };
 
-                App.logHolder?.Logger?.Debug($"[PopulateHoverLocations] Populated hoverLocations count={hoverLocations.Count}");
+            App.logHolder?.Logger?.Debug($"[PopulateHoverLocations] Populated hoverLocations count={hoverLocations.Count}");
             hoverLocations[squareConBtn] = new HoverImageInfo()
             {
                 point = new Point(Canvas.GetLeft(squareConBtn), Canvas.GetTop(squareConBtn)),
@@ -1092,7 +1096,7 @@ var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
                     Global.ProfilePath[Global.TEST_PROFILE_INDEX] = profile.Name;
                 }
 
-                Global.LoadProfile(device, false, App.rootHub, false);
+                profileRepository.LoadProfile(device, profile.Name);
                 profileNameTxt.Text = profile.Name;
                 profileNameTxt.IsEnabled = false;
                 applyBtn.IsEnabled = true;
@@ -1246,11 +1250,11 @@ var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
                     : null;
                 if (device != null)
                 {
-                    device.HaltReportingRunAction(() => { Global.LoadProfile(deviceNum, false, App.rootHub); });
+                    device.HaltReportingRunAction(() => { profileRepository.LoadProfile(deviceNum, Global.ProfilePath[deviceNum]); });
                 }
                 else
                 {
-                    Global.LoadProfile(deviceNum, false, App.rootHub);
+                    profileRepository.LoadProfile(deviceNum, Global.ProfilePath[deviceNum]);
                 }
             });
 
@@ -1507,7 +1511,7 @@ var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
                     string tempprof = Global.appdatapath + @"\Profiles\" + temp + ".xml";
                     if (!File.Exists(tempprof))
                     {
-                        Global.SaveProfile(deviceNum, temp);
+                        profileRepository.SaveProfile(deviceNum, temp);
                         CreatedProfile?.Invoke(this, temp);
 
                         // Log removed invalid special actions after save completes
