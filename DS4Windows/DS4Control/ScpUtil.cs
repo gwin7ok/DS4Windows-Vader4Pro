@@ -2102,8 +2102,8 @@ namespace DS4Windows
 
         public static bool DS4Mapping
         {
-            set { m_Config.ds4Mapping = value; }
-            get { return m_Config.ds4Mapping; }
+            set { ProfileSettingsServiceInstance.DS4Mapping = value; }
+            get { return ProfileSettingsServiceInstance.DS4Mapping; }
         }
 
         public static bool QuickCharge
@@ -2396,10 +2396,10 @@ namespace DS4Windows
             set => m_Config.absDisplayEDID = value;
         }
 
-        public static sbyte[] RightStickDriftXAxis => m_Config.rightStickDriftXAxis;
-        public static sbyte[] RightStickDriftYAxis => m_Config.rightStickDriftYAxis;
-        public static sbyte[] LeftStickDriftXAxis => m_Config.leftStickDriftXAxis;
-        public static sbyte[] LeftStickDriftYAxis => m_Config.leftStickDriftYAxis;
+        public static sbyte[] RightStickDriftXAxis => ProfileSettingsServiceInstance.RightStickDriftXAxis;
+        public static sbyte[] RightStickDriftYAxis => ProfileSettingsServiceInstance.RightStickDriftYAxis;
+        public static sbyte[] LeftStickDriftXAxis => ProfileSettingsServiceInstance.LeftStickDriftXAxis;
+        public static sbyte[] LeftStickDriftYAxis => ProfileSettingsServiceInstance.LeftStickDriftYAxis;
 
         public static bool[] InverseRumbleMotors => ProfileSettingsServiceInstance.InverseRumbleMotors;
 
@@ -2414,8 +2414,8 @@ namespace DS4Windows
 
         public static bool UseDs3PitchRollSim
         {
-            get => m_Config.useDs3PitchRollSim;
-            set => m_Config.useDs3PitchRollSim = value;
+            get => ProfileSettingsServiceInstance.UseDs3PitchRollSim;
+            set => ProfileSettingsServiceInstance.UseDs3PitchRollSim = value;
         }
 
         // controller/profile specfic values
@@ -2444,16 +2444,16 @@ namespace DS4Windows
             return ProfileSettingsServiceInstance.GetEnableTouchToggle(index);
         }
 
-        public static int[] IdleDisconnectTimeout => m_Config.idleDisconnectTimeout;
+        public static int[] IdleDisconnectTimeout => ProfileSettingsServiceInstance.IdleDisconnectTimeout;
         public static int getIdleDisconnectTimeout(int index)
         {
-            return m_Config.idleDisconnectTimeout[index];
+            return ProfileSettingsServiceInstance.GetIdleDisconnectTimeout(index);
         }
 
-        public static bool[] EnableOutputDataToDS4 => m_Config.enableOutputDataToDS4;
+        public static bool[] EnableOutputDataToDS4 => ProfileSettingsServiceInstance.EnableOutputDataToDS4;
         public static bool getEnableOutputDataToDS4(int index)
         {
-            return m_Config.enableOutputDataToDS4[index];
+            return ProfileSettingsServiceInstance.GetEnableOutputDataToDS4(index);
         }
 
         // Step10-2-A-3: タッチパッド関連の後方互換シム
@@ -2480,10 +2480,10 @@ namespace DS4Windows
             return ProfileSettingsServiceInstance.GetLightbarSettingsInfo(index);
         }
 
-        public static bool[] DinputOnly => m_Config.dinputOnly;
+        public static bool[] DinputOnly => ProfileSettingsServiceInstance.DinputOnly;
         public static bool getDInputOnly(int index)
         {
-            return m_Config.dinputOnly[index];
+            return ProfileSettingsServiceInstance.GetDInputOnly(index);
         }
 
         public static int ProcessPriority
@@ -2714,7 +2714,7 @@ namespace DS4Windows
             return ProfileSettingsServiceInstance.GetScrollSensitivity(index);
         }
 
-        public static bool[] LowerRCOn => m_Config.lowerRCOn;
+        public static bool[] LowerRCOn => ProfileSettingsServiceInstance.LowerRCOn;
         public static bool[] TouchClickPassthru => ProfileSettingsServiceInstance.TouchClickPassthru;
         public static TouchButtonActivationMode[] TouchpadButtonMode => ProfileSettingsServiceInstance.TouchpadButtonMode;
         public static bool[] TouchpadJitterCompensation => ProfileSettingsServiceInstance.TouchpadJitterCompensation;
@@ -2927,10 +2927,10 @@ namespace DS4Windows
             return m_Config.RSSens[index];
         }
 
-        public static int[] BTPollRate => m_Config.btPollRate;
+        public static int[] BTPollRate => ProfileSettingsServiceInstance.BTPollRate;
         public static int getBTPollRate(int index)
         {
-            return m_Config.btPollRate[index];
+            return ProfileSettingsServiceInstance.GetBTPollRate(index);
         }
 
         // Start of DualSense specific profile settings
@@ -3095,7 +3095,7 @@ namespace DS4Windows
             return m_Config.outputDS4TriggerMode[index];
         }
 
-        public static string[] LaunchProgram => m_Config.launchProgram;
+        public static string[] LaunchProgram => ProfileSettingsServiceInstance.LaunchProgram;
         public static string[] ProfilePath => m_Config.profilePath;
         public static string[] OlderProfilePath => m_Config.olderProfilePath;
         public static string[] SelectedProfile => m_Config.selectedProfile;
@@ -3307,9 +3307,9 @@ namespace DS4Windows
         public static string GetDS4Extra(int deviceNum, string buttonName, bool shift) => m_Config.GetDS4Extra(deviceNum, buttonName, shift);
         public static int GetDS4STrigger(int deviceNum, string buttonName) => m_Config.GetDS4STrigger(deviceNum, buttonName);
         public static int GetDS4STrigger(int deviceNum, DS4Controls control) => m_Config.GetDS4STrigger(deviceNum, control);
-        public static List<DS4ControlSettings> getDS4CSettings(int device) => m_Config.ds4settings[device];
-        public static DS4ControlSettings GetDS4CSetting(int deviceNum, string control) => m_Config.GetDS4CSetting(deviceNum, control);
-        public static DS4ControlSettings GetDS4CSetting(int deviceNum, DS4Controls control) => m_Config.GetDS4CSetting(deviceNum, control);
+        public static List<DS4ControlSettings> getDS4CSettings(int device) => ProfileSettingsServiceInstance.GetDS4CSettings(device);
+        public static DS4ControlSettings GetDS4CSetting(int deviceNum, string control) => ProfileSettingsServiceInstance.GetDS4CSetting(deviceNum, control);
+        public static DS4ControlSettings GetDS4CSetting(int deviceNum, DS4Controls control) => ProfileSettingsServiceInstance.GetDS4CSetting(deviceNum, control);
         public static ControlSettingsGroup GetControlSettingsGroup(int deviceNum) => m_Config.ds4controlSettings[deviceNum];
         public static bool HasCustomActions(int deviceNum) => m_Config.HasCustomActions(deviceNum);
         public static bool HasCustomExtras(int deviceNum) => m_Config.HasCustomExtras(deviceNum);

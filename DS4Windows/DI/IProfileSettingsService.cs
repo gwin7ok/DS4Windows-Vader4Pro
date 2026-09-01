@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using DS4Windows.InputDevices;
 using static DS4Windows.Mouse;
@@ -204,6 +205,27 @@ namespace DS4Windows.DI
         void SetSxOutCurveMode(int index, int value);
         int GetSzOutCurveMode(int index);
         void SetSzOutCurveMode(int index, int value);
+
+        // ---- Step10-2-A-8: 残余設定・デバイスオプション (m_Config委譲) ----
+        int[] BTPollRate { get; }
+        bool DS4Mapping { get; set; }
+        bool[] DinputOnly { get; }
+        int[] IdleDisconnectTimeout { get; }
+        sbyte[] RightStickDriftXAxis { get; }
+        sbyte[] RightStickDriftYAxis { get; }
+        sbyte[] LeftStickDriftXAxis { get; }
+        sbyte[] LeftStickDriftYAxis { get; }
+        bool[] EnableOutputDataToDS4 { get; }
+        bool UseDs3PitchRollSim { get; set; }
+        bool[] LowerRCOn { get; }
+        string[] LaunchProgram { get; }
+        int GetBTPollRate(int deviceIndex);
+        bool GetDInputOnly(int deviceIndex);
+        int GetIdleDisconnectTimeout(int deviceIndex);
+        bool GetEnableOutputDataToDS4(int deviceIndex);
+        DS4ControlSettings GetDS4CSetting(int deviceIndex, string control);
+        DS4ControlSettings GetDS4CSetting(int deviceIndex, DS4Controls control);
+        List<DS4ControlSettings> GetDS4CSettings(int deviceIndex);
 
         event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
 

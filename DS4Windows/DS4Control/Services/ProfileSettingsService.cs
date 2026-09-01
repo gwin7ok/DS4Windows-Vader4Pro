@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using DS4Windows.DI;
 using DS4Windows.InputDevices;
@@ -541,6 +542,35 @@ namespace DS4Windows
         public void SetSxOutCurveMode(int index, int value) => _config.setSXOutCurveMode(index, value);
         public int GetSzOutCurveMode(int index) => _config.getSZOutCurveMode(index);
         public void SetSzOutCurveMode(int index, int value) => _config.setSZOutCurveMode(index, value);
+
+        // ---- Step10-2-A-8: 残余設定・デバイスオプション (m_Config委譲) ----
+        public int[] BTPollRate => _config.btPollRate;
+        public bool DS4Mapping
+        {
+            get => _config.ds4Mapping;
+            set => _config.ds4Mapping = value;
+        }
+        public bool[] DinputOnly => _config.dinputOnly;
+        public int[] IdleDisconnectTimeout => _config.idleDisconnectTimeout;
+        public sbyte[] RightStickDriftXAxis => _config.rightStickDriftXAxis;
+        public sbyte[] RightStickDriftYAxis => _config.rightStickDriftYAxis;
+        public sbyte[] LeftStickDriftXAxis => _config.leftStickDriftXAxis;
+        public sbyte[] LeftStickDriftYAxis => _config.leftStickDriftYAxis;
+        public bool[] EnableOutputDataToDS4 => _config.enableOutputDataToDS4;
+        public bool UseDs3PitchRollSim
+        {
+            get => _config.useDs3PitchRollSim;
+            set => _config.useDs3PitchRollSim = value;
+        }
+        public bool[] LowerRCOn => _config.lowerRCOn;
+        public string[] LaunchProgram => _config.launchProgram;
+        public int GetBTPollRate(int deviceIndex) => _config.btPollRate[deviceIndex];
+        public bool GetDInputOnly(int deviceIndex) => _config.dinputOnly[deviceIndex];
+        public int GetIdleDisconnectTimeout(int deviceIndex) => _config.idleDisconnectTimeout[deviceIndex];
+        public bool GetEnableOutputDataToDS4(int deviceIndex) => _config.enableOutputDataToDS4[deviceIndex];
+        public DS4ControlSettings GetDS4CSetting(int deviceIndex, string control) => _config.GetDS4CSetting(deviceIndex, control);
+        public DS4ControlSettings GetDS4CSetting(int deviceIndex, DS4Controls control) => _config.GetDS4CSetting(deviceIndex, control);
+        public List<DS4ControlSettings> GetDS4CSettings(int deviceIndex) => _config.ds4settings[deviceIndex];
 
         public X360Controls[] GetDefaultButtonMapping()
         {
