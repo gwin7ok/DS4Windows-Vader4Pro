@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using DS4Windows.DI;
+using DS4Windows.InputDevices;
 using static DS4Windows.Mouse;
 
 namespace DS4Windows
@@ -446,6 +447,55 @@ namespace DS4Windows
 
         public void SetGyroMouseStickToggle(int index, bool value, ControlService control)
             => _config.SetGyroMouseStickToggle(index, value, control);
+
+        // ---- Step10-2-A-5: ライトバー・ランブル関連 (m_Config委譲) ----
+        public LightbarSettingInfo[] LightbarSettingsInfo => _config.lightbarSettingInfo;
+        public bool[] InverseRumbleMotors => _config.inverseRumbleMotors;
+        public byte[] RumbleBoost => _config.rumble;
+        public int[] RumbleAutostopTime => _config.rumbleAutostopTime;
+        public DualSenseDevice.RumbleEmulationMode[] DualSenseRumbleEmulationMode
+        {
+            get => _config.dualSenseRumbleEmulationMode;
+            set => _config.dualSenseRumbleEmulationMode = value;
+        }
+        public bool[] UseGenericRumbleStrRescaleForDualSenses
+        {
+            get => _config.useGenericRumbleRescaleForDualSenses;
+            set => _config.useGenericRumbleRescaleForDualSenses = value;
+        }
+        public byte[] DualSenseHapticPowerLevel
+        {
+            get => _config.dualSenseHapticPowerLevel;
+            set => _config.dualSenseHapticPowerLevel = value;
+        }
+
+        public LightbarSettingInfo GetLightbarSettingsInfo(int deviceIndex) => _config.lightbarSettingInfo[deviceIndex];
+
+        public byte GetRumbleBoost(int deviceIndex)
+        {
+            if (Program.rootHub.DS4Controllers[deviceIndex] is DualSenseDevice &&
+                !UseGenericRumbleStrRescaleForDualSenses[deviceIndex])
+                return 100;
+
+            return _config.rumble[deviceIndex];
+        }
+
+        public int GetRumbleAutostopTime(int deviceIndex) => _config.rumbleAutostopTime[deviceIndex];
+
+        public ref DS4Color GetMainColor(int deviceIndex) => ref _config.lightbarSettingInfo[deviceIndex].ds4winSettings.m_Led;
+        public ref DS4Color GetLowColor(int deviceIndex) => ref _config.lightbarSettingInfo[deviceIndex].ds4winSettings.m_LowLed;
+        public ref DS4Color GetChargingColor(int deviceIndex) => ref _config.lightbarSettingInfo[deviceIndex].ds4winSettings.m_ChargingLed;
+        public ref DS4Color GetCustomColor(int deviceIndex) => ref _config.lightbarSettingInfo[deviceIndex].ds4winSettings.m_CustomLed;
+        public bool GetUseCustomLed(int deviceIndex) => _config.lightbarSettingInfo[deviceIndex].ds4winSettings.useCustomLed;
+        public ref DS4Color GetFlashColor(int deviceIndex) => ref _config.lightbarSettingInfo[deviceIndex].ds4winSettings.m_FlashLed;
+
+        public void SetRumbleAutostopTime(int index, int value)
+        {
+            _config.rumbleAutostopTime[index] = value;
+            DS4Device tempDev = Program.rootHub.DS4Controllers[index];
+            if (tempDev != null && tempDev.isSynced())
+                tempDev.RumbleAutostopTime = value;
+        }
 
         public X360Controls[] GetDefaultButtonMapping()
         {

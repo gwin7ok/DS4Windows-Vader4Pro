@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using DS4Windows.InputDevices;
 using static DS4Windows.Mouse;
 
 namespace DS4Windows.DI
@@ -139,6 +140,25 @@ namespace DS4Windows.DI
         void SetGyroMouseToggle(int index, bool value, ControlService control);
         void SetGyroControlsToggle(int index, bool value, ControlService control);
         void SetGyroMouseStickToggle(int index, bool value, ControlService control);
+
+        // ---- Step10-2-A-5: ライトバー・ランブル関連 (m_Config委譲) ----
+        LightbarSettingInfo[] LightbarSettingsInfo { get; }
+        bool[] InverseRumbleMotors { get; }
+        byte[] RumbleBoost { get; }
+        int[] RumbleAutostopTime { get; }
+        DualSenseDevice.RumbleEmulationMode[] DualSenseRumbleEmulationMode { get; set; }
+        bool[] UseGenericRumbleStrRescaleForDualSenses { get; set; }
+        byte[] DualSenseHapticPowerLevel { get; set; }
+        LightbarSettingInfo GetLightbarSettingsInfo(int deviceIndex);
+        byte GetRumbleBoost(int deviceIndex);
+        int GetRumbleAutostopTime(int deviceIndex);
+        ref DS4Color GetMainColor(int deviceIndex);
+        ref DS4Color GetLowColor(int deviceIndex);
+        ref DS4Color GetChargingColor(int deviceIndex);
+        ref DS4Color GetCustomColor(int deviceIndex);
+        bool GetUseCustomLed(int deviceIndex);
+        ref DS4Color GetFlashColor(int deviceIndex);
+        void SetRumbleAutostopTime(int index, int value);
 
         event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
 

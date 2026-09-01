@@ -2401,7 +2401,7 @@ namespace DS4Windows
         public static sbyte[] LeftStickDriftXAxis => m_Config.leftStickDriftXAxis;
         public static sbyte[] LeftStickDriftYAxis => m_Config.leftStickDriftYAxis;
 
-        public static bool[] InverseRumbleMotors => m_Config.inverseRumbleMotors;
+        public static bool[] InverseRumbleMotors => ProfileSettingsServiceInstance.InverseRumbleMotors;
 
         public static int[] DebouncingMs => m_Config.debouncingMs;
 
@@ -2422,32 +2422,20 @@ namespace DS4Windows
         public static ButtonMouseInfo[] ButtonMouseInfos => m_Config.buttonMouseInfos;
         public static ButtonAbsMouseInfo[] ButtonAbsMouseInfos => m_Config.buttonAbsMouseInfos;
 
-        public static byte[] RumbleBoost => m_Config.rumble;
+        public static byte[] RumbleBoost => ProfileSettingsServiceInstance.RumbleBoost;
         public static byte getRumbleBoost(int index)
         {
-            if (Program.rootHub.DS4Controllers[index] is DualSenseDevice)
-            {
-                if (!UseGenericRumbleStrRescaleForDualSenses[index])
-                {
-                    return 100;
-                }
-
-            }
-            return m_Config.rumble[index];
+            return ProfileSettingsServiceInstance.GetRumbleBoost(index);
         }
 
         public static void setRumbleAutostopTime(int index, int value)
         {
-            m_Config.rumbleAutostopTime[index] = value;
-
-            DS4Device tempDev = Program.rootHub.DS4Controllers[index];
-            if (tempDev != null && tempDev.isSynced())
-                tempDev.RumbleAutostopTime = value;
+            ProfileSettingsServiceInstance.SetRumbleAutostopTime(index, value);
         }
 
         public static int getRumbleAutostopTime(int index)
         {
-            return m_Config.rumbleAutostopTime[index];
+            return ProfileSettingsServiceInstance.GetRumbleAutostopTime(index);
         }
 
         public static bool[] EnableTouchToggle => m_Config.enableTouchToggle;
@@ -2486,10 +2474,10 @@ namespace DS4Windows
             return touchpadActive[index];
         }
 
-        public static LightbarSettingInfo[] LightbarSettingsInfo => m_Config.lightbarSettingInfo;
+        public static LightbarSettingInfo[] LightbarSettingsInfo => ProfileSettingsServiceInstance.LightbarSettingsInfo;
         public static LightbarSettingInfo getLightbarSettingsInfo(int index)
         {
-            return m_Config.lightbarSettingInfo[index];
+            return ProfileSettingsServiceInstance.GetLightbarSettingsInfo(index);
         }
 
         public static bool[] DinputOnly => m_Config.dinputOnly;
@@ -2665,42 +2653,42 @@ namespace DS4Windows
         //public static DS4Color[] MainColor => m_Config.m_Leds;
         public static ref DS4Color getMainColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_Led;
+            return ref ProfileSettingsServiceInstance.GetMainColor(index);
             //return ref m_Config.m_Leds[index];
         }
 
         //public static DS4Color[] LowColor => m_Config.m_LowLeds;
         public static ref DS4Color getLowColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_LowLed;
+            return ref ProfileSettingsServiceInstance.GetLowColor(index);
             //return ref m_Config.m_LowLeds[index];
         }
 
         //public static DS4Color[] ChargingColor => m_Config.m_ChargingLeds;
         public static ref DS4Color getChargingColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_ChargingLed;
+            return ref ProfileSettingsServiceInstance.GetChargingColor(index);
             //return ref m_Config.m_ChargingLeds[index];
         }
 
         //public static DS4Color[] CustomColor => m_Config.m_CustomLeds;
         public static ref DS4Color getCustomColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_CustomLed;
+            return ref ProfileSettingsServiceInstance.GetCustomColor(index);
             //return ref m_Config.m_CustomLeds[index];
         }
 
         //public static bool[] UseCustomLed => m_Config.useCustomLeds;
         public static bool getUseCustomLed(int index)
         {
-            return m_Config.lightbarSettingInfo[index].ds4winSettings.useCustomLed;
+            return ProfileSettingsServiceInstance.GetUseCustomLed(index);
             //return m_Config.useCustomLeds[index];
         }
 
         //public static DS4Color[] FlashColor => m_Config.m_FlashLeds;
         public static ref DS4Color getFlashColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_FlashLed;
+            return ref ProfileSettingsServiceInstance.GetFlashColor(index);
             //return ref m_Config.m_FlashLeds[index];
         }
 
@@ -2949,20 +2937,20 @@ namespace DS4Windows
         //
         public static DualSenseDevice.RumbleEmulationMode[] DualSenseRumbleEmulationMode
         {
-            get => m_Config.dualSenseRumbleEmulationMode;
-            set => m_Config.dualSenseRumbleEmulationMode = value;
+            get => ProfileSettingsServiceInstance.DualSenseRumbleEmulationMode;
+            set => ProfileSettingsServiceInstance.DualSenseRumbleEmulationMode = value;
         }
 
         public static bool[] UseGenericRumbleStrRescaleForDualSenses
         {
-            get => m_Config.useGenericRumbleRescaleForDualSenses;
-            set => m_Config.useGenericRumbleRescaleForDualSenses = value;
+            get => ProfileSettingsServiceInstance.UseGenericRumbleStrRescaleForDualSenses;
+            set => ProfileSettingsServiceInstance.UseGenericRumbleStrRescaleForDualSenses = value;
         }
 
         public static byte[] DualSenseHapticPowerLevel
         {
-            get => m_Config.dualSenseHapticPowerLevel;
-            set => m_Config.dualSenseHapticPowerLevel = value;
+            get => ProfileSettingsServiceInstance.DualSenseHapticPowerLevel;
+            set => ProfileSettingsServiceInstance.DualSenseHapticPowerLevel = value;
         }
         //
         // End of DualSense specific profile settings
