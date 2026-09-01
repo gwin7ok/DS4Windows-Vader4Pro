@@ -50,10 +50,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             // END Extra buttons for DualSense Edge controller
             "Always On",
         };
-
         private int device;
-        private readonly IProfileSettingsService profileSettings;
         public int Device { get => device; }
+        private readonly IProfileSettingsService profileSettings;
 
         private int funcDevNum;
         public int FuncDevNum { get => funcDevNum; }
@@ -544,12 +543,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int ButtonMouseSensitivity
         {
-            get => Global.ButtonMouseInfos[device].buttonSensitivity;
+            get => profileSettings.ButtonMouseInfos[device].buttonSensitivity;
             set
             {
-                int temp = Global.ButtonMouseInfos[device].buttonSensitivity;
+                int temp = profileSettings.ButtonMouseInfos[device].buttonSensitivity;
                 if (temp == value) return;
-                Global.ButtonMouseInfos[device].ButtonSensitivity = value;
+                profileSettings.ButtonMouseInfos[device].ButtonSensitivity = value;
                 ButtonMouseSensitivityChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -557,13 +556,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int ButtonMouseVerticalScale
         {
-            get => Convert.ToInt32(Global.ButtonMouseInfos[device].buttonVerticalScale * 100.0);
+            get => Convert.ToInt32(profileSettings.ButtonMouseInfos[device].buttonVerticalScale * 100.0);
             set
             {
-                double temp = Global.ButtonMouseInfos[device].buttonVerticalScale;
+                double temp = profileSettings.ButtonMouseInfos[device].buttonVerticalScale;
                 double attemptValue = value * 0.01;
                 if (temp == attemptValue) return;
-                Global.ButtonMouseInfos[device].buttonVerticalScale = attemptValue;
+                profileSettings.ButtonMouseInfos[device].buttonVerticalScale = attemptValue;
                 ButtonMouseVerticalScaleChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -571,17 +570,17 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private double RawButtonMouseOffset
         {
-            get => Global.ButtonMouseInfos[device].mouseVelocityOffset;
+            get => profileSettings.ButtonMouseInfos[device].mouseVelocityOffset;
         }
 
         public double ButtonMouseOffset
         {
-            get => Global.ButtonMouseInfos[device].mouseVelocityOffset * 100.0;
+            get => profileSettings.ButtonMouseInfos[device].mouseVelocityOffset * 100.0;
             set
             {
-                double temp = Global.ButtonMouseInfos[device].mouseVelocityOffset * 100.0;
+                double temp = profileSettings.ButtonMouseInfos[device].mouseVelocityOffset * 100.0;
                 if (temp == value) return;
-                Global.ButtonMouseInfos[device].mouseVelocityOffset = value * 0.01;
+                profileSettings.ButtonMouseInfos[device].mouseVelocityOffset = value * 0.01;
                 ButtonMouseOffsetChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -615,16 +614,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool MouseAcceleration
         {
-            get => Global.ButtonMouseInfos[device].mouseAccel;
-            set => Global.ButtonMouseInfos[device].mouseAccel = value;
+            get => profileSettings.ButtonMouseInfos[device].mouseAccel;
+            set => profileSettings.ButtonMouseInfos[device].mouseAccel = value;
         }
 
         public double AbsWidth
         {
-            get => Global.ButtonAbsMouseInfos[device].width;
+            get => profileSettings.ButtonAbsMouseInfos[device].width;
             set
             {
-                ButtonAbsMouseInfo tempAbsInfo = Global.ButtonAbsMouseInfos[device];
+                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
                 if (value == tempAbsInfo.width) return;
 
                 tempAbsInfo.width = value;
@@ -633,10 +632,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double AbsHeight
         {
-            get => Global.ButtonAbsMouseInfos[device].height;
+            get => profileSettings.ButtonAbsMouseInfos[device].height;
             set
             {
-                ButtonAbsMouseInfo tempAbsInfo = Global.ButtonAbsMouseInfos[device];
+                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
                 if (value == tempAbsInfo.height) return;
 
                 tempAbsInfo.height = value;
@@ -645,10 +644,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double AbsXCenter
         {
-            get => Global.ButtonAbsMouseInfos[device].xcenter;
+            get => profileSettings.ButtonAbsMouseInfos[device].xcenter;
             set
             {
-                ButtonAbsMouseInfo tempAbsInfo = Global.ButtonAbsMouseInfos[device];
+                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
                 if (value == tempAbsInfo.xcenter) return;
 
                 tempAbsInfo.xcenter = value;
@@ -657,10 +656,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double AbsYCenter
         {
-            get => Global.ButtonAbsMouseInfos[device].ycenter;
+            get => profileSettings.ButtonAbsMouseInfos[device].ycenter;
             set
             {
-                ButtonAbsMouseInfo tempAbsInfo = Global.ButtonAbsMouseInfos[device];
+                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
                 if (value == tempAbsInfo.ycenter) return;
 
                 tempAbsInfo.ycenter = value;
@@ -669,10 +668,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool AbsSnapCenter
         {
-            get => Global.ButtonAbsMouseInfos[device].snapToCenter;
+            get => profileSettings.ButtonAbsMouseInfos[device].snapToCenter;
             set
             {
-                ButtonAbsMouseInfo tempAbsInfo = Global.ButtonAbsMouseInfos[device];
+                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
                 if (value == tempAbsInfo.snapToCenter) return;
 
                 tempAbsInfo.snapToCenter = value;
@@ -681,10 +680,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double AbsAntiRadius
         {
-            get => Global.ButtonAbsMouseInfos[device].antiRadius;
+            get => profileSettings.ButtonAbsMouseInfos[device].antiRadius;
             set
             {
-                ButtonAbsMouseInfo tempAbsInfo = Global.ButtonAbsMouseInfos[device];
+                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
                 if (tempAbsInfo.antiRadius == value) return;
 
                 tempAbsInfo.antiRadius = value;
@@ -693,8 +692,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool EnableTouchpadToggle
         {
-            get => Global.EnableTouchToggle[device];
-            set => Global.EnableTouchToggle[device] = value;
+            get => profileSettings.EnableTouchToggle[device];
+            set => profileSettings.EnableTouchToggle[device] = value;
         }
 
         public bool EnableOutputDataToDS4
@@ -2027,10 +2026,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool TouchScrollExists
         {
-            get => Global.ScrollSensitivity[device] != 0;
+            get => profileSettings.ScrollSensitivity[device] != 0;
             set
             {
-                Global.ScrollSensitivity[device] = value ? (byte)100 : (byte)0;
+                profileSettings.ScrollSensitivity[device] = value ? 100 : 0;
                 TouchScrollExistsChanged?.Invoke(this, EventArgs.Empty);
                 TouchScrollChanged?.Invoke(this, EventArgs.Empty);
             }
