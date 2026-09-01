@@ -746,7 +746,8 @@ namespace DS4WinWPF
                 // is the same adapter class already registered, not a second implementation.
                 var registry = AppHost.GetService<IDs4DeviceRegistry>()
                     ?? new Ds4DeviceRegistryAdapter();
-                rootHub = new DS4Windows.ControlService(parser, registry);
+                rootHub = new DS4Windows.ControlService(parser, registry,
+                    AppHost.GetService<IProfileSettingsService>());
 
                 DS4Windows.Program.rootHub = rootHub;
                 requestClient = new HttpClient();

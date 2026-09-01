@@ -37,7 +37,7 @@ using static DS4Windows.Global;
 
 namespace DS4Windows
 {
-    #pragma warning disable CS0219 // some local variables are assigned but not read in legacy handlers
+#pragma warning disable CS0219 // some local variables are assigned but not read in legacy handlers
     public class ControlService : IInstanceIdentifiable, DS4Windows.Services.IDeviceStateAccessor
     {
         public int InstanceId => this.GetHashCode();
@@ -85,9 +85,9 @@ namespace DS4Windows
             new OneEuroFilter3D(), new OneEuroFilter3D(),
         };
         Thread tempThread;
-    #pragma warning disable CS0169 // tempBusThread is intentionally unused currently
+#pragma warning disable CS0169 // tempBusThread is intentionally unused currently
         Thread tempBusThread;
-    #pragma warning restore CS0169
+#pragma warning restore CS0169
         Thread eventDispatchThread;
         Dispatcher eventDispatcher;
         public bool suspending;
@@ -97,6 +97,7 @@ namespace DS4Windows
 
         // Phase 3 Followup Step F-2: DS4Devices static access routed through DI.
         private readonly IDs4DeviceRegistry _deviceRegistry;
+        private readonly DI.IProfileSettingsService _profileSettings;
 
         private HashSet<string> hidDeviceHidingAffectedDevs = new HashSet<string>();
         private HashSet<string> hidDeviceHidingExemptedDevs = new HashSet<string>();
@@ -195,10 +196,12 @@ namespace DS4Windows
             //return meta;
         }
 
-        public ControlService(DS4WinWPF.ArgumentParser cmdParser, IDs4DeviceRegistry deviceRegistry)
+        public ControlService(DS4WinWPF.ArgumentParser cmdParser, IDs4DeviceRegistry deviceRegistry,
+            DI.IProfileSettingsService profileSettings = null)
         {
             this.cmdParser = cmdParser;
             this._deviceRegistry = deviceRegistry;
+            this._profileSettings = profileSettings ?? Global.ProfileSettingsServiceInstance;
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 
@@ -1147,7 +1150,7 @@ namespace DS4Windows
                 DS4OutDevice tempDS4 = outDevice as DS4OutDevice;
                 if (tempDS4.CanUseAwaitOutputBuffer)
                 {
-                    #pragma warning disable CS0219 // useRumble assigned but not read; keep variable for possible future use
+#pragma warning disable CS0219 // useRumble assigned but not read; keep variable for possible future use
                     DS4OutDeviceExt.ReceivedOutBufferHandler processOutBuffAction = (DS4OutDeviceExt sender, byte[] reportData) =>
                     {
                         /*
@@ -1208,7 +1211,7 @@ namespace DS4Windows
                         //*/
 
                         //*
-                        #pragma warning disable CS0219 // suppress useRumble assigned but not read in this legacy handler
+#pragma warning disable CS0219 // suppress useRumble assigned but not read in this legacy handler
                         unchecked
                         {
                             //Trace.WriteLine($"INDEX: {devIndex}");
@@ -1270,7 +1273,7 @@ namespace DS4Windows
                     };
 
                     DS4OutDeviceExt tempDS4Ext = tempDS4 as DS4OutDeviceExt;
-                    #pragma warning restore CS0219
+#pragma warning restore CS0219
                     tempDS4Ext.ReceivedOutBuffer += processOutBuffAction;
                     tempDS4Ext.outBufferFeedbacksDict.TryAdd(index, processOutBuffAction);
                     tempDS4Ext.StartOutputBufferThread();
@@ -2109,19 +2112,19 @@ namespace DS4Windows
             touchPad[index] = new Mouse(index, device);
             bool profileLoaded = false;
             bool useAutoProfile = useTempProfile[index];
-            
+
             DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: device={index}, useAutoProfile={useAutoProfile}, isFirstConnection={Global.IsFirstConnection(index)}");
-            
+
             if (!useAutoProfile)
             {
                 // ===== プロファイル選択ロジック =====
                 string profileToApply;
-                
+
                 if (Global.IsFirstConnection(index))
                 {
                     // 初回接続: LinkedProfiles.xmlまたはOlderProfilePathからプロファイルを選択
                     DS4Windows.AppLogger.LogDebug($"FIRST CONNECTION detected for device {index}");
-                    
+
                     if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
                     {
                         // Linked登録済み → Linkedを適用
@@ -2134,7 +2137,7 @@ namespace DS4Windows
                         profileToApply = OlderProfilePath[index];
                         DS4Windows.AppLogger.LogDebug($"Using OLDER profile: '{profileToApply}' for device {index}");
                     }
-                    
+
                     Global.MarkConnected(index); // 初回接続完了マーク
                 }
                 else
@@ -2146,7 +2149,7 @@ namespace DS4Windows
 
                 // ===== 共通処理: プロファイル設定とUI状態の更新 =====
                 Global.SelectedProfile[index] = profileToApply;
-                
+
                 // LinkedProfiles.xmlの状態を確認してLinkedProfileUIとlinkedProfileCheckを設定
                 if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
                 {
@@ -2162,8 +2165,8 @@ namespace DS4Windows
 
                 // プロファイル適用
                 string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (index + 1).ToString(), profileToApply, "N/A");
-                bool display = Global.ProfileChangedNotification;
-                
+                bool display = _profileSettings.ProfileChangedNotification;
+
                 DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: About to call ApplyProfile with '{profileToApply}'");
                 profileLoaded = Global.ApplyProfile(index, profileToApply, false, false, this,
                     DS4Windows.ProfileChangeSource.ControlService, prolog, display);
@@ -2292,8 +2295,8 @@ namespace DS4Windows
             //Global.TouchOutMode[ind] = TouchpadOutMode.MouseJoystick;
             touchPad[ind].PostSetup();
 
-            Global.L2OutputSettings[ind].TrigEffectSettings.maxValue = (byte)(Math.Max(Global.L2ModInfo[ind].maxOutput, Global.L2ModInfo[ind].maxZone) / 100.0 * 255);
-            Global.R2OutputSettings[ind].TrigEffectSettings.maxValue = (byte)(Math.Max(Global.R2ModInfo[ind].maxOutput, Global.R2ModInfo[ind].maxZone) / 100.0 * 255);
+            Global.L2OutputSettings[ind].TrigEffectSettings.maxValue = (byte)(Math.Max(_profileSettings.L2ModInfo[ind].maxOutput, _profileSettings.L2ModInfo[ind].maxZone) / 100.0 * 255);
+            Global.R2OutputSettings[ind].TrigEffectSettings.maxValue = (byte)(Math.Max(_profileSettings.R2ModInfo[ind].maxOutput, _profileSettings.R2ModInfo[ind].maxZone) / 100.0 * 255);
 
             device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, Global.L2OutputSettings[ind].TriggerEffect,
                 Global.L2OutputSettings[ind].TrigEffectSettings);
@@ -2397,13 +2400,13 @@ namespace DS4Windows
 
             int tempIdx = ind;
             Global.L2OutputSettings[ind].ResetEvents();
-            Global.L2ModInfo[ind].ResetEvents();
+            _profileSettings.L2ModInfo[ind].ResetEvents();
             Global.L2OutputSettings[ind].TriggerEffectChanged += (sender, e) =>
             {
                 device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, Global.L2OutputSettings[tempIdx].TriggerEffect,
                     Global.L2OutputSettings[tempIdx].TrigEffectSettings);
             };
-            Global.L2ModInfo[ind].MaxOutputChanged += (sender, e) =>
+            _profileSettings.L2ModInfo[ind].MaxOutputChanged += (sender, e) =>
             {
                 TriggerDeadZoneZInfo tempInfo = sender as TriggerDeadZoneZInfo;
                 L2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(Math.Max(tempInfo.maxOutput, tempInfo.maxZone) / 100.0 * 255.0);
@@ -2412,7 +2415,7 @@ namespace DS4Windows
                 device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, Global.L2OutputSettings[tempIdx].TriggerEffect,
                     Global.L2OutputSettings[tempIdx].TrigEffectSettings);
             };
-            Global.L2ModInfo[ind].MaxZoneChanged += (sender, e) =>
+            _profileSettings.L2ModInfo[ind].MaxZoneChanged += (sender, e) =>
             {
                 TriggerDeadZoneZInfo tempInfo = sender as TriggerDeadZoneZInfo;
                 L2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(Math.Max(tempInfo.maxOutput, tempInfo.maxZone) / 100.0 * 255.0);
@@ -2428,7 +2431,7 @@ namespace DS4Windows
                 device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, Global.R2OutputSettings[tempIdx].TriggerEffect,
                     Global.R2OutputSettings[tempIdx].TrigEffectSettings);
             };
-            Global.R2ModInfo[ind].MaxOutputChanged += (sender, e) =>
+            _profileSettings.R2ModInfo[ind].MaxOutputChanged += (sender, e) =>
             {
                 TriggerDeadZoneZInfo tempInfo = sender as TriggerDeadZoneZInfo;
                 R2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(tempInfo.maxOutput / 100.0 * 255.0);
@@ -2437,7 +2440,7 @@ namespace DS4Windows
                 device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, Global.R2OutputSettings[tempIdx].TriggerEffect,
                     Global.R2OutputSettings[tempIdx].TrigEffectSettings);
             };
-            Global.R2ModInfo[ind].MaxZoneChanged += (sender, e) =>
+            _profileSettings.R2ModInfo[ind].MaxZoneChanged += (sender, e) =>
             {
                 TriggerDeadZoneZInfo tempInfo = sender as TriggerDeadZoneZInfo;
                 R2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(tempInfo.maxOutput / 100.0 * 255.0);
