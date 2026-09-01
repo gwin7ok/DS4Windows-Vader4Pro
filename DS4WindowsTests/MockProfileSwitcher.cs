@@ -33,6 +33,12 @@ namespace DS4WindowsTests
             RestoreProfileCalls.Add(deviceIndex);
         }
 
+        public void ApplyManualProfile(int deviceIndex, string profileName, bool launchProgram,
+            bool xinputChange, ControlService control, ProfileChangeSource source,
+            string prolog, bool showNotification)
+        {
+        }
+
         public void Reset()
         {
             SwitchProfileCalls.Clear();

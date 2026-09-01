@@ -150,6 +150,7 @@ namespace DS4WinWPF.DS4Forms
         private int deviceNum;
         private ProfileSettingsViewModel profileSettingsVM;
         private readonly DS4Windows.DI.IProfileRepository profileRepository;
+        private readonly DS4Windows.Actions.IProfileSwitcher profileSwitcher;
         private MappingListViewModel mappingListVM;
         private ProfileEntity currentProfile;
         private SpecialActionsListViewModel specialActionsVM;
@@ -272,6 +273,8 @@ namespace DS4WinWPF.DS4Forms
 
             profileRepository = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>()
                 ?? new DS4Windows.ProfileRepository();
+            profileSwitcher = DS4WinWPF.AppHost.GetService<DS4Windows.Actions.IProfileSwitcher>()
+                ?? new DS4Windows.Actions.DefaultProfileSwitcher();
 
             // SpecialActionsリスト表示前にカルチャを明示的に再設定
             var lang = DS4Windows.Global.UseLang;
@@ -1479,7 +1482,7 @@ namespace DS4WinWPF.DS4Forms
                                     string prolog = string.Format(Properties.Resources.UsingProfile,
                                         (i + 1).ToString(), temp, $"{device.Battery}");
                                     bool display = Global.ProfileChangedNotification;
-                                    Global.ApplyProfile(i, temp, false, true, App.rootHub,
+                                    profileSwitcher.ApplyManualProfile(i, temp, false, true, App.rootHub,
                                         DS4Windows.ProfileChangeSource.Manual, prolog, display);
                                 });
                             }

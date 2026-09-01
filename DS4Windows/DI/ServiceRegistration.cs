@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using DS4Windows;
 using DS4Windows.DI;
 using DS4Windows.Services;
+using DS4Windows.Actions;
 using DS4WinWPF;
 using DS4WinWPF.DS4Forms.ViewModels;
 
@@ -15,6 +16,7 @@ namespace DS4Windows.DI
             // 第4層 4-c 設定・プロファイル・アクション・環境・通知サービス
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();
+            services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
             services.AddSingleton<ISpecialActionRepository, SpecialActionRepository>();
             services.AddSingleton<IPathService, PathService>();
             services.AddSingleton<IEnvironmentService, EnvironmentService>();

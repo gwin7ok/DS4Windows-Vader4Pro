@@ -20,5 +20,9 @@ namespace DS4Windows.Actions
         /// </summary>
         /// <param name="deviceIndex">コントローラーのデバイスインデックス（0〜3）</param>
         void RestoreProfile(int deviceIndex);
+
+        void ApplyManualProfile(int deviceIndex, string profileName, bool launchProgram,
+            bool xinputChange, ControlService control, ProfileChangeSource source,
+            string prolog, bool showNotification);
     }
 }

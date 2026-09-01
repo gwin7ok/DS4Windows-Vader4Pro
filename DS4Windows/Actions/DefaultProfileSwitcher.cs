@@ -67,5 +67,13 @@ namespace DS4Windows.Actions
                 try { AppLogger.LogTrace($"DefaultProfileSwitcher.RestoreProfile failed: {ex}"); } catch { }
             }
         }
+
+        public void ApplyManualProfile(int deviceIndex, string profileName, bool launchProgram,
+            bool xinputChange, ControlService control, ProfileChangeSource source,
+            string prolog, bool showNotification)
+        {
+            Global.ApplyProfile(deviceIndex, profileName, launchProgram, xinputChange,
+                control, source, prolog, showNotification);
+        }
     }
 }
