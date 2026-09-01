@@ -28,6 +28,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4Windows.StickModifiers;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 using DS4Windows.InputDevices;
@@ -51,6 +52,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         };
 
         private int device;
+        private readonly IProfileSettingsService profileSettings;
         public int Device { get => device; }
 
         private int funcDevNum;
@@ -64,7 +66,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 0;
-                switch(Global.LightbarSettingsInfo[device].Mode)
+                switch (Global.LightbarSettingsInfo[device].Mode)
                 {
                     case LightbarMode.DS4Win:
                         index = 0; break;
@@ -78,7 +80,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set
             {
                 LightbarMode temp = LightbarMode.DS4Win;
-                switch(value)
+                switch (value)
                 {
                     case 0:
                         temp = LightbarMode.DS4Win; break;
@@ -167,7 +169,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string MainColorRString
         {
-            get => $"#{ Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.red.ToString("X2")}FF0000";
+            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.red.ToString("X2")}FF0000";
         }
         public event EventHandler MainColorRStringChanged;
 
@@ -184,7 +186,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string MainColorGString
         {
-            get => $"#{ Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.green.ToString("X2")}00FF00";
+            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.green.ToString("X2")}00FF00";
         }
         public event EventHandler MainColorGStringChanged;
 
@@ -201,7 +203,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string MainColorBString
         {
-            get => $"#{ Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.blue.ToString("X2")}0000FF";
+            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.blue.ToString("X2")}0000FF";
         }
         public event EventHandler MainColorBStringChanged;
 
@@ -229,7 +231,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string LowColorRString
         {
-            get => $"#{ Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.red.ToString("X2")}FF0000";
+            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.red.ToString("X2")}FF0000";
         }
         public event EventHandler LowColorRStringChanged;
 
@@ -247,7 +249,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string LowColorGString
         {
-            get => $"#{ Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.green.ToString("X2")}00FF00";
+            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.green.ToString("X2")}00FF00";
         }
         public event EventHandler LowColorGStringChanged;
 
@@ -265,7 +267,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string LowColorBString
         {
-            get => $"#{ Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.blue.ToString("X2")}0000FF";
+            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.blue.ToString("X2")}0000FF";
         }
         public event EventHandler LowColorBStringChanged;
 
@@ -920,7 +922,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set
             {
                 GyroOutMode temp = GyroOutMode.Controls;
-                switch(value)
+                switch (value)
                 {
                     case 0: break;
                     case 1:
@@ -972,7 +974,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 360;
-                switch(Global.SASteeringWheelEmulationRange[device])
+                switch (Global.SASteeringWheelEmulationRange[device])
                 {
                     case 90:
                         index = 0; break;
@@ -1043,12 +1045,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double LSDeadZone
         {
-            get => Math.Round(Global.LSModInfo[device].deadZone / 127d, 2);
+            get => Math.Round(profileSettings.LSModInfo[device].deadZone / 127d, 2);
             set
             {
-                double temp = Math.Round(Global.LSModInfo[device].deadZone / 127d, 2);
+                double temp = Math.Round(profileSettings.LSModInfo[device].deadZone / 127d, 2);
                 if (temp == value) return;
-                Global.LSModInfo[device].deadZone = (int)Math.Round(value * 127d);
+                profileSettings.LSModInfo[device].deadZone = (int)Math.Round(value * 127d);
                 LSDeadZoneChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1056,12 +1058,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double RSDeadZone
         {
-            get => Math.Round(Global.RSModInfo[device].deadZone / 127d, 2);
+            get => Math.Round(profileSettings.RSModInfo[device].deadZone / 127d, 2);
             set
             {
-                double temp = Math.Round(Global.RSModInfo[device].deadZone / 127d, 2);
+                double temp = Math.Round(profileSettings.RSModInfo[device].deadZone / 127d, 2);
                 if (temp == value) return;
-                Global.RSModInfo[device].deadZone = (int)Math.Round(value * 127d);
+                profileSettings.RSModInfo[device].deadZone = (int)Math.Round(value * 127d);
                 RSDeadZoneChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1069,62 +1071,62 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double LSMaxZone
         {
-            get => Global.LSModInfo[device].maxZone / 100.0;
-            set => Global.LSModInfo[device].maxZone = (int)(value * 100.0);
+            get => profileSettings.LSModInfo[device].maxZone / 100.0;
+            set => profileSettings.LSModInfo[device].maxZone = (int)(value * 100.0);
         }
 
         public double RSMaxZone
         {
-            get => Global.RSModInfo[device].maxZone / 100.0;
-            set => Global.RSModInfo[device].maxZone = (int)(value * 100.0);
+            get => profileSettings.RSModInfo[device].maxZone / 100.0;
+            set => profileSettings.RSModInfo[device].maxZone = (int)(value * 100.0);
         }
 
         public double LSAntiDeadZone
         {
-            get => Global.LSModInfo[device].antiDeadZone / 100.0;
-            set => Global.LSModInfo[device].antiDeadZone = (int)(value * 100.0);
+            get => profileSettings.LSModInfo[device].antiDeadZone / 100.0;
+            set => profileSettings.LSModInfo[device].antiDeadZone = (int)(value * 100.0);
         }
 
         public double RSAntiDeadZone
         {
-            get => Global.RSModInfo[device].antiDeadZone / 100.0;
-            set => Global.RSModInfo[device].antiDeadZone = (int)(value * 100.0);
+            get => profileSettings.RSModInfo[device].antiDeadZone / 100.0;
+            set => profileSettings.RSModInfo[device].antiDeadZone = (int)(value * 100.0);
         }
 
         public double LSVerticalScale
         {
-            get => Global.LSModInfo[device].verticalScale / 100.0;
-            set => Global.LSModInfo[device].verticalScale = value * 100.0;
+            get => profileSettings.LSModInfo[device].verticalScale / 100.0;
+            set => profileSettings.LSModInfo[device].verticalScale = value * 100.0;
         }
 
         public double LSMaxOutput
         {
-            get => Global.LSModInfo[device].maxOutput / 100.0;
-            set => Global.LSModInfo[device].maxOutput = value * 100.0;
+            get => profileSettings.LSModInfo[device].maxOutput / 100.0;
+            set => profileSettings.LSModInfo[device].maxOutput = value * 100.0;
         }
 
         public bool LSMaxOutputForce
         {
-            get => Global.LSModInfo[device].maxOutputForce;
-            set => Global.LSModInfo[device].maxOutputForce = value;
+            get => profileSettings.LSModInfo[device].maxOutputForce;
+            set => profileSettings.LSModInfo[device].maxOutputForce = value;
         }
 
         public double RSVerticalScale
         {
-            get => Global.RSModInfo[device].verticalScale / 100.0;
-            set => Global.RSModInfo[device].verticalScale = value * 100.0;
+            get => profileSettings.RSModInfo[device].verticalScale / 100.0;
+            set => profileSettings.RSModInfo[device].verticalScale = value * 100.0;
         }
 
         public double RSMaxOutput
         {
-            get => Global.RSModInfo[device].maxOutput / 100.0;
-            set => Global.RSModInfo[device].maxOutput = value * 100.0;
+            get => profileSettings.RSModInfo[device].maxOutput / 100.0;
+            set => profileSettings.RSModInfo[device].maxOutput = value * 100.0;
         }
 
         public bool RSMaxOutputForce
         {
-            get => Global.RSModInfo[device].maxOutputForce;
-            set => Global.RSModInfo[device].maxOutputForce = value;
+            get => profileSettings.RSModInfo[device].maxOutputForce;
+            set => profileSettings.RSModInfo[device].maxOutputForce = value;
         }
 
         public int LSDeadTypeIndex
@@ -1132,41 +1134,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 0;
-                switch(Global.LSModInfo[device].deadzoneType)
-                {
-                    case StickDeadZoneInfo.DeadZoneType.Radial:
-                        break;
-                    case StickDeadZoneInfo.DeadZoneType.Axial:
-                        index = 1; break;
-                    default: break;
-                }
-
-                return index;
-            }
-            set
-            {
-                StickDeadZoneInfo.DeadZoneType temp = StickDeadZoneInfo.DeadZoneType.Radial;
-                switch(value)
-                {
-                    case 0: break;
-                    case 1:
-                        temp = StickDeadZoneInfo.DeadZoneType.Axial;
-                        break;
-                    default: break;
-                }
-
-                StickDeadZoneInfo.DeadZoneType current = Global.LSModInfo[device].deadzoneType;
-                if (temp == current) return;
-                Global.LSModInfo[device].deadzoneType = temp;
-            }
-        }
-
-        public int RSDeadTypeIndex
-        {
-            get
-            {
-                int index = 0;
-                switch (Global.RSModInfo[device].deadzoneType)
+                switch (profileSettings.LSModInfo[device].deadzoneType)
                 {
                     case StickDeadZoneInfo.DeadZoneType.Radial:
                         break;
@@ -1189,102 +1157,136 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     default: break;
                 }
 
-                StickDeadZoneInfo.DeadZoneType current = Global.RSModInfo[device].deadzoneType;
+                StickDeadZoneInfo.DeadZoneType current = profileSettings.LSModInfo[device].deadzoneType;
                 if (temp == current) return;
-                Global.RSModInfo[device].deadzoneType = temp;
+                profileSettings.LSModInfo[device].deadzoneType = temp;
+            }
+        }
+
+        public int RSDeadTypeIndex
+        {
+            get
+            {
+                int index = 0;
+                switch (profileSettings.RSModInfo[device].deadzoneType)
+                {
+                    case StickDeadZoneInfo.DeadZoneType.Radial:
+                        break;
+                    case StickDeadZoneInfo.DeadZoneType.Axial:
+                        index = 1; break;
+                    default: break;
+                }
+
+                return index;
+            }
+            set
+            {
+                StickDeadZoneInfo.DeadZoneType temp = StickDeadZoneInfo.DeadZoneType.Radial;
+                switch (value)
+                {
+                    case 0: break;
+                    case 1:
+                        temp = StickDeadZoneInfo.DeadZoneType.Axial;
+                        break;
+                    default: break;
+                }
+
+                StickDeadZoneInfo.DeadZoneType current = profileSettings.RSModInfo[device].deadzoneType;
+                if (temp == current) return;
+                profileSettings.RSModInfo[device].deadzoneType = temp;
             }
         }
 
         public double LSSens
         {
-            get => Global.LSSens[device];
-            set => Global.LSSens[device] = value;
+            get => profileSettings.LSSens[device];
+            set => profileSettings.LSSens[device] = value;
         }
 
         public double RSSens
         {
-            get => Global.RSSens[device];
-            set => Global.RSSens[device] = value;
+            get => profileSettings.RSSens[device];
+            set => profileSettings.RSSens[device] = value;
         }
 
         public bool LSSquareStick
         {
-            get => Global.SquStickInfo[device].lsMode;
-            set => Global.SquStickInfo[device].lsMode = value;
+            get => profileSettings.SquStickInfo[device].lsMode;
+            set => profileSettings.SquStickInfo[device].lsMode = value;
         }
 
         public bool RSSquareStick
         {
-            get => Global.SquStickInfo[device].rsMode;
-            set => Global.SquStickInfo[device].rsMode = value;
+            get => profileSettings.SquStickInfo[device].rsMode;
+            set => profileSettings.SquStickInfo[device].rsMode = value;
         }
 
         public double LSSquareRoundness
         {
-            get => Global.SquStickInfo[device].lsRoundness;
-            set => Global.SquStickInfo[device].lsRoundness = value;
+            get => profileSettings.SquStickInfo[device].lsRoundness;
+            set => profileSettings.SquStickInfo[device].lsRoundness = value;
         }
 
         public double RSSquareRoundness
         {
-            get => Global.SquStickInfo[device].rsRoundness;
-            set => Global.SquStickInfo[device].rsRoundness = value;
+            get => profileSettings.SquStickInfo[device].rsRoundness;
+            set => profileSettings.SquStickInfo[device].rsRoundness = value;
         }
 
         public int LSOutputCurveIndex
         {
-            get => Global.getLsOutCurveMode(device);
+            get => profileSettings.GetLsOutCurveMode(device);
             set
             {
-                Global.setLsOutCurveMode(device, value);
+                profileSettings.SetLsOutCurveMode(device, value);
                 LSCustomCurveSelectedChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
         public int RSOutputCurveIndex
         {
-            get => Global.getRsOutCurveMode(device);
+            get => profileSettings.GetRsOutCurveMode(device);
             set
             {
-                Global.setRsOutCurveMode(device, value);
+                profileSettings.SetRsOutCurveMode(device, value);
                 RSCustomCurveSelectedChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
         public double LSRotation
         {
-            get => Global.LSRotation[device] * 180.0 / Math.PI;
-            set => Global.LSRotation[device] = value * Math.PI / 180.0;
+            get => profileSettings.LSRotation[device] * 180.0 / Math.PI;
+            set => profileSettings.LSRotation[device] = value * Math.PI / 180.0;
         }
 
         public double RSRotation
         {
-            get => Global.RSRotation[device] * 180.0 / Math.PI;
-            set => Global.RSRotation[device] = value * Math.PI / 180.0;
+            get => profileSettings.RSRotation[device] * 180.0 / Math.PI;
+            set => profileSettings.RSRotation[device] = value * Math.PI / 180.0;
         }
 
         public bool LSCustomCurveSelected
         {
-            get => Global.getLsOutCurveMode(device) == 6;
+            get => profileSettings.GetLsOutCurveMode(device) == 6;
         }
         public event EventHandler LSCustomCurveSelectedChanged;
 
         public bool RSCustomCurveSelected
         {
-            get => Global.getRsOutCurveMode(device) == 6;
+            get => profileSettings.GetRsOutCurveMode(device) == 6;
         }
         public event EventHandler RSCustomCurveSelectedChanged;
 
         public string LSCustomCurve
         {
-            get => Global.lsOutBezierCurveObj[device].CustomDefinition;
-            set => Global.lsOutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.LSRS, true);
+            get => profileSettings.LsOutBezierCurveObj[device].CustomDefinition;
+            set => profileSettings.LsOutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.LSRS, true);
         }
 
         public string RSCustomCurve
         {
-            get => Global.rsOutBezierCurveObj[device].CustomDefinition;
-            set => Global.rsOutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.LSRS, true);
+            get => profileSettings.RsOutBezierCurveObj[device].CustomDefinition;
+            set => profileSettings.RsOutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.LSRS, true);
         }
 
         public int LSFuzz
@@ -1496,7 +1498,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set
             {
                 StickMode temp = StickMode.None;
-                switch(value)
+                switch (value)
                 {
                     case 0:
                         temp = StickMode.None;
@@ -2505,7 +2507,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 Visibility result = Visibility.Collapsed;
-                switch(Global.GyroMouseInfo[device].smoothingMethod)
+                switch (Global.GyroMouseInfo[device].smoothingMethod)
                 {
                     case GyroMouseInfo.SmoothingMethod.OneEuro:
                     case GyroMouseInfo.SmoothingMethod.None:
@@ -2900,7 +2902,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public int GyroSwipeEvalCondIndex
         {
             get => Global.GyroSwipeInf[device].triggerCond ? 0 : 1;
-            set => Global.GyroSwipeInf[device].triggerCond =  value == 0 ? true : false;
+            set => Global.GyroSwipeInf[device].triggerCond = value == 0 ? true : false;
         }
 
         public int GyroSwipeXAxis
@@ -2946,7 +2948,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                switch(Global.DualSenseRumbleEmulationMode[device])
+                switch (Global.DualSenseRumbleEmulationMode[device])
                 {
                     case DualSenseDevice.RumbleEmulationMode.Disabled: return 2;
                     case DualSenseDevice.RumbleEmulationMode.Legacy: return 1;
@@ -2957,7 +2959,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set
             {
                 DualSenseDevice.RumbleEmulationMode temp;
-                switch(value)
+                switch (value)
                 {
                     case 2: temp = DualSenseDevice.RumbleEmulationMode.Disabled; break;
                     case 1: temp = DualSenseDevice.RumbleEmulationMode.Legacy; break;
@@ -2992,9 +2994,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set => Global.InverseRumbleMotors[device] = value;
         }
 
-        public ProfileSettingsViewModel(int device)
+        public ProfileSettingsViewModel(int device, IProfileSettingsService profileSettings = null)
         {
             this.device = device;
+            this.profileSettings = profileSettings ?? Global.ProfileSettingsServiceInstance;
             funcDevNum = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : 0;
             tempControllerIndex = ControllerTypeIndex;
             Global.outDevTypeTemp[device] = OutContType.X360;
@@ -3298,7 +3301,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             List<int> triggerList = new List<int>();
             List<string> triggerName = new List<string>();
 
-            foreach(MenuItem item in menu.Items)
+            foreach (MenuItem item in menu.Items)
             {
                 if (item.IsChecked)
                 {
@@ -3480,7 +3483,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 }
                 else if (valid && trigid == -1)
                 {
-                    MenuItem current = menu.Items[itemCount-1] as MenuItem;
+                    MenuItem current = menu.Items[itemCount - 1] as MenuItem;
                     current.IsChecked = true;
                     triggerName.Add("Always On");
                     break;
@@ -3756,7 +3759,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private ControlSelection highlightControl = ControlSelection.None;
 
-        public ControlSelection HighlightControl {
+        public ControlSelection HighlightControl
+        {
             get => highlightControl;
         }
 
@@ -3825,7 +3829,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
             else if (baseTag == 1)
             {
-                switch(subTag)
+                switch (subTag)
                 {
                     case 0:
                         actionBtns.AddRange(new object[5]
@@ -3975,7 +3979,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
             else if (baseTag == 4)
             {
-                switch(subTag)
+                switch (subTag)
                 {
                     case 0:
                         // North, South, West, East
@@ -4002,7 +4006,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
             else if (baseTag == 5)
             {
-                switch(subTag)
+                switch (subTag)
                 {
                     case 0:
                         // North, South, West, East
@@ -4035,7 +4039,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
             else if (baseTag == 6)
             {
-                switch(subTag)
+                switch (subTag)
                 {
                     case 0:
                         // North, South, West, East
@@ -4169,7 +4173,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
 
             int idx = 0;
-            foreach(DS4Controls dsControl in inputControls)
+            foreach (DS4Controls dsControl in inputControls)
             {
                 DS4ControlSettings setting = Global.GetDS4CSetting(deviceNum, dsControl);
                 setting.Reset();

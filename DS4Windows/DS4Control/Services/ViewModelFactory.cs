@@ -26,7 +26,7 @@ namespace DS4Windows
         {
             if (AppLogger.IsTraceEnabled)
                 AppLogger.LogTrace($"[DI] ViewModelFactory: Created ProfileSettingsViewModel for Device {device}");
-            return new ProfileSettingsViewModel(device);
+            return new ProfileSettingsViewModel(device, _profileSettings);
         }
 
         public RecordBoxViewModel CreateRecordBoxViewModel(int device, DS4ControlSettings controlSettings, bool recordMacro = true, bool extraHold = false)
