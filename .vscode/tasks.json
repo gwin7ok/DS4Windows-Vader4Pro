@@ -166,6 +166,9 @@
                 "Debug",
                 "/p:platform=x64",
                 "--no-build",
+                "--blame-hang",
+                "--blame-hang-timeout",
+                "15s",
                 "-v",
                 "normal"
             ],
@@ -185,6 +188,9 @@
                 "Debug",
                 "/p:platform=x64",
                 "--no-build",
+                "--blame-hang",
+                "--blame-hang-timeout",
+                "15s",
                 "-v",
                 "normal"
             ],
@@ -199,6 +205,19 @@
             "dependsOn": [
                 "Execute Test (Actions)",
                 "Execute Test (Standalone)"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Debug ALL",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build Debug",
+                "Build Test",
+                "Execute Test"
             ],
             "group": {
                 "kind": "test",
