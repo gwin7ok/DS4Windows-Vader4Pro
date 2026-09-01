@@ -405,6 +405,48 @@ namespace DS4Windows
         public TouchpadAbsMouseSettings[] TouchAbsMouse => _config.touchpadAbsMouse;
         public TouchpadRelMouseSettings[] TouchRelMouse => _config.touchpadRelMouse;
 
+        // ---- Step10-2-A-4: ジャイロ関連 (m_Config委譲) ----
+        public GyroMouseStickInfo[] GyroMouseStickInf => _config.gyroMStickInfo;
+        public GyroMouseInfo[] GyroMouseInfo => _config.gyroMouseInfo;
+        public GyroDirectionalSwipeInfo[] GyroSwipeInf => _config.gyroSwipeInfo;
+        public GyroControlsInfo[] GyroControlsInf => _config.gyroControlsInf;
+        public int[] GyroInvert => _config.gyroInvert;
+        public int[] GyroSensitivity => _config.gyroSensitivity;
+        public int[] GyroSensVerticalScale => _config.gyroSensVerticalScale;
+        public GyroOutMode[] GyroOutputMode => _config.gyroOutMode;
+        public bool[] GyroTriggerTurns => _config.gyroTriggerTurns;
+        public bool[] GyroMouseStickTriggerTurns => _config.gyroMouseStickTriggerTurns;
+        public int[] GyroMouseHorizontalAxis => _config.gyroMouseHorizontalAxis;
+        public int[] GyroMouseStickHorizontalAxis => _config.gyroMouseStickHorizontalAxis;
+        public int[] GyroMouseDeadZone => _config.gyroMouseDZ;
+        public bool[] GyroMouseToggle => _config.gyroMouseToggle;
+        public bool[] GyroMouseStickToggle => _config.gyroMouseStickToggle;
+
+        public GyroOutMode GetGyroOutMode(int deviceIndex) => _config.gyroOutMode[deviceIndex];
+        public bool GetGyroMouseStickTriggerTurns(int deviceIndex) => _config.gyroMouseStickTriggerTurns[deviceIndex];
+        public int GetGyroMouseStickHorizontalAxis(int deviceIndex) => _config.gyroMouseStickHorizontalAxis[deviceIndex];
+        public GyroMouseStickInfo GetGyroMouseStickInfo(int deviceIndex) => _config.gyroMStickInfo[deviceIndex];
+        public GyroDirectionalSwipeInfo GetGyroSwipeInfo(int deviceIndex) => _config.gyroSwipeInfo[deviceIndex];
+        public int GetGyroSensitivity(int deviceIndex) => _config.gyroSensitivity[deviceIndex];
+        public int GetGyroSensVerticalScale(int deviceIndex) => _config.gyroSensVerticalScale[deviceIndex];
+        public int GetGyroInvert(int deviceIndex) => _config.gyroInvert[deviceIndex];
+        public bool GetGyroTriggerTurns(int deviceIndex) => _config.gyroTriggerTurns[deviceIndex];
+        public int GetGyroMouseHorizontalAxis(int deviceIndex) => _config.gyroMouseHorizontalAxis[deviceIndex];
+        public int GetGyroMouseDeadZone(int deviceIndex) => _config.gyroMouseDZ[deviceIndex];
+        public GyroControlsInfo GetGyroControlsInfo(int deviceIndex) => _config.gyroControlsInf[deviceIndex];
+
+        public void SetGyroMouseDeadZone(int index, int value, ControlService control)
+            => _config.SetGyroMouseDZ(index, value, control);
+
+        public void SetGyroMouseToggle(int index, bool value, ControlService control)
+            => _config.SetGyroMouseToggle(index, value, control);
+
+        public void SetGyroControlsToggle(int index, bool value, ControlService control)
+            => _config.SetGyroControlsToggle(index, value, control);
+
+        public void SetGyroMouseStickToggle(int index, bool value, ControlService control)
+            => _config.SetGyroMouseStickToggle(index, value, control);
+
         public X360Controls[] GetDefaultButtonMapping()
         {
             return (X360Controls[])Global.defaultButtonMapping.Clone();

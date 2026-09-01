@@ -2535,10 +2535,10 @@ namespace DS4Windows
         }
 
 
-        public static GyroOutMode[] GyroOutputMode => m_Config.gyroOutMode;
+        public static GyroOutMode[] GyroOutputMode => ProfileSettingsServiceInstance.GyroOutputMode;
         public static GyroOutMode GetGyroOutMode(int device)
         {
-            return m_Config.gyroOutMode[device];
+            return ProfileSettingsServiceInstance.GetGyroOutMode(device);
         }
 
         public static string[] SAMousestickTriggers => m_Config.sAMouseStickTriggers;
@@ -2557,34 +2557,33 @@ namespace DS4Windows
             m_Config.SetSaMouseStickTriggerCond(index, text);
         }
 
-        public static bool[] GyroMouseStickTriggerTurns = m_Config.gyroMouseStickTriggerTurns;
+        public static bool[] GyroMouseStickTriggerTurns => ProfileSettingsServiceInstance.GyroMouseStickTriggerTurns;
         public static bool GetGyroMouseStickTriggerTurns(int device)
         {
-            return m_Config.gyroMouseStickTriggerTurns[device];
+            return ProfileSettingsServiceInstance.GetGyroMouseStickTriggerTurns(device);
         }
 
-        public static int[] GyroMouseStickHorizontalAxis =>
-            m_Config.gyroMouseStickHorizontalAxis;
+        public static int[] GyroMouseStickHorizontalAxis => ProfileSettingsServiceInstance.GyroMouseStickHorizontalAxis;
         public static int getGyroMouseStickHorizontalAxis(int index)
         {
-            return m_Config.gyroMouseStickHorizontalAxis[index];
+            return ProfileSettingsServiceInstance.GetGyroMouseStickHorizontalAxis(index);
         }
 
-        public static GyroMouseStickInfo[] GyroMouseStickInf => m_Config.gyroMStickInfo;
+        public static GyroMouseStickInfo[] GyroMouseStickInf => ProfileSettingsServiceInstance.GyroMouseStickInf;
         public static GyroMouseStickInfo GetGyroMouseStickInfo(int device)
         {
-            return m_Config.gyroMStickInfo[device];
+            return ProfileSettingsServiceInstance.GetGyroMouseStickInfo(device);
         }
 
-        public static GyroDirectionalSwipeInfo[] GyroSwipeInf => m_Config.gyroSwipeInfo;
+        public static GyroDirectionalSwipeInfo[] GyroSwipeInf => ProfileSettingsServiceInstance.GyroSwipeInf;
         public static GyroDirectionalSwipeInfo GetGyroSwipeInfo(int device)
         {
-            return m_Config.gyroSwipeInfo[device];
+            return ProfileSettingsServiceInstance.GetGyroSwipeInfo(device);
         }
 
-        public static bool[] GyroMouseStickToggle => m_Config.gyroMouseStickToggle;
+        public static bool[] GyroMouseStickToggle => ProfileSettingsServiceInstance.GyroMouseStickToggle;
         public static void SetGyroMouseStickToggle(int index, bool value, ControlService control)
-            => m_Config.SetGyroMouseStickToggle(index, value, control);
+            => ProfileSettingsServiceInstance.SetGyroMouseStickToggle(index, value, control);
 
         public static SASteeringWheelEmulationAxisType[] SASteeringWheelEmulationAxis => m_Config.sASteeringWheelEmulationAxis;
         public static SASteeringWheelEmulationAxisType GetSASteeringWheelEmulationAxis(int index)
@@ -2604,60 +2603,60 @@ namespace DS4Windows
             return m_Config.touchDisInvertTriggers[index];
         }
 
-        public static int[] GyroSensitivity => m_Config.gyroSensitivity;
+        public static int[] GyroSensitivity => ProfileSettingsServiceInstance.GyroSensitivity;
         public static int getGyroSensitivity(int index)
         {
-            return m_Config.gyroSensitivity[index];
+            return ProfileSettingsServiceInstance.GetGyroSensitivity(index);
         }
 
-        public static int[] GyroSensVerticalScale => m_Config.gyroSensVerticalScale;
+        public static int[] GyroSensVerticalScale => ProfileSettingsServiceInstance.GyroSensVerticalScale;
         public static int getGyroSensVerticalScale(int index)
         {
-            return m_Config.gyroSensVerticalScale[index];
+            return ProfileSettingsServiceInstance.GetGyroSensVerticalScale(index);
         }
 
-        public static int[] GyroInvert => m_Config.gyroInvert;
+        public static int[] GyroInvert => ProfileSettingsServiceInstance.GyroInvert;
         public static int getGyroInvert(int index)
         {
-            return m_Config.gyroInvert[index];
+            return ProfileSettingsServiceInstance.GetGyroInvert(index);
         }
 
-        public static bool[] GyroTriggerTurns => m_Config.gyroTriggerTurns;
+        public static bool[] GyroTriggerTurns => ProfileSettingsServiceInstance.GyroTriggerTurns;
         public static bool getGyroTriggerTurns(int index)
         {
-            return m_Config.gyroTriggerTurns[index];
+            return ProfileSettingsServiceInstance.GetGyroTriggerTurns(index);
         }
 
-        public static int[] GyroMouseHorizontalAxis => m_Config.gyroMouseHorizontalAxis;
+        public static int[] GyroMouseHorizontalAxis => ProfileSettingsServiceInstance.GyroMouseHorizontalAxis;
         public static int getGyroMouseHorizontalAxis(int index)
         {
-            return m_Config.gyroMouseHorizontalAxis[index];
+            return ProfileSettingsServiceInstance.GetGyroMouseHorizontalAxis(index);
         }
 
-        public static int[] GyroMouseDeadZone => m_Config.gyroMouseDZ;
+        public static int[] GyroMouseDeadZone => ProfileSettingsServiceInstance.GyroMouseDeadZone;
         public static int GetGyroMouseDeadZone(int index)
         {
-            return m_Config.gyroMouseDZ[index];
+            return ProfileSettingsServiceInstance.GetGyroMouseDeadZone(index);
         }
 
         public static void SetGyroMouseDeadZone(int index, int value, ControlService control)
         {
-            m_Config.SetGyroMouseDZ(index, value, control);
+            ProfileSettingsServiceInstance.SetGyroMouseDeadZone(index, value, control);
         }
 
-        public static bool[] GyroMouseToggle => m_Config.gyroMouseToggle;
+        public static bool[] GyroMouseToggle => ProfileSettingsServiceInstance.GyroMouseToggle;
         public static void SetGyroMouseToggle(int index, bool value, ControlService control)
-            => m_Config.SetGyroMouseToggle(index, value, control);
+            => ProfileSettingsServiceInstance.SetGyroMouseToggle(index, value, control);
 
         public static void SetGyroControlsToggle(int index, bool value, ControlService control)
-            => m_Config.SetGyroControlsToggle(index, value, control);
+            => ProfileSettingsServiceInstance.SetGyroControlsToggle(index, value, control);
 
-        public static GyroMouseInfo[] GyroMouseInfo => m_Config.gyroMouseInfo;
+        public static GyroMouseInfo[] GyroMouseInfo => ProfileSettingsServiceInstance.GyroMouseInfo;
 
-        public static GyroControlsInfo[] GyroControlsInf => m_Config.gyroControlsInf;
+        public static GyroControlsInfo[] GyroControlsInf => ProfileSettingsServiceInstance.GyroControlsInf;
         public static GyroControlsInfo GetGyroControlsInfo(int index)
         {
-            return m_Config.gyroControlsInf[index];
+            return ProfileSettingsServiceInstance.GetGyroControlsInfo(index);
         }
 
         public static SteeringWheelSmoothingInfo[] WheelSmoothInfo => m_Config.wheelSmoothInfo;

@@ -107,6 +107,39 @@ namespace DS4Windows.DI
         TouchpadAbsMouseSettings[] TouchAbsMouse { get; }
         TouchpadRelMouseSettings[] TouchRelMouse { get; }
 
+        // ---- Step10-2-A-4: ジャイロ関連 (m_Config委譲) ----
+        GyroMouseStickInfo[] GyroMouseStickInf { get; }
+        GyroMouseInfo[] GyroMouseInfo { get; }
+        GyroDirectionalSwipeInfo[] GyroSwipeInf { get; }
+        GyroControlsInfo[] GyroControlsInf { get; }
+        int[] GyroInvert { get; }
+        int[] GyroSensitivity { get; }
+        int[] GyroSensVerticalScale { get; }
+        GyroOutMode[] GyroOutputMode { get; }
+        bool[] GyroTriggerTurns { get; }
+        bool[] GyroMouseStickTriggerTurns { get; }
+        int[] GyroMouseHorizontalAxis { get; }
+        int[] GyroMouseStickHorizontalAxis { get; }
+        int[] GyroMouseDeadZone { get; }
+        bool[] GyroMouseToggle { get; }
+        bool[] GyroMouseStickToggle { get; }
+        GyroOutMode GetGyroOutMode(int deviceIndex);
+        bool GetGyroMouseStickTriggerTurns(int deviceIndex);
+        int GetGyroMouseStickHorizontalAxis(int deviceIndex);
+        GyroMouseStickInfo GetGyroMouseStickInfo(int deviceIndex);
+        GyroDirectionalSwipeInfo GetGyroSwipeInfo(int deviceIndex);
+        int GetGyroSensitivity(int deviceIndex);
+        int GetGyroSensVerticalScale(int deviceIndex);
+        int GetGyroInvert(int deviceIndex);
+        bool GetGyroTriggerTurns(int deviceIndex);
+        int GetGyroMouseHorizontalAxis(int deviceIndex);
+        int GetGyroMouseDeadZone(int deviceIndex);
+        GyroControlsInfo GetGyroControlsInfo(int deviceIndex);
+        void SetGyroMouseDeadZone(int index, int value, ControlService control);
+        void SetGyroMouseToggle(int index, bool value, ControlService control);
+        void SetGyroControlsToggle(int index, bool value, ControlService control);
+        void SetGyroMouseStickToggle(int index, bool value, ControlService control);
+
         event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
 
         void ResetToDefaults(int deviceIndex);
