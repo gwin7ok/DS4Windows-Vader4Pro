@@ -76,6 +76,22 @@ namespace DS4Windows.DI
         int GetRsOutCurveMode(int index);
         void SetRsOutCurveMode(int index, int value);
 
+        // ---- Step10-2-A-2: トリガー(L2/R2)関連 (m_Config委譲) ----
+        TriggerDeadZoneZInfo[] L2ModInfo { get; }
+        TriggerDeadZoneZInfo[] R2ModInfo { get; }
+        double[] L2Sens { get; }
+        double[] R2Sens { get; }
+        TriggerOutputSettings[] L2OutputSettings { get; }
+        TriggerOutputSettings[] R2OutputSettings { get; }
+        BezierCurve[] L2OutBezierCurveObj { get; }
+        BezierCurve[] R2OutBezierCurveObj { get; }
+        bool[] OutputVirtualTriggerButton { get; }
+        DS4TriggerOutputMode[] OutputDS4TriggerMode { get; }
+        int GetL2OutCurveMode(int index);
+        void SetL2OutCurveMode(int index, int value);
+        int GetR2OutCurveMode(int index);
+        void SetR2OutCurveMode(int index, int value);
+
         event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
 
         void ResetToDefaults(int deviceIndex);

@@ -148,7 +148,6 @@
             "label": "Build Test",
             "dependsOrder": "sequence",
             "dependsOn": [
-                "Build Debug",
                 "Build Test (Actions)",
                 "Build Test (Standalone)"
             ],
@@ -166,6 +165,7 @@
                 "-c",
                 "Debug",
                 "/p:platform=x64",
+                "--no-build",
                 "-v",
                 "normal"
             ],
@@ -184,6 +184,7 @@
                 "-c",
                 "Debug",
                 "/p:platform=x64",
+                "--no-build",
                 "-v",
                 "normal"
             ],

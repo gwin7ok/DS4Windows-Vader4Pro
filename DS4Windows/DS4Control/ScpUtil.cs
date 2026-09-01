@@ -706,7 +706,7 @@ namespace DS4Windows
         public static string appDataPpath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\DS4Windows";
         public static string localAppDataPpath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DS4Windows");
         public static bool runHotPlug = false;
-                // =========================================================================
+        // =========================================================================
         // Phase4-Step1: IProfileSettingsService DI シム (Strangler Fig 移行用)
         // =========================================================================
         // Phase4-Step1: IProfileSettingsService DI シム (Strangler Fig 移行用)
@@ -1027,10 +1027,10 @@ namespace DS4Windows
             }
         }
 
-    // (Removed) Previously used to hold pending removed invalid special actions
-    // collected by UI-time calls. This mechanism was refactored so that
-    // removal detection and logging happen at save/apply time; the array has
-    // therefore been removed to avoid dead code.
+        // (Removed) Previously used to hold pending removed invalid special actions
+        // collected by UI-time calls. This mechanism was refactored so that
+        // removal detection and logging happen at save/apply time; the array has
+        // therefore been removed to avoid dead code.
         // Used to hold device type desired from Profile Editor
         public static OutContType[] outDevTypeTemp = new OutContType[TEST_PROFILE_ITEM_COUNT] { DS4Windows.OutContType.X360, DS4Windows.OutContType.X360,
             DS4Windows.OutContType.X360, DS4Windows.OutContType.X360,
@@ -2741,7 +2741,6 @@ namespace DS4Windows
             return m_Config.touchpadInvert[index];
         }
 
-        public static TriggerDeadZoneZInfo[] L2ModInfo => m_Config.l2ModInfo;
         public static TriggerDeadZoneZInfo GetL2ModInfo(int index)
         {
             return m_Config.l2ModInfo[index];
@@ -2754,7 +2753,6 @@ namespace DS4Windows
             //return m_Config.l2Deadzone[index];
         }
 
-        public static TriggerDeadZoneZInfo[] R2ModInfo => m_Config.r2ModInfo;
         public static TriggerDeadZoneZInfo GetR2ModInfo(int index)
         {
             return m_Config.r2ModInfo[index];
@@ -2907,13 +2905,11 @@ namespace DS4Windows
             return m_Config.RSRotation[index];
         }
 
-        public static double[] L2Sens => m_Config.l2Sens;
         public static double getL2Sens(int index)
         {
             return m_Config.l2Sens[index];
         }
 
-        public static double[] R2Sens => m_Config.r2Sens;
         public static double getR2Sens(int index)
         {
             return m_Config.r2Sens[index];
@@ -2992,9 +2988,6 @@ namespace DS4Windows
         public static StickOutputSetting[] LSOutputSettings => ProfileSettingsServiceInstance.LSOutputSettings;
         public static StickOutputSetting[] RSOutputSettings => ProfileSettingsServiceInstance.RSOutputSettings;
 
-        public static TriggerOutputSettings[] L2OutputSettings => m_Config.l2OutputSettings;
-        public static TriggerOutputSettings[] R2OutputSettings => m_Config.r2OutputSettings;
-
         public static void setLsOutCurveMode(int index, int value)
         {
             if (AppLogger.IsTraceEnabled)
@@ -3019,25 +3012,39 @@ namespace DS4Windows
         }
         public static BezierCurve[] rsOutBezierCurveObj => ProfileSettingsServiceInstance.RsOutBezierCurveObj;
 
+        // Step10-2-A-2: トリガー(L2/R2)関連の後方互換シム
+        public static TriggerDeadZoneZInfo[] L2ModInfo => ProfileSettingsServiceInstance.L2ModInfo;
+        public static TriggerDeadZoneZInfo[] R2ModInfo => ProfileSettingsServiceInstance.R2ModInfo;
+        public static double[] L2Sens => ProfileSettingsServiceInstance.L2Sens;
+        public static double[] R2Sens => ProfileSettingsServiceInstance.R2Sens;
+        public static TriggerOutputSettings[] L2OutputSettings => ProfileSettingsServiceInstance.L2OutputSettings;
+        public static TriggerOutputSettings[] R2OutputSettings => ProfileSettingsServiceInstance.R2OutputSettings;
+        public static BezierCurve[] l2OutBezierCurveObj => ProfileSettingsServiceInstance.L2OutBezierCurveObj;
+        public static BezierCurve[] r2OutBezierCurveObj => ProfileSettingsServiceInstance.R2OutBezierCurveObj;
+        public static bool[] OutputVirtualTriggerButton => ProfileSettingsServiceInstance.OutputVirtualTriggerButton;
+        public static DS4TriggerOutputMode[] OutputDS4TriggerMode => ProfileSettingsServiceInstance.OutputDS4TriggerMode;
+
         public static void setL2OutCurveMode(int index, int value)
         {
-            m_Config.setL2OutCurveMode(index, value);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[Legacy] Global.setL2OutCurveMode: accessed via static shim");
+            ProfileSettingsServiceInstance.SetL2OutCurveMode(index, value);
         }
         public static int getL2OutCurveMode(int index)
         {
-            return m_Config.getL2OutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetL2OutCurveMode(index);
         }
-        public static BezierCurve[] l2OutBezierCurveObj => m_Config.l2OutBezierCurveObj;
 
         public static void setR2OutCurveMode(int index, int value)
         {
-            m_Config.setR2OutCurveMode(index, value);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[Legacy] Global.setR2OutCurveMode: accessed via static shim");
+            ProfileSettingsServiceInstance.SetR2OutCurveMode(index, value);
         }
         public static int getR2OutCurveMode(int index)
         {
-            return m_Config.getR2OutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetR2OutCurveMode(index);
         }
-        public static BezierCurve[] r2OutBezierCurveObj => m_Config.r2OutBezierCurveObj;
 
         public static void setSXOutCurveMode(int index, int value)
         {
@@ -3095,8 +3102,6 @@ namespace DS4Windows
         public static ControlServiceDeviceOptions DeviceOptions => m_Config.deviceOptions;
 
         public static OutContType[] OutContType => m_Config.outputDevType;
-        public static bool[] OutputVirtualTriggerButton => m_Config.outputVirtualTriggerButtons;
-        public static DS4TriggerOutputMode[] OutputDS4TriggerMode => m_Config.outputDS4TriggerMode;
         public static DS4TriggerOutputMode GetOutputDS4TriggerMode(int index)
         {
             return m_Config.outputDS4TriggerMode[index];
@@ -3136,9 +3141,9 @@ namespace DS4Windows
             string stackTrace = new System.Diagnostics.StackTrace(1, true).ToString();
             AppLogger.LogDebug($"ApplyProfile CALLED: device={device}, profile={profileName}, isTemp={isTemp}, source={source}");
             AppLogger.LogTrace($"ApplyProfile CallStack:\n{stackTrace}");
-            
+
             bool result;
-            
+
             // プロファイル読み込み
             if (isTemp)
             {
@@ -3156,10 +3161,10 @@ namespace DS4Windows
             if (result)
             {
                 AppLogger.LogDebug($"ApplyProfile: Profile loaded successfully. Updating state...");
-                
+
                 // SelectedProfile を更新（UI表示用）
                 SelectedProfile[device] = profileName;
-                
+
                 // 通常プロファイルの場合のみ OlderProfilePath を更新
                 // 一時プロファイル（Auto Profile、スペシャルアクション）の場合は
                 // デフォルトプロファイルを保持するため更新しない
@@ -4016,9 +4021,9 @@ namespace DS4Windows
 
     public class Changelog
     {
-    // Use the GitHub REST API /repos/ path so the app queries releases for the correct repo
-    public const string GITHUB_RELEASES_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases";
-    public const string GITHUB_LATEST_RELEASE_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest";
+        // Use the GitHub REST API /repos/ path so the app queries releases for the correct repo
+        public const string GITHUB_RELEASES_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases";
+        public const string GITHUB_LATEST_RELEASE_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest";
 
         private static bool? _newerVersionAvailable = null;
         private static Version _latestVersion;
@@ -4156,7 +4161,8 @@ namespace DS4Windows
         }
     }
 
-    public class BackingStore{
+    public class BackingStore
+    {
         /// <summary>
         /// profileActions[device]の内容からprofileActionDict等を再構築する（LoadProfileNewの該当部分をpublic化）
         /// </summary>
@@ -4177,52 +4183,52 @@ namespace DS4Windows
             }
         }
 
-    // ProfileEditor layout fields (DTOと統合)
-    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_LEFT_WIDTH;
-    public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_RIGHT_WIDTH;
-    public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_NAME_COL_WIDTH;
-    public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_TRIGGER_COL_WIDTH;
-    public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_DETAIL_COL_WIDTH;
-    // Active 列はプロファイルに永続化しない列幅の初期値
-    public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_ACTIVE_COL_WIDTH;
-    // SpecialActionDeleteColWidth 定数削除
+        // ProfileEditor layout fields (DTOと統合)
+        public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_LEFT_WIDTH;
+        public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_RIGHT_WIDTH;
+        public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_NAME_COL_WIDTH;
+        public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+        public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_DETAIL_COL_WIDTH;
+        // Active 列はプロファイルに永続化しない列幅の初期値
+        public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_ACTIVE_COL_WIDTH;
+        // SpecialActionDeleteColWidth 定数削除
 
-    // Controller tab column widths
-    public const int DEFAULT_CONTROLLER_INDEX_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_INDEX_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_ID_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_STATUS_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EXCLUSIVE_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_BATTERY_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_SELECTPROFILE_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EDIT_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINKED_PROFILE_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINK_PROF_ID_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+        // Controller tab column widths
+        public const int DEFAULT_CONTROLLER_INDEX_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_INDEX_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_ID_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_STATUS_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EXCLUSIVE_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_BATTERY_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_SELECTPROFILE_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EDIT_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINK_PROF_ID_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
-    // Log settings
-    public const int DEFAULT_LOG_MAX_ARCHIVE_FILES = 50;
-    public const string DEFAULT_LOG_MIN_LEVEL = "Info";
+        // Log settings
+        public const int DEFAULT_LOG_MAX_ARCHIVE_FILES = 50;
+        public const string DEFAULT_LOG_MIN_LEVEL = "Info";
 
-    public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
-    public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
-    public int specialActionNameColWidth = DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
-    public int specialActionTriggerColWidth = DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
-    public int specialActionDetailColWidth = DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
-    // SpecialActionDeleteColWidth フィールド削除
+        public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
+        public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
+        public int specialActionNameColWidth = DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
+        public int specialActionTriggerColWidth = DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+        public int specialActionDetailColWidth = DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+        // SpecialActionDeleteColWidth フィールド削除
 
-    public int controllerIndexColWidth = DEFAULT_CONTROLLER_INDEX_COL_WIDTH;
-    public int controllerIdColWidth = DEFAULT_CONTROLLER_ID_COL_WIDTH;
-    public int controllerStatusColWidth = DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
-    public int controllerExclusiveColWidth = DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
-    public int controllerBatteryColWidth = DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
-    public int controllerSelectProfileColWidth = DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
-    public int controllerEditColWidth = DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
-    public int controllerLinkedProfileColWidth = DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
-    public int controllerLinkProfIdColWidth = DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
-    public int controllerCustomColorColWidth = DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+        public int controllerIndexColWidth = DEFAULT_CONTROLLER_INDEX_COL_WIDTH;
+        public int controllerIdColWidth = DEFAULT_CONTROLLER_ID_COL_WIDTH;
+        public int controllerStatusColWidth = DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
+        public int controllerExclusiveColWidth = DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
+        public int controllerBatteryColWidth = DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
+        public int controllerSelectProfileColWidth = DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
+        public int controllerEditColWidth = DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+        public int controllerLinkedProfileColWidth = DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+        public int controllerLinkProfIdColWidth = DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
+        public int controllerCustomColorColWidth = DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
-    public int logMaxArchiveFiles = DEFAULT_LOG_MAX_ARCHIVE_FILES;
-    public string logMinLevel = DEFAULT_LOG_MIN_LEVEL;
+        public int logMaxArchiveFiles = DEFAULT_LOG_MAX_ARCHIVE_FILES;
+        public string logMinLevel = DEFAULT_LOG_MIN_LEVEL;
 
         public const double DEFAULT_UDP_SMOOTH_MINCUTOFF = 0.4;
         public const double DEFAULT_UDP_SMOOTH_BETA = 0.2;
@@ -4639,17 +4645,17 @@ namespace DS4Windows
           new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER }, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER}, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER } };
         public Boolean useExclusiveMode = false; // Re-enable Ex Mode
 
-    public const int DEFAULT_FORM_WIDTH = WindowLayoutDefaults.MAIN_WINDOW_WIDTH;
-    public int formWidth = DEFAULT_FORM_WIDTH;
+        public const int DEFAULT_FORM_WIDTH = WindowLayoutDefaults.MAIN_WINDOW_WIDTH;
+        public int formWidth = DEFAULT_FORM_WIDTH;
 
-    public const int DEFAULT_FORM_HEIGHT = WindowLayoutDefaults.MAIN_WINDOW_HEIGHT;
-    public int formHeight = DEFAULT_FORM_HEIGHT;
+        public const int DEFAULT_FORM_HEIGHT = WindowLayoutDefaults.MAIN_WINDOW_HEIGHT;
+        public int formHeight = DEFAULT_FORM_HEIGHT;
 
-    public const int DEFAULT_FORM_LOCATION_X = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_X;
-    public int formLocationX = DEFAULT_FORM_LOCATION_X;
+        public const int DEFAULT_FORM_LOCATION_X = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_X;
+        public int formLocationX = DEFAULT_FORM_LOCATION_X;
 
-    public const int DEFAULT_FORM_LOCATION_Y = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_Y;
-    public int formLocationY = DEFAULT_FORM_LOCATION_Y;
+        public const int DEFAULT_FORM_LOCATION_Y = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_Y;
+        public int formLocationY = DEFAULT_FORM_LOCATION_Y;
 
         public Boolean startMinimized = false;
         public Boolean minToTaskbar = false;
@@ -6095,8 +6101,8 @@ namespace DS4Windows
 
 
 
-    public bool LoadProfile(int device, bool launchprogram, ControlService control,
-            string propath = "", bool xinputChange = true, bool postLoad = true)
+        public bool LoadProfile(int device, bool launchprogram, ControlService control,
+                string propath = "", bool xinputChange = true, bool postLoad = true)
         {
             bool Loaded = true;
             Dictionary<DS4Controls, DS4KeyType> customMapKeyTypes = new Dictionary<DS4Controls, DS4KeyType>();
@@ -8513,7 +8519,7 @@ namespace DS4Windows
 
         // Legacy Load implementation (formerly LoadOld) will be the canonical Load method below.
 
-    public bool Load()
+        public bool Load()
         {
             bool Loaded = true;
             bool missingSetting = false;
@@ -8708,9 +8714,12 @@ namespace DS4Windows
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/CloseMinimizes"); Boolean.TryParse(Item.InnerText, out closeMini); }
                     catch { missingSetting = true; }
-                      try { Item = m_Xdoc.SelectSingleNode("/Profile/UseLang"); useLang = Item.InnerText; 
-                          AppLogger.LogDebug($"ScpUtil: loaded UseLang='{useLang}' from profile (appdatapath={Global.appdatapath})"); }
-                      catch { missingSetting = true; }
+                    try
+                    {
+                        Item = m_Xdoc.SelectSingleNode("/Profile/UseLang"); useLang = Item.InnerText;
+                        AppLogger.LogDebug($"ScpUtil: loaded UseLang='{useLang}' from profile (appdatapath={Global.appdatapath})");
+                    }
+                    catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/DownloadLang"); Boolean.TryParse(Item.InnerText, out downloadLang); }
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/FlashWhenLate"); Boolean.TryParse(Item.InnerText, out flashWhenLate); }
@@ -8959,20 +8968,20 @@ namespace DS4Windows
                         Indent = true,
                     });
 
-                    // Write header comments
-                    xmlWriter.WriteComment(String.Format(" Profile Configuration Data. {0} ", DateTime.Now));
-                    xmlWriter.WriteWhitespace("\r\n");
-                    xmlWriter.WriteWhitespace("\r\n");
+                // Write header comments
+                xmlWriter.WriteComment(String.Format(" Profile Configuration Data. {0} ", DateTime.Now));
+                xmlWriter.WriteWhitespace("\r\n");
+                xmlWriter.WriteWhitespace("\r\n");
 
-                    // Serialize DTO with root <Profile>
-                    AppSettingsDTO dto = new AppSettingsDTO();
-                    dto.MapFrom(this);
-                    serializer.Serialize(xmlWriter, dto,
-                        new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
-                    xmlWriter.Flush();
-                    xmlWriter.Close();
+                // Serialize DTO with root <Profile>
+                AppSettingsDTO dto = new AppSettingsDTO();
+                dto.MapFrom(this);
+                serializer.Serialize(xmlWriter, dto,
+                    new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
+                xmlWriter.Flush();
+                xmlWriter.Close();
 
-                    testStr = strWriter.ToString();
+                testStr = strWriter.ToString();
             }
 
             try
@@ -9541,25 +9550,25 @@ namespace DS4Windows
                 loaded = SaveActions();
 
                 // Reset runtime synthetic state and ActionManager entries after creating defaults
-                    if (loaded)
+                if (loaded)
+                {
+                    try
                     {
-                        try
+                        try { ActionManager.ClearAllEntries(); } catch { }
+                        Mapping.globalState = new DS4Windows.Mapping.SyntheticState();
+                        for (int d = 0; d < Mapping.deviceState.Length; d++)
                         {
-                            try { ActionManager.ClearAllEntries(); } catch { }
-                            Mapping.globalState = new DS4Windows.Mapping.SyntheticState();
-                            for (int d = 0; d < Mapping.deviceState.Length; d++)
-                            {
-                                Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
-                            }
-                            try { ActionManager.ClearAllToggledOn(); } catch { }
-                            if (Mapping.macrodone != null)
-                            {
-                                for (int i = 0; i < Mapping.macrodone.Length; i++) Mapping.macrodone[i] = false;
-                            }
-                            AppLogger.LogToGui("Runtime synthetic state reset after Actions load", false);
+                            Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
                         }
-                        catch { }
+                        try { ActionManager.ClearAllToggledOn(); } catch { }
+                        if (Mapping.macrodone != null)
+                        {
+                            for (int i = 0; i < Mapping.macrodone.Length; i++) Mapping.macrodone[i] = false;
+                        }
+                        AppLogger.LogToGui("Runtime synthetic state reset after Actions load", false);
                     }
+                    catch { }
+                }
 
                 return loaded;
             }

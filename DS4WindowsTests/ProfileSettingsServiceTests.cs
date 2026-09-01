@@ -124,5 +124,41 @@ namespace DS4WindowsTests
             service.SetTempProfileName(-1, "Invalid");
             Assert.Equal(string.Empty, service.GetTempProfileName(-1));
         }
+
+        [Fact]
+        public void TriggerSettings_ShouldShareBackingStoreWithGlobalShim()
+        {
+            var service = new ProfileSettingsService();
+            Global.ProfileSettingsServiceInstance = service;
+
+            Assert.Same(service.L2ModInfo, Global.L2ModInfo);
+            Assert.Same(service.R2ModInfo, Global.R2ModInfo);
+            Assert.Same(service.L2Sens, Global.L2Sens);
+            Assert.Same(service.R2Sens, Global.R2Sens);
+            Assert.Same(service.L2OutputSettings, Global.L2OutputSettings);
+            Assert.Same(service.R2OutputSettings, Global.R2OutputSettings);
+            Assert.Same(service.L2OutBezierCurveObj, Global.l2OutBezierCurveObj);
+            Assert.Same(service.R2OutBezierCurveObj, Global.r2OutBezierCurveObj);
+            Assert.Same(service.OutputVirtualTriggerButton, Global.OutputVirtualTriggerButton);
+            Assert.Same(service.OutputDS4TriggerMode, Global.OutputDS4TriggerMode);
+        }
+
+        [Fact]
+        public void TriggerCurveMode_ShouldDelegateThroughServiceAndGlobalShim()
+        {
+            var service = new ProfileSettingsService();
+            Global.ProfileSettingsServiceInstance = service;
+
+            service.SetL2OutCurveMode(0, 2);
+            service.SetR2OutCurveMode(0, 3);
+
+            Assert.Equal(2, Global.getL2OutCurveMode(0));
+            Assert.Equal(3, Global.getR2OutCurveMode(0));
+
+            Global.setL2OutCurveMode(0, 0);
+            Global.setR2OutCurveMode(0, 0);
+            Assert.Equal(0, service.GetL2OutCurveMode(0));
+            Assert.Equal(0, service.GetR2OutCurveMode(0));
+        }
     }
 }

@@ -362,6 +362,34 @@ namespace DS4Windows
             AppLogger.LogToGui($"[DI] ProfileSettingsService.SetRsOutCurveMode: Slot {index} = {value}", false, true);
         }
 
+        // ---- Step10-2-A-2: トリガー(L2/R2)関連 (m_Config委譲) ----
+        public TriggerDeadZoneZInfo[] L2ModInfo => _config.l2ModInfo;
+        public TriggerDeadZoneZInfo[] R2ModInfo => _config.r2ModInfo;
+        public double[] L2Sens => _config.l2Sens;
+        public double[] R2Sens => _config.r2Sens;
+        public TriggerOutputSettings[] L2OutputSettings => _config.l2OutputSettings;
+        public TriggerOutputSettings[] R2OutputSettings => _config.r2OutputSettings;
+        public BezierCurve[] L2OutBezierCurveObj => _config.l2OutBezierCurveObj;
+        public BezierCurve[] R2OutBezierCurveObj => _config.r2OutBezierCurveObj;
+        public bool[] OutputVirtualTriggerButton => _config.outputVirtualTriggerButtons;
+        public DS4TriggerOutputMode[] OutputDS4TriggerMode => _config.outputDS4TriggerMode;
+
+        public int GetL2OutCurveMode(int index) => _config.getL2OutCurveMode(index);
+
+        public void SetL2OutCurveMode(int index, int value)
+        {
+            _config.setL2OutCurveMode(index, value);
+            AppLogger.LogToGui($"[DI] ProfileSettingsService.SetL2OutCurveMode: Slot {index} = {value}", false, true);
+        }
+
+        public int GetR2OutCurveMode(int index) => _config.getR2OutCurveMode(index);
+
+        public void SetR2OutCurveMode(int index, int value)
+        {
+            _config.setR2OutCurveMode(index, value);
+            AppLogger.LogToGui($"[DI] ProfileSettingsService.SetR2OutCurveMode: Slot {index} = {value}", false, true);
+        }
+
         public X360Controls[] GetDefaultButtonMapping()
         {
             return (X360Controls[])Global.defaultButtonMapping.Clone();
