@@ -3675,7 +3675,7 @@ namespace DS4Windows
             GyroOutMode imuOutMode = profileSettings.GetGyroOutMode(device);
             if (imuOutMode == GyroOutMode.MouseJoystick)
             {
-                GyroMouseStickInfo msinfo = Global.GetGyroMouseStickInfo(device);
+                GyroMouseStickInfo msinfo = profileSettings.GetGyroMouseStickInfo(device);
                 if (msinfo.outputStick != GyroMouseStickInfo.OutputStick.None)
                 {
                     PostMapStickData mapStickData = mapStickActionData[device];
@@ -6515,7 +6515,7 @@ namespace DS4Windows
                 string r = macroCodeValue.ToString().Substring(1);
                 byte heavy = (byte)(int.Parse(r[0].ToString()) * 100 + int.Parse(r[1].ToString()) * 10 + int.Parse(r[2].ToString()));
                 byte light = (byte)(int.Parse(r[3].ToString()) * 100 + int.Parse(r[4].ToString()) * 10 + int.Parse(r[5].ToString()));
-                if (Global.InverseRumbleMotors[device])
+                if (profileSettings.InverseRumbleMotors[device])
                     d.setRumble(heavy, light);
                 else
                     d.setRumble(light, heavy);
@@ -8229,7 +8229,7 @@ namespace DS4Windows
             {
                 // Re-calibration completed or cancelled. Set lightbar color back to normal color
                 DS4LightBar.forcedFlash[device] = 0;
-                DS4LightBar.forcedColor[device] = Global.getMainColor(device);
+                DS4LightBar.forcedColor[device] = profileSettings.GetMainColor(device);
                 DS4LightBar.forcelight[device] = false;
                 DS4LightBar.updateLightBar(controller, device);
             }
@@ -8343,12 +8343,12 @@ namespace DS4Windows
                     controller.wheelCircleCenterPointLeft.X = controller.wheelCenterPoint.X;
                     controller.wheelCircleCenterPointLeft.Y = controller.wheel90DegPointLeft.Y;
 
-                    AppLogger.LogToGui($"Controller {1 + device} steering wheel emulation calibration values. Center=({controller.wheelCenterPoint.X}, {controller.wheelCenterPoint.Y})  90L=({controller.wheel90DegPointLeft.X}, {controller.wheel90DegPointLeft.Y})  90R=({controller.wheel90DegPointRight.X}, {controller.wheel90DegPointRight.Y})  Range={Global.GetSASteeringWheelEmulationRange(device)}", false);
+                    AppLogger.LogToGui($"Controller {1 + device} steering wheel emulation calibration values. Center=({controller.wheelCenterPoint.X}, {controller.wheelCenterPoint.Y})  90L=({controller.wheel90DegPointLeft.X}, {controller.wheel90DegPointLeft.Y})  90R=({controller.wheel90DegPointRight.X}, {controller.wheel90DegPointRight.Y})  Range={profileSettings.GetSASteeringWheelEmulationRange(device)}", false);
                     controller.wheelPrevRecalibrateTime = DateTime.Now;
                 }
 
 
-                int maxRangeRight = Global.GetSASteeringWheelEmulationRange(device) / 2 * C_WHEEL_ANGLE_PRECISION;
+                int maxRangeRight = profileSettings.GetSASteeringWheelEmulationRange(device) / 2 * C_WHEEL_ANGLE_PRECISION;
                 int maxRangeLeft = -maxRangeRight;
 
                 //Console.WriteLine("Values {0} {1}", gyroAccelX, gyroAccelZ);
@@ -8461,7 +8461,7 @@ namespace DS4Windows
                     outputAxisZero = 0;
                 }
 
-                switch (Global.GetSASteeringWheelEmulationAxis(device))
+                switch (profileSettings.GetSASteeringWheelEmulationAxis(device))
                 {
                     case SASteeringWheelEmulationAxisType.LX:
                     case SASteeringWheelEmulationAxisType.LY:

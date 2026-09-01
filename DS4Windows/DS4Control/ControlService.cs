@@ -226,12 +226,12 @@ namespace DS4Windows
                 oscState[i] = new DS4State();
 
                 int tempDev = i;
-                Global.L2OutputSettings[i].TwoStageModeChanged += (sender, e) =>
+                _profileSettings.L2OutputSettings[i].TwoStageModeChanged += (sender, e) =>
                 {
                     Mapping.l2TwoStageMappingData[tempDev].Reset();
                 };
 
-                Global.R2OutputSettings[i].TwoStageModeChanged += (sender, e) =>
+                _profileSettings.R2OutputSettings[i].TwoStageModeChanged += (sender, e) =>
                 {
                     Mapping.r2TwoStageMappingData[tempDev].Reset();
                 };
@@ -1224,7 +1224,7 @@ namespace DS4Windows
                             if ((reportData[1] & DS4OutDevice.RUMBLE_FEATURE_FLAG) != 0)
                             {
                                 useRumble = true;
-                                if (Global.InverseRumbleMotors[devIndex])
+                                if (_profileSettings.InverseRumbleMotors[devIndex])
                                     device.setRumble(reportData[5], reportData[4]);
                                 else
                                     device.setRumble(reportData[4], reportData[5]);
@@ -1438,7 +1438,7 @@ namespace DS4Windows
                             //outputDevices[index] = tempXbox;
 
                             // Enable ViGem feedback callback handler only if lightbar/rumble data output is enabled (if those are disabled then no point enabling ViGem callback handler call)
-                            if (Global.EnableOutputDataToDS4[index])
+                            if (_profileSettings.EnableOutputDataToDS4[index])
                             {
                                 EstablishOutFeedback(index, OutContType.X360, tempXbox, device);
 
@@ -1468,7 +1468,7 @@ namespace DS4Windows
                         Xbox360OutDevice tempXbox = slotDevice.OutputDevice as Xbox360OutDevice;
 
                         // Enable ViGem feedback callback handler only if lightbar/rumble data output is enabled (if those are disabled then no point enabling ViGem callback handler call)
-                        if (Global.EnableOutputDataToDS4[index])
+                        if (_profileSettings.EnableOutputDataToDS4[index])
                         {
                             EstablishOutFeedback(index, OutContType.X360, tempXbox, device);
 
@@ -1502,7 +1502,7 @@ namespace DS4Windows
                             as DS4OutDevice;
 
                             // Enable ViGem feedback callback handler only if DS4 lightbar/rumble data output is enabled (if those are disabled then no point enabling ViGem callback handler call)
-                            if (Global.EnableOutputDataToDS4[index])
+                            if (_profileSettings.EnableOutputDataToDS4[index])
                             {
                                 EstablishOutFeedback(index, OutContType.DS4, tempDS4, device);
 
@@ -1532,7 +1532,7 @@ namespace DS4Windows
                         DS4OutDevice tempDS4 = slotDevice.OutputDevice as DS4OutDevice;
 
                         // Enable ViGem feedback callback handler only if lightbar/rumble data output is enabled (if those are disabled then no point enabling ViGem callback handler call)
-                        if (Global.EnableOutputDataToDS4[index])
+                        if (_profileSettings.EnableOutputDataToDS4[index])
                         {
                             EstablishOutFeedback(index, OutContType.DS4, tempDS4, device);
 
@@ -2295,17 +2295,17 @@ namespace DS4Windows
             //Global.TouchOutMode[ind] = TouchpadOutMode.MouseJoystick;
             touchPad[ind].PostSetup();
 
-            Global.L2OutputSettings[ind].TrigEffectSettings.maxValue = (byte)(Math.Max(_profileSettings.L2ModInfo[ind].maxOutput, _profileSettings.L2ModInfo[ind].maxZone) / 100.0 * 255);
-            Global.R2OutputSettings[ind].TrigEffectSettings.maxValue = (byte)(Math.Max(_profileSettings.R2ModInfo[ind].maxOutput, _profileSettings.R2ModInfo[ind].maxZone) / 100.0 * 255);
+            _profileSettings.L2OutputSettings[ind].TrigEffectSettings.maxValue = (byte)(Math.Max(_profileSettings.L2ModInfo[ind].maxOutput, _profileSettings.L2ModInfo[ind].maxZone) / 100.0 * 255);
+            _profileSettings.R2OutputSettings[ind].TrigEffectSettings.maxValue = (byte)(Math.Max(_profileSettings.R2ModInfo[ind].maxOutput, _profileSettings.R2ModInfo[ind].maxZone) / 100.0 * 255);
 
-            device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, Global.L2OutputSettings[ind].TriggerEffect,
-                Global.L2OutputSettings[ind].TrigEffectSettings);
-            device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, Global.R2OutputSettings[ind].TriggerEffect,
-                Global.R2OutputSettings[ind].TrigEffectSettings);
+            device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, _profileSettings.L2OutputSettings[ind].TriggerEffect,
+                _profileSettings.L2OutputSettings[ind].TrigEffectSettings);
+            device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, _profileSettings.R2OutputSettings[ind].TriggerEffect,
+                _profileSettings.R2OutputSettings[ind].TrigEffectSettings);
 
             device.RumbleAutostopTime = getRumbleAutostopTime(ind);
             device.setRumble(0, 0);
-            device.LightBarColor = Global.getMainColor(ind);
+            device.LightBarColor = _profileSettings.GetMainColor(ind);
 
             // DualSense specific profile settings
             if (device is InputDevices.DualSenseDevice dualsense)
@@ -2390,21 +2390,21 @@ namespace DS4Windows
             wheelSmoothInfo.SetFilterAttrs(tempFilter);
             wheelSmoothInfo.SetRefreshEvents(tempFilter);
 
-            FlickStickSettings flickStickSettings = Global.LSOutputSettings[ind].outputSettings.flickSettings;
+            FlickStickSettings flickStickSettings = _profileSettings.LSOutputSettings[ind].outputSettings.flickSettings;
             flickStickSettings.RemoveRefreshEvents();
             flickStickSettings.SetRefreshEvents(Mapping.flickMappingData[ind].flickFilter);
 
-            flickStickSettings = Global.RSOutputSettings[ind].outputSettings.flickSettings;
+            flickStickSettings = _profileSettings.RSOutputSettings[ind].outputSettings.flickSettings;
             flickStickSettings.RemoveRefreshEvents();
             flickStickSettings.SetRefreshEvents(Mapping.flickMappingData[ind].flickFilter);
 
             int tempIdx = ind;
-            Global.L2OutputSettings[ind].ResetEvents();
+            _profileSettings.L2OutputSettings[ind].ResetEvents();
             _profileSettings.L2ModInfo[ind].ResetEvents();
-            Global.L2OutputSettings[ind].TriggerEffectChanged += (sender, e) =>
+            _profileSettings.L2OutputSettings[ind].TriggerEffectChanged += (sender, e) =>
             {
-                device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, Global.L2OutputSettings[tempIdx].TriggerEffect,
-                    Global.L2OutputSettings[tempIdx].TrigEffectSettings);
+                device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, _profileSettings.L2OutputSettings[tempIdx].TriggerEffect,
+                    _profileSettings.L2OutputSettings[tempIdx].TrigEffectSettings);
             };
             _profileSettings.L2ModInfo[ind].MaxOutputChanged += (sender, e) =>
             {
@@ -2412,8 +2412,8 @@ namespace DS4Windows
                 L2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(Math.Max(tempInfo.maxOutput, tempInfo.maxZone) / 100.0 * 255.0);
 
                 // Refresh trigger effect
-                device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, Global.L2OutputSettings[tempIdx].TriggerEffect,
-                    Global.L2OutputSettings[tempIdx].TrigEffectSettings);
+                device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, _profileSettings.L2OutputSettings[tempIdx].TriggerEffect,
+                    _profileSettings.L2OutputSettings[tempIdx].TrigEffectSettings);
             };
             _profileSettings.L2ModInfo[ind].MaxZoneChanged += (sender, e) =>
             {
@@ -2421,15 +2421,15 @@ namespace DS4Windows
                 L2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(Math.Max(tempInfo.maxOutput, tempInfo.maxZone) / 100.0 * 255.0);
 
                 // Refresh trigger effect
-                device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, Global.L2OutputSettings[tempIdx].TriggerEffect,
-                    Global.L2OutputSettings[tempIdx].TrigEffectSettings);
+                device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, _profileSettings.L2OutputSettings[tempIdx].TriggerEffect,
+                    _profileSettings.L2OutputSettings[tempIdx].TrigEffectSettings);
             };
 
-            Global.R2OutputSettings[ind].ResetEvents();
-            Global.R2OutputSettings[ind].TriggerEffectChanged += (sender, e) =>
+            _profileSettings.R2OutputSettings[ind].ResetEvents();
+            _profileSettings.R2OutputSettings[ind].TriggerEffectChanged += (sender, e) =>
             {
-                device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, Global.R2OutputSettings[tempIdx].TriggerEffect,
-                    Global.R2OutputSettings[tempIdx].TrigEffectSettings);
+                device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, _profileSettings.R2OutputSettings[tempIdx].TriggerEffect,
+                    _profileSettings.R2OutputSettings[tempIdx].TrigEffectSettings);
             };
             _profileSettings.R2ModInfo[ind].MaxOutputChanged += (sender, e) =>
             {
@@ -2437,8 +2437,8 @@ namespace DS4Windows
                 R2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(tempInfo.maxOutput / 100.0 * 255.0);
 
                 // Refresh trigger effect
-                device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, Global.R2OutputSettings[tempIdx].TriggerEffect,
-                    Global.R2OutputSettings[tempIdx].TrigEffectSettings);
+                device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, _profileSettings.R2OutputSettings[tempIdx].TriggerEffect,
+                    _profileSettings.R2OutputSettings[tempIdx].TrigEffectSettings);
             };
             _profileSettings.R2ModInfo[ind].MaxZoneChanged += (sender, e) =>
             {
@@ -2446,8 +2446,8 @@ namespace DS4Windows
                 R2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(tempInfo.maxOutput / 100.0 * 255.0);
 
                 // Refresh trigger effect
-                device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, Global.R2OutputSettings[tempIdx].TriggerEffect,
-                    Global.R2OutputSettings[tempIdx].TrigEffectSettings);
+                device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, _profileSettings.R2OutputSettings[tempIdx].TriggerEffect,
+                    _profileSettings.R2OutputSettings[tempIdx].TrigEffectSettings);
             };
         }
 
@@ -3310,7 +3310,7 @@ namespace DS4Windows
             if (heavyBoosted > 255)
                 heavyBoosted = 255;
 
-            if (Global.InverseRumbleMotors[deviceNum])
+            if (_profileSettings.InverseRumbleMotors[deviceNum])
                 device.setRumble((byte)heavyBoosted, (byte)lightBoosted);
             else
                 device.setRumble((byte)lightBoosted, (byte)heavyBoosted);
