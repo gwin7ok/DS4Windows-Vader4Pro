@@ -10,6 +10,15 @@ namespace DS4Windows
         public const int TEST_PROFILE_ITEM_COUNT = 9;
         public const int MAX_DS4_CONTROLLER_COUNT = 8;
 
+        // Step10-2-A: m_Config(BackingStore)委譲用。Global.storeと同一インスタンスを参照する
+        // (データの二重管理を避けるため、専用バックアップ配列は持たない)
+        private readonly BackingStore _config;
+
+        public ProfileSettingsService(BackingStore config = null)
+        {
+            _config = config ?? Global.store;
+        }
+
         public CultureInfo ConfigDecimalCulture { get; } = new CultureInfo("en-US");
 
         private bool[] _touchpadActive = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
@@ -320,6 +329,37 @@ namespace DS4Windows
                     }
                 }
             }
+        }
+
+        // ---- Step10-2-A-1: スティック関連 (m_Config委譲) ----
+        public StickDeadZoneInfo[] LSModInfo => _config.lsModInfo;
+        public StickDeadZoneInfo[] RSModInfo => _config.rsModInfo;
+        public double[] LSRotation => _config.LSRotation;
+        public double[] RSRotation => _config.RSRotation;
+        public double[] LSSens => _config.LSSens;
+        public double[] RSSens => _config.RSSens;
+        public SquareStickInfo[] SquStickInfo => _config.squStickInfo;
+        public StickAntiSnapbackInfo[] LSAntiSnapbackInfo => _config.lsAntiSnapbackInfo;
+        public StickAntiSnapbackInfo[] RSAntiSnapbackInfo => _config.rsAntiSnapbackInfo;
+        public StickOutputSetting[] LSOutputSettings => _config.lsOutputSettings;
+        public StickOutputSetting[] RSOutputSettings => _config.rsOutputSettings;
+        public BezierCurve[] LsOutBezierCurveObj => _config.lsOutBezierCurveObj;
+        public BezierCurve[] RsOutBezierCurveObj => _config.rsOutBezierCurveObj;
+
+        public int GetLsOutCurveMode(int index) => _config.getLsOutCurveMode(index);
+
+        public void SetLsOutCurveMode(int index, int value)
+        {
+            _config.setLsOutCurveMode(index, value);
+            AppLogger.LogToGui($"[DI] ProfileSettingsService.SetLsOutCurveMode: Slot {index} = {value}", false, true);
+        }
+
+        public int GetRsOutCurveMode(int index) => _config.getRsOutCurveMode(index);
+
+        public void SetRsOutCurveMode(int index, int value)
+        {
+            _config.setRsOutCurveMode(index, value);
+            AppLogger.LogToGui($"[DI] ProfileSettingsService.SetRsOutCurveMode: Slot {index} = {value}", false, true);
         }
 
         public X360Controls[] GetDefaultButtonMapping()

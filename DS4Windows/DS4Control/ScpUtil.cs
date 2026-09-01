@@ -2807,13 +2807,13 @@ namespace DS4Windows
             //return m_Config.RSAntiDeadzone[index];
         }
 
-        public static StickDeadZoneInfo[] LSModInfo => m_Config.lsModInfo;
+        public static StickDeadZoneInfo[] LSModInfo => ProfileSettingsServiceInstance.LSModInfo;
         public static StickDeadZoneInfo GetLSDeadInfo(int index)
         {
             return m_Config.lsModInfo[index];
         }
 
-        public static StickDeadZoneInfo[] RSModInfo => m_Config.rsModInfo;
+        public static StickDeadZoneInfo[] RSModInfo => ProfileSettingsServiceInstance.RSModInfo;
         public static StickDeadZoneInfo GetRSDeadInfo(int index)
         {
             return m_Config.rsModInfo[index];
@@ -2885,7 +2885,7 @@ namespace DS4Windows
             //return m_Config.r2Maxzone[index];
         }
 
-        public static double[] LSRotation => m_Config.LSRotation;
+        public static double[] LSRotation => ProfileSettingsServiceInstance.LSRotation;
         /// <summary>
         /// Return profile LS Rotation setting (radians)
         /// </summary>
@@ -2896,7 +2896,7 @@ namespace DS4Windows
             return m_Config.LSRotation[index];
         }
 
-        public static double[] RSRotation => m_Config.RSRotation;
+        public static double[] RSRotation => ProfileSettingsServiceInstance.RSRotation;
         /// <summary>
         /// Return profile LS Rotation setting (radians)
         /// </summary>
@@ -2931,13 +2931,13 @@ namespace DS4Windows
             return m_Config.SZSens[index];
         }
 
-        public static double[] LSSens => m_Config.LSSens;
+        public static double[] LSSens => ProfileSettingsServiceInstance.LSSens;
         public static double getLSSens(int index)
         {
             return m_Config.LSSens[index];
         }
 
-        public static double[] RSSens => m_Config.RSSens;
+        public static double[] RSSens => ProfileSettingsServiceInstance.RSSens;
         public static double getRSSens(int index)
         {
             return m_Config.RSSens[index];
@@ -2971,49 +2971,53 @@ namespace DS4Windows
         //
         // End of DualSense specific profile settings
 
-        public static SquareStickInfo[] SquStickInfo => m_Config.squStickInfo;
+        public static SquareStickInfo[] SquStickInfo => ProfileSettingsServiceInstance.SquStickInfo;
         public static SquareStickInfo GetSquareStickInfo(int device)
         {
             return m_Config.squStickInfo[device];
         }
 
-        public static StickAntiSnapbackInfo[] LSAntiSnapbackInfo => m_Config.lsAntiSnapbackInfo;
+        public static StickAntiSnapbackInfo[] LSAntiSnapbackInfo => ProfileSettingsServiceInstance.LSAntiSnapbackInfo;
         public static StickAntiSnapbackInfo GetLSAntiSnapbackInfo(int device)
         {
             return m_Config.lsAntiSnapbackInfo[device];
         }
 
-        public static StickAntiSnapbackInfo[] RSAntiSnapbackInfo => m_Config.rsAntiSnapbackInfo;
+        public static StickAntiSnapbackInfo[] RSAntiSnapbackInfo => ProfileSettingsServiceInstance.RSAntiSnapbackInfo;
         public static StickAntiSnapbackInfo GetRSAntiSnapbackInfo(int device)
         {
             return m_Config.rsAntiSnapbackInfo[device];
         }
 
-        public static StickOutputSetting[] LSOutputSettings => m_Config.lsOutputSettings;
-        public static StickOutputSetting[] RSOutputSettings => m_Config.rsOutputSettings;
+        public static StickOutputSetting[] LSOutputSettings => ProfileSettingsServiceInstance.LSOutputSettings;
+        public static StickOutputSetting[] RSOutputSettings => ProfileSettingsServiceInstance.RSOutputSettings;
 
         public static TriggerOutputSettings[] L2OutputSettings => m_Config.l2OutputSettings;
         public static TriggerOutputSettings[] R2OutputSettings => m_Config.r2OutputSettings;
 
         public static void setLsOutCurveMode(int index, int value)
         {
-            m_Config.setLsOutCurveMode(index, value);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[Legacy] Global.setLsOutCurveMode: accessed via static shim");
+            ProfileSettingsServiceInstance.SetLsOutCurveMode(index, value);
         }
         public static int getLsOutCurveMode(int index)
         {
-            return m_Config.getLsOutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetLsOutCurveMode(index);
         }
-        public static BezierCurve[] lsOutBezierCurveObj => m_Config.lsOutBezierCurveObj;
+        public static BezierCurve[] lsOutBezierCurveObj => ProfileSettingsServiceInstance.LsOutBezierCurveObj;
 
         public static void setRsOutCurveMode(int index, int value)
         {
-            m_Config.setRsOutCurveMode(index, value);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[Legacy] Global.setRsOutCurveMode: accessed via static shim");
+            ProfileSettingsServiceInstance.SetRsOutCurveMode(index, value);
         }
         public static int getRsOutCurveMode(int index)
         {
-            return m_Config.getRsOutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetRsOutCurveMode(index);
         }
-        public static BezierCurve[] rsOutBezierCurveObj => m_Config.rsOutBezierCurveObj;
+        public static BezierCurve[] rsOutBezierCurveObj => ProfileSettingsServiceInstance.RsOutBezierCurveObj;
 
         public static void setL2OutCurveMode(int index, int value)
         {

@@ -24,8 +24,9 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 8 | ViewModel DI 移行 (Pattern B) | **完了** | 2026-08-31 | `ControllersViewModel.cs` 新設、`MainWindowsViewModel` DI化、`MainWindow.xaml.cs` DI解決化、`PatternBViewModelTests.cs` |
 | Step 9 | ViewModel DI 移行 (Pattern C) | **完了** | 2026-09-01 | `IViewModelFactory.cs`, `ViewModelFactory.cs`, DI登録, View直接new全廃, `PatternCViewModelTests.cs`, **Step9-4-α監査合格**, **実機検証CP3全件合格** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **完了** | 2026-09-01 | `Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
-| Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **未着手 (次)** | - | [DI] Trace ログ出力の整備、残存シム監査・整理、**最終総合実機検証 CP4** |
-| **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10完了時） |
+| Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **一部進行中** | - | [DI]/[Legacy] Trace ログ整備は着手済み。呼び出し元DI直接参照化（Step10-2）を前倒しで追加実施中のため、実機検証CP4はStep10-2完了後に実施 |
+| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage1進行中 (1/9サブタスク完了)** | - | `docs-forDIMG/MadeByAgent/Phase4-Step10-2-Plan.md`。Stage1-A-1(スティック関連)完了、`Phase4-Step10-2-A-1-Completion-Report.md` |
+| **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10・Step10-2完了時） |
 
 ---
 

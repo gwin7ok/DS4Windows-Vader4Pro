@@ -57,6 +57,25 @@ namespace DS4Windows.DI
         X360Controls[] GetDefaultButtonMapping();
         DS4Controls[] GetReverseX360ButtonMapping();
 
+        // ---- Step10-2-A-1: スティック関連 (m_Config委譲) ----
+        StickDeadZoneInfo[] LSModInfo { get; }
+        StickDeadZoneInfo[] RSModInfo { get; }
+        double[] LSRotation { get; }
+        double[] RSRotation { get; }
+        double[] LSSens { get; }
+        double[] RSSens { get; }
+        SquareStickInfo[] SquStickInfo { get; }
+        StickAntiSnapbackInfo[] LSAntiSnapbackInfo { get; }
+        StickAntiSnapbackInfo[] RSAntiSnapbackInfo { get; }
+        StickOutputSetting[] LSOutputSettings { get; }
+        StickOutputSetting[] RSOutputSettings { get; }
+        BezierCurve[] LsOutBezierCurveObj { get; }
+        BezierCurve[] RsOutBezierCurveObj { get; }
+        int GetLsOutCurveMode(int index);
+        void SetLsOutCurveMode(int index, int value);
+        int GetRsOutCurveMode(int index);
+        void SetRsOutCurveMode(int index, int value);
+
         event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
 
         void ResetToDefaults(int deviceIndex);
