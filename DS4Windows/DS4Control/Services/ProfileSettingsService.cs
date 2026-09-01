@@ -497,6 +497,22 @@ namespace DS4Windows
                 tempDev.RumbleAutostopTime = value;
         }
 
+        // ---- Step10-2-A-6: ボタン/マウス出力関連 (m_Config委譲) ----
+        public ButtonMouseInfo[] ButtonMouseInfos => _config.buttonMouseInfos;
+        public ButtonAbsMouseInfo[] ButtonAbsMouseInfos => _config.buttonAbsMouseInfos;
+        public bool[] EnableTouchToggle => _config.enableTouchToggle;
+        public SteeringWheelSmoothingInfo[] WheelSmoothInfo => _config.wheelSmoothInfo;
+        public bool[] DoubleTap => _config.doubleTap;
+        public int[] ScrollSensitivity => _config.scrollSensitivity;
+        public bool[] TrackballMode => _config.trackballMode;
+        public double[] TrackballFriction => _config.trackballFriction;
+        public bool GetEnableTouchToggle(int deviceIndex) => _config.enableTouchToggle[deviceIndex];
+        public bool GetDoubleTap(int deviceIndex) => _config.doubleTap[deviceIndex];
+        public int[] GetScrollSensitivity() => _config.scrollSensitivity;
+        public int GetScrollSensitivity(int deviceIndex) => _config.scrollSensitivity[deviceIndex];
+        public bool GetTrackballMode(int deviceIndex) => _config.trackballMode[deviceIndex];
+        public double GetTrackballFriction(int deviceIndex) => _config.trackballFriction[deviceIndex];
+
         public X360Controls[] GetDefaultButtonMapping()
         {
             return (X360Controls[])Global.defaultButtonMapping.Clone();

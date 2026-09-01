@@ -160,6 +160,22 @@ namespace DS4Windows.DI
         ref DS4Color GetFlashColor(int deviceIndex);
         void SetRumbleAutostopTime(int index, int value);
 
+        // ---- Step10-2-A-6: ボタン/マウス出力関連 (m_Config委譲) ----
+        ButtonMouseInfo[] ButtonMouseInfos { get; }
+        ButtonAbsMouseInfo[] ButtonAbsMouseInfos { get; }
+        bool[] EnableTouchToggle { get; }
+        SteeringWheelSmoothingInfo[] WheelSmoothInfo { get; }
+        bool[] DoubleTap { get; }
+        int[] ScrollSensitivity { get; }
+        bool[] TrackballMode { get; }
+        double[] TrackballFriction { get; }
+        bool GetEnableTouchToggle(int deviceIndex);
+        bool GetDoubleTap(int deviceIndex);
+        int[] GetScrollSensitivity();
+        int GetScrollSensitivity(int deviceIndex);
+        bool GetTrackballMode(int deviceIndex);
+        double GetTrackballFriction(int deviceIndex);
+
         event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
 
         void ResetToDefaults(int deviceIndex);

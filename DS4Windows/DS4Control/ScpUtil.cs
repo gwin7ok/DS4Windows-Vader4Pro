@@ -2419,8 +2419,8 @@ namespace DS4Windows
         }
 
         // controller/profile specfic values
-        public static ButtonMouseInfo[] ButtonMouseInfos => m_Config.buttonMouseInfos;
-        public static ButtonAbsMouseInfo[] ButtonAbsMouseInfos => m_Config.buttonAbsMouseInfos;
+        public static ButtonMouseInfo[] ButtonMouseInfos => ProfileSettingsServiceInstance.ButtonMouseInfos;
+        public static ButtonAbsMouseInfo[] ButtonAbsMouseInfos => ProfileSettingsServiceInstance.ButtonAbsMouseInfos;
 
         public static byte[] RumbleBoost => ProfileSettingsServiceInstance.RumbleBoost;
         public static byte getRumbleBoost(int index)
@@ -2438,10 +2438,10 @@ namespace DS4Windows
             return ProfileSettingsServiceInstance.GetRumbleAutostopTime(index);
         }
 
-        public static bool[] EnableTouchToggle => m_Config.enableTouchToggle;
+        public static bool[] EnableTouchToggle => ProfileSettingsServiceInstance.EnableTouchToggle;
         public static bool getEnableTouchToggle(int index)
         {
-            return m_Config.enableTouchToggle[index];
+            return ProfileSettingsServiceInstance.GetEnableTouchToggle(index);
         }
 
         public static int[] IdleDisconnectTimeout => m_Config.idleDisconnectTimeout;
@@ -2647,7 +2647,7 @@ namespace DS4Windows
             return ProfileSettingsServiceInstance.GetGyroControlsInfo(index);
         }
 
-        public static SteeringWheelSmoothingInfo[] WheelSmoothInfo => m_Config.wheelSmoothInfo;
+        public static SteeringWheelSmoothingInfo[] WheelSmoothInfo => ProfileSettingsServiceInstance.WheelSmoothInfo;
         public static int[] SAWheelFuzzValues => m_Config.saWheelFuzzValues;
 
         //public static DS4Color[] MainColor => m_Config.m_Leds;
@@ -2698,20 +2698,20 @@ namespace DS4Windows
             return m_Config.tapSensitivity[index];
         }
 
-        public static bool[] DoubleTap => m_Config.doubleTap;
+        public static bool[] DoubleTap => ProfileSettingsServiceInstance.DoubleTap;
         public static bool getDoubleTap(int index)
         {
-            return m_Config.doubleTap[index];
+            return ProfileSettingsServiceInstance.GetDoubleTap(index);
         }
 
-        public static int[] ScrollSensitivity => m_Config.scrollSensitivity;
+        public static int[] ScrollSensitivity => ProfileSettingsServiceInstance.ScrollSensitivity;
         public static int[] getScrollSensitivity()
         {
-            return m_Config.scrollSensitivity;
+            return ProfileSettingsServiceInstance.GetScrollSensitivity();
         }
         public static int getScrollSensitivity(int index)
         {
-            return m_Config.scrollSensitivity[index];
+            return ProfileSettingsServiceInstance.GetScrollSensitivity(index);
         }
 
         public static bool[] LowerRCOn => m_Config.lowerRCOn;
@@ -3054,16 +3054,16 @@ namespace DS4Windows
         }
         public static BezierCurve[] szOutBezierCurveObj => m_Config.szOutBezierCurveObj;
 
-        public static bool[] TrackballMode => m_Config.trackballMode;
+        public static bool[] TrackballMode => ProfileSettingsServiceInstance.TrackballMode;
         public static bool getTrackballMode(int index)
         {
-            return m_Config.trackballMode[index];
+            return ProfileSettingsServiceInstance.GetTrackballMode(index);
         }
 
-        public static double[] TrackballFriction => m_Config.trackballFriction;
+        public static double[] TrackballFriction => ProfileSettingsServiceInstance.TrackballFriction;
         public static double getTrackballFriction(int index)
         {
-            return m_Config.trackballFriction[index];
+            return ProfileSettingsServiceInstance.GetTrackballFriction(index);
         }
 
         //public static bool[] TouchStickTrackballMode => m_Config.touchStickTrackballMode;
