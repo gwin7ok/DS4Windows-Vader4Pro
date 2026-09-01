@@ -66,7 +66,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 0;
-                switch (Global.LightbarSettingsInfo[device].Mode)
+                switch (profileSettings.LightbarSettingsInfo[device].Mode)
                 {
                     case LightbarMode.DS4Win:
                         index = 0; break;
@@ -89,7 +89,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     default: break;
                 }
 
-                Global.LightbarSettingsInfo[device].Mode = temp;
+                profileSettings.LightbarSettingsInfo[device].Mode = temp;
                 LightbarModeIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -100,7 +100,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 System.Windows.Media.Brush tempBrush;
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_Led;
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led;
                 if (!RainbowExists)
                 {
                     lightbarColBrush.Color = new System.Windows.Media.Color()
@@ -126,7 +126,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_Led; //ref Global.MainColor[device];
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led; //ref Global.MainColor[device];
                 return new System.Windows.Media.Color()
                 {
                     A = 255,
@@ -142,7 +142,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_Led; //ref Global.MainColor[device];
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led; //ref Global.MainColor[device];
                 return $"#FF{color.red.ToString("X2")}{color.green.ToString("X2")}{color.blue.ToString("X2")}";
                 /*return new System.Windows.Media.Color()
                 {
@@ -158,10 +158,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int MainColorR
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.red;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.red;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.red = (byte)value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.red = (byte)value;
                 MainColorRChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -169,16 +169,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string MainColorRString
         {
-            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.red.ToString("X2")}FF0000";
+            get => $"#{profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.red.ToString("X2")}FF0000";
         }
         public event EventHandler MainColorRStringChanged;
 
         public int MainColorG
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.green;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.green;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.green = (byte)value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.green = (byte)value;
                 MainColorGChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -186,16 +186,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string MainColorGString
         {
-            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.green.ToString("X2")}00FF00";
+            get => $"#{profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.green.ToString("X2")}00FF00";
         }
         public event EventHandler MainColorGStringChanged;
 
         public int MainColorB
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.blue;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.blue;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.blue = (byte)value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.blue = (byte)value;
                 MainColorBChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -203,7 +203,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string MainColorBString
         {
-            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_Led.blue.ToString("X2")}0000FF";
+            get => $"#{profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led.blue.ToString("X2")}0000FF";
         }
         public event EventHandler MainColorBStringChanged;
 
@@ -211,7 +211,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed; //ref Global.LowColor[device];
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed; //ref Global.LowColor[device];
                 return $"#FF{color.red.ToString("X2")}{color.green.ToString("X2")}{color.blue.ToString("X2")}";
             }
         }
@@ -219,10 +219,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int LowColorR
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.red;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.red;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.red = (byte)value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.red = (byte)value;
                 LowColorRChanged?.Invoke(this, EventArgs.Empty);
                 LowColorRStringChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -231,16 +231,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string LowColorRString
         {
-            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.red.ToString("X2")}FF0000";
+            get => $"#{profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.red.ToString("X2")}FF0000";
         }
         public event EventHandler LowColorRStringChanged;
 
         public int LowColorG
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.green;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.green;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.green = (byte)value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.green = (byte)value;
                 LowColorGChanged?.Invoke(this, EventArgs.Empty);
                 LowColorGStringChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -249,16 +249,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string LowColorGString
         {
-            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.green.ToString("X2")}00FF00";
+            get => $"#{profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.green.ToString("X2")}00FF00";
         }
         public event EventHandler LowColorGStringChanged;
 
         public int LowColorB
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.blue;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.blue;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.blue = (byte)value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.blue = (byte)value;
                 LowColorBChanged?.Invoke(this, EventArgs.Empty);
                 LowColorBStringChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -267,7 +267,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string LowColorBString
         {
-            get => $"#{Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.blue.ToString("X2")}0000FF";
+            get => $"#{profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed.blue.ToString("X2")}0000FF";
         }
         public event EventHandler LowColorBStringChanged;
 
@@ -275,7 +275,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed;
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed;
                 return new System.Windows.Media.Color()
                 {
                     A = 255,
@@ -288,24 +288,24 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int FlashTypeIndex
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.flashType; //Global.FlashType[device];
-            set => Global.LightbarSettingsInfo[device].ds4winSettings.flashType = (byte)value;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.flashType; //Global.FlashType[device];
+            set => profileSettings.LightbarSettingsInfo[device].ds4winSettings.flashType = (byte)value;
         }
 
         public int FlashAt
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.flashAt; //Global.FlashAt[device];
-            set => Global.LightbarSettingsInfo[device].ds4winSettings.flashAt = value;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.flashAt; //Global.FlashAt[device];
+            set => profileSettings.LightbarSettingsInfo[device].ds4winSettings.flashAt = value;
         }
 
         public string FlashColor
         {
             get
             {
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_FlashLed;
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_FlashLed;
                 if (color.red == 0 && color.green == 0 && color.blue == 0)
                 {
-                    color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_Led;
+                    color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led;
                 }
 
                 return $"#FF{color.red.ToString("X2")}{color.green.ToString("X2")}{color.blue.ToString("X2")}";
@@ -317,10 +317,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_FlashLed;
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_FlashLed;
                 if (color.red == 0 && color.green == 0 && color.blue == 0)
                 {
-                    color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_Led;
+                    color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led;
                 }
 
                 return new System.Windows.Media.Color()
@@ -335,20 +335,20 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int ChargingType
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.chargingType;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.chargingType;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.chargingType = value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.chargingType = value;
                 ChargingColorVisibleChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
         public bool ColorBatteryPercent
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.ledAsBattery;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.ledAsBattery;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.ledAsBattery = value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.ledAsBattery = value;
             }
         }
 
@@ -356,7 +356,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_ChargingLed;
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_ChargingLed;
                 return $"#FF{color.red.ToString("X2")}{color.green.ToString("X2")}{color.blue.ToString("X2")}";
             }
         }
@@ -366,7 +366,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                ref DS4Color color = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_ChargingLed;
+                ref DS4Color color = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_ChargingLed;
                 return new System.Windows.Media.Color()
                 {
                     A = 255,
@@ -379,16 +379,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public Visibility ChargingColorVisible
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.chargingType == 3 ? Visibility.Visible : Visibility.Hidden;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.chargingType == 3 ? Visibility.Visible : Visibility.Hidden;
         }
         public event EventHandler ChargingColorVisibleChanged;
 
         public double Rainbow
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.rainbow;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.rainbow;
             set
             {
-                Global.LightbarSettingsInfo[device].ds4winSettings.rainbow = value;
+                profileSettings.LightbarSettingsInfo[device].ds4winSettings.rainbow = value;
                 RainbowChanged?.Invoke(this, EventArgs.Empty);
                 RainbowExistsChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -397,15 +397,15 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool RainbowExists
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.rainbow != 0.0;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.rainbow != 0.0;
         }
 
         public event EventHandler RainbowExistsChanged;
 
         public double MaxSatRainbow
         {
-            get => Global.LightbarSettingsInfo[device].ds4winSettings.maxRainbowSat * 100.0;
-            set => Global.LightbarSettingsInfo[device].ds4winSettings.maxRainbowSat = value / 100.0;
+            get => profileSettings.LightbarSettingsInfo[device].ds4winSettings.maxRainbowSat * 100.0;
+            set => profileSettings.LightbarSettingsInfo[device].ds4winSettings.maxRainbowSat = value / 100.0;
         }
 
         public sbyte LeftStickDriftXAxis
@@ -501,15 +501,15 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int RumbleBoost
         {
-            get => Global.RumbleBoost[device];
-            set => Global.RumbleBoost[device] = (byte)value;
+            get => profileSettings.RumbleBoost[device];
+            set => profileSettings.RumbleBoost[device] = (byte)value;
         }
 
         public int RumbleAutostopTime
         {
             // RumbleAutostopTime value is in milliseconds in XML config file, but GUI uses just seconds
-            get => Global.getRumbleAutostopTime(device) / 1000;
-            set => Global.setRumbleAutostopTime(device, value * 1000);
+            get => profileSettings.GetRumbleAutostopTime(device) / 1000;
+            set => profileSettings.SetRumbleAutostopTime(device, value * 1000);
         }
 
         private bool heavyRumbleActive;
@@ -2635,105 +2635,105 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int GyroMouseDeadZone
         {
-            get => Global.GyroMouseDeadZone[device];
+            get => profileSettings.GyroMouseDeadZone[device];
             set
             {
-                Global.SetGyroMouseDeadZone(device, value, App.rootHub);
+                profileSettings.SetGyroMouseDeadZone(device, value, App.rootHub);
 
             }
         }
 
         public bool GyroMouseToggle
         {
-            get => Global.GyroMouseToggle[device];
+            get => profileSettings.GyroMouseToggle[device];
             set
             {
-                Global.SetGyroMouseToggle(device, value, App.rootHub);
+                profileSettings.SetGyroMouseToggle(device, value, App.rootHub);
             }
         }
 
         public bool GyroMouseJitterCompensation
         {
-            get => Global.GyroMouseInfo[device].jitterCompensation;
-            set => Global.GyroMouseInfo[device].jitterCompensation = value;
+            get => profileSettings.GyroMouseInfo[device].jitterCompensation;
+            set => profileSettings.GyroMouseInfo[device].jitterCompensation = value;
         }
 
         public bool GyroMouseStickTurns
         {
-            get => Global.GyroMouseStickTriggerTurns[device];
+            get => profileSettings.GyroMouseStickTriggerTurns[device];
             set
             {
-                Global.GyroMouseStickTriggerTurns[device] = value;
+                profileSettings.GyroMouseStickTriggerTurns[device] = value;
             }
         }
 
         public bool GyroMouseStickToggle
         {
-            get => Global.GyroMouseStickToggle[device];
+            get => profileSettings.GyroMouseStickToggle[device];
             set
             {
-                Global.SetGyroMouseStickToggle(device, value, App.rootHub);
+                profileSettings.SetGyroMouseStickToggle(device, value, App.rootHub);
             }
         }
 
         public int GyroMouseStickDeadZone
         {
-            get => Global.GyroMouseStickInf[device].deadZone;
-            set => Global.GyroMouseStickInf[device].deadZone = value;
+            get => profileSettings.GyroMouseStickInf[device].deadZone;
+            set => profileSettings.GyroMouseStickInf[device].deadZone = value;
         }
 
         public int GyroMouseStickMaxZone
         {
-            get => Global.GyroMouseStickInf[device].maxZone;
-            set => Global.GyroMouseStickInf[device].maxZone = value;
+            get => profileSettings.GyroMouseStickInf[device].maxZone;
+            set => profileSettings.GyroMouseStickInf[device].maxZone = value;
         }
 
         public int GyroMouseStickOutputStick
         {
-            get => (int)Global.GyroMouseStickInf[device].outputStick;
+            get => (int)profileSettings.GyroMouseStickInf[device].outputStick;
             set
             {
-                Global.GyroMouseStickInf[device].outputStick =
+                profileSettings.GyroMouseStickInf[device].outputStick =
                     (GyroMouseStickInfo.OutputStick)value;
             }
         }
 
         public int GyroMouseStickOutputAxes
         {
-            get => (int)Global.GyroMouseStickInf[device].outputStickDir;
+            get => (int)profileSettings.GyroMouseStickInf[device].outputStickDir;
             set
             {
-                Global.GyroMouseStickInf[device].outputStickDir =
+                profileSettings.GyroMouseStickInf[device].outputStickDir =
                     (GyroMouseStickInfo.OutputStickAxes)value;
             }
         }
 
         public double GyroMouseStickAntiDeadX
         {
-            get => Global.GyroMouseStickInf[device].antiDeadX * 100.0;
-            set => Global.GyroMouseStickInf[device].antiDeadX = value * 0.01;
+            get => profileSettings.GyroMouseStickInf[device].antiDeadX * 100.0;
+            set => profileSettings.GyroMouseStickInf[device].antiDeadX = value * 0.01;
         }
 
         public double GyroMouseStickAntiDeadY
         {
-            get => Global.GyroMouseStickInf[device].antiDeadY * 100.0;
-            set => Global.GyroMouseStickInf[device].antiDeadY = value * 0.01;
+            get => profileSettings.GyroMouseStickInf[device].antiDeadY * 100.0;
+            set => profileSettings.GyroMouseStickInf[device].antiDeadY = value * 0.01;
         }
 
         public int GyroMouseStickVertScale
         {
-            get => Global.GyroMouseStickInf[device].vertScale;
-            set => Global.GyroMouseStickInf[device].vertScale = value;
+            get => profileSettings.GyroMouseStickInf[device].vertScale;
+            set => profileSettings.GyroMouseStickInf[device].vertScale = value;
         }
 
         public bool GyroMouseStickMaxOutputEnabled
         {
-            get => Global.GyroMouseStickInf[device].maxOutputEnabled;
+            get => profileSettings.GyroMouseStickInf[device].maxOutputEnabled;
             set
             {
-                bool temp = Global.GyroMouseStickInf[device].maxOutputEnabled;
+                bool temp = profileSettings.GyroMouseStickInf[device].maxOutputEnabled;
                 if (temp == value) return;
-                Global.GyroMouseStickInf[device].maxOutputEnabled = value;
+                profileSettings.GyroMouseStickInf[device].maxOutputEnabled = value;
                 GyroMouseStickMaxOutputChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -2741,8 +2741,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double GyroMouseStickMaxOutput
         {
-            get => Global.GyroMouseStickInf[device].maxOutput;
-            set => Global.GyroMouseStickInf[device].maxOutput = value;
+            get => profileSettings.GyroMouseStickInf[device].maxOutput;
+            set => profileSettings.GyroMouseStickInf[device].maxOutput = value;
         }
 
         public int GyroMouseStickEvalCondIndex
@@ -2753,60 +2753,60 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int GyroMouseStickXAxis
         {
-            get => Global.GyroMouseStickHorizontalAxis[device];
-            set => Global.GyroMouseStickHorizontalAxis[device] = value;
+            get => profileSettings.GyroMouseStickHorizontalAxis[device];
+            set => profileSettings.GyroMouseStickHorizontalAxis[device] = value;
         }
 
         public bool GyroMouseStickInvertX
         {
-            get => (Global.GyroMouseStickInf[device].inverted & 1) == 1;
+            get => (profileSettings.GyroMouseStickInf[device].inverted & 1) == 1;
             set
             {
                 if (value)
                 {
-                    Global.GyroMouseStickInf[device].inverted |= 1;
+                    profileSettings.GyroMouseStickInf[device].inverted |= 1;
                 }
                 else
                 {
-                    uint temp = Global.GyroMouseStickInf[device].inverted;
-                    Global.GyroMouseStickInf[device].inverted = (uint)(temp & ~1);
+                    uint temp = profileSettings.GyroMouseStickInf[device].inverted;
+                    profileSettings.GyroMouseStickInf[device].inverted = (uint)(temp & ~1);
                 }
             }
         }
 
         public bool GyroMouseStickInvertY
         {
-            get => (Global.GyroMouseStickInf[device].inverted & 2) == 2;
+            get => (profileSettings.GyroMouseStickInf[device].inverted & 2) == 2;
             set
             {
                 if (value)
                 {
-                    Global.GyroMouseStickInf[device].inverted |= 2;
+                    profileSettings.GyroMouseStickInf[device].inverted |= 2;
                 }
                 else
                 {
-                    uint temp = Global.GyroMouseStickInf[device].inverted;
-                    Global.GyroMouseStickInf[device].inverted = (uint)(temp & ~2);
+                    uint temp = profileSettings.GyroMouseStickInf[device].inverted;
+                    profileSettings.GyroMouseStickInf[device].inverted = (uint)(temp & ~2);
                 }
             }
         }
 
         public bool GyroMouseStickJitterCompensation
         {
-            get => Global.GyroMouseStickInf[device].jitterCompensation;
-            set => Global.GyroMouseStickInf[device].jitterCompensation = value;
+            get => profileSettings.GyroMouseStickInf[device].jitterCompensation;
+            set => profileSettings.GyroMouseStickInf[device].jitterCompensation = value;
         }
 
         public bool GyroMouseStickSmooth
         {
-            get => Global.GyroMouseStickInf[device].useSmoothing;
-            set => Global.GyroMouseStickInf[device].useSmoothing = value;
+            get => profileSettings.GyroMouseStickInf[device].useSmoothing;
+            set => profileSettings.GyroMouseStickInf[device].useSmoothing = value;
         }
 
         public double GyroMousetickSmoothWeight
         {
-            get => Global.GyroMouseStickInf[device].smoothWeight;
-            set => Global.GyroMouseStickInf[device].smoothWeight = value;
+            get => profileSettings.GyroMouseStickInf[device].smoothWeight;
+            set => profileSettings.GyroMouseStickInf[device].smoothWeight = value;
         }
 
         private string touchDisInvertString = "None";
@@ -2836,22 +2836,22 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool GyroControlsTurns
         {
-            get => Global.GyroControlsInf[device].triggerTurns;
-            set => Global.GyroControlsInf[device].triggerTurns = value;
+            get => profileSettings.GyroControlsInf[device].triggerTurns;
+            set => profileSettings.GyroControlsInf[device].triggerTurns = value;
         }
 
         public int GyroControlsEvalCondIndex
         {
-            get => Global.GyroControlsInf[device].triggerCond ? 0 : 1;
-            set => Global.GyroControlsInf[device].triggerCond = value == 0 ? true : false;
+            get => profileSettings.GyroControlsInf[device].triggerCond ? 0 : 1;
+            set => profileSettings.GyroControlsInf[device].triggerCond = value == 0 ? true : false;
         }
 
         public bool GyroControlsToggle
         {
-            get => Global.GyroControlsInf[device].triggerToggle;
+            get => profileSettings.GyroControlsInf[device].triggerToggle;
             set
             {
-                Global.SetGyroControlsToggle(device, value, App.rootHub);
+                profileSettings.SetGyroControlsToggle(device, value, App.rootHub);
             }
         }
 
@@ -2895,46 +2895,46 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool GyroSwipeTurns
         {
-            get => Global.GyroSwipeInf[device].triggerTurns;
-            set => Global.GyroSwipeInf[device].triggerTurns = value;
+            get => profileSettings.GyroSwipeInf[device].triggerTurns;
+            set => profileSettings.GyroSwipeInf[device].triggerTurns = value;
         }
 
         public int GyroSwipeEvalCondIndex
         {
-            get => Global.GyroSwipeInf[device].triggerCond ? 0 : 1;
-            set => Global.GyroSwipeInf[device].triggerCond = value == 0 ? true : false;
+            get => profileSettings.GyroSwipeInf[device].triggerCond ? 0 : 1;
+            set => profileSettings.GyroSwipeInf[device].triggerCond = value == 0 ? true : false;
         }
 
         public int GyroSwipeXAxis
         {
-            get => (int)Global.GyroSwipeInf[device].xAxis;
-            set => Global.GyroSwipeInf[device].xAxis = (GyroDirectionalSwipeInfo.XAxisSwipe)value;
+            get => (int)profileSettings.GyroSwipeInf[device].xAxis;
+            set => profileSettings.GyroSwipeInf[device].xAxis = (GyroDirectionalSwipeInfo.XAxisSwipe)value;
         }
 
         public int GyroSwipeDeadZoneX
         {
-            get => Global.GyroSwipeInf[device].deadzoneX;
+            get => profileSettings.GyroSwipeInf[device].deadzoneX;
             set
             {
-                Global.GyroSwipeInf[device].deadzoneX = value;
+                profileSettings.GyroSwipeInf[device].deadzoneX = value;
             }
         }
 
         public int GyroSwipeDeadZoneY
         {
-            get => Global.GyroSwipeInf[device].deadzoneY;
+            get => profileSettings.GyroSwipeInf[device].deadzoneY;
             set
             {
-                Global.GyroSwipeInf[device].deadzoneY = value;
+                profileSettings.GyroSwipeInf[device].deadzoneY = value;
             }
         }
 
         public int GyroSwipeDelayTime
         {
-            get => Global.GyroSwipeInf[device].delayTime;
+            get => profileSettings.GyroSwipeInf[device].delayTime;
             set
             {
-                Global.GyroSwipeInf[device].delayTime = value;
+                profileSettings.GyroSwipeInf[device].delayTime = value;
             }
         }
 
@@ -2948,7 +2948,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                switch (Global.DualSenseRumbleEmulationMode[device])
+                switch (profileSettings.DualSenseRumbleEmulationMode[device])
                 {
                     case DualSenseDevice.RumbleEmulationMode.Disabled: return 2;
                     case DualSenseDevice.RumbleEmulationMode.Legacy: return 1;
@@ -2966,20 +2966,20 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     case 0: temp = DualSenseDevice.RumbleEmulationMode.Accurate; break;
                     default: temp = DualSenseDevice.RumbleEmulationMode.Accurate; break;
                 }
-                Global.DualSenseRumbleEmulationMode[device] = temp;
+                profileSettings.DualSenseRumbleEmulationMode[device] = temp;
             }
         }
 
         public int DualSenseHapticPowerLevelPerIndex
         {
-            get => Global.DualSenseHapticPowerLevel[device];
-            set => Global.DualSenseHapticPowerLevel[device] = (byte)value;
+            get => profileSettings.DualSenseHapticPowerLevel[device];
+            set => profileSettings.DualSenseHapticPowerLevel[device] = (byte)value;
         }
 
         public bool EnableGenericRumbleStrRescaleForDualSenseDevices
         {
-            get => Global.UseGenericRumbleStrRescaleForDualSenses[device];
-            set => Global.UseGenericRumbleStrRescaleForDualSenses[device] = value;
+            get => profileSettings.UseGenericRumbleStrRescaleForDualSenses[device];
+            set => profileSettings.UseGenericRumbleStrRescaleForDualSenses[device] = value;
         }
 
         public bool UsingMinViGEm173333
@@ -2990,8 +2990,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool InverseRumbleMotors
         {
-            get => Global.InverseRumbleMotors[device];
-            set => Global.InverseRumbleMotors[device] = value;
+            get => profileSettings.InverseRumbleMotors[device];
+            set => profileSettings.InverseRumbleMotors[device] = value;
         }
 
         public ProfileSettingsViewModel(int device, IProfileSettingsService profileSettings = null)
@@ -3045,7 +3045,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private int FindGyroMouseSmoothMethodIndex()
         {
             int result = 0;
-            GyroMouseInfo tempInfo = Global.GyroMouseInfo[device];
+            GyroMouseInfo tempInfo = profileSettings.GyroMouseInfo[device];
             if (tempInfo.smoothingMethod == GyroMouseInfo.SmoothingMethod.OneEuro ||
                 tempInfo.smoothingMethod == GyroMouseInfo.SmoothingMethod.None)
             {
@@ -3062,7 +3062,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private int FindGyroMouseStickSmoothMethodIndex()
         {
             int result = 0;
-            GyroMouseStickInfo tempInfo = Global.GyroMouseStickInf[device];
+            GyroMouseStickInfo tempInfo = profileSettings.GyroMouseStickInf[device];
             switch (tempInfo.smoothingMethod)
             {
                 case GyroMouseStickInfo.SmoothingMethod.OneEuro:
@@ -3210,19 +3210,19 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public void UpdateFlashColor(System.Windows.Media.Color color)
         {
-            Global.LightbarSettingsInfo[device].ds4winSettings.m_FlashLed = new DS4Color() { red = color.R, green = color.G, blue = color.B };
+            profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_FlashLed = new DS4Color() { red = color.R, green = color.G, blue = color.B };
             FlashColorChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public void UpdateMainColor(System.Windows.Media.Color color)
         {
-            Global.LightbarSettingsInfo[device].ds4winSettings.m_Led = new DS4Color() { red = color.R, green = color.G, blue = color.B };
+            profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_Led = new DS4Color() { red = color.R, green = color.G, blue = color.B };
             MainColorChanged?.Invoke(this, EventArgs.Empty);
         }
 
         public void UpdateLowColor(System.Windows.Media.Color color)
         {
-            ref DS4Color lowColor = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_LowLed;
+            ref DS4Color lowColor = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_LowLed;
             lowColor.red = color.R;
             lowColor.green = color.G;
             lowColor.blue = color.B;
@@ -3270,7 +3270,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public void UpdateChargingColor(System.Windows.Media.Color color)
         {
-            ref DS4Color chargeColor = ref Global.LightbarSettingsInfo[device].ds4winSettings.m_ChargingLed;
+            ref DS4Color chargeColor = ref profileSettings.LightbarSettingsInfo[device].ds4winSettings.m_ChargingLed;
             chargeColor.red = color.R;
             chargeColor.green = color.G;
             chargeColor.blue = color.B;
@@ -3538,13 +3538,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 alwaysOnItem.IsChecked = true;
             }
 
-            Global.GyroSwipeInf[device].triggers = string.Join(",", triggerList.ToArray());
+            profileSettings.GyroSwipeInf[device].triggers = string.Join(",", triggerList.ToArray());
             GyroSwipeTrigDisplay = string.Join(", ", triggerName.ToArray());
         }
 
         public void PopulateGyroSwipeTrig(ContextMenu menu)
         {
-            string[] triggers = Global.GyroSwipeInf[device].triggers.Split(',');
+            string[] triggers = profileSettings.GyroSwipeInf[device].triggers.Split(',');
             int itemCount = menu.Items.Count;
             List<string> triggerName = new List<string>();
             foreach (string trig in triggers)
@@ -3614,13 +3614,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 alwaysOnItem.IsChecked = true;
             }
 
-            Global.GyroControlsInf[device].triggers = string.Join(",", triggerList.ToArray());
+            profileSettings.GyroControlsInf[device].triggers = string.Join(",", triggerList.ToArray());
             GyroControlsTrigDisplay = string.Join(", ", triggerName.ToArray());
         }
 
         public void PopulateGyroControlsTrig(ContextMenu menu)
         {
-            string[] triggers = Global.GyroControlsInf[device].triggers.Split(',');
+            string[] triggers = profileSettings.GyroControlsInf[device].triggers.Split(',');
             int itemCount = menu.Items.Count;
             List<string> triggerName = new List<string>();
             foreach (string trig in triggers)
