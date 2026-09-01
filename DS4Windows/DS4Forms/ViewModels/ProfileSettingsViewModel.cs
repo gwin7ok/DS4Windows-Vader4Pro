@@ -775,13 +775,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool VirtualTriggerButtons
         {
-            get => Global.OutputVirtualTriggerButton[device];
+            get => profileSettings.OutputVirtualTriggerButton[device];
             set
             {
-                bool temp = Global.OutputVirtualTriggerButton[device];
+                bool temp = profileSettings.OutputVirtualTriggerButton[device];
                 if (temp == value) return;
 
-                Global.OutputVirtualTriggerButton[device] = value;
+                profileSettings.OutputVirtualTriggerButton[device] = value;
                 VirtualTriggerButtonsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -799,13 +799,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public DS4TriggerOutputMode OutputDS4TriggerMode
         {
-            get => Global.OutputDS4TriggerMode[device];
+            get => profileSettings.OutputDS4TriggerMode[device];
             set
             {
-                DS4TriggerOutputMode temp = Global.OutputDS4TriggerMode[device];
+                DS4TriggerOutputMode temp = profileSettings.OutputDS4TriggerMode[device];
                 if (temp == value) return;
 
-                Global.OutputDS4TriggerMode[device] = value;
+                profileSettings.OutputDS4TriggerMode[device] = value;
                 OutputDS4TriggerModeChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -902,7 +902,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 0;
-                switch (Global.GyroOutputMode[device])
+                switch (profileSettings.GyroOutputMode[device])
                 {
                     case GyroOutMode.Controls:
                         index = 0; break;
@@ -936,11 +936,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     default: break;
                 }
 
-                GyroOutMode current = Global.GyroOutputMode[device];
+                GyroOutMode current = profileSettings.GyroOutputMode[device];
                 if (temp == current) return;
                 //GyroOutModeIndexChanging?.Invoke(this, EventArgs.Empty);
                 GyroOutModeIndexChanging?.Invoke(this, current, temp);
-                Global.GyroOutputMode[device] = temp;
+                profileSettings.GyroOutputMode[device] = temp;
                 GyroOutModeIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1291,84 +1291,84 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int LSFuzz
         {
-            get => Global.LSModInfo[device].fuzz;
-            set => Global.LSModInfo[device].fuzz = value;
+            get => profileSettings.LSModInfo[device].fuzz;
+            set => profileSettings.LSModInfo[device].fuzz = value;
         }
 
         public int RSFuzz
         {
-            get => Global.RSModInfo[device].fuzz;
-            set => Global.RSModInfo[device].fuzz = value;
+            get => profileSettings.RSModInfo[device].fuzz;
+            set => profileSettings.RSModInfo[device].fuzz = value;
         }
 
         public bool LSAntiSnapback
         {
-            get => Global.LSAntiSnapbackInfo[device].enabled;
-            set => Global.LSAntiSnapbackInfo[device].enabled = value;
+            get => profileSettings.LSAntiSnapbackInfo[device].enabled;
+            set => profileSettings.LSAntiSnapbackInfo[device].enabled = value;
         }
 
         public bool RSAntiSnapback
         {
-            get => Global.RSAntiSnapbackInfo[device].enabled;
-            set => Global.RSAntiSnapbackInfo[device].enabled = value;
+            get => profileSettings.RSAntiSnapbackInfo[device].enabled;
+            set => profileSettings.RSAntiSnapbackInfo[device].enabled = value;
         }
 
         public double LSAntiSnapbackDelta
         {
-            get => Global.LSAntiSnapbackInfo[device].delta;
-            set => Global.LSAntiSnapbackInfo[device].delta = value;
+            get => profileSettings.LSAntiSnapbackInfo[device].delta;
+            set => profileSettings.LSAntiSnapbackInfo[device].delta = value;
         }
 
         public double RSAntiSnapbackDelta
         {
-            get => Global.RSAntiSnapbackInfo[device].delta;
-            set => Global.RSAntiSnapbackInfo[device].delta = value;
+            get => profileSettings.RSAntiSnapbackInfo[device].delta;
+            set => profileSettings.RSAntiSnapbackInfo[device].delta = value;
         }
         public int LSAntiSnapbackTimeout
         {
-            get => Global.LSAntiSnapbackInfo[device].timeout;
-            set => Global.LSAntiSnapbackInfo[device].timeout = value;
+            get => profileSettings.LSAntiSnapbackInfo[device].timeout;
+            set => profileSettings.LSAntiSnapbackInfo[device].timeout = value;
         }
 
         public int RSAntiSnapbackTimeout
         {
-            get => Global.RSAntiSnapbackInfo[device].timeout;
-            set => Global.RSAntiSnapbackInfo[device].timeout = value;
+            get => profileSettings.RSAntiSnapbackInfo[device].timeout;
+            set => profileSettings.RSAntiSnapbackInfo[device].timeout = value;
         }
 
         public bool LSOuterBindInvert
         {
-            get => Global.LSModInfo[device].outerBindInvert;
-            set => Global.LSModInfo[device].outerBindInvert = value;
+            get => profileSettings.LSModInfo[device].outerBindInvert;
+            set => profileSettings.LSModInfo[device].outerBindInvert = value;
         }
 
         public bool RSOuterBindInvert
         {
-            get => Global.RSModInfo[device].outerBindInvert;
-            set => Global.RSModInfo[device].outerBindInvert = value;
+            get => profileSettings.RSModInfo[device].outerBindInvert;
+            set => profileSettings.RSModInfo[device].outerBindInvert = value;
         }
 
         public double LSOuterBindDead
         {
-            get => Global.LSModInfo[device].outerBindDeadZone / 100.0;
-            set => Global.LSModInfo[device].outerBindDeadZone = value * 100.0;
+            get => profileSettings.LSModInfo[device].outerBindDeadZone / 100.0;
+            set => profileSettings.LSModInfo[device].outerBindDeadZone = value * 100.0;
         }
 
         public double RSOuterBindDead
         {
-            get => Global.RSModInfo[device].outerBindDeadZone / 100.0;
-            set => Global.RSModInfo[device].outerBindDeadZone = value * 100.0;
+            get => profileSettings.RSModInfo[device].outerBindDeadZone / 100.0;
+            set => profileSettings.RSModInfo[device].outerBindDeadZone = value * 100.0;
         }
 
         public bool LSDeltaAccelEnabled
         {
-            get => Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled;
+            get => profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled;
             set
             {
-                bool temp = Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled;
+                bool temp = profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled;
                 if (temp == value) return;
 
-                Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled = value;
+                profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled = value;
                 LSDeltaAccelEnabledChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1376,58 +1376,58 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double LSDeltaMultiplier
         {
-            get => Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.multiplier;
+            get => profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.multiplier;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.multiplier = value;
+                profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.multiplier = value;
             }
         }
 
         public double LSDeltaMaxTravel
         {
-            get => Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.maxTravel;
+            get => profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.maxTravel;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.maxTravel = value;
+                profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.maxTravel = value;
             }
         }
 
         public double LSDeltaMinTravel
         {
-            get => Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minTravel;
+            get => profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minTravel;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minTravel = value;
+                profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minTravel = value;
             }
         }
 
         public double LSDeltaEasingDuration
         {
-            get => Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.easingDuration;
+            get => profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.easingDuration;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.easingDuration = value;
+                profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.easingDuration = value;
             }
         }
 
         public double LSDeltaMinFactor
         {
-            get => Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minfactor;
+            get => profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minfactor;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minfactor = value;
+                profileSettings.LSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minfactor = value;
             }
         }
 
         public bool RSDeltaAccelEnabled
         {
-            get => Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled;
+            get => profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled;
             set
             {
-                bool temp = Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled;
+                bool temp = profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled;
                 if (temp == value) return;
 
-                Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled = value;
+                profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.enabled = value;
                 RSDeltaAccelEnabledChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1435,46 +1435,46 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double RSDeltaMultiplier
         {
-            get => Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.multiplier;
+            get => profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.multiplier;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.multiplier = value;
+                profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.multiplier = value;
             }
         }
 
         public double RSDeltaMaxTravel
         {
-            get => Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.maxTravel;
+            get => profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.maxTravel;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.maxTravel = value;
+                profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.maxTravel = value;
             }
         }
 
         public double RSDeltaMinTravel
         {
-            get => Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minTravel;
+            get => profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minTravel;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minTravel = value;
+                profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minTravel = value;
             }
         }
 
         public double RSDeltaEasingDuration
         {
-            get => Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.easingDuration;
+            get => profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.easingDuration;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.easingDuration = value;
+                profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.easingDuration = value;
             }
         }
 
         public double RSDeltaMinFactor
         {
-            get => Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minfactor;
+            get => profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minfactor;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minfactor = value;
+                profileSettings.RSOutputSettings[device].outputSettings.controlSettings.deltaAccelSettings.minfactor = value;
             }
         }
 
@@ -1483,7 +1483,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 0;
-                switch (Global.LSOutputSettings[device].mode)
+                switch (profileSettings.LSOutputSettings[device].mode)
                 {
                     case StickMode.None:
                         index = 0; break;
@@ -1513,9 +1513,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                         break;
                 }
 
-                StickMode current = Global.LSOutputSettings[device].mode;
+                StickMode current = profileSettings.LSOutputSettings[device].mode;
                 if (temp == current) return;
-                Global.LSOutputSettings[device].mode = temp;
+                profileSettings.LSOutputSettings[device].mode = temp;
                 LSOutputIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1523,37 +1523,37 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double LSFlickRWC
         {
-            get => Global.LSOutputSettings[device].outputSettings.flickSettings.realWorldCalibration;
+            get => profileSettings.LSOutputSettings[device].outputSettings.flickSettings.realWorldCalibration;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.flickSettings.realWorldCalibration = value;
+                profileSettings.LSOutputSettings[device].outputSettings.flickSettings.realWorldCalibration = value;
             }
         }
 
         public double LSFlickThreshold
         {
-            get => Global.LSOutputSettings[device].outputSettings.flickSettings.flickThreshold;
+            get => profileSettings.LSOutputSettings[device].outputSettings.flickSettings.flickThreshold;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.flickSettings.flickThreshold = value;
+                profileSettings.LSOutputSettings[device].outputSettings.flickSettings.flickThreshold = value;
             }
         }
 
         public double LSFlickTime
         {
-            get => Global.LSOutputSettings[device].outputSettings.flickSettings.flickTime;
+            get => profileSettings.LSOutputSettings[device].outputSettings.flickSettings.flickTime;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.flickSettings.flickTime = value;
+                profileSettings.LSOutputSettings[device].outputSettings.flickSettings.flickTime = value;
             }
         }
 
         public double LSMinAngleThreshold
         {
-            get => Global.LSOutputSettings[device].outputSettings.flickSettings.minAngleThreshold;
+            get => profileSettings.LSOutputSettings[device].outputSettings.flickSettings.minAngleThreshold;
             set
             {
-                Global.LSOutputSettings[device].outputSettings.flickSettings.minAngleThreshold = value;
+                profileSettings.LSOutputSettings[device].outputSettings.flickSettings.minAngleThreshold = value;
             }
         }
 
@@ -1562,7 +1562,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 0;
-                switch (Global.RSOutputSettings[device].mode)
+                switch (profileSettings.RSOutputSettings[device].mode)
                 {
                     case StickMode.None:
                         break;
@@ -1592,9 +1592,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                         break;
                 }
 
-                StickMode current = Global.RSOutputSettings[device].mode;
+                StickMode current = profileSettings.RSOutputSettings[device].mode;
                 if (temp == current) return;
-                Global.RSOutputSettings[device].mode = temp;
+                profileSettings.RSOutputSettings[device].mode = temp;
                 RSOutputIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1602,48 +1602,48 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double RSFlickRWC
         {
-            get => Global.RSOutputSettings[device].outputSettings.flickSettings.realWorldCalibration;
+            get => profileSettings.RSOutputSettings[device].outputSettings.flickSettings.realWorldCalibration;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.flickSettings.realWorldCalibration = value;
+                profileSettings.RSOutputSettings[device].outputSettings.flickSettings.realWorldCalibration = value;
             }
         }
 
         public double RSFlickThreshold
         {
-            get => Global.RSOutputSettings[device].outputSettings.flickSettings.flickThreshold;
+            get => profileSettings.RSOutputSettings[device].outputSettings.flickSettings.flickThreshold;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.flickSettings.flickThreshold = value;
+                profileSettings.RSOutputSettings[device].outputSettings.flickSettings.flickThreshold = value;
             }
         }
 
         public double RSFlickTime
         {
-            get => Global.RSOutputSettings[device].outputSettings.flickSettings.flickTime;
+            get => profileSettings.RSOutputSettings[device].outputSettings.flickSettings.flickTime;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.flickSettings.flickTime = value;
+                profileSettings.RSOutputSettings[device].outputSettings.flickSettings.flickTime = value;
             }
         }
 
         public double RSMinAngleThreshold
         {
-            get => Global.RSOutputSettings[device].outputSettings.flickSettings.minAngleThreshold;
+            get => profileSettings.RSOutputSettings[device].outputSettings.flickSettings.minAngleThreshold;
             set
             {
-                Global.RSOutputSettings[device].outputSettings.flickSettings.minAngleThreshold = value;
+                profileSettings.RSOutputSettings[device].outputSettings.flickSettings.minAngleThreshold = value;
             }
         }
 
         public double L2DeadZone
         {
-            get => Global.L2ModInfo[device].deadZone / 255.0;
+            get => profileSettings.L2ModInfo[device].deadZone / 255.0;
             set
             {
-                double temp = Global.L2ModInfo[device].deadZone / 255.0;
+                double temp = profileSettings.L2ModInfo[device].deadZone / 255.0;
                 if (temp == value) return;
-                Global.L2ModInfo[device].deadZone = (byte)(value * 255.0);
+                profileSettings.L2ModInfo[device].deadZone = (byte)(value * 255.0);
                 L2DeadZoneChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1651,12 +1651,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double R2DeadZone
         {
-            get => Global.R2ModInfo[device].deadZone / 255.0;
+            get => profileSettings.R2ModInfo[device].deadZone / 255.0;
             set
             {
-                double temp = Global.R2ModInfo[device].deadZone / 255.0;
+                double temp = profileSettings.R2ModInfo[device].deadZone / 255.0;
                 if (temp == value) return;
-                Global.R2ModInfo[device].deadZone = (byte)(value * 255.0);
+                profileSettings.R2ModInfo[device].deadZone = (byte)(value * 255.0);
                 R2DeadZoneChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1664,94 +1664,94 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double L2MaxZone
         {
-            get => Global.L2ModInfo[device].MaxZone / 100.0;
-            set => Global.L2ModInfo[device].MaxZone = (int)(value * 100.0);
+            get => profileSettings.L2ModInfo[device].MaxZone / 100.0;
+            set => profileSettings.L2ModInfo[device].MaxZone = (int)(value * 100.0);
         }
 
         public double R2MaxZone
         {
-            get => Global.R2ModInfo[device].MaxZone / 100.0;
-            set => Global.R2ModInfo[device].MaxZone = (int)(value * 100.0);
+            get => profileSettings.R2ModInfo[device].MaxZone / 100.0;
+            set => profileSettings.R2ModInfo[device].MaxZone = (int)(value * 100.0);
         }
 
         public double L2AntiDeadZone
         {
-            get => Global.L2ModInfo[device].antiDeadZone / 100.0;
-            set => Global.L2ModInfo[device].antiDeadZone = (int)(value * 100.0);
+            get => profileSettings.L2ModInfo[device].antiDeadZone / 100.0;
+            set => profileSettings.L2ModInfo[device].antiDeadZone = (int)(value * 100.0);
         }
 
         public double R2AntiDeadZone
         {
-            get => Global.R2ModInfo[device].antiDeadZone / 100.0;
-            set => Global.R2ModInfo[device].antiDeadZone = (int)(value * 100.0);
+            get => profileSettings.R2ModInfo[device].antiDeadZone / 100.0;
+            set => profileSettings.R2ModInfo[device].antiDeadZone = (int)(value * 100.0);
         }
 
         public double L2MaxOutput
         {
-            get => Global.L2ModInfo[device].MaxOutput / 100.0;
-            set => Global.L2ModInfo[device].MaxOutput = value * 100.0;
+            get => profileSettings.L2ModInfo[device].MaxOutput / 100.0;
+            set => profileSettings.L2ModInfo[device].MaxOutput = value * 100.0;
         }
 
         public double R2MaxOutput
         {
-            get => Global.R2ModInfo[device].MaxOutput / 100.0;
-            set => Global.R2ModInfo[device].MaxOutput = value * 100.0;
+            get => profileSettings.R2ModInfo[device].MaxOutput / 100.0;
+            set => profileSettings.R2ModInfo[device].MaxOutput = value * 100.0;
         }
 
         public double L2Sens
         {
-            get => Global.L2Sens[device];
-            set => Global.L2Sens[device] = value;
+            get => profileSettings.L2Sens[device];
+            set => profileSettings.L2Sens[device] = value;
         }
 
         public double R2Sens
         {
-            get => Global.R2Sens[device];
-            set => Global.R2Sens[device] = value;
+            get => profileSettings.R2Sens[device];
+            set => profileSettings.R2Sens[device] = value;
         }
 
         public int L2OutputCurveIndex
         {
-            get => Global.getL2OutCurveMode(device);
+            get => profileSettings.GetL2OutCurveMode(device);
             set
             {
-                Global.setL2OutCurveMode(device, value);
+                profileSettings.SetL2OutCurveMode(device, value);
                 L2CustomCurveSelectedChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
         public int R2OutputCurveIndex
         {
-            get => Global.getR2OutCurveMode(device);
+            get => profileSettings.GetR2OutCurveMode(device);
             set
             {
-                Global.setR2OutCurveMode(device, value);
+                profileSettings.SetR2OutCurveMode(device, value);
                 R2CustomCurveSelectedChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
         public bool L2CustomCurveSelected
         {
-            get => Global.getL2OutCurveMode(device) == 6;
+            get => profileSettings.GetL2OutCurveMode(device) == 6;
         }
         public event EventHandler L2CustomCurveSelectedChanged;
 
         public bool R2CustomCurveSelected
         {
-            get => Global.getR2OutCurveMode(device) == 6;
+            get => profileSettings.GetR2OutCurveMode(device) == 6;
         }
         public event EventHandler R2CustomCurveSelectedChanged;
 
         public string L2CustomCurve
         {
-            get => Global.l2OutBezierCurveObj[device].CustomDefinition;
-            set => Global.l2OutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.L2R2, true);
+            get => profileSettings.L2OutBezierCurveObj[device].CustomDefinition;
+            set => profileSettings.L2OutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.L2R2, true);
         }
 
         public string R2CustomCurve
         {
-            get => Global.r2OutBezierCurveObj[device].CustomDefinition;
-            set => Global.r2OutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.L2R2, true);
+            get => profileSettings.R2OutBezierCurveObj[device].CustomDefinition;
+            set => profileSettings.R2OutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.L2R2, true);
         }
 
         private List<TriggerModeChoice> triggerModeChoices = new List<TriggerModeChoice>()
@@ -1772,13 +1772,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public TwoStageTriggerMode L2TriggerMode
         {
-            get => Global.L2OutputSettings[device].twoStageMode;
+            get => profileSettings.L2OutputSettings[device].twoStageMode;
             set
             {
-                TwoStageTriggerMode temp = Global.L2OutputSettings[device].TwoStageMode;
+                TwoStageTriggerMode temp = profileSettings.L2OutputSettings[device].TwoStageMode;
                 if (temp == value) return;
 
-                Global.L2OutputSettings[device].TwoStageMode = value;
+                profileSettings.L2OutputSettings[device].TwoStageMode = value;
                 L2TriggerModeChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1786,13 +1786,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public TwoStageTriggerMode R2TriggerMode
         {
-            get => Global.R2OutputSettings[device].TwoStageMode;
+            get => profileSettings.R2OutputSettings[device].TwoStageMode;
             set
             {
-                TwoStageTriggerMode temp = Global.R2OutputSettings[device].TwoStageMode;
+                TwoStageTriggerMode temp = profileSettings.R2OutputSettings[device].TwoStageMode;
                 if (temp == value) return;
 
-                Global.R2OutputSettings[device].twoStageMode = value;
+                profileSettings.R2OutputSettings[device].twoStageMode = value;
                 R2TriggerModeChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1800,14 +1800,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int L2HipFireTime
         {
-            get => Global.L2OutputSettings[device].hipFireMS;
-            set => Global.L2OutputSettings[device].hipFireMS = value;
+            get => profileSettings.L2OutputSettings[device].hipFireMS;
+            set => profileSettings.L2OutputSettings[device].hipFireMS = value;
         }
 
         public int R2HipFireTime
         {
-            get => Global.R2OutputSettings[device].hipFireMS;
-            set => Global.R2OutputSettings[device].hipFireMS = value;
+            get => profileSettings.R2OutputSettings[device].hipFireMS;
+            set => profileSettings.R2OutputSettings[device].hipFireMS = value;
         }
 
         private List<TriggerEffectChoice> triggerEffectChoices = new List<TriggerEffectChoice>()
@@ -1821,25 +1821,25 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public DS4Windows.InputDevices.TriggerEffects L2TriggerEffect
         {
-            get => Global.L2OutputSettings[device].triggerEffect;
+            get => profileSettings.L2OutputSettings[device].triggerEffect;
             set
             {
-                DS4Windows.InputDevices.TriggerEffects temp = Global.L2OutputSettings[device].TriggerEffect;
+                DS4Windows.InputDevices.TriggerEffects temp = profileSettings.L2OutputSettings[device].TriggerEffect;
                 if (temp == value) return;
 
-                Global.L2OutputSettings[device].TriggerEffect = value;
+                profileSettings.L2OutputSettings[device].TriggerEffect = value;
             }
         }
 
         public DS4Windows.InputDevices.TriggerEffects R2TriggerEffect
         {
-            get => Global.R2OutputSettings[device].triggerEffect;
+            get => profileSettings.R2OutputSettings[device].triggerEffect;
             set
             {
-                DS4Windows.InputDevices.TriggerEffects temp = Global.R2OutputSettings[device].TriggerEffect;
+                DS4Windows.InputDevices.TriggerEffects temp = profileSettings.R2OutputSettings[device].TriggerEffect;
                 if (temp == value) return;
 
-                Global.R2OutputSettings[device].TriggerEffect = value;
+                profileSettings.R2OutputSettings[device].TriggerEffect = value;
             }
         }
 
@@ -1954,7 +1954,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 0;
-                switch (Global.TouchOutMode[device])
+                switch (profileSettings.TouchOutMode[device])
                 {
                     case TouchpadOutMode.Mouse:
                         index = 0; break;
@@ -1987,11 +1987,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     default: break;
                 }
 
-                TouchpadOutMode current = Global.TouchOutMode[device];
+                TouchpadOutMode current = profileSettings.TouchOutMode[device];
                 if (temp == current) return;
                 //TouchpadOutputIndexChanging?.Invoke(this, EventArgs.Empty);
                 TouchpadOutputIndexChanging?.Invoke(this, current, temp);
-                Global.TouchOutMode[device] = temp;
+                profileSettings.TouchOutMode[device] = temp;
                 TouchpadOutputIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -2001,10 +2001,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool TouchSenExists
         {
-            get => Global.TouchSensitivity[device] != 0;
+            get => profileSettings.TouchSensitivity[device] != 0;
             set
             {
-                Global.TouchSensitivity[device] = value ? (byte)100 : (byte)0;
+                profileSettings.TouchSensitivity[device] = value ? (byte)100 : (byte)0;
                 TouchSenExistsChanged?.Invoke(this, EventArgs.Empty);
                 TouchSensChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -2013,12 +2013,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int TouchSens
         {
-            get => Global.TouchSensitivity[device];
+            get => profileSettings.TouchSensitivity[device];
             set
             {
-                int temp = Global.TouchSensitivity[device];
+                int temp = profileSettings.TouchSensitivity[device];
                 if (temp == value) return;
-                Global.TouchSensitivity[device] = (byte)value;
+                profileSettings.TouchSensitivity[device] = (byte)value;
                 if (value == 0) TouchSenExistsChanged?.Invoke(this, EventArgs.Empty);
                 TouchSensChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -2039,12 +2039,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int TouchScroll
         {
-            get => Global.ScrollSensitivity[device];
+            get => profileSettings.ScrollSensitivity[device];
             set
             {
-                int temp = Global.ScrollSensitivity[device];
+                int temp = profileSettings.ScrollSensitivity[device];
                 if (temp == value) return;
-                Global.ScrollSensitivity[device] = value;
+                profileSettings.ScrollSensitivity[device] = value;
                 if (value == 0) TouchScrollExistsChanged?.Invoke(this, EventArgs.Empty);
                 TouchScrollChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -2053,10 +2053,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool TouchTapExists
         {
-            get => Global.TapSensitivity[device] != 0;
+            get => profileSettings.TapSensitivity[device] != 0;
             set
             {
-                Global.TapSensitivity[device] = value ? (byte)100 : (byte)0;
+                profileSettings.TapSensitivity[device] = value ? (byte)100 : (byte)0;
                 TouchTapExistsChanged?.Invoke(this, EventArgs.Empty);
                 TouchTapChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -2065,12 +2065,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int TouchTap
         {
-            get => Global.TapSensitivity[device];
+            get => profileSettings.TapSensitivity[device];
             set
             {
-                int temp = Global.TapSensitivity[device];
+                int temp = profileSettings.TapSensitivity[device];
                 if (temp == value) return;
-                Global.TapSensitivity[device] = (byte)value;
+                profileSettings.TapSensitivity[device] = (byte)value;
                 if (value == 0) TouchTapExistsChanged?.Invoke(this, EventArgs.Empty);
                 TouchTapChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -2079,17 +2079,17 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool TouchDoubleTap
         {
-            get => Global.DoubleTap[device];
+            get => profileSettings.DoubleTap[device];
             set
             {
-                Global.DoubleTap[device] = value;
+                profileSettings.DoubleTap[device] = value;
             }
         }
 
         public bool TouchJitter
         {
-            get => Global.TouchpadJitterCompensation[device];
-            set => Global.TouchpadJitterCompensation[device] = value;
+            get => profileSettings.TouchpadJitterCompensation[device];
+            set => profileSettings.TouchpadJitterCompensation[device] = value;
         }
 
         private int[] touchpadInvertToValue = new int[4] { 0, 2, 1, 3 };
@@ -2097,165 +2097,165 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                int invert = Global.TouchpadInvert[device];
+                int invert = profileSettings.TouchpadInvert[device];
                 int index = Array.IndexOf(touchpadInvertToValue, invert);
                 return index;
             }
             set
             {
                 int invert = touchpadInvertToValue[value];
-                Global.TouchpadInvert[device] = invert;
+                profileSettings.TouchpadInvert[device] = invert;
             }
         }
 
         public bool LowerRightTouchRMB
         {
-            get => Global.LowerRCOn[device];
+            get => profileSettings.LowerRCOn[device];
             set
             {
-                Global.LowerRCOn[device] = value;
+                profileSettings.LowerRCOn[device] = value;
             }
         }
 
         public bool TouchpadClickPassthru
         {
-            get => Global.TouchClickPassthru[device];
+            get => profileSettings.TouchClickPassthru[device];
             set
             {
-                Global.TouchClickPassthru[device] = value;
+                profileSettings.TouchClickPassthru[device] = value;
             }
         }
 
         public bool StartTouchpadOff
         {
-            get => Global.StartTouchpadOff[device];
+            get => profileSettings.StartTouchpadOff[device];
             set
             {
-                Global.StartTouchpadOff[device] = value;
+                profileSettings.StartTouchpadOff[device] = value;
             }
         }
 
         public double TouchRelMouseRotation
         {
-            get => Global.TouchRelMouse[device].rotation * 180.0 / Math.PI;
-            set => Global.TouchRelMouse[device].rotation = value * Math.PI / 180.0;
+            get => profileSettings.TouchRelMouse[device].rotation * 180.0 / Math.PI;
+            set => profileSettings.TouchRelMouse[device].rotation = value * Math.PI / 180.0;
         }
 
         public double TouchRelMouseMinThreshold
         {
-            get => Global.TouchRelMouse[device].minThreshold;
+            get => profileSettings.TouchRelMouse[device].minThreshold;
             set
             {
-                double temp = Global.TouchRelMouse[device].minThreshold;
+                double temp = profileSettings.TouchRelMouse[device].minThreshold;
                 if (temp == value) return;
-                Global.TouchRelMouse[device].minThreshold = value;
+                profileSettings.TouchRelMouse[device].minThreshold = value;
             }
         }
 
         public bool TouchTrackball
         {
-            get => Global.TrackballMode[device];
-            set => Global.TrackballMode[device] = value;
+            get => profileSettings.TrackballMode[device];
+            set => profileSettings.TrackballMode[device] = value;
         }
 
         public double TouchTrackballFriction
         {
-            get => Global.TrackballFriction[device];
-            set => Global.TrackballFriction[device] = value;
+            get => profileSettings.TrackballFriction[device];
+            set => profileSettings.TrackballFriction[device] = value;
         }
 
         public int TouchAbsMouseMaxZoneX
         {
-            get => Global.TouchAbsMouse[device].maxZoneX;
+            get => profileSettings.TouchAbsMouse[device].maxZoneX;
             set
             {
-                int temp = Global.TouchAbsMouse[device].maxZoneX;
+                int temp = profileSettings.TouchAbsMouse[device].maxZoneX;
                 if (temp == value) return;
-                Global.TouchAbsMouse[device].maxZoneX = value;
+                profileSettings.TouchAbsMouse[device].maxZoneX = value;
             }
         }
 
         public int TouchAbsMouseMaxZoneY
         {
-            get => Global.TouchAbsMouse[device].maxZoneY;
+            get => profileSettings.TouchAbsMouse[device].maxZoneY;
             set
             {
-                int temp = Global.TouchAbsMouse[device].maxZoneY;
+                int temp = profileSettings.TouchAbsMouse[device].maxZoneY;
                 if (temp == value) return;
-                Global.TouchAbsMouse[device].maxZoneY = value;
+                profileSettings.TouchAbsMouse[device].maxZoneY = value;
             }
         }
 
         public bool TouchAbsMouseSnapCenter
         {
-            get => Global.TouchAbsMouse[device].snapToCenter;
+            get => profileSettings.TouchAbsMouse[device].snapToCenter;
             set
             {
-                bool temp = Global.TouchAbsMouse[device].snapToCenter;
+                bool temp = profileSettings.TouchAbsMouse[device].snapToCenter;
                 if (temp == value) return;
-                Global.TouchAbsMouse[device].snapToCenter = value;
+                profileSettings.TouchAbsMouse[device].snapToCenter = value;
             }
         }
 
 
         public int TouchMouseStickDeadZone
         {
-            get => Global.TouchMouseStickInf[device].deadZone;
-            set => Global.TouchMouseStickInf[device].deadZone = value;
+            get => profileSettings.TouchMouseStickInf[device].deadZone;
+            set => profileSettings.TouchMouseStickInf[device].deadZone = value;
         }
 
         public int TouchMouseStickMaxZone
         {
-            get => Global.TouchMouseStickInf[device].maxZone;
-            set => Global.TouchMouseStickInf[device].maxZone = value;
+            get => profileSettings.TouchMouseStickInf[device].maxZone;
+            set => profileSettings.TouchMouseStickInf[device].maxZone = value;
         }
 
         public int TouchMouseStickOutputStick
         {
-            get => (int)Global.TouchMouseStickInf[device].outputStick;
+            get => (int)profileSettings.TouchMouseStickInf[device].outputStick;
             set
             {
-                Global.TouchMouseStickInf[device].outputStick =
+                profileSettings.TouchMouseStickInf[device].outputStick =
                     (TouchMouseStickInfo.OutputStick)value;
             }
         }
 
         public int TouchMouseStickOutputAxes
         {
-            get => (int)Global.TouchMouseStickInf[device].outputStickDir;
+            get => (int)profileSettings.TouchMouseStickInf[device].outputStickDir;
             set
             {
-                Global.TouchMouseStickInf[device].outputStickDir =
+                profileSettings.TouchMouseStickInf[device].outputStickDir =
                     (TouchMouseStickInfo.OutputStickAxes)value;
             }
         }
 
         public double TouchMouseStickAntiDeadX
         {
-            get => Global.TouchMouseStickInf[device].antiDeadX * 100.0;
-            set => Global.TouchMouseStickInf[device].antiDeadX = value * 0.01;
+            get => profileSettings.TouchMouseStickInf[device].antiDeadX * 100.0;
+            set => profileSettings.TouchMouseStickInf[device].antiDeadX = value * 0.01;
         }
 
         public double TouchMouseStickAntiDeadY
         {
-            get => Global.TouchMouseStickInf[device].antiDeadY * 100.0;
-            set => Global.TouchMouseStickInf[device].antiDeadY = value * 0.01;
+            get => profileSettings.TouchMouseStickInf[device].antiDeadY * 100.0;
+            set => profileSettings.TouchMouseStickInf[device].antiDeadY = value * 0.01;
         }
 
         public int TouchMouseStickVertScale
         {
-            get => Global.TouchMouseStickInf[device].vertScale;
-            set => Global.TouchMouseStickInf[device].vertScale = value;
+            get => profileSettings.TouchMouseStickInf[device].vertScale;
+            set => profileSettings.TouchMouseStickInf[device].vertScale = value;
         }
 
         public bool TouchMouseStickMaxOutputEnabled
         {
-            get => Global.TouchMouseStickInf[device].maxOutputEnabled;
+            get => profileSettings.TouchMouseStickInf[device].maxOutputEnabled;
             set
             {
-                bool temp = Global.TouchMouseStickInf[device].maxOutputEnabled;
+                bool temp = profileSettings.TouchMouseStickInf[device].maxOutputEnabled;
                 if (temp == value) return;
-                Global.TouchMouseStickInf[device].maxOutputEnabled = value;
+                profileSettings.TouchMouseStickInf[device].maxOutputEnabled = value;
                 TouchMouseStickMaxOutputChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -2263,60 +2263,60 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double TouchMouseStickMaxOutput
         {
-            get => Global.TouchMouseStickInf[device].maxOutput;
-            set => Global.TouchMouseStickInf[device].maxOutput = value;
+            get => profileSettings.TouchMouseStickInf[device].maxOutput;
+            set => profileSettings.TouchMouseStickInf[device].maxOutput = value;
         }
 
         public bool TouchMouseStickInvertX
         {
-            get => (Global.TouchMouseStickInf[device].inverted & 1) == 1;
+            get => (profileSettings.TouchMouseStickInf[device].inverted & 1) == 1;
             set
             {
                 if (value)
                 {
-                    Global.TouchMouseStickInf[device].inverted |= 1;
+                    profileSettings.TouchMouseStickInf[device].inverted |= 1;
                 }
                 else
                 {
-                    uint temp = Global.TouchMouseStickInf[device].inverted;
-                    Global.TouchMouseStickInf[device].inverted = (uint)(temp & ~1);
+                    uint temp = profileSettings.TouchMouseStickInf[device].inverted;
+                    profileSettings.TouchMouseStickInf[device].inverted = (uint)(temp & ~1);
                 }
             }
         }
 
         public bool TouchMouseStickInvertY
         {
-            get => (Global.TouchMouseStickInf[device].inverted & 2) == 2;
+            get => (profileSettings.TouchMouseStickInf[device].inverted & 2) == 2;
             set
             {
                 if (value)
                 {
-                    Global.TouchMouseStickInf[device].inverted |= 2;
+                    profileSettings.TouchMouseStickInf[device].inverted |= 2;
                 }
                 else
                 {
-                    uint temp = Global.TouchMouseStickInf[device].inverted;
-                    Global.TouchMouseStickInf[device].inverted = (uint)(temp & ~2);
+                    uint temp = profileSettings.TouchMouseStickInf[device].inverted;
+                    profileSettings.TouchMouseStickInf[device].inverted = (uint)(temp & ~2);
                 }
             }
         }
 
         public bool TouchMouseStickSmooth
         {
-            get => Global.TouchMouseStickInf[device].UseSmoothing;
-            set => Global.TouchMouseStickInf[device].UseSmoothing = value;
+            get => profileSettings.TouchMouseStickInf[device].UseSmoothing;
+            set => profileSettings.TouchMouseStickInf[device].UseSmoothing = value;
         }
 
         public double TouchMouseStickOneEuroMinCutoff
         {
-            get => Global.TouchMouseStickInf[device].MinCutoff;
-            set => Global.TouchMouseStickInf[device].MinCutoff = value;
+            get => profileSettings.TouchMouseStickInf[device].MinCutoff;
+            set => profileSettings.TouchMouseStickInf[device].MinCutoff = value;
         }
 
         public double TouchMouseStickOneEuroBeta
         {
-            get => Global.TouchMouseStickInf[device].Beta;
-            set => Global.TouchMouseStickInf[device].Beta = value;
+            get => profileSettings.TouchMouseStickInf[device].Beta;
+            set => profileSettings.TouchMouseStickInf[device].Beta = value;
         }
 
         private List<EnumChoiceSelection<StickOutCurve.Curve>> touchMStickOutputCurveOptions =
@@ -2334,24 +2334,24 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public StickOutCurve.Curve TouchMouseStickOutputCurve
         {
-            get => Global.TouchMouseStickInf[device].outputCurve;
-            set => Global.TouchMouseStickInf[device].outputCurve = value;
+            get => profileSettings.TouchMouseStickInf[device].outputCurve;
+            set => profileSettings.TouchMouseStickInf[device].outputCurve = value;
         }
 
         public bool TouchMouseStickTrackball
         {
-            get => Global.TouchMouseStickInf[device].trackballMode;
-            set => Global.TouchMouseStickInf[device].trackballMode = value;
+            get => profileSettings.TouchMouseStickInf[device].trackballMode;
+            set => profileSettings.TouchMouseStickInf[device].trackballMode = value;
         }
 
         public double TouchMouseStickTrackballFriction
         {
-            get => Global.TouchMouseStickInf[device].trackballFriction;
+            get => profileSettings.TouchMouseStickInf[device].trackballFriction;
             set
             {
-                double temp = Global.TouchMouseStickInf[device].trackballFriction;
+                double temp = profileSettings.TouchMouseStickInf[device].trackballFriction;
                 if (temp == value) return;
-                Global.TouchMouseStickInf[device].trackballFriction = value;
+                profileSettings.TouchMouseStickInf[device].trackballFriction = value;
                 TouchMouseStickTrackballFrictionChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -2359,92 +2359,92 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double TouchMouseStickRotation
         {
-            get => Global.TouchMouseStickInf[device].rotationRad * 180.0 / Math.PI;
-            set => Global.TouchMouseStickInf[device].rotationRad = value * Math.PI / 180.0;
+            get => profileSettings.TouchMouseStickInf[device].rotationRad * 180.0 / Math.PI;
+            set => profileSettings.TouchMouseStickInf[device].rotationRad = value * Math.PI / 180.0;
         }
 
         public bool GyroMouseTurns
         {
-            get => Global.GyroTriggerTurns[device];
-            set => Global.GyroTriggerTurns[device] = value;
+            get => profileSettings.GyroTriggerTurns[device];
+            set => profileSettings.GyroTriggerTurns[device] = value;
         }
 
         public int GyroSensitivity
         {
-            get => Global.GyroSensitivity[device];
-            set => Global.GyroSensitivity[device] = value;
+            get => profileSettings.GyroSensitivity[device];
+            set => profileSettings.GyroSensitivity[device] = value;
         }
 
         public int GyroVertScale
         {
-            get => Global.GyroSensVerticalScale[device];
-            set => Global.GyroSensVerticalScale[device] = value;
+            get => profileSettings.GyroSensVerticalScale[device];
+            set => profileSettings.GyroSensVerticalScale[device] = value;
         }
 
         public int GyroMouseEvalCondIndex
         {
-            get => Global.getSATriggerCond(device) ? 0 : 1;
-            set => Global.SetSaTriggerCond(device, value == 0 ? "and" : "or");
+            get => profileSettings.GetSATriggerCond(device) ? 0 : 1;
+            set => profileSettings.SetSaTriggerCond(device, value == 0 ? "and" : "or");
         }
 
         public int GyroMouseXAxis
         {
-            get => Global.GyroMouseHorizontalAxis[device];
-            set => Global.GyroMouseHorizontalAxis[device] = value;
+            get => profileSettings.GyroMouseHorizontalAxis[device];
+            set => profileSettings.GyroMouseHorizontalAxis[device] = value;
         }
 
         public double GyroMouseMinThreshold
         {
-            get => Global.GyroMouseInfo[device].minThreshold;
+            get => profileSettings.GyroMouseInfo[device].minThreshold;
             set
             {
-                double temp = Global.GyroMouseInfo[device].minThreshold;
+                double temp = profileSettings.GyroMouseInfo[device].minThreshold;
                 if (temp == value) return;
-                Global.GyroMouseInfo[device].minThreshold = value;
+                profileSettings.GyroMouseInfo[device].minThreshold = value;
             }
         }
 
         public bool GyroMouseInvertX
         {
-            get => (Global.GyroInvert[device] & 2) == 2;
+            get => (profileSettings.GyroInvert[device] & 2) == 2;
             set
             {
                 if (value)
                 {
-                    Global.GyroInvert[device] |= 2;
+                    profileSettings.GyroInvert[device] |= 2;
                 }
                 else
                 {
-                    Global.GyroInvert[device] &= ~2;
+                    profileSettings.GyroInvert[device] &= ~2;
                 }
             }
         }
 
         public bool GyroMouseInvertY
         {
-            get => (Global.GyroInvert[device] & 1) == 1;
+            get => (profileSettings.GyroInvert[device] & 1) == 1;
             set
             {
                 if (value)
                 {
-                    Global.GyroInvert[device] |= 1;
+                    profileSettings.GyroInvert[device] |= 1;
                 }
                 else
                 {
-                    Global.GyroInvert[device] &= ~1;
+                    profileSettings.GyroInvert[device] &= ~1;
                 }
             }
         }
 
         public bool GyroMouseSmooth
         {
-            get => Global.GyroMouseInfo[device].enableSmoothing;
+            get => profileSettings.GyroMouseInfo[device].enableSmoothing;
             set
             {
-                GyroMouseInfo tempInfo = Global.GyroMouseInfo[device];
+                GyroMouseInfo tempInfo = profileSettings.GyroMouseInfo[device];
                 if (tempInfo.enableSmoothing == value) return;
 
-                Global.GyroMouseInfo[device].enableSmoothing = value;
+                profileSettings.GyroMouseInfo[device].enableSmoothing = value;
                 GyroMouseSmoothChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -2461,7 +2461,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (gyroMouseSmoothMethodIndex == value) return;
 
-                GyroMouseInfo tempInfo = Global.GyroMouseInfo[device];
+                GyroMouseInfo tempInfo = profileSettings.GyroMouseInfo[device];
                 switch (value)
                 {
                     case 0:
@@ -2487,7 +2487,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 Visibility result = Visibility.Collapsed;
-                switch (Global.GyroMouseInfo[device].smoothingMethod)
+                switch (profileSettings.GyroMouseInfo[device].smoothingMethod)
                 {
                     case GyroMouseInfo.SmoothingMethod.WeightedAverage:
                         result = Visibility.Visible;
@@ -2507,7 +2507,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 Visibility result = Visibility.Collapsed;
-                switch (Global.GyroMouseInfo[device].smoothingMethod)
+                switch (profileSettings.GyroMouseInfo[device].smoothingMethod)
                 {
                     case GyroMouseInfo.SmoothingMethod.OneEuro:
                     case GyroMouseInfo.SmoothingMethod.None:
@@ -2525,20 +2525,20 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double GyroMouseSmoothWeight
         {
-            get => Global.GyroMouseInfo[device].smoothingWeight;
-            set => Global.GyroMouseInfo[device].smoothingWeight = value;
+            get => profileSettings.GyroMouseInfo[device].smoothingWeight;
+            set => profileSettings.GyroMouseInfo[device].smoothingWeight = value;
         }
 
         public double GyroMouseOneEuroMinCutoff
         {
-            get => Global.GyroMouseInfo[device].MinCutoff;
-            set => Global.GyroMouseInfo[device].MinCutoff = value;
+            get => profileSettings.GyroMouseInfo[device].MinCutoff;
+            set => profileSettings.GyroMouseInfo[device].MinCutoff = value;
         }
 
         public double GyroMouseOneEuroBeta
         {
-            get => Global.GyroMouseInfo[device].Beta;
-            set => Global.GyroMouseInfo[device].Beta = value;
+            get => profileSettings.GyroMouseInfo[device].Beta;
+            set => profileSettings.GyroMouseInfo[device].Beta = value;
         }
 
 
@@ -2554,7 +2554,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (gyroMouseStickSmoothMethodIndex == value) return;
 
-                GyroMouseStickInfo tempInfo = Global.GyroMouseStickInf[device];
+                GyroMouseStickInfo tempInfo = profileSettings.GyroMouseStickInf[device];
                 switch (value)
                 {
                     case 0:
@@ -2580,7 +2580,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 Visibility result = Visibility.Collapsed;
-                switch (Global.GyroMouseStickInf[device].smoothingMethod)
+                switch (profileSettings.GyroMouseStickInf[device].smoothingMethod)
                 {
                     case GyroMouseStickInfo.SmoothingMethod.WeightedAverage:
                         result = Visibility.Visible;
@@ -2599,7 +2599,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 Visibility result = Visibility.Collapsed;
-                switch (Global.GyroMouseStickInf[device].smoothingMethod)
+                switch (profileSettings.GyroMouseStickInf[device].smoothingMethod)
                 {
                     case GyroMouseStickInfo.SmoothingMethod.OneEuro:
                     case GyroMouseStickInfo.SmoothingMethod.None:
@@ -2616,20 +2616,20 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double GyroMouseStickSmoothWeight
         {
-            get => Global.GyroMouseStickInf[device].smoothWeight;
-            set => Global.GyroMouseStickInf[device].smoothWeight = value;
+            get => profileSettings.GyroMouseStickInf[device].smoothWeight;
+            set => profileSettings.GyroMouseStickInf[device].smoothWeight = value;
         }
 
         public double GyroMouseStickOneEuroMinCutoff
         {
-            get => Global.GyroMouseStickInf[device].MinCutoff;
-            set => Global.GyroMouseStickInf[device].MinCutoff = value;
+            get => profileSettings.GyroMouseStickInf[device].MinCutoff;
+            set => profileSettings.GyroMouseStickInf[device].MinCutoff = value;
         }
 
         public double GyroMouseStickOneEuroBeta
         {
-            get => Global.GyroMouseStickInf[device].Beta;
-            set => Global.GyroMouseStickInf[device].Beta = value;
+            get => profileSettings.GyroMouseStickInf[device].Beta;
+            set => profileSettings.GyroMouseStickInf[device].Beta = value;
         }
 
 
@@ -3318,13 +3318,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 triggerName.Add("None");
             }
 
-            Global.TouchDisInvertTriggers[device] = triggerList.ToArray();
+            profileSettings.TouchDisInvertTriggers[device] = triggerList.ToArray();
             TouchDisInvertString = string.Join(", ", triggerName.ToArray());
         }
 
         public void PopulateTouchDisInver(ContextMenu menu)
         {
-            int[] triggers = Global.TouchDisInvertTriggers[device];
+            int[] triggers = profileSettings.TouchDisInvertTriggers[device];
             int itemCount = menu.Items.Count;
             List<string> triggerName = new List<string>();
             foreach (int trigid in triggers)
