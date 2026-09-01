@@ -409,10 +409,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public sbyte LeftStickDriftXAxis
         {
-            get => Global.LeftStickDriftXAxis[device];
+            get => profileSettings.LeftStickDriftXAxis[device];
             set
             {
-                Global.LeftStickDriftXAxis[device] = value;
+                profileSettings.LeftStickDriftXAxis[device] = value;
                 LeftStickDriftXAxisChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -421,10 +421,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public sbyte LeftStickDriftYAxis
         {
-            get => Global.LeftStickDriftYAxis[device];
+            get => profileSettings.LeftStickDriftYAxis[device];
             set
             {
-                Global.LeftStickDriftYAxis[device] = value;
+                profileSettings.LeftStickDriftYAxis[device] = value;
                 LeftStickDriftYAxisChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -433,10 +433,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public sbyte RightStickDriftXAxis
         {
-            get => Global.RightStickDriftXAxis[device];
+            get => profileSettings.RightStickDriftXAxis[device];
             set
             {
-                Global.RightStickDriftXAxis[device] = value;
+                profileSettings.RightStickDriftXAxis[device] = value;
                 RightStickDriftXAxisChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -445,10 +445,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public sbyte RightStickDriftYAxis
         {
-            get => Global.RightStickDriftYAxis[device];
+            get => profileSettings.RightStickDriftYAxis[device];
             set
             {
-                Global.RightStickDriftYAxis[device] = value;
+                profileSettings.RightStickDriftYAxis[device] = value;
                 RightStickDriftYAxisChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -478,10 +478,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool UseDs3PitchRollSim
         {
-            get => Global.UseDs3PitchRollSim;
+            get => profileSettings.UseDs3PitchRollSim;
             set
             {
-                if (Global.UseDs3PitchRollSim != value)
+                if (profileSettings.UseDs3PitchRollSim != value)
                 {
                     HasUseDs3PitchRollSimChanged = true;
                 }
@@ -489,7 +489,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 {
                     HasUseDs3PitchRollSimChanged = false;
                 }
-                Global.UseDs3PitchRollSim = value;
+                profileSettings.UseDs3PitchRollSim = value;
             }
         }
 
@@ -537,8 +537,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool UseControllerReadout
         {
-            get => Global.DS4Mapping;
-            set => Global.DS4Mapping = value;
+            get => profileSettings.DS4Mapping;
+            set => profileSettings.DS4Mapping = value;
         }
 
         public int ButtonMouseSensitivity
@@ -698,8 +698,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool EnableOutputDataToDS4
         {
-            get => Global.EnableOutputDataToDS4[device];
-            set => Global.EnableOutputDataToDS4[device] = value;
+            get => profileSettings.EnableOutputDataToDS4[device];
+            set => profileSettings.EnableOutputDataToDS4[device] = value;
         }
 
         public bool LaunchProgramExists
@@ -760,13 +760,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool DInputOnly
         {
-            get => Global.DinputOnly[device];
+            get => profileSettings.DinputOnly[device];
             set
             {
-                bool temp = Global.DinputOnly[device];
+                bool temp = profileSettings.DinputOnly[device];
                 if (temp == value) return;
 
-                Global.DinputOnly[device] = value;
+                profileSettings.DinputOnly[device] = value;
                 DInputOnlyChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -812,12 +812,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool IdleDisconnectExists
         {
-            get => Global.IdleDisconnectTimeout[device] != 0;
+            get => profileSettings.IdleDisconnectTimeout[device] != 0;
             set
             {
                 // If enabling Idle Disconnect, set default time.
                 // Otherwise, set time to 0 to mean disabled
-                Global.IdleDisconnectTimeout[device] = value ?
+                profileSettings.IdleDisconnectTimeout[device] = value ?
                     BackingStore.DEFAULT_ENABLE_IDLE_DISCONN_MINS * 60 : 0;
 
                 IdleDisconnectChanged?.Invoke(this, EventArgs.Empty);
@@ -828,12 +828,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int IdleDisconnect
         {
-            get => Global.IdleDisconnectTimeout[device] / 60;
+            get => profileSettings.IdleDisconnectTimeout[device] / 60;
             set
             {
-                int temp = Global.IdleDisconnectTimeout[device] / 60;
+                int temp = profileSettings.IdleDisconnectTimeout[device] / 60;
                 if (temp == value) return;
-                Global.IdleDisconnectTimeout[device] = value * 60;
+                profileSettings.IdleDisconnectTimeout[device] = value * 60;
                 IdleDisconnectChanged?.Invoke(this, EventArgs.Empty);
                 IdleDisconnectExistsChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -3000,7 +3000,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             funcDevNum = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : 0;
             tempControllerIndex = ControllerTypeIndex;
             Global.outDevTypeTemp[device] = OutContType.X360;
-            tempBtPollRate = Global.BTPollRate[device];
+            tempBtPollRate = profileSettings.BTPollRate[device];
 
             outputMouseSpeed = CalculateOutputMouseSpeed(ButtonMouseSensitivity);
             mouseOffsetSpeed = RawButtonMouseOffset * outputMouseSpeed;
@@ -3717,7 +3717,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             tempControllerIndex = ControllerTypeIndex;
             Global.outDevTypeTemp[device] = Global.OutContType[device];
-            tempBtPollRate = Global.BTPollRate[device];
+            tempBtPollRate = profileSettings.BTPollRate[device];
             outputMouseSpeed = CalculateOutputMouseSpeed(ButtonMouseSensitivity);
             mouseOffsetSpeed = RawButtonMouseOffset * outputMouseSpeed;
             gyroMouseSmoothMethodIndex = FindGyroMouseSmoothMethodIndex();
