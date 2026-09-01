@@ -25,7 +25,7 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 9 | ViewModel DI 移行 (Pattern C) | **完了** | 2026-09-01 | `IViewModelFactory.cs`, `ViewModelFactory.cs`, DI登録, View直接new全廃, `PatternCViewModelTests.cs`, **Step9-4-α監査合格**, **実機検証CP3全件合格** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **完了** | 2026-09-01 | `Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
 | Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **一部進行中** | - | [DI]/[Legacy] Trace ログ整備は着手済み。呼び出し元DI直接参照化（Step10-2）を前倒しで追加実施中のため、実機検証CP4はStep10-2完了後に実施 |
-| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-B-1進行中（B-1-7完了、B-1-8実装完了・検証待ち）** | 2026-09-02 | Stage1-A-1〜A-9、ベースライン実機検証完了。`ProfileSettingsViewModel` のスティック、トリガー、タッチパッド、ジャイロ、ライトバー・ランブル、ボタン・マウス出力、SA・デッドゾーンを DI 直接参照化。残余設定・デバイスオプションも移行済み。B-1-8はユーザー側テスト・コミット待ち。`△`・未実施項目は DI 化完了後の調査・検討へ引継ぎ。 |
+| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-B-1完了（B-1-1〜B-1-9、検証待ち）** | 2026-09-02 | `ProfileSettingsViewModel` の設定カテゴリ全般を DI 直接参照化。次は Stage2-B-2 のプロファイル操作 DI 接続。`Mapping.cs` の入力ループ・出力処理は B-4 で扱う。`△`・未実施項目は DI 化完了後の調査・検討へ引継ぎ。 |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10・Step10-2完了時） |
 
 ---

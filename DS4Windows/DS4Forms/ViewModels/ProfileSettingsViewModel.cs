@@ -459,11 +459,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int DebouncingMs
         {
-            get => Global.DebouncingMs[device];
+            get => profileSettings.DebouncingMs[device];
             set
             {
-                HasDebouncingMsChanged = Global.DebouncingMs[device] != value;
-                Global.DebouncingMs[device] = value;
+                HasDebouncingMsChanged = profileSettings.DebouncingMs[device] != value;
+                profileSettings.DebouncingMs[device] = value;
                 DebouncingMsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -3387,13 +3387,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 alwaysOnItem.IsChecked = true;
             }
 
-            Global.SATriggers[device] = string.Join(",", triggerList.ToArray());
+            profileSettings.SATriggers[device] = string.Join(",", triggerList.ToArray());
             GyroMouseTrigDisplay = string.Join(", ", triggerName.ToArray());
         }
 
         public void PopulateGyroMouseTrig(ContextMenu menu)
         {
-            string[] triggers = Global.SATriggers[device].Split(',');
+            string[] triggers = profileSettings.SATriggers[device].Split(',');
             int itemCount = menu.Items.Count;
             List<string> triggerName = new List<string>();
             foreach (string trig in triggers)
@@ -3462,13 +3462,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 alwaysOnItem.IsChecked = true;
             }
 
-            Global.SAMousestickTriggers[device] = string.Join(",", triggerList.ToArray());
+            profileSettings.SAMousestickTriggers[device] = string.Join(",", triggerList.ToArray());
             GyroMouseStickTrigDisplay = string.Join(", ", triggerName.ToArray());
         }
 
         public void PopulateGyroMouseStickTrig(ContextMenu menu)
         {
-            string[] triggers = Global.SAMousestickTriggers[device].Split(',');
+            string[] triggers = profileSettings.SAMousestickTriggers[device].Split(',');
             int itemCount = menu.Items.Count;
             List<string> triggerName = new List<string>();
             foreach (string trig in triggers)
