@@ -2506,20 +2506,20 @@ namespace DS4Windows
             return m_Config.gyroOutMode[index] == GyroOutMode.Controls;
         }
 
-        public static string[] SATriggers => m_Config.sATriggers;
+        public static string[] SATriggers => ProfileSettingsServiceInstance.SATriggers;
         public static string getSATriggers(int index)
         {
-            return m_Config.sATriggers[index];
+            return ProfileSettingsServiceInstance.GetSATriggers(index);
         }
 
-        public static bool[] SATriggerCond => m_Config.sATriggerCond;
+        public static bool[] SATriggerCond => ProfileSettingsServiceInstance.SATriggerCond;
         public static bool getSATriggerCond(int index)
         {
-            return m_Config.sATriggerCond[index];
+            return ProfileSettingsServiceInstance.GetSATriggerCond(index);
         }
         public static void SetSaTriggerCond(int index, string text)
         {
-            m_Config.SetSaTriggerCond(index, text);
+            ProfileSettingsServiceInstance.SetSaTriggerCond(index, text);
         }
 
 
@@ -2529,20 +2529,20 @@ namespace DS4Windows
             return ProfileSettingsServiceInstance.GetGyroOutMode(device);
         }
 
-        public static string[] SAMousestickTriggers => m_Config.sAMouseStickTriggers;
+        public static string[] SAMousestickTriggers => ProfileSettingsServiceInstance.SAMousestickTriggers;
         public static string GetSAMouseStickTriggers(int device)
         {
-            return m_Config.sAMouseStickTriggers[device];
+            return ProfileSettingsServiceInstance.GetSAMouseStickTriggers(device);
         }
 
-        public static bool[] SAMouseStickTriggerCond => m_Config.sAMouseStickTriggerCond;
+        public static bool[] SAMouseStickTriggerCond => ProfileSettingsServiceInstance.SAMouseStickTriggerCond;
         public static bool GetSAMouseStickTriggerCond(int device)
         {
-            return m_Config.sAMouseStickTriggerCond[device];
+            return ProfileSettingsServiceInstance.GetSAMouseStickTriggerCond(device);
         }
         public static void SetSaMouseStickTriggerCond(int index, string text)
         {
-            m_Config.SetSaMouseStickTriggerCond(index, text);
+            ProfileSettingsServiceInstance.SetSaMouseStickTriggerCond(index, text);
         }
 
         public static bool[] GyroMouseStickTriggerTurns => ProfileSettingsServiceInstance.GyroMouseStickTriggerTurns;
@@ -2573,16 +2573,16 @@ namespace DS4Windows
         public static void SetGyroMouseStickToggle(int index, bool value, ControlService control)
             => ProfileSettingsServiceInstance.SetGyroMouseStickToggle(index, value, control);
 
-        public static SASteeringWheelEmulationAxisType[] SASteeringWheelEmulationAxis => m_Config.sASteeringWheelEmulationAxis;
+        public static SASteeringWheelEmulationAxisType[] SASteeringWheelEmulationAxis => ProfileSettingsServiceInstance.SASteeringWheelEmulationAxis;
         public static SASteeringWheelEmulationAxisType GetSASteeringWheelEmulationAxis(int index)
         {
-            return m_Config.sASteeringWheelEmulationAxis[index];
+            return ProfileSettingsServiceInstance.GetSASteeringWheelEmulationAxis(index);
         }
 
-        public static int[] SASteeringWheelEmulationRange => m_Config.sASteeringWheelEmulationRange;
+        public static int[] SASteeringWheelEmulationRange => ProfileSettingsServiceInstance.SASteeringWheelEmulationRange;
         public static int GetSASteeringWheelEmulationRange(int index)
         {
-            return m_Config.sASteeringWheelEmulationRange[index];
+            return ProfileSettingsServiceInstance.GetSASteeringWheelEmulationRange(index);
         }
 
         public static int[][] TouchDisInvertTriggers => ProfileSettingsServiceInstance.TouchDisInvertTriggers;
@@ -2648,7 +2648,7 @@ namespace DS4Windows
         }
 
         public static SteeringWheelSmoothingInfo[] WheelSmoothInfo => ProfileSettingsServiceInstance.WheelSmoothInfo;
-        public static int[] SAWheelFuzzValues => m_Config.saWheelFuzzValues;
+        public static int[] SAWheelFuzzValues => ProfileSettingsServiceInstance.SAWheelFuzzValues;
 
         //public static DS4Color[] MainColor => m_Config.m_Leds;
         public static ref DS4Color getMainColor(int index)
@@ -2753,16 +2753,16 @@ namespace DS4Windows
             //return m_Config.r2Deadzone[index];
         }
 
-        public static double[] SXDeadzone => m_Config.SXDeadzone;
+        public static double[] SXDeadzone => ProfileSettingsServiceInstance.SXDeadzone;
         public static double getSXDeadzone(int index)
         {
-            return m_Config.SXDeadzone[index];
+            return ProfileSettingsServiceInstance.SXDeadzone[index];
         }
 
-        public static double[] SZDeadzone => m_Config.SZDeadzone;
+        public static double[] SZDeadzone => ProfileSettingsServiceInstance.SZDeadzone;
         public static double getSZDeadzone(int index)
         {
-            return m_Config.SZDeadzone[index];
+            return ProfileSettingsServiceInstance.SZDeadzone[index];
         }
 
         //public static int[] LSDeadzone => m_Config.LSDeadzone;
@@ -2831,16 +2831,16 @@ namespace DS4Windows
             //return m_Config.RSMaxzone[index];
         }
 
-        public static double[] SXMaxzone => m_Config.SXMaxzone;
+        public static double[] SXMaxzone => ProfileSettingsServiceInstance.SXMaxzone;
         public static double getSXMaxzone(int index)
         {
-            return m_Config.SXMaxzone[index];
+            return ProfileSettingsServiceInstance.SXMaxzone[index];
         }
 
-        public static double[] SZMaxzone => m_Config.SZMaxzone;
+        public static double[] SZMaxzone => ProfileSettingsServiceInstance.SZMaxzone;
         public static double getSZMaxzone(int index)
         {
-            return m_Config.SZMaxzone[index];
+            return ProfileSettingsServiceInstance.SZMaxzone[index];
         }
 
         //public static int[] L2AntiDeadzone => m_Config.l2AntiDeadzone;
@@ -2903,16 +2903,16 @@ namespace DS4Windows
             return m_Config.r2Sens[index];
         }
 
-        public static double[] SXSens => m_Config.SXSens;
+        public static double[] SXSens => ProfileSettingsServiceInstance.SXSens;
         public static double getSXSens(int index)
         {
-            return m_Config.SXSens[index];
+            return ProfileSettingsServiceInstance.SXSens[index];
         }
 
-        public static double[] SZSens => m_Config.SZSens;
+        public static double[] SZSens => ProfileSettingsServiceInstance.SZSens;
         public static double getSZSens(int index)
         {
-            return m_Config.SZSens[index];
+            return ProfileSettingsServiceInstance.SZSens[index];
         }
 
         public static double[] LSSens => ProfileSettingsServiceInstance.LSSens;
@@ -3036,23 +3036,23 @@ namespace DS4Windows
 
         public static void setSXOutCurveMode(int index, int value)
         {
-            m_Config.setSXOutCurveMode(index, value);
+            ProfileSettingsServiceInstance.SetSxOutCurveMode(index, value);
         }
         public static int getSXOutCurveMode(int index)
         {
-            return m_Config.getSXOutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetSxOutCurveMode(index);
         }
-        public static BezierCurve[] sxOutBezierCurveObj => m_Config.sxOutBezierCurveObj;
+        public static BezierCurve[] sxOutBezierCurveObj => ProfileSettingsServiceInstance.SxOutBezierCurveObj;
 
         public static void setSZOutCurveMode(int index, int value)
         {
-            m_Config.setSZOutCurveMode(index, value);
+            ProfileSettingsServiceInstance.SetSzOutCurveMode(index, value);
         }
         public static int getSZOutCurveMode(int index)
         {
-            return m_Config.getSZOutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetSzOutCurveMode(index);
         }
-        public static BezierCurve[] szOutBezierCurveObj => m_Config.szOutBezierCurveObj;
+        public static BezierCurve[] szOutBezierCurveObj => ProfileSettingsServiceInstance.SzOutBezierCurveObj;
 
         public static bool[] TrackballMode => ProfileSettingsServiceInstance.TrackballMode;
         public static bool getTrackballMode(int index)
@@ -4890,10 +4890,8 @@ namespace DS4Windows
             // Initialize to an empty list for unspecified profiles but do NOT
             // automatically add any Disconnect action. That behavior caused
             // unwanted enabling of Disconnect for profiles that simply had no
-            // <ProfileActions> element; users should be able to intentionally
-            // leave it empty.
+            // explicit action configuration.
             profileActions[idx] = new List<string>();
-            profileActionCount[idx] = profileActions[idx].Count;
         }
 
         public void CacheProfileCustomsFlags(int device)
@@ -4902,10 +4900,8 @@ namespace DS4Windows
             containsCustomAction[device] = customAct = HasCustomActions(device);
             containsCustomExtras[device] = HasCustomExtras(device);
 
-            if (!customAct)
             {
                 customAct = gyroOutMode[device] == GyroOutMode.MouseJoystick;
-                customAct = customAct || sASteeringWheelEmulationAxis[device] >= SASteeringWheelEmulationAxisType.VJoy1X;
                 customAct = customAct || lsOutputSettings[device].mode != StickMode.Controls;
                 customAct = customAct || rsOutputSettings[device].mode != StickMode.Controls;
                 containsCustomAction[device] = customAct;

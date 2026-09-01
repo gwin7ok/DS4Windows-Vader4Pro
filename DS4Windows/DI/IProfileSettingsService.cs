@@ -176,6 +176,35 @@ namespace DS4Windows.DI
         bool GetTrackballMode(int deviceIndex);
         double GetTrackballFriction(int deviceIndex);
 
+        // ---- Step10-2-A-7: SA/デッドゾーン関連 (m_Config委譲) ----
+        string[] SATriggers { get; }
+        bool[] SATriggerCond { get; }
+        string[] SAMousestickTriggers { get; }
+        bool[] SAMouseStickTriggerCond { get; }
+        SASteeringWheelEmulationAxisType[] SASteeringWheelEmulationAxis { get; }
+        int[] SASteeringWheelEmulationRange { get; }
+        int[] SAWheelFuzzValues { get; }
+        double[] SXDeadzone { get; }
+        double[] SZDeadzone { get; }
+        double[] SXSens { get; }
+        double[] SZSens { get; }
+        double[] SXMaxzone { get; }
+        double[] SZMaxzone { get; }
+        BezierCurve[] SxOutBezierCurveObj { get; }
+        BezierCurve[] SzOutBezierCurveObj { get; }
+        string GetSATriggers(int deviceIndex);
+        bool GetSATriggerCond(int deviceIndex);
+        string GetSAMouseStickTriggers(int deviceIndex);
+        bool GetSAMouseStickTriggerCond(int deviceIndex);
+        SASteeringWheelEmulationAxisType GetSASteeringWheelEmulationAxis(int deviceIndex);
+        int GetSASteeringWheelEmulationRange(int deviceIndex);
+        void SetSaTriggerCond(int index, string text);
+        void SetSaMouseStickTriggerCond(int index, string text);
+        int GetSxOutCurveMode(int index);
+        void SetSxOutCurveMode(int index, int value);
+        int GetSzOutCurveMode(int index);
+        void SetSzOutCurveMode(int index, int value);
+
         event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
 
         void ResetToDefaults(int deviceIndex);

@@ -513,6 +513,35 @@ namespace DS4Windows
         public bool GetTrackballMode(int deviceIndex) => _config.trackballMode[deviceIndex];
         public double GetTrackballFriction(int deviceIndex) => _config.trackballFriction[deviceIndex];
 
+        // ---- Step10-2-A-7: SA/デッドゾーン関連 (m_Config委譲) ----
+        public string[] SATriggers => _config.sATriggers;
+        public bool[] SATriggerCond => _config.sATriggerCond;
+        public string[] SAMousestickTriggers => _config.sAMouseStickTriggers;
+        public bool[] SAMouseStickTriggerCond => _config.sAMouseStickTriggerCond;
+        public SASteeringWheelEmulationAxisType[] SASteeringWheelEmulationAxis => _config.sASteeringWheelEmulationAxis;
+        public int[] SASteeringWheelEmulationRange => _config.sASteeringWheelEmulationRange;
+        public int[] SAWheelFuzzValues => _config.saWheelFuzzValues;
+        public double[] SXDeadzone => _config.SXDeadzone;
+        public double[] SZDeadzone => _config.SZDeadzone;
+        public double[] SXSens => _config.SXSens;
+        public double[] SZSens => _config.SZSens;
+        public double[] SXMaxzone => _config.SXMaxzone;
+        public double[] SZMaxzone => _config.SZMaxzone;
+        public BezierCurve[] SxOutBezierCurveObj => _config.sxOutBezierCurveObj;
+        public BezierCurve[] SzOutBezierCurveObj => _config.szOutBezierCurveObj;
+        public string GetSATriggers(int deviceIndex) => _config.sATriggers[deviceIndex];
+        public bool GetSATriggerCond(int deviceIndex) => _config.sATriggerCond[deviceIndex];
+        public string GetSAMouseStickTriggers(int deviceIndex) => _config.sAMouseStickTriggers[deviceIndex];
+        public bool GetSAMouseStickTriggerCond(int deviceIndex) => _config.sAMouseStickTriggerCond[deviceIndex];
+        public SASteeringWheelEmulationAxisType GetSASteeringWheelEmulationAxis(int deviceIndex) => _config.sASteeringWheelEmulationAxis[deviceIndex];
+        public int GetSASteeringWheelEmulationRange(int deviceIndex) => _config.sASteeringWheelEmulationRange[deviceIndex];
+        public void SetSaTriggerCond(int index, string text) => _config.SetSaTriggerCond(index, text);
+        public void SetSaMouseStickTriggerCond(int index, string text) => _config.SetSaMouseStickTriggerCond(index, text);
+        public int GetSxOutCurveMode(int index) => _config.getSXOutCurveMode(index);
+        public void SetSxOutCurveMode(int index, int value) => _config.setSXOutCurveMode(index, value);
+        public int GetSzOutCurveMode(int index) => _config.getSZOutCurveMode(index);
+        public void SetSzOutCurveMode(int index, int value) => _config.setSZOutCurveMode(index, value);
+
         public X360Controls[] GetDefaultButtonMapping()
         {
             return (X360Controls[])Global.defaultButtonMapping.Clone();
