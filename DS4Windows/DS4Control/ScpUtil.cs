@@ -943,8 +943,6 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogTrace("[Legacy] Global.useTempProfile getter accessed via static shim");
-                AppLogger.LogToGui("[Legacy] Global.useTempProfile getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.UseTempProfileArray;
             }
             set
@@ -958,8 +956,6 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogTrace("[Legacy] Global.tempprofileDistance getter accessed via static shim");
-                AppLogger.LogToGui("[Legacy] Global.tempprofileDistance getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.TempProfileDistanceArray;
             }
             set
@@ -973,8 +969,6 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogTrace("[Legacy] Global.useDInputOnly getter accessed via static shim");
-                AppLogger.LogToGui("[Legacy] Global.useDInputOnly getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.UseDInputOnlyArray;
             }
             set
