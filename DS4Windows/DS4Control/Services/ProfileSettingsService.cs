@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using DS4Windows.DI;
+using DS4Windows.DS4Control;
 using DS4Windows.InputDevices;
 using static DS4Windows.Mouse;
 
@@ -571,6 +572,17 @@ namespace DS4Windows
         public DS4ControlSettings GetDS4CSetting(int deviceIndex, string control) => _config.GetDS4CSetting(deviceIndex, control);
         public DS4ControlSettings GetDS4CSetting(int deviceIndex, DS4Controls control) => _config.GetDS4CSetting(deviceIndex, control);
         public List<DS4ControlSettings> GetDS4CSettings(int deviceIndex) => _config.ds4settings[deviceIndex];
+
+        // ---- Step10-2-A-9: Mapping.cs専用 ----
+        public bool ProfileChangedNotification
+        {
+            get => _config.profileChangedNotification;
+            set => _config.profileChangedNotification = value;
+        }
+        public int[] DebouncingMs => _config.debouncingMs;
+        public VirtualKBMMapping OutputKBMMapping { get; set; }
+        public event EventHandler DebouncingMsChanged;
+        public void NotifyDebouncingMsChanged() => DebouncingMsChanged?.Invoke(this, EventArgs.Empty);
 
         public X360Controls[] GetDefaultButtonMapping()
         {

@@ -1067,7 +1067,11 @@ namespace DS4Windows
         public static bool absUseAllMonitors = true;
 
         public static VirtualKBMBase outputKBMHandler = null;
-        public static VirtualKBMMapping outputKBMMapping = null;
+        public static VirtualKBMMapping outputKBMMapping
+        {
+            get => ProfileSettingsServiceInstance.OutputKBMMapping;
+            set => ProfileSettingsServiceInstance.OutputKBMMapping = value;
+        }
 
         public const int CONFIG_VERSION = 5;
         public const int APP_CONFIG_VERSION = 2;
@@ -2084,8 +2088,8 @@ namespace DS4Windows
 
         public static bool ProfileChangedNotification
         {
-            get => m_Config.profileChangedNotification;
-            set => m_Config.profileChangedNotification = value;
+            get => ProfileSettingsServiceInstance.ProfileChangedNotification;
+            set => ProfileSettingsServiceInstance.ProfileChangedNotification = value;
         }
 
         public static bool DCBTatStop
@@ -2403,10 +2407,11 @@ namespace DS4Windows
 
         public static bool[] InverseRumbleMotors => ProfileSettingsServiceInstance.InverseRumbleMotors;
 
-        public static int[] DebouncingMs => m_Config.debouncingMs;
+        public static int[] DebouncingMs => ProfileSettingsServiceInstance.DebouncingMs;
 
         public static void DebouncingMsHasChanged()
         {
+            ProfileSettingsServiceInstance.NotifyDebouncingMsChanged();
             DebouncingMsChanged.Invoke(typeof(Global), EventArgs.Empty);
         }
 
