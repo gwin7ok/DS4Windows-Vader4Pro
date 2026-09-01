@@ -2468,7 +2468,8 @@ namespace DS4Windows
             return m_Config.enableOutputDataToDS4[index];
         }
 
-        public static byte[] TouchSensitivity => m_Config.touchSensitivity;
+        // Step10-2-A-3: タッチパッド関連の後方互換シム
+        public static byte[] TouchSensitivity => ProfileSettingsServiceInstance.TouchSensitivity;
         public static byte[] getTouchSensitivity()
         {
             return m_Config.touchSensitivity;
@@ -2503,14 +2504,14 @@ namespace DS4Windows
             set => m_Config.processPriority = value;
         }
 
-        public static bool[] StartTouchpadOff => m_Config.startTouchpadOff;
+        public static bool[] StartTouchpadOff => ProfileSettingsServiceInstance.StartTouchpadOff;
 
         public static bool IsUsingTouchpadForControls(int index)
         {
             return m_Config.touchOutMode[index] == TouchpadOutMode.Controls;
         }
 
-        public static TouchpadOutMode[] TouchOutMode = m_Config.touchOutMode;
+        public static TouchpadOutMode[] TouchOutMode => ProfileSettingsServiceInstance.TouchOutMode;
 
         public static bool IsUsingSAForControls(int index)
         {
@@ -2597,7 +2598,7 @@ namespace DS4Windows
             return m_Config.sASteeringWheelEmulationRange[index];
         }
 
-        public static int[][] TouchDisInvertTriggers => m_Config.touchDisInvertTriggers;
+        public static int[][] TouchDisInvertTriggers => ProfileSettingsServiceInstance.TouchDisInvertTriggers;
         public static int[] getTouchDisInvertTriggers(int index)
         {
             return m_Config.touchDisInvertTriggers[index];
@@ -2704,7 +2705,7 @@ namespace DS4Windows
             //return ref m_Config.m_FlashLeds[index];
         }
 
-        public static byte[] TapSensitivity => m_Config.tapSensitivity;
+        public static byte[] TapSensitivity => ProfileSettingsServiceInstance.TapSensitivity;
         public static byte getTapSensitivity(int index)
         {
             return m_Config.tapSensitivity[index];
@@ -2727,15 +2728,15 @@ namespace DS4Windows
         }
 
         public static bool[] LowerRCOn => m_Config.lowerRCOn;
-        public static bool[] TouchClickPassthru => m_Config.touchClickPassthru;
-        public static TouchButtonActivationMode[] TouchpadButtonMode => m_Config.touchpadButtonMode;
-        public static bool[] TouchpadJitterCompensation => m_Config.touchpadJitterCompensation;
+        public static bool[] TouchClickPassthru => ProfileSettingsServiceInstance.TouchClickPassthru;
+        public static TouchButtonActivationMode[] TouchpadButtonMode => ProfileSettingsServiceInstance.TouchpadButtonMode;
+        public static bool[] TouchpadJitterCompensation => ProfileSettingsServiceInstance.TouchpadJitterCompensation;
         public static bool getTouchpadJitterCompensation(int index)
         {
             return m_Config.touchpadJitterCompensation[index];
         }
 
-        public static int[] TouchpadInvert => m_Config.touchpadInvert;
+        public static int[] TouchpadInvert => ProfileSettingsServiceInstance.TouchpadInvert;
         public static int getTouchpadInvert(int index)
         {
             return m_Config.touchpadInvert[index];
@@ -3090,14 +3091,14 @@ namespace DS4Windows
         //    return m_Config.touchStickTrackballFriction[index];
         //}
 
-        public static TouchMouseStickInfo[] TouchMouseStickInf => m_Config.touchMStickInfo;
+        public static TouchMouseStickInfo[] TouchMouseStickInf => ProfileSettingsServiceInstance.TouchMouseStickInf;
         public static TouchMouseStickInfo GetTouchMouseStickInfo(int device)
         {
             return m_Config.touchMStickInfo[device];
         }
 
-        public static TouchpadAbsMouseSettings[] TouchAbsMouse => m_Config.touchpadAbsMouse;
-        public static TouchpadRelMouseSettings[] TouchRelMouse => m_Config.touchpadRelMouse;
+        public static TouchpadAbsMouseSettings[] TouchAbsMouse => ProfileSettingsServiceInstance.TouchAbsMouse;
+        public static TouchpadRelMouseSettings[] TouchRelMouse => ProfileSettingsServiceInstance.TouchRelMouse;
 
         public static ControlServiceDeviceOptions DeviceOptions => m_Config.deviceOptions;
 

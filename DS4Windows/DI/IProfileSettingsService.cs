@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using static DS4Windows.Mouse;
 
 namespace DS4Windows.DI
 {
@@ -91,6 +92,20 @@ namespace DS4Windows.DI
         void SetL2OutCurveMode(int index, int value);
         int GetR2OutCurveMode(int index);
         void SetR2OutCurveMode(int index, int value);
+
+        // ---- Step10-2-A-3: タッチパッド関連 (m_Config委譲) ----
+        byte[] TouchSensitivity { get; }
+        byte[] TapSensitivity { get; }
+        int[] TouchpadInvert { get; }
+        bool[] TouchpadJitterCompensation { get; }
+        bool[] TouchClickPassthru { get; }
+        TouchButtonActivationMode[] TouchpadButtonMode { get; }
+        bool[] StartTouchpadOff { get; }
+        TouchpadOutMode[] TouchOutMode { get; }
+        int[][] TouchDisInvertTriggers { get; }
+        TouchMouseStickInfo[] TouchMouseStickInf { get; }
+        TouchpadAbsMouseSettings[] TouchAbsMouse { get; }
+        TouchpadRelMouseSettings[] TouchRelMouse { get; }
 
         event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
 

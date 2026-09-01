@@ -17,4 +17,8 @@
     <ProjectReference Include="..\DS4Windows\DS4WinWPF.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

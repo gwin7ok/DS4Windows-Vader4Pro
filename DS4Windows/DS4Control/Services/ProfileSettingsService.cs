@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using DS4Windows.DI;
+using static DS4Windows.Mouse;
 
 namespace DS4Windows
 {
@@ -389,6 +390,20 @@ namespace DS4Windows
             _config.setR2OutCurveMode(index, value);
             AppLogger.LogToGui($"[DI] ProfileSettingsService.SetR2OutCurveMode: Slot {index} = {value}", false, true);
         }
+
+        // ---- Step10-2-A-3: タッチパッド関連 (m_Config委譲) ----
+        public byte[] TouchSensitivity => _config.touchSensitivity;
+        public byte[] TapSensitivity => _config.tapSensitivity;
+        public int[] TouchpadInvert => _config.touchpadInvert;
+        public bool[] TouchpadJitterCompensation => _config.touchpadJitterCompensation;
+        public bool[] TouchClickPassthru => _config.touchClickPassthru;
+        public TouchButtonActivationMode[] TouchpadButtonMode => _config.touchpadButtonMode;
+        public bool[] StartTouchpadOff => _config.startTouchpadOff;
+        public TouchpadOutMode[] TouchOutMode => _config.touchOutMode;
+        public int[][] TouchDisInvertTriggers => _config.touchDisInvertTriggers;
+        public TouchMouseStickInfo[] TouchMouseStickInf => _config.touchMStickInfo;
+        public TouchpadAbsMouseSettings[] TouchAbsMouse => _config.touchpadAbsMouse;
+        public TouchpadRelMouseSettings[] TouchRelMouse => _config.touchpadRelMouse;
 
         public X360Controls[] GetDefaultButtonMapping()
         {
