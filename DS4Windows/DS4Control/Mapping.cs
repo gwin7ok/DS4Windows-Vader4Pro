@@ -2890,7 +2890,7 @@ namespace DS4Windows
 
             // Process LS
             ControlSettingsGroup controlSetGroup = GetControlSettingsGroup(device);
-            StickOutputSetting stickSettings = Global.LSOutputSettings[device];
+            StickOutputSetting stickSettings = profileSettings.LSOutputSettings[device];
             if (stickSettings.mode == StickMode.Controls)
             {
                 for (var settingEnum = controlSetGroup.LS.GetEnumerator(); settingEnum.MoveNext();)
@@ -2926,7 +2926,7 @@ namespace DS4Windows
             }
 
             // Process RS
-            stickSettings = Global.RSOutputSettings[device];
+            stickSettings = profileSettings.RSOutputSettings[device];
             if (stickSettings.mode == StickMode.Controls)
             {
                 if (stickSettings.outputSettings.controlSettings.deltaAccelSettings.enabled)
@@ -2983,7 +2983,7 @@ namespace DS4Windows
             }
 
             // Process L2
-            TriggerOutputSettings l2TriggerSettings = Global.L2OutputSettings[device];
+            TriggerOutputSettings l2TriggerSettings = profileSettings.L2OutputSettings[device];
             DS4ControlSettings dcsTemp = controlSetGroup.L2;
             if (l2TriggerSettings.twoStageMode == TwoStageTriggerMode.Disabled)
             {
@@ -3050,7 +3050,7 @@ namespace DS4Windows
             }
 
             // Process R2
-            TriggerOutputSettings r2TriggerSettings = Global.R2OutputSettings[device];
+            TriggerOutputSettings r2TriggerSettings = profileSettings.R2OutputSettings[device];
             dcsTemp = controlSetGroup.R2;
             if (r2TriggerSettings.twoStageMode == TwoStageTriggerMode.Disabled)
             {
@@ -3134,7 +3134,7 @@ namespace DS4Windows
                     ref tempMouseDeltaY, ref absMouseOut, ctrl);
             }
 
-            GyroOutMode imuOutMode = Global.GetGyroOutMode(device);
+            GyroOutMode imuOutMode = profileSettings.GetGyroOutMode(device);
             if (imuOutMode == GyroOutMode.DirectionalSwipe)
             {
                 DS4ControlSettings gyroSwipeXDcs = null;
@@ -3672,7 +3672,7 @@ namespace DS4Windows
 
         public static void TempMouseJoystick(int device, DS4State MappedState)
         {
-            GyroOutMode imuOutMode = Global.GetGyroOutMode(device);
+            GyroOutMode imuOutMode = profileSettings.GetGyroOutMode(device);
             if (imuOutMode == GyroOutMode.MouseJoystick)
             {
                 GyroMouseStickInfo msinfo = Global.GetGyroMouseStickInfo(device);

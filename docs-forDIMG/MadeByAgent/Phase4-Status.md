@@ -25,7 +25,7 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 9 | ViewModel DI 移行 (Pattern C) | **完了** | 2026-09-01 | `IViewModelFactory.cs`, `ViewModelFactory.cs`, DI登録, View直接new全廃, `PatternCViewModelTests.cs`, **Step9-4-α監査合格**, **実機検証CP3全件合格** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **完了** | 2026-09-01 | `Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
 | Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **一部進行中** | - | [DI]/[Legacy] Trace ログ整備は着手済み。呼び出し元DI直接参照化（Step10-2）を前倒しで追加実施中のため、実機検証CP4はStep10-2完了後に実施 |
-| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-B-4 第1段階完了・検証待ち** | 2026-09-02 | `ProfileEditor`、`ControlService` の DI 接続に続き、`Mapping.cs` に設定サービスの静的キャッシュ境界を追加。デバウンス時間・プロファイル変更通知を DI 直接参照化し、入力ループ内の毎回解決を回避。次段階でスティック・トリガー・ジャイロ設定参照を移行する。 |
+| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-B-4 第2段階完了・検証待ち** | 2026-09-02 | `Mapping.cs` の静的キャッシュ境界を通じ、デバウンス、プロファイル変更通知、LS/RS スティック、L2/R2 トリガー、ジャイロ出力モードを DI 直接参照化。入力ループ内の毎回解決を回避。次は残存参照の監査と Stage2 完了判定。 |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10・Step10-2完了時） |
 
 ---
