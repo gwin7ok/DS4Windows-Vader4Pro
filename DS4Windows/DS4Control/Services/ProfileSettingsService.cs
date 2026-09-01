@@ -529,6 +529,8 @@ namespace DS4Windows
         public double[] SZSens => _config.SZSens;
         public double[] SXMaxzone => _config.SXMaxzone;
         public double[] SZMaxzone => _config.SZMaxzone;
+        public double[] SXAntiDeadzone => _config.SXAntiDeadzone;
+        public double[] SZAntiDeadzone => _config.SZAntiDeadzone;
         public BezierCurve[] SxOutBezierCurveObj => _config.sxOutBezierCurveObj;
         public BezierCurve[] SzOutBezierCurveObj => _config.szOutBezierCurveObj;
         public string GetSATriggers(int deviceIndex) => _config.sATriggers[deviceIndex];

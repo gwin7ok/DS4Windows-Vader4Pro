@@ -192,6 +192,8 @@ namespace DS4Windows.DI
         double[] SZSens { get; }
         double[] SXMaxzone { get; }
         double[] SZMaxzone { get; }
+        double[] SXAntiDeadzone { get; }
+        double[] SZAntiDeadzone { get; }
         BezierCurve[] SxOutBezierCurveObj { get; }
         BezierCurve[] SzOutBezierCurveObj { get; }
         string GetSATriggers(int deviceIndex);

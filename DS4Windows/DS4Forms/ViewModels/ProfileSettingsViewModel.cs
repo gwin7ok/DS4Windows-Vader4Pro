@@ -954,13 +954,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int SASteeringWheelEmulationAxisIndex
         {
-            get => (int)Global.SASteeringWheelEmulationAxis[device];
+            get => (int)profileSettings.SASteeringWheelEmulationAxis[device];
             set
             {
-                int temp = (int)Global.SASteeringWheelEmulationAxis[device];
+                int temp = (int)profileSettings.SASteeringWheelEmulationAxis[device];
                 if (temp == value) return;
 
-                Global.SASteeringWheelEmulationAxis[device] = (SASteeringWheelEmulationAxisType)value;
+                profileSettings.SASteeringWheelEmulationAxis[device] = (SASteeringWheelEmulationAxisType)value;
                 SASteeringWheelEmulationAxisIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -973,7 +973,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int index = 360;
-                switch (Global.SASteeringWheelEmulationRange[device])
+                switch (profileSettings.SASteeringWheelEmulationRange[device])
                 {
                     case 90:
                         index = 0; break;
@@ -1001,30 +1001,30 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set
             {
                 int temp = saSteeringRangeValues[value];
-                Global.SASteeringWheelEmulationRange[device] = temp;
+                profileSettings.SASteeringWheelEmulationRange[device] = temp;
             }
         }
 
         public int SASteeringWheelEmulationRange
         {
-            get => Global.SASteeringWheelEmulationRange[device];
-            set => Global.SASteeringWheelEmulationRange[device] = value;
+            get => profileSettings.SASteeringWheelEmulationRange[device];
+            set => profileSettings.SASteeringWheelEmulationRange[device] = value;
         }
 
         public int SASteeringWheelFuzz
         {
-            get => Global.SAWheelFuzzValues[device];
-            set => Global.SAWheelFuzzValues[device] = value;
+            get => profileSettings.SAWheelFuzzValues[device];
+            set => profileSettings.SAWheelFuzzValues[device] = value;
         }
 
         public bool SASteeringWheelUseSmoothing
         {
-            get => Global.WheelSmoothInfo[device].Enabled;
+            get => profileSettings.WheelSmoothInfo[device].Enabled;
             set
             {
-                bool temp = Global.WheelSmoothInfo[device].Enabled;
+                bool temp = profileSettings.WheelSmoothInfo[device].Enabled;
                 if (temp == value) return;
-                Global.WheelSmoothInfo[device].Enabled = value;
+                profileSettings.WheelSmoothInfo[device].Enabled = value;
                 SASteeringWheelUseSmoothingChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1032,14 +1032,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double SASteeringWheelSmoothMinCutoff
         {
-            get => Global.WheelSmoothInfo[device].MinCutoff;
-            set => Global.WheelSmoothInfo[device].MinCutoff = value;
+            get => profileSettings.WheelSmoothInfo[device].MinCutoff;
+            set => profileSettings.WheelSmoothInfo[device].MinCutoff = value;
         }
 
         public double SASteeringWheelSmoothBeta
         {
-            get => Global.WheelSmoothInfo[device].Beta;
-            set => Global.WheelSmoothInfo[device].Beta = value;
+            get => profileSettings.WheelSmoothInfo[device].Beta;
+            set => profileSettings.WheelSmoothInfo[device].Beta = value;
         }
 
         public double LSDeadZone
@@ -1844,12 +1844,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double SXDeadZone
         {
-            get => Global.SXDeadzone[device];
+            get => profileSettings.SXDeadzone[device];
             set
             {
-                double temp = Global.SXDeadzone[device];
+                double temp = profileSettings.SXDeadzone[device];
                 if (temp == value) return;
-                Global.SXDeadzone[device] = value;
+                profileSettings.SXDeadzone[device] = value;
                 SXDeadZoneChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1857,12 +1857,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double SZDeadZone
         {
-            get => Global.SZDeadzone[device];
+            get => profileSettings.SZDeadzone[device];
             set
             {
-                double temp = Global.SZDeadzone[device];
+                double temp = profileSettings.SZDeadzone[device];
                 if (temp == value) return;
-                Global.SZDeadzone[device] = value;
+                profileSettings.SZDeadzone[device] = value;
                 SZDeadZoneChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1870,82 +1870,82 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double SXMaxZone
         {
-            get => Global.SXMaxzone[device];
-            set => Global.SXMaxzone[device] = value;
+            get => profileSettings.SXMaxzone[device];
+            set => profileSettings.SXMaxzone[device] = value;
         }
 
         public double SZMaxZone
         {
-            get => Global.SZMaxzone[device];
-            set => Global.SZMaxzone[device] = value;
+            get => profileSettings.SZMaxzone[device];
+            set => profileSettings.SZMaxzone[device] = value;
         }
 
         public double SXAntiDeadZone
         {
-            get => Global.SXAntiDeadzone[device];
-            set => Global.SXAntiDeadzone[device] = value;
+            get => profileSettings.SXAntiDeadzone[device];
+            set => profileSettings.SXAntiDeadzone[device] = value;
         }
 
         public double SZAntiDeadZone
         {
-            get => Global.SZAntiDeadzone[device];
-            set => Global.SZAntiDeadzone[device] = value;
+            get => profileSettings.SZAntiDeadzone[device];
+            set => profileSettings.SZAntiDeadzone[device] = value;
         }
 
         public double SXSens
         {
-            get => Global.SXSens[device];
-            set => Global.SXSens[device] = value;
+            get => profileSettings.SXSens[device];
+            set => profileSettings.SXSens[device] = value;
         }
 
         public double SZSens
         {
-            get => Global.SZSens[device];
-            set => Global.SZSens[device] = value;
+            get => profileSettings.SZSens[device];
+            set => profileSettings.SZSens[device] = value;
         }
 
         public int SXOutputCurveIndex
         {
-            get => Global.getSXOutCurveMode(device);
+            get => profileSettings.GetSxOutCurveMode(device);
             set
             {
-                Global.setSXOutCurveMode(device, value);
+                profileSettings.SetSxOutCurveMode(device, value);
                 SXCustomCurveSelectedChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
         public int SZOutputCurveIndex
         {
-            get => Global.getSZOutCurveMode(device);
+            get => profileSettings.GetSzOutCurveMode(device);
             set
             {
-                Global.setSZOutCurveMode(device, value);
+                profileSettings.SetSzOutCurveMode(device, value);
                 SZCustomCurveSelectedChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
         public bool SXCustomCurveSelected
         {
-            get => Global.getSXOutCurveMode(device) == 6;
+            get => profileSettings.GetSxOutCurveMode(device) == 6;
         }
         public event EventHandler SXCustomCurveSelectedChanged;
 
         public bool SZCustomCurveSelected
         {
-            get => Global.getSZOutCurveMode(device) == 6;
+            get => profileSettings.GetSzOutCurveMode(device) == 6;
         }
         public event EventHandler SZCustomCurveSelectedChanged;
 
         public string SXCustomCurve
         {
-            get => Global.sxOutBezierCurveObj[device].CustomDefinition;
-            set => Global.sxOutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.SA, true);
+            get => profileSettings.SxOutBezierCurveObj[device].CustomDefinition;
+            set => profileSettings.SxOutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.SA, true);
         }
 
         public string SZCustomCurve
         {
-            get => Global.szOutBezierCurveObj[device].CustomDefinition;
-            set => Global.szOutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.SA, true);
+            get => profileSettings.SzOutBezierCurveObj[device].CustomDefinition;
+            set => profileSettings.SzOutBezierCurveObj[device].InitBezierCurve(value, BezierCurve.AxisType.SA, true);
         }
 
         public int TouchpadOutputIndex
