@@ -655,6 +655,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase4-Step9-RealDevice-Verification-Checklist.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Status.md
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegation-audit-report.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Action-Class-Design.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Action-Subsystem-API.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs/Actions-Interface-Spec.md
