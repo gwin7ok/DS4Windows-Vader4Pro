@@ -25,7 +25,7 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 9 | ViewModel DI 移行 (Pattern C) | **完了** | 2026-09-01 | `IViewModelFactory.cs`, `ViewModelFactory.cs`, DI登録, View直接new全廃, `PatternCViewModelTests.cs`, **Step9-4-α監査合格**, **実機検証CP3全件合格** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **完了** | 2026-09-01 | `Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
 | Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **一部進行中** | - | [DI]/[Legacy] Trace ログ整備は着手済み。呼び出し元DI直接参照化（Step10-2）を前倒しで追加実施中のため、実機検証CP4はStep10-2完了後に実施 |
-| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-C 計画完了・実装前確認待ち** | 2026-09-02 | Legacy 残存調査を基に、旧 ServiceCollection の AppHost 統合、ControlService Singleton 登録、rootHub の C-1/C-2 分類、ViewModel フォールバックの CP4 までの維持・可視化を計画化。CP4 前に自動テスト化判定・テスト実装・実行の段階を追加し、実機確認項目を縮小する。実装方法が複数の項目は作業前に確認する。 |
+| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-C C-1/C-2 実装完了・検証待ち** | 2026-09-02 | 旧 ServiceCollection を削除して Action 系登録を AppHost／ServiceRegistration へ統合。Provider を一本化し、ControlService を Singleton DI 登録して AppHost から解決。起動時 parser 注入と `rootHub` 互換代入を維持。次はユーザー検証後に C-3 `rootHub` 呼び出し元分類へ進む。 |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10・Step10-2完了時） |
 
 ---

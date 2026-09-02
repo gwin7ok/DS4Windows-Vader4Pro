@@ -27,8 +27,33 @@ namespace DS4WinWPF
                     });
 
                 _host = builder.Build();
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(_host.Services);
+                PreallocateActionEntries();
                 if (AppLogger.IsTraceEnabled)
                     AppLogger.LogTrace("[DI] AppHost.CreateHost: Host initialized and all services registered");
+                return _host;
+            }
+        }
+
+        public static IHost CreateHost(IConfiguration configuration, DS4WinWPF.ArgumentParser parser)
+        {
+            lock (_syncLock)
+            {
+                if (_host != null)
+                    return _host;
+
+                var builder = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                    .ConfigureServices((context, services) =>
+                    {
+                        DS4Windows.DI.ServiceRegistration.RegisterServices(services);
+                        services.AddSingleton(parser);
+                    });
+
+                _host = builder.Build();
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(_host.Services);
+                PreallocateActionEntries();
+                if (AppLogger.IsTraceEnabled)
+                    AppLogger.LogTrace("[DI] AppHost.CreateHost: Host initialized with runtime parser");
                 return _host;
             }
         }
@@ -47,10 +72,23 @@ namespace DS4WinWPF
                     });
 
                 _host = builder.Build();
+                DS4Windows.DI.ServiceProviderHolder.SetProvider(_host.Services);
+                PreallocateActionEntries();
                 if (AppLogger.IsTraceEnabled)
                     AppLogger.LogTrace("[DI] AppHost.CreateHost: Host initialized with args");
                 return _host;
             }
+        }
+
+        private static void PreallocateActionEntries()
+        {
+            try
+            {
+                var manager = _host?.Services.GetService<DS4Windows.Actions.IManagedActionManager>()
+                    as DS4Windows.Actions.DefaultActionManager;
+                manager?.PreallocateEntries();
+            }
+            catch { }
         }
 
         public static T GetService<T>() where T : class

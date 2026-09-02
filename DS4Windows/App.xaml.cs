@@ -290,35 +290,10 @@ namespace DS4WinWPF
             threadComEvent = new EventWaitHandle(false, EventResetMode.ManualReset, SingleAppComEventName);
             CreateTempWorkerThread();
 
-            // Initialize DI container and register core services (ActionFactory, etc.)
+            // フェーズ0-3: AppHost正式ルート
             try
             {
-                var services = new ServiceCollection();
-                services.AddSingleton<DS4Windows.Actions.IActionFactory, DS4Windows.Actions.DefaultActionFactory>();
-                services.AddSingleton<DS4Windows.Actions.IManagedActionManager, DS4Windows.Actions.DefaultActionManager>();
-                services.AddSingleton<DS4Windows.Actions.IKeyActionCreator, DS4Windows.Actions.DefaultKeyActionCreator>();
-                services.AddSingleton<DS4Windows.Actions.IKeyButtonActionControllerFactory, DS4Windows.Actions.DefaultKeyButtonActionControllerFactory>();
-                services.AddSingleton<DS4Windows.Actions.IControllerRegistry, DS4Windows.Actions.DefaultControllerRegistry>();
-                // Register other services here as needed in future (ActionManager, Loggers, etc.)
-                var sp = services.BuildServiceProvider();
-                DS4Windows.DI.ServiceProviderHolder.SetProvider(sp);
-                try
-                {
-                    // Preallocate action entries and button state table to avoid lazy race conditions
-                    var mam = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.DefaultActionManager;
-                    mam?.PreallocateEntries();
-                }
-                catch { }
-            }
-            catch (Exception ex)
-            {
-                AppLogger.LogTrace($"DI initialization failed: {ex}");
-            }
-
-            // フェーズ0-3: AppHost正式ルートの動作確認（古い簡易ServiceCollectionは削除せず残す）
-            try
-            {
-                var host = AppHost.CreateHost(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+                var host = AppHost.CreateHost(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), parser);
                 AppLogger.LogInfo("AppHost.CreateHost() called successfully (Phase 0-3 verification)");
             }
             catch (Exception ex)
@@ -744,10 +719,9 @@ namespace DS4WinWPF
                 // is called, so GetService should not be null; the null-coalesce is a
                 // startup-order safety net only, and 'new Ds4DeviceRegistryAdapter()' here
                 // is the same adapter class already registered, not a second implementation.
-                var registry = AppHost.GetService<IDs4DeviceRegistry>()
-                    ?? new Ds4DeviceRegistryAdapter();
-                rootHub = new DS4Windows.ControlService(parser, registry,
-                    AppHost.GetService<IProfileSettingsService>());
+                rootHub = AppHost.GetService<DS4Windows.ControlService>();
+                if (rootHub == null)
+                    throw new InvalidOperationException("ControlService could not be resolved from AppHost.");
 
                 DS4Windows.Program.rootHub = rootHub;
                 requestClient = new HttpClient();
