@@ -38,7 +38,7 @@
 |---|---|---|
 | `AutoProfileChecker.cs` | **C-1** | 短期は `IDeviceStateAccessor`、`IProfileSwitcher`、`IProfileRepository` 等へ責務別に分割する。将来は必要に応じて `IAutoProfileService` を検討する |
 | `PresetOption.cs` | **C-2 から開始** | 短期は `ControlService` 注入で既存のプリセット適用・デバイス反映を維持する。将来は `IProfilePresetService` 等へ移行する |
-| `MainWindow.xaml.cs` のプロファイル適用箇所 | **C-1** | 短期は `IProfileSwitcher`、`IProfileRepository`、通知等へ責務分割する。将来は `IManualProfileApplicationService` に適用手順を集約する |
+| `MainWindow.xaml.cs` のプロファイル適用箇所 | **C-1** | 短期は専用 `IProfileApplicationService` へ適用手順を移す。将来は `IManualProfileApplicationService` に整理する |
 | `App.rootHub` と `Program.rootHub` の併存箇所 | **分類対象外** | 呼び出し元ごとの C-1／C-2 を適用する。互換代入は CP4 完了まで維持し、全呼び出し元移行後に削除可否を判断する |
 
 ## 3. 実装時に確認する事項
@@ -51,7 +51,7 @@
 
 ### 確認 B: UI の依存方式
 
-`MainWindow`、`ProfileEditor`、`RecordBox` は短期 C-2 を適用する。まず `ControlService` 具象型を注入し、使用メンバーと画面操作を固定する。将来は `IControllerInteractionService` 等の画面用インターフェースへ分離する。
+`MainWindow`、`ProfileEditor`、`RecordBox` は短期 C-2 を適用する。まず `ControlService` 具象型を注入し、使用メンバーと画面操作を固定する。将来は `IControllerInteractionService` 等の画面用インターフェースへ分離する。プロファイル適用処理だけは専用 `IProfileApplicationService` へ分離する。
 
 ### 確認 C: AutoProfile
 

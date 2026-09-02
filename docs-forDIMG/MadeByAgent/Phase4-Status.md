@@ -31,7 +31,7 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 10-2-C-0 | 現状基準の固定 | **完了** | 2026-09-02 | Legacy 残存量の棚卸しと分類ルールを文書化。 |
 | Step 10-2-C-1 | Composition Root 一本化 | **実装完了・検証待ち** | 2026-09-02 | 旧 `ServiceCollection` 削除、Action 系登録統合、Provider 一本化を実装。Debug ビルド成功。 |
 | Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | **実装完了・検証待ち** | 2026-09-02 | Singleton 登録、AppHost 解決、parser 注入、`rootHub` 互換代入を実装。Debug ビルド成功。 |
-| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **未着手** | - | 確定済みの C-1／C-2 分類に基づき、具体的契約範囲を確認して実装する。 |
+| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **計画完了・実装前** | 2026-09-02 | `Mapping` のプロファイル適用・復帰を専用 `IProfileApplicationService` へ移す段階計画を作成。コード変更は未実施。 |
 | Step 10-2-C-4 | ViewModel フォールバックの可視化 | **未着手** | - | CP4 までフォールバックを維持し、使用時の `[Legacy]` ログを追加。 |
 | Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **未着手** | - | 高頻度ログを抑制しつつ、入口・変更・失敗を監査。 |
 | Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | **未着手** | - | 自動テスト／実機／両方を分類し、実機確認項目を縮小。 |

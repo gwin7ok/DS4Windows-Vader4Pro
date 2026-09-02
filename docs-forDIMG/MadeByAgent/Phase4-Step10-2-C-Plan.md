@@ -99,7 +99,7 @@ Stage2-B までの実装と検証を踏まえ、Phase4 の計画上は DI 化さ
 |---|---|---|
 | `AutoProfileChecker.cs` | **C-1** | `IDeviceStateAccessor`、`IProfileSwitcher`、`IProfileRepository` 等へ責務別に分割して注入する。接続監視・判定・切替実行を一つの `ControlService` 依存にまとめない |
 | `PresetOption.cs` | **C-2 から開始** | 既存のプリセット適用とデバイス反映の挙動を維持するため、初期移行は `ControlService` 注入とする。安定後に `IProfilePresetService` 等の C-1 へ再評価する |
-| `MainWindow.xaml.cs` のプロファイル適用 | **C-1** | `IProfileSwitcher`／`IProfileRepository`／通知等の責務別サービスへ分け、UI が適用処理の詳細を直接持たないようにする |
+| `MainWindow.xaml.cs` のプロファイル適用 | **C-1** | 短期は専用 `IProfileApplicationService` へ適用手順を移す。将来は `IManualProfileApplicationService` 等へ整理する |
 | `App.rootHub` と `Program.rootHub` の併存 | **C-1/C-2 の分類対象外** | 呼び出し元ごとに上記分類を適用し、互換代入自体は CP4 完了まで維持する。DI 解決インスタンスとの同一性を検証する |
 
 ### 3.4 判断保留として残すもの
@@ -119,7 +119,7 @@ Stage2-B までの実装と検証を踏まえ、Phase4 の計画上は DI 化さ
 | UI の `ControlService` 依存 | まず `ControlService` を注入する | 既存の UI 操作とデバイス反映の順序を保ちやすい | `IControllerInteractionService` 等の画面用インターフェースへ分離 |
 | `AutoProfileChecker` | `IDeviceStateAccessor`、`IProfileRepository`、`IProfileSwitcher` へ分割注入 | 判定と実行を分離し、ControlService 全体への依存を避ける | 自動プロファイル専用サービスが必要になった時点で `IAutoProfileService` を検討 |
 | `PresetOption` | `ControlService` 注入から開始 | Blank／Default 適用時の既存デバイス反映を維持する | `IProfilePresetService` 等へ移し、UI から ControlService を隠す |
-| MainWindow のプロファイル適用 | 既存 `IProfileSwitcher`／`IProfileRepository` 等を組み合わせる | `Global.ApplyProfile` の副作用を短期的に保持する | 手動適用手順を `IManualProfileApplicationService` に集約 |
+| MainWindow のプロファイル適用 | 専用 `IProfileApplicationService` を新設する | `Global.ApplyProfile` の副作用を専用サービス内で短期的に保持する | 手動適用手順を `IManualProfileApplicationService` に集約 |
 | `rootHub` 互換代入 | CP4 完了まで `App.rootHub`／`Program.rootHub` を維持 | 既存呼び出し元の段階移行とロールバックを可能にする | 全呼び出し元移行後に互換代入を削除するか別途判断 |
 | `[DI]`／`[Legacy]` ログ | 通常操作は入口単位、フォールバック・失敗・重要変更は必須 | 高頻度ログを避けつつ経路を判別できる | CP4 後にログ実績を確認し、不要な Legacy ログを整理 |
 
@@ -242,6 +242,8 @@ viewModel = factory != null
 - 終了時にバックグラウンド処理が残らない
 
 ### C-3: `rootHub` 呼び出し元の分類と個別移行（Step10-2-C-3）
+
+プロファイル適用・復帰については、既存 `IProfileSwitcher` の拡張ではなく、専用 `IProfileApplicationService` を新設する。詳細な作業単位は `Phase4-Step10-2-C-3-Plan.md` を正本とする。現在は計画完了・実装前である。
 
 各呼び出し元を、次の台帳で管理する。
 
