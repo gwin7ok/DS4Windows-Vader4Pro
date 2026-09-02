@@ -27,12 +27,12 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 10-1 | `[DI]`／`[Legacy]` Trace ログ整備 | **進行中** | - | DI 新経路と Legacy シム経路の識別ログを整備中。高頻度アクセスはログ抑制方針。 |
 | Step 10-2-A | `Global` シム接続拡張 | **完了** | 2026-09-02 | `IProfileSettingsService` 等へのシム接続、A-1〜A-9 完了。 |
 | Step 10-2-B | 呼び出し元の DI 直接参照化 | **完了** | 2026-09-02 | `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` の対象経路を移行。テスト・コミット・リモート反映完了。 |
-| Step 10-2-C | Legacy 経路残存の整理と段階移行 | **C-0完了、C-1/C-2完了、C-3-1〜C-3-4実装完了・Actions検証済み** | 2026-09-02 | 詳細は `Phase4-Step10-2-C-Plan.md`。専用プロファイル適用・Action 連鎖サービスを追加し、Actions テスト 85件成功。Standalone・実機確認後に C-3-6 以降へ進む。 |
+| Step 10-2-C | Legacy 経路残存の整理と段階移行 | **C-0〜C-3完了、C-4着手** | 2026-09-02 | 詳細は `Phase4-Step10-2-C-Plan.md`。C-3の自動ビルド・主要実機確認を完了。通常切替の重複、通知設定、Action連鎖確認などは引き継ぎ課題として管理する。 |
 | Step 10-2-C-0 | 現状基準の固定 | **完了** | 2026-09-02 | Legacy 残存量の棚卸しと分類ルールを文書化。 |
 | Step 10-2-C-1 | Composition Root 一本化 | **実装完了・検証待ち** | 2026-09-02 | 旧 `ServiceCollection` 削除、Action 系登録統合、Provider 一本化を実装。Debug ビルド成功。 |
 | Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | **実装完了・検証待ち** | 2026-09-02 | Singleton 登録、AppHost 解決、parser 注入、`rootHub` 互換代入を実装。Debug ビルド成功。 |
-| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **根本修正実装完了・検証待ち** | 2026-09-02 | 解除設定を持つ Profile Action の `isTemp` を true に統一し、ActionManager／Mapping フォールバック／専用サービスで同一判定を使用。一時 Action の復帰は Mapping 側を正規経路として二重実行を抑止。Debug ビルド成功、Actions／Standalone・実機確認待ち。 |
-| Step 10-2-C-4 | ViewModel フォールバックの可視化 | **未着手** | - | CP4 までフォールバックを維持し、使用時の `[Legacy]` ログを追加。 |
+| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **完了（自動ビルド・主要実機確認済み）** | 2026-09-02 | `Phase4-Step10-2-C-3-Completion-Report.md`。一時プロファイル適用・通常プロファイル復帰、入力停止・再開、通知、接続・切断を確認。通常切替重複、通知設定、Action連鎖確認は引き継ぎ。 |
+| Step 10-2-C-4 | ViewModel フォールバックの可視化 | **実装完了・実機確認待ち** | 2026-09-02 | `AutoProfiles`、`ProfileEditor`、`RecordBox`、`SpecialActionEditor`、`MainWindow` の解決失敗時に画面名・ViewModel名を含む `[Legacy]` Traceログを追加。Debugビルド成功。通常起動時にフォールバックが0件であることを確認する。 |
 | Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **未着手** | - | 高頻度ログを抑制しつつ、入口・変更・失敗を監査。 |
 | Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | **未着手** | - | 自動テスト／実機／両方を分類し、実機確認項目を縮小。 |
 | Step 10-2-C-7 | CP4 実機検証 | **未着手（計画）** | - | C-6 で残った HID、WPF、ドライバ、長時間安定性等を確認。 |

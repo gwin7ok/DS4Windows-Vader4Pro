@@ -52,8 +52,11 @@ namespace DS4WinWPF.DS4Forms
         private ProfileList profileList;
         private bool autoDebug;
 
-        public AutoProfileHolder AutoProfileHolder { get => autoProfileHolder;
-            set => autoProfileHolder = value; }
+        public AutoProfileHolder AutoProfileHolder
+        {
+            get => autoProfileHolder;
+            set => autoProfileHolder = value;
+        }
         public AutoProfilesViewModel AutoProfVM { get => autoProfVM; }
         public bool AutoDebug { get => autoDebug; }
         public event EventHandler AutoDebugChanged;
@@ -82,7 +85,7 @@ namespace DS4WinWPF.DS4Forms
             int currentRowCount = autoProfilesGrid.RowDefinitions.Count;
             if (currentRowCount > DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                for (int i = currentRowCount-1; i >= DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i--)
+                for (int i = currentRowCount - 1; i >= DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i--)
                 {
                     autoProfilesGrid.RowDefinitions.RemoveAt(i);
                 }
@@ -92,10 +95,16 @@ namespace DS4WinWPF.DS4Forms
         public void SetupDataContext(ProfileList profileList)
         {
             var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
-            autoProfVM = vmFactory != null ? vmFactory.CreateAutoProfilesViewModel(autoProfileHolder, profileList) : new AutoProfilesViewModel(autoProfileHolder, profileList);
+            if (vmFactory != null)
+                autoProfVM = vmFactory.CreateAutoProfilesViewModel(autoProfileHolder, profileList);
+            else
+            {
+                DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=AutoProfiles, viewModel=AutoProfilesViewModel");
+                autoProfVM = new AutoProfilesViewModel(autoProfileHolder, profileList);
+            }
             programListLV.DataContext = autoProfVM;
             programListLV.ItemsSource = autoProfVM.ProgramColl;
-            
+
             revertDefaultProfileOnUnknownCk.DataContext = autoProfVM;
 
             autoProfVM.SearchFinished += AutoProfVM_SearchFinished;
@@ -383,7 +392,7 @@ namespace DS4WinWPF.DS4Forms
         {
             if (autoProfVM.SelectedItem != null && sender != null)
             {
-                if(autoProfVM.MoveItemUpDown(autoProfVM.SelectedItem, ((sender as MenuItem).Name == "MoveUp") ? -1 : 1))
+                if (autoProfVM.MoveItemUpDown(autoProfVM.SelectedItem, ((sender as MenuItem).Name == "MoveUp") ? -1 : 1))
                     autoProfVM.AutoProfileHolder.Save(DS4Windows.Global.appdatapath + @"\Auto Profiles.xml");
             }
         }

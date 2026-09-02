@@ -85,8 +85,14 @@ namespace DS4WinWPF.DS4Forms
                 unloadSwipeRightTrigCk, unloadTiltUpTrigCk, unloadTiltDownTrigCk, unloadTiltLeftTrigCk,
                 unloadTiltRightTrigCk,unloadTouchStartedTrigCk, unloadTouchEndedTrigCk,
             };
-var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
-            specialActVM = vmFactory != null ? vmFactory.CreateSpecialActEditorViewModel(deviceNum, specialAction) : new SpecialActEditorViewModel(deviceNum, specialAction);
+            var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            if (vmFactory != null)
+                specialActVM = vmFactory.CreateSpecialActEditorViewModel(deviceNum, specialAction);
+            else
+            {
+                DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=SpecialActionEditor, viewModel=SpecialActEditorViewModel");
+                specialActVM = new SpecialActEditorViewModel(deviceNum, specialAction);
+            }
             macroActVM = new MacroViewModel();
             launchProgVM = new LaunchProgramViewModel();
             loadProfileVM = new LoadProfileViewModel(profileList);
@@ -615,11 +621,11 @@ var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
                     var src = PresentationSource.FromVisual(this);
                     if (src != null && src.CompositionTarget != null)
                     {
-                            var transform = src.CompositionTarget.TransformFromDevice;
-                            var dpiPt = transform.Transform(anchorPt);
-                            AppLogger.LogDebug($"SpecialActionEditor.ShowPositionedMessageBox: anchorPt(physical)={anchorPt} dpiPt(logical)={dpiPt} anchorSize=({anchor.ActualWidth}x{anchor.ActualHeight})");
-                            left = dpiPt.X + anchor.ActualWidth / 2.0; // center anchor horizontally
-                            top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
+                        var transform = src.CompositionTarget.TransformFromDevice;
+                        var dpiPt = transform.Transform(anchorPt);
+                        AppLogger.LogDebug($"SpecialActionEditor.ShowPositionedMessageBox: anchorPt(physical)={anchorPt} dpiPt(logical)={dpiPt} anchorSize=({anchor.ActualWidth}x{anchor.ActualHeight})");
+                        left = dpiPt.X + anchor.ActualWidth / 2.0; // center anchor horizontally
+                        top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
                     }
                     else
                     {

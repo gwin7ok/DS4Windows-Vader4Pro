@@ -286,7 +286,13 @@ namespace DS4WinWPF.DS4Forms
             deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;
             var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
-            profileSettingsVM = vmFactory != null ? vmFactory.CreateProfileSettingsViewModel(device) : new ProfileSettingsViewModel(device);
+            if (vmFactory != null)
+                profileSettingsVM = vmFactory.CreateProfileSettingsViewModel(device);
+            else
+            {
+                DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=ProfileEditor, viewModel=ProfileSettingsViewModel");
+                profileSettingsVM = new ProfileSettingsViewModel(device);
+            }
             picBoxHover.Visibility = Visibility.Hidden;
             picBoxHover2.Visibility = Visibility.Hidden;
 
