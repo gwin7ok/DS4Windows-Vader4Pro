@@ -31,8 +31,9 @@ Phase4 の Step10 は、目的の異なる作業を次の単位に分けて管�
 | C-2 | **実装完了・検証待ち** | `ControlService` の Singleton 登録、AppHost 解決、parser 注入、`rootHub` 互換代入を実装済み。ユーザー側検証待ち |
 | C-3 | **完了（自動ビルド・主要実機確認済み）** | 専用プロファイル適用・復帰経路を実装し、主要実機確認を完了。詳細は `Phase4-Step10-2-C-3-Completion-Report.md` |
 | C-4 | **完了（実機ログ確認済み）** | ViewModelフォールバック5箇所に画面名・ViewModel名付きの`[Legacy]`ログを追加し、通常利用時の出力を確認 |
-| C-5-1 | **着手（現状参照箇所固定済み）** | `linkedProfileCheck`の3ファイル・実参照箇所を固定し、DI API直接参照化を開始 |
-| C-5-2〜C-8 | **未着手** | C-5-2以降でGlobalシムのログ監査、CP4前自動テスト化、CP4実機検証を実施する |
+| C-5-1 | **完了（実機確認済み）** | `linkedProfileCheck`の呼び出し元をDI APIへ移行し、対象Legacy getterログが出ないことを確認 |
+| C-5-2 | **計画作成済み・未着手** | `tempprofilename`／`useTempProfile`の呼び出し元をDI APIへ移行する |
+| C-5-3〜C-8 | **未着手** | C-5-3以降でGlobalシムのログ監査、CP4前自動テスト化、CP4実機検証を実施する |
 
 本書に記載された採用方針や分類は、実装を開始するための計画上の決定であり、実装完了を意味しない。各段階はコード変更、検証、コミット・リモート反映が完了した時点で個別に完了と判定する。
 
@@ -326,6 +327,34 @@ viewModel = factory != null
 - `linkedProfileCheck`の対象呼び出し元がDIサービスAPIを直接使用している
 - 接続・切断・再接続・リンク設定変更・プロファイル保存の既存動作が維持される
 - `Global.linkedProfileCheck`は互換シムとして残し、削除判断をC-8へ引き継ぐ
+
+#### C-5-2: `tempprofilename`／`useTempProfile` 呼び出し元のDI直接参照化
+
+`tempprofilename` と `useTempProfile` は、DI契約（`GetTempProfileName`／`SetTempProfileName`、`GetUseTempProfile`／`SetUseTempProfile`）とサービス実装が存在する一方、プロファイル適用、復帰、自動プロファイル、再接続、UI表示の一部がGlobal配列シムを参照している。C-5-2では、プロファイル状態遷移を維持したまま、すべての実行コードをデバイス単位DI APIへ置換する。
+
+詳細な参照基準と実施手順は `Phase4-Step10-2-C-5-2-TempProfile-State-Reference-Baseline.md` を正本とする。
+
+移行対象:
+
+- `ScpUtil.cs`: `LoadProfile`／`LoadTempProfile` およびBlank／Defaultロード後の状態更新
+- `Mapping.cs`: Profile Actionの抑制判定、ログ、`prevProfileName`／`prevProfileWasTemporary`保存
+- `ControlService.cs`: 接続・再接続時の自動プロファイル判定
+- `AutoProfileChecker.cs`: 自動プロファイルの比較、解除、状態ログ
+- `MainWindow.xaml.cs`: 現在の一時プロファイル名表示・状態取得
+
+実施順序:
+
+1. `ScpUtil`の状態更新を`Set...` APIへ置換する。
+2. `Mapping`、`ControlService`、`AutoProfileChecker`、`MainWindow`の読み取りを`Get...` APIへ置換する。
+3. Global getterの高頻度Legacyログを抑制し、setterは互換監査用に残す。
+4. 通常／一時適用、復帰、自動プロファイル、再接続、切断の状態遷移を確認する。
+
+完了条件:
+
+- 実行コードから`Global.tempprofilename`と`Global.useTempProfile`の参照がなくなる。
+- 両Globalシムは互換定義としてのみ残る。
+- 一時プロファイル適用時、復帰時、再接続時の状態が従来どおり維持される。
+- Actions／Standaloneのビルド・テストと実機確認が完了する。
 
 ### C-6: CP4 前自動テスト化判定・実装・実行（Step10-2-C-6）
 

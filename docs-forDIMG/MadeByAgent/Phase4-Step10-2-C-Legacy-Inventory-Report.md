@@ -92,14 +92,15 @@ Phase4 の Legacy 経路は完全には解消されていないが、残存量�
 - C-1/C-2 の分類方針: 決定済み
 - 短期方式と将来の推奨移行先: 計画書へ引継ぎ済み
 
-したがって、今後は件数削減だけを目的にせず、分類済みの Phase4 対象を C-3、C-4、C-5、C-6 の段階で処理する。`linkedProfileCheck` はデータ保持先がDI化済みである一方、呼び出し元がGlobal配列シムを使用しているため、C-5-1でDI APIへの直接参照へ移行する。
+したがって、今後は件数削減だけを目的にせず、分類済みの Phase4 対象を C-3、C-4、C-5、C-6 の段階で処理する。`linkedProfileCheck` はC-5-1でDI APIへの直接参照へ移行済みである。次に、同じ構造で残る `tempprofilename` と `useTempProfile` をC-5-2でDI APIへ移行する。
 
 ## 7. 今後の実装順序
 
 1. C-3: `rootHub` 呼び出し元を分類方針に沿って個別移行する。
 2. C-4: ViewModel フォールバック使用時の `[Legacy]` ログを整備する。
 3. C-5: Global シムのログ網羅性を監査する。
-4. C-5-1: `linkedProfileCheck`の`ControlService`、`ControllerListViewModel`、`ScpUtil`呼び出し元をDIサービスAPIへ移行する。
-5. C-6: CP4 項目を自動テスト／実機／両方に分類し、自動化できる項目をテストへ移す。
+4. C-5-1: `linkedProfileCheck`の呼び出し元をDIサービスAPIへ移行する。
+5. C-5-2: `tempprofilename`と`useTempProfile`の`ScpUtil`、`Mapping`、`ControlService`、`AutoProfileChecker`、`MainWindow`呼び出し元をDIサービスAPIへ移行する。
+6. C-6: CP4 項目を自動テスト／実機／両方に分類し、自動化できる項目をテストへ移す。
 5. C-7: 自動テストで代替できなかった項目を中心に CP4 実機検証を行う。
 6. C-8: CP4 後にフォールバック削除を専用変更として判断する。
