@@ -1,10 +1,10 @@
 # フェーズ5-Step10 計画書: 残存サービス境界の整理
 
-作成日: 2026-09-02（改訂日: 2026-09-03・Step10へ再編）
+作成日: 2026-09-02（改訂日: 2026-09-03・アーキテクチャガードレール反映）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
-- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step10（Phase5詳細計画書）
+- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step10, §5.4（Phase5詳細計画書・ガードレール）
 - `docs-forDIMG/MadeByAgent/Phase5-Status.md`（Phase5進捗管理）
 - `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegation-audit-report.md`（Step1監査結果。本Stepの対象根拠）
 - `.github/copilot-instructions.md`（エージェント作業ルール）
@@ -96,11 +96,24 @@ public class ProfileSettingsService : IProfileSettingsService
 
 ---
 
+### 1.4 アーキテクチャ・ガードレール: On-Demandパス評価による初期化順序の安全性保証（Phase5-Plan §5.4準拠）
+
+#### 【問題の実態】
+- `AppHost.Initialize()`（DIコンテナのビルド）は `App.xaml.cs` の極めて早期に実行される。
+- 一方、ポータブルモード（実行フォルダ同居）か `%APPDATA%` モードかを判定・決定する `Global.FindConfigLocation()` はその後に呼び出される。
+- もし Singleton サービス（`PathService`、`ProfileRepository` 等）のコンストラクタ内でパスプロパティ（`AppDataPath`）を先読みしてプライベートフィールドにキャッシュしてしまうと、まだパス探索が完了していないため、意図せず既定のフォールバックパス（空文字や BaseDirectory）でインスタンスが初期化・固定化され、設定やプロファイルが一切読み込めなくなる致命的な起動時障害が発生する。
+
+#### 【推奨対策】
+- `PathService` はキャッシュフィールドを保持せず、常にプロパティ getter で `Global.appdatapath` を直接評価する（§1.1）。
+- `IPathService` を注入されるすべてのサービス（`ProfileRepository`、`SpecialActionRepository`、Step6 `AppSettingsService` 等）は、**コンストラクタ内でパス文字列を先読み・キャッシュしてはならず、メソッド呼び出し時に毎回 `_pathService.AppDataPath` や `DefaultProfilesPath` を参照する「On-Demand（オンデマンド）評価」を徹底**する。
+
+---
+
 ## 2. 成果物一覧
 
 | 種別 | ファイルパス | 変更内容 |
 |---|---|---|
-| サービス改修 | `DS4Windows/DS4Control/Services/PathService.cs` | `_appDataPath` キャッシュおよびロックの完全撤廃 |
+| サービス改修 | `DS4Windows/DS4Control/Services/PathService.cs` | `_appDataPath` キャッシュおよびロックの完全撤廃（On-Demand評価） |
 | サービス改修 | `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` | `IDeviceStateAccessor` 注入、`Program.rootHub` 直接参照の排除 |
 | DI 登録 | `DS4Windows/DI/ServiceRegistration.cs` | `ProfileSettingsService` コンストラクタ解決確認、`IVirtualKBM` 登録追加 |
 | 単体テスト拡充 | `DS4WindowsTests/PathServiceTests.cs` | パス解決の独立テスト |
@@ -117,7 +130,7 @@ public class ProfileSettingsService : IProfileSettingsService
 1. `OutputKBMHandlerAdapter.cs` の依存関係を確認し、DIコンテナへの安全な登録可否を精査する。
 
 ### タスク Step10-3: `PathService` のキャッシュ完全撤廃実装
-1. `PathService.cs` から `_appDataPath` フィールドと `lock (_syncLock)` を削除し、getter で `Global.appdatapath` を直接返すよう修正する。
+1. `PathService.cs` から `_appDataPath` フィールドと `lock (_syncLock)` を削除し、getter で `Global.appdatapath` を直接返すよう修正する（§1.4 ガードレール準拠）。
 
 ### タスク Step10-4: `ProfileSettingsService` の `Program.rootHub` 直接参照置換
 1. `ProfileSettingsService.cs` のコンストラクタに `IDeviceStateAccessor` を追加する。
@@ -141,7 +154,7 @@ public class ProfileSettingsService : IProfileSettingsService
 
 | リスク | 影響度 | 回避策 |
 |---|---|---|
-| **起動時パス誤確定** | 高 | キャッシュを完全撤廃し、常に最新の `Global.appdatapath` を返す（§1.1）。 |
+| **起動時パス誤確定** | 高 | キャッシュを完全撤廃し、On-Demand で常に最新の `Global.appdatapath` を返す（§1.4）。 |
 | **テストコードのコンパイルエラー** | 低 | `ProfileSettingsService` のコンストラクタ変更に伴い、テスト側で `Mock<IDeviceStateAccessor>` を補正する（§1.2）。 |
 
 ---
@@ -149,6 +162,7 @@ public class ProfileSettingsService : IProfileSettingsService
 ## 5. 完了判定基準
 
 - [ ] `PathService` のキャッシュフィールドが削除され、直接参照になっていること。
+- [ ] On-Demand パス評価が徹底され、起動順序に依存しないパス解決が保証されていること（§1.4）。
 - [ ] `ProfileSettingsService.cs` 内から `Program.rootHub` への参照が 0 件になっていること。
 - [ ] `IVirtualKBM` のDI登録状況が確定していること。
 - [ ] 単体テストがすべてパスし、ビルドエラー・警告増がないこと。
