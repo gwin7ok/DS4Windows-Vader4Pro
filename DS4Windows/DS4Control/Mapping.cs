@@ -5143,8 +5143,10 @@ namespace DS4Windows
                                         deviceRuntime[device].UntriggerAction = action;
                                         deviceRuntime[device].UntriggerIndex = index;
 
-                                        // If the existing profile is a temp profile then store its name, because automaticUntrigger needs to know where to go back (empty name goes back to default regular profile)
-                                        deviceRuntime[device].UntriggerAction.prevProfileName = (useTempProfile[device] ? tempprofilename[device] : string.Empty);
+                                        deviceRuntime[device].UntriggerAction.prevProfileWasTemporary = useTempProfile[device];
+                                        deviceRuntime[device].UntriggerAction.prevProfileName = useTempProfile[device]
+                                            ? tempprofilename[device]
+                                            : ProfilePath[device];
                                     }
 
                                     for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
@@ -5202,7 +5204,7 @@ namespace DS4Windows
                                         {
                                             d.HaltReportingRunAction(() =>
                                             {
-                                                Global.ApplyProfile(device, action.details, false, true, ctrl,
+                                                Global.ApplyProfile(device, action.details, action.IsTemporaryProfileAction, true, ctrl,
                                                     DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
 
                                                 if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
@@ -5937,26 +5939,7 @@ namespace DS4Windows
                                 }
                             }
 
-                            string profileName = deviceRuntime[device].UntriggerAction.prevProfileName;
-                            DS4Device d = ctrl.DS4Controllers[device];
-                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
-                                (device + 1).ToString(), (profileName == string.Empty ? ProfilePath[device] : profileName), $"{d.Battery}");
-
-                            try
-                            {
-                                bool display = profileSettings.ProfileChangedNotification;
-                                string profToShow = (profileName == string.Empty ? ProfilePath[device] : profileName);
-                                bool isTempProf = (profileName != string.Empty);
-                                AppLogger.LogProfileChanged(device, profToShow, isTempProf, DS4Windows.ProfileChangeSource.MappingAction, prolog, DateTime.UtcNow, display);
-                            }
-                            catch { }
-
-                            deviceRuntime[device].UntriggerAction = null;
-
-                            if (profileName == string.Empty)
-                                LoadProfile(device, false, ctrl); // Previous profile was a regular default profile of a controller
-                            else
-                                LoadTempProfile(device, profileName, true, ctrl); // Previous profile was a temporary profile, so re-load it as a temp profile
+                            new DS4Windows.Actions.ProfileSwitchAction(action, device).Stop(null);
                         }
                     }
                 }
@@ -6047,14 +6030,16 @@ namespace DS4Windows
             EndMacro(device, new bool[4], string.Empty, DS4Controls.None);
         }
 
-        internal static string TakePendingRestoreProfileName(int device)
+        internal static string TakePendingRestoreProfileName(int device, out bool previousProfileWasTemporary)
         {
+            previousProfileWasTemporary = false;
             if (device < 0 || device >= deviceRuntime.Length)
                 return null;
 
             if (deviceRuntime[device].UntriggerAction == null)
                 return null;
 
+            previousProfileWasTemporary = deviceRuntime[device].UntriggerAction.prevProfileWasTemporary;
             string profileName = deviceRuntime[device].UntriggerAction.prevProfileName;
             deviceRuntime[device].UntriggerAction = null;
             return profileName;

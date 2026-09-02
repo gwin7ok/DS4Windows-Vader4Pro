@@ -39,7 +39,7 @@ namespace DS4Windows
             {
                 device.HaltReportingRunAction(() =>
                 {
-                    Global.ApplyProfile(deviceIndex, action.details, false, true, _control,
+                    Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
                         ProfileChangeSource.MappingAction, prolog, display);
                     _actionChain.DispatchNextActions(deviceIndex, action);
                 });
@@ -49,22 +49,28 @@ namespace DS4Windows
                 AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyFromAction: Slot {deviceIndex}, Profile '{action.details}'");
         }
 
-        public void RestoreFromAction(int deviceIndex)
+        public bool RestoreFromAction(int deviceIndex)
         {
             if (deviceIndex < 0 || deviceIndex >= 4)
-                return;
+                return false;
 
-            string profileName = Mapping.TakePendingRestoreProfileName(deviceIndex);
+            bool previousProfileWasTemporary;
+            string profileName = Mapping.TakePendingRestoreProfileName(deviceIndex, out previousProfileWasTemporary);
             if (profileName == null)
-                return;
+                return false;
 
-            if (string.IsNullOrEmpty(profileName))
-                Global.LoadProfile(deviceIndex, false, _control);
-            else
+            if (previousProfileWasTemporary)
                 Global.LoadTempProfile(deviceIndex, profileName, true, _control);
+            else
+            {
+                Global.ProfilePath[deviceIndex] = profileName;
+                Global.LoadProfile(deviceIndex, false, _control);
+            }
 
             if (AppLogger.IsTraceEnabled)
                 AppLogger.LogTrace($"[DI] ProfileApplicationService.RestoreFromAction: Slot {deviceIndex}, Profile '{profileName}'");
+
+            return true;
         }
     }
 }

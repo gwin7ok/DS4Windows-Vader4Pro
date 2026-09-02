@@ -5,6 +5,6 @@ namespace DS4Windows.DI
     public interface IProfileApplicationService
     {
         void ApplyFromAction(int deviceIndex, SpecialAction action);
-        void RestoreFromAction(int deviceIndex);
+        bool RestoreFromAction(int deviceIndex);
     }
 }

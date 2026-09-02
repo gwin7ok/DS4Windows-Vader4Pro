@@ -20,6 +20,14 @@
 | C-3-5 | **Actions検証済み・Standalone待ち** | Actions 85件成功。専用サービスの追加境界テストと Standalone 確認を継続 |
 | C-3-6〜C-3-7 | **未着手** | 実機引継ぎ、完了報告 |
 
+### 0.1 プロファイル Action の一時性修正
+
+解除設定（`uTrigger` または `automaticUntrigger`）を持つ Profile Action は、適用時に `isTemp=true` とする。これにより `LoadTempProfile`、`useTempProfile=true`、解除時の元プロファイル復帰が同じ状態遷移になる。
+
+解除設定のない通常プロファイル切替は `isTemp=false` のまま維持する。ActionManager 経路、Mapping のフォールバック、専用適用サービスは同じ `SpecialAction.IsTemporaryProfileAction` 判定を使用する。
+
+一時 Profile Action の解除条件は Mapping 側で判定するが、復帰の正規入口は `ProfileSwitchAction.Stop()` とする。`Stop()` から `IProfileSwitcher`、`IProfileApplicationService` を経由して一度だけ復帰する。切替前の通常／一時状態は `UntriggerAction` に保持し、通常プロファイルの場合は `ProfilePath` を復元してからロードする。
+
 ## 1. 目的
 
 `Mapping.cs` に残る `Program.rootHub` 直接依存と、そこから呼び出されるプロファイル適用・復帰の副作用を、専用の実行サービスへ移す。
@@ -129,6 +137,7 @@ public interface IProfileApplicationService
 - `ApplyProfileDirect` の処理を専用サービスへ移す
 - `RestoreProfileDirect` の処理を専用サービスへ移す
 - `HaltReportingRunAction`、通知文、`ProfileChangeSource`、一時プロファイル条件を維持する
+- 切替前の通常プロファイル名と一時プロファイル状態を保存し、解除時に通常プロファイルなら `ProfilePath` を復元してからロードする
 - 連鎖発火と Untrigger 状態を維持する
 
 完了条件:

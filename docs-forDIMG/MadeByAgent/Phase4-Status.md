@@ -31,7 +31,7 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 10-2-C-0 | 現状基準の固定 | **完了** | 2026-09-02 | Legacy 残存量の棚卸しと分類ルールを文書化。 |
 | Step 10-2-C-1 | Composition Root 一本化 | **実装完了・検証待ち** | 2026-09-02 | 旧 `ServiceCollection` 削除、Action 系登録統合、Provider 一本化を実装。Debug ビルド成功。 |
 | Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | **実装完了・検証待ち** | 2026-09-02 | Singleton 登録、AppHost 解決、parser 注入、`rootHub` 互換代入を実装。Debug ビルド成功。 |
-| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **C-3-1〜C-3-4実装完了・Actions検証済み** | 2026-09-02 | `IProfileApplicationService`、`IProfileActionProvider`、`IProfileActionChainService` を追加し、`Mapping` の適用・復帰入口を専用サービスへ委譲。Actions テスト 85件成功。Standalone・実機確認待ち。 |
+| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **根本修正実装完了・検証待ち** | 2026-09-02 | 解除設定を持つ Profile Action の `isTemp` を true に統一し、ActionManager／Mapping フォールバック／専用サービスで同一判定を使用。一時 Action の復帰は Mapping 側を正規経路として二重実行を抑止。Debug ビルド成功、Actions／Standalone・実機確認待ち。 |
 | Step 10-2-C-4 | ViewModel フォールバックの可視化 | **未着手** | - | CP4 までフォールバックを維持し、使用時の `[Legacy]` ログを追加。 |
 | Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **未着手** | - | 高頻度ログを抑制しつつ、入口・変更・失敗を監査。 |
 | Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | **未着手** | - | 自動テスト／実機／両方を分類し、実機確認項目を縮小。 |

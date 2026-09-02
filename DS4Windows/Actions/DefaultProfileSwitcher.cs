@@ -13,6 +13,7 @@ namespace DS4Windows.Actions
         // 直近にプロファイル切替を実行したタイムスタンプ（デバウンス用）
         private readonly long[] _lastSwitchTicks = new long[4];
         private readonly string[] _previousProfiles = new string[4];
+        private readonly bool[] _temporaryProfiles = new bool[4];
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
@@ -34,10 +35,12 @@ namespace DS4Windows.Actions
 
                 // 現在のプロファイルをバックアップ
                 _previousProfiles[deviceIndex] = Global.ProfilePath[deviceIndex];
+                bool isTemporaryProfile = action.IsTemporaryProfileAction;
+                _temporaryProfiles[deviceIndex] = isTemporaryProfile;
 
                 // プロファイル適用: Global.ApplyProfile 経由で ProfilePath 更新 + LoadProfile を一括実行
                 // (source=MappingAction は SpecialAction 経由の切替であることを示す)
-                Global.ApplyProfile(deviceIndex, targetProfile, false, false,
+                Global.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
                     Program.rootHub, ProfileChangeSource.MappingAction);
 
                 try { AppLogger.LogToGui($"Profile switched to '{targetProfile}' on controller {deviceIndex + 1}", false); } catch { }
@@ -54,6 +57,17 @@ namespace DS4Windows.Actions
 
             try
             {
+                if (_temporaryProfiles[deviceIndex])
+                {
+                    _temporaryProfiles[deviceIndex] = false;
+                }
+
+                var profileApplication = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileApplicationService>();
+                if (profileApplication != null && profileApplication.RestoreFromAction(deviceIndex))
+                {
+                    return;
+                }
+
                 string prevProfile = _previousProfiles[deviceIndex];
                 if (!string.IsNullOrWhiteSpace(prevProfile))
                 {
