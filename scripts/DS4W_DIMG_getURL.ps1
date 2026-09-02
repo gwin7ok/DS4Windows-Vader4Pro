@@ -1,17 +1,19 @@
-# o—Íæƒtƒ@ƒCƒ‹ƒpƒX‚Ì’è”’è‹`
+chcp 65001
+
+# å‡ºåŠ›å…ˆãƒ•ã‚¡ã‚¤ãƒ«ãƒ‘ã‚¹ã®å®šæ•°å®šç¾©
 $OUTPUT_PATH = "G:\Cursor_Folder\DS4Windows-Vader4Pro\urls.txt"
 
-# ˆê“I‚Éó‚¢ƒNƒ[ƒ“‚ğì¬iƒtƒ@ƒCƒ‹‚ÌÀ‘Ì‚Íƒ_ƒEƒ“ƒ[ƒh‚µ‚È‚¢‚½‚ß‚‘¬‚Å‚·j
+# ä¸€æ™‚çš„ã«æµ…ã„ã‚¯ãƒ­ãƒ¼ãƒ³ã‚’ä½œæˆï¼ˆãƒ•ã‚¡ã‚¤ãƒ«ã®å®Ÿä½“ã¯ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã—ãªã„ãŸã‚é«˜é€Ÿã§ã™ï¼‰
 git clone --depth 1 -b For-DI-migration-work --filter=blob:none https://github.com/gwin7ok/DS4Windows-Vader4Pro.git temp_repo
 Set-Location temp_repo
 
-# ‘Sƒtƒ@ƒCƒ‹‚ÌURLˆê——‚ğì¬‚µ‚Äo—Í
+# å…¨ãƒ•ã‚¡ã‚¤ãƒ«ã®URLä¸€è¦§ã‚’ä½œæˆã—ã¦å‡ºåŠ›
 $urls = git ls-tree -r --name-only HEAD | ForEach-Object {
     "https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/$_"
 }
 $urls | Out-File -FilePath $OUTPUT_PATH -Encoding utf8
 
-# ˆêƒtƒHƒ‹ƒ_‚ğíœ‚µ‚ÄŒ³‚ÌêŠ‚É–ß‚é
+# ä¸€æ™‚ãƒ•ã‚©ãƒ«ãƒ€ã‚’å‰Šé™¤ã—ã¦å…ƒã®å ´æ‰€ã«æˆ»ã‚‹
 Set-Location ..
 Remove-Item -Recurse -Force temp_repo
-Write-Host "Š®—¹: $($urls.Count) Œ‚ÌURL‚ğ $OUTPUT_PATH ‚É•Û‘¶‚µ‚Ü‚µ‚½B" -ForegroundColor Green
+Write-Host "å®Œäº†: $($urls.Count) ä»¶ã®URLã‚’ $OUTPUT_PATH ã«ä¿å­˜ã—ã¾ã—ãŸã€‚" -ForegroundColor Green
