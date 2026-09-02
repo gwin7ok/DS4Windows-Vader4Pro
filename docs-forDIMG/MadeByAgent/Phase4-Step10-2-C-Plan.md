@@ -34,8 +34,8 @@ Phase4 の Step10 は、目的の異なる作業を次の単位に分けて管�
 | C-5-1 | **完了（実機確認済み）** | `linkedProfileCheck`の呼び出し元をDI APIへ移行し、対象Legacy getterログが出ないことを確認 |
 | C-5-2 | **実装・自動検証済み、実機確認待ち** | `tempprofilename`／`useTempProfile`の状態更新・呼び出し元をDI APIへ移行。詳細は `Phase4-Step10-2-C-5-2-Completion-Report.md` |
 | C-5-3 | **監査完了** | DIサービス内部のGlobal／rootHub再委譲を監査。詳細は `Phase4-Step10-2-C-5-3-Nested-Legacy-Audit-Report.md` |
-| C-5-4〜C-5-7 | **計画作成済み・未着手** | プロファイル読込・適用、Action永続化、残存サービス境界を責務別に移行する |
-| C-6〜C-8 | **未着手** | C-6で自動テスト化、C-7でCP4実機検証、C-8でフォールバック削除判断を実施する |
+| C-5-4〜C-5-7 | **Phase5へ移管** | プロファイル読込・適用、Action永続化、残存サービス境界の責務分離。詳細は `Phase5-Plan.md` |
+| C-6〜C-8 | **Phase5へ移管** | 自動テスト化、CP4実機検証、フォールバック削除判断を Phase5 で再計画する |
 
 本書に記載された採用方針や分類は、実装を開始するための計画上の決定であり、実装完了を意味しない。各段階はコード変更、検証、コミット・リモート反映が完了した時点で個別に完了と判定する。
 
@@ -370,23 +370,23 @@ Step10-2-B で見落とした「DI の入口から内部で `Global`／`Program.
 - 各残存経路について、後続フェーズ、維持理由、移行時の副作用が記録されている。
 - プロファイル読込・適用、Action永続化、パス、KBM、設定状態の責務境界が区別されている。
 
-### C-5-4: プロファイル XML 読込・保存の責務分離（Step10-2-C-5-4）
+### C-5-4: プロファイル XML 読込・保存の責務分離（Phase5へ移管）
 
 `ProfileRepository` 内部の `Global.LoadProfile`／`Global.SaveProfile` 再委譲を対象とする。まず XML パースと設定サービスへの反映を専用ローダー／ライターへ分離し、入力停止・出力デバイス操作・Action再構築などの副作用を混在させない構造を設計する。
 
 実装前に、`BackingStore.LoadProfile` の設定項目群と副作用を棚卸しし、既存のロード順、欠落設定時の既定値、ログ、例外・失敗結果を固定する。完全な置換は分割単位ごとにビルド・テスト・実機確認を行う。
 
-### C-5-5: プロファイル適用・復帰の責務分離（Step10-2-C-5-5）
+### C-5-5: プロファイル適用・復帰の責務分離（Phase5へ移管）
 
 `ProfileApplicationService` 内部の `Global.ApplyProfile`／`Global.LoadProfile`／`Global.LoadTempProfile`／`Global.CompleteProfileApplication` 再委譲を対象とする。プロファイルデータ読込、デバイス停止・再開、状態更新、通知、Action再構築を専用契約へ分離する。
 
 `ProfileSwitchAction.Stop()` を復帰の正規入口とする既存方針、二重ロード防止、`isTemp`、`prevProfileName`、`prevProfileWasTemporary`、通知回数を維持する。
 
-### C-5-6: SpecialAction 永続化の責務分離（Step10-2-C-5-6）
+### C-5-6: SpecialAction 永続化の責務分離（Phase5へ移管）
 
 `SpecialActionRepository` 内部の `Global.LoadActions`／`Global.SaveActions` 再委譲を対象とする。Actions XML の読込・保存・一覧更新を Repository の責務として確立し、`Global` shim は互換境界へ限定する。Action runtime registry との責務混同を避ける。
 
-### C-5-7: 残存 DI サービス内部参照の整理（Step10-2-C-5-7）
+### C-5-7: 残存 DI サービス内部参照の整理（Phase5へ移管）
 
 `PathService`、`ProfileSettingsService`、`OutputKBMHandlerAdapter` など C-5-3 で分類した残存参照を、担当フェーズに従って整理する。Phase2対象のKBM、rootHub／デバイス状態、共有 `BackingStore` 境界はそれぞれの既存計画へ引き継ぎ、重複実装を作らない。
 

@@ -41,6 +41,8 @@
 
 ## 1. フェーズ4の目的・スコープ
 
+> **フェーズ境界の確定（2026-09-02）**: Phase4 は DI 基盤、Composition Root、主要呼び出し元、ViewModel Factory、互換経路の可視化までを完了範囲とする。DIサービス内部の Legacy 再委譲監査と、その後の責務分離は Phase5 へ移管する。詳細は `docs-forDIMG/MadeByAgent/Phase5-Plan.md` を参照。
+
 ### 1.1 目的
 - `Global` クラス（`ScpUtil.cs` 内、棚卸し実測値 442 件）に集中している設定・状態・I/O 責務を機能別 DI サービス群へ分割・移行する。
 - View / UserControl による ViewModel 直接生成（棚卸し実測値 29 件）を DI コンテナ注入 / ファクトリ方式へ切り替える。
@@ -91,17 +93,15 @@
 | Step 10-1 | `[DI]`／`[Legacy]` Trace ログ整備 | DI 実行経路と従来シム経路を識別できる Trace ログを整備し、高頻度ログを抑制する | 各サービス・シムへのログ導入、ログ監査記録 | **進行中** |
 | Step 10-2-A | `Global` シム接続拡張 | `IProfileSettingsService` 等へ `Global` の設定 API を接続する | `Phase4-Step10-2-A` 成果物、A-1〜A-9報告書 | **完了** |
 | Step 10-2-B | 呼び出し元の DI 直接参照化 | `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` の対象経路を DI へ移行する | `Phase4-Step10-2-B-Plan.md`、カテゴリ別完了報告書 | **完了** |
-| Step 10-2-C | Legacy 経路残存の整理と段階移行 | Phase4 対象の Legacy 経路を分類し、Composition Root、`rootHub`、ViewModel フォールバック、設定シム呼び出し元等を段階整理する | `Phase4-Step10-2-C-Plan.md`、Legacy調査・分類報告書 | **C-0〜C-5-1完了、C-5-2計画済み** |
+| Step 10-2-C | Legacy 経路残存の整理と段階移行 | Phase4 対象の Legacy 経路を分類し、Composition Root、`rootHub`、ViewModel フォールバック、設定シム呼び出し元等を段階整理する | `Phase4-Step10-2-C-Plan.md`、Legacy調査・分類報告書 | **C-0〜C-5-3完了、以降Phase5へ移管** |
 | Step 10-2-C-0 | 現状基準の固定 | Legacy 残存量、対象判定ルール、判断項目を固定する | Legacy残存調査報告書 | **完了** |
 | Step 10-2-C-1 | Composition Root 一本化 | 旧 `ServiceCollection` を削除し、AppHost／ServiceRegistration を唯一の構築経路にする | C-1/C-2実装前確認記録 | **実装完了・検証待ち** |
 | Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | `ControlService` を Singleton 登録し、AppHost から解決する。`rootHub` 代入は維持する | C-1/C-2実装記録 | **実装完了・検証待ち** |
 | Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | `Mapping` のプロファイル適用・復帰と Action 連鎖を専用サービスへ移す | `Phase4-Step10-2-C-3-Plan.md`、分類報告書 | **C-3-1完了、C-3-2〜C-3-4実装完了・検証待ち** |
 | Step 10-2-C-4 | ViewModel フォールバックの可視化 | CP4 までフォールバックを維持し、使用時に `[Legacy]` ログを出力する | フォールバックログ、テスト | **未着手** |
-| Step 10-2-C-5 | Legacy シムのログ網羅性監査 | 高頻度ログを抑制しながら、シム入口・変更・失敗を監査し、設定シム呼び出し元をDI APIへ移行する | シムログ監査報告書、C-5-1／C-5-2移行基準書 | **C-5-1完了、C-5-2計画済み** |
-| Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | CP4 項目を自動テスト／実機／両方に分類し、自動化可能な項目を実装する | 自動テスト、CP4項目分類表 | **未着手** |
-| Step 10-2-C-7 | CP4 実機検証 | C-6 で代替できない HID、WPF、ドライバ、長時間安定性等を確認する | CP4 実機チェックリスト | **未着手（計画）** |
-| Step 10-2-C-8 | CP4 後のフォールバック削除判断 | CP4 結果を基に互換フォールバック削除の可否を別変更として判断する | フォールバック削除判断報告書 | **未着手（計画）** |
-| **実機CP4** | **Phase4 最終総合 E2E 実機検証** | **`[DI]` および `[Legacy]` ログを活用したシム整理後・Phase 4 完了総合実機検証（長時間接続・負荷・安定性）** | **実機検証チェックリスト CP4** | 未着手 (計画) |
+| Step 10-2-C-5 | Legacy シムのログ網羅性監査 | 高頻度ログを抑制しながら、シム入口・変更・失敗を監査し、設定シム呼び出し元をDI APIへ移行する | シムログ監査報告書、C-5-1／C-5-2移行基準書 | **C-5-1〜C-5-3完了、以降Phase5へ移管** |
+| Step 10-2-C-6〜C-8 | 自動テスト・CP4・shim削除判断 | Phase5 の詳細計画に従って再定義する | `Phase5-Plan.md` | **Phase5へ移管** |
+| **実機CP4** | **Phase5 総合 E2E 実機検証** | **内部 Legacy 経路の責務分離後に実施** | **Phase5 検証計画** | **Phase5へ移管** |
 
 ---
 

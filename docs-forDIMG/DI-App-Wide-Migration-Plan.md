@@ -559,15 +559,18 @@ Viewの改修は最小限に抑えられる。17件全てに個別インター�
 
 詳細なサービス境界、Step 別完了基準、テストケース、リスク対策は [Phase4-Plan.md](MadeByAgent/Phase4-Plan.md) の更新内容を正とする。
 
-### 6.7 フェーズ5: 仕上げ・整流化（3-a層+全体、1〜2週間）
+### 6.7 フェーズ5: DIサービス内部 Legacy 経路監査と責務分離（期間は監査後に再見積もり）
 
-1. 3-a（仮想コントローラー出力）の最終確認（大規模変更は想定せず）。
-2. `Global`シムの削除判断（全75ファイルの移行が完了していれば削除、未完了ならシム存置継続）。
-3. `AppHost.cs`への完全移行（`App.xaml.cs`のインライン`ServiceCollection`構築コードを削除）。
-4. `Process.Start`分類③④⑤の再確認（原則は「対象外のまま」）。
+Phase4 完了後、DIサービスの内部実装が `Global`／`Program.rootHub`／Legacy 実体へ再委譲している経路を監査し、優先度を決定したうえで責務分離を進める。詳細は [Phase5-Plan.md](MadeByAgent/Phase5-Plan.md) を正本とする。
 
-**完了判定基準**: `Application_Startup`が§5.2のComposition Root設計と一致し、`ServiceRegistration.ConfigureServices`
-に全サービスが登録され、`new XxxViewModel(`のDIファクトリ非経由箇所が0件であること。
+1. DIサービス内部の Legacy 再委譲を網羅監査する。
+2. プロファイル XML 読込・保存を専用責務へ分離する。
+3. プロファイル適用・復帰を専用サービスへ集約し、通常 GUI 切替と編集画面 Save／Apply の適用契約を統一する。
+4. Save／Apply の保存成否、再適用成否、ログ、デスクトップ通知を検証可能にする。
+5. SpecialAction 永続化、パス、設定状態、デバイス状態、KBM の残存境界を担当計画へ振り分ける。
+6. 自動テストと実機検証の後に、Legacy shim の削除可否を別変更として判断する。
+
+**完了判定基準**: Phase5 の監査・責務分離・自動テスト・必要な実機検証が完了し、各 Legacy shim の存置または削除判断が記録されていること。
 
 ### 6.8 全体スケジュール見積もり
 
