@@ -85,6 +85,20 @@ Stage2-B までの実装と検証を踏まえ、Phase4 の計画上は DI 化さ
 - `SpecialActionEditor` 等の固定引数 ViewModel 群を個別 Factory にするか、用途別の統合 Factory にするか
 - Legacy Trace ログを全シムへ追加する際の高頻度アクセス抑制方法
 
+## 3.5 短期方針と将来の移行先
+
+今回の判断では、まず既存機能を壊さずに移行を進める短期方式を採用する。同時に、短期方式が将来の最終形にならない項目については、次の移行先を明示して後続作業へ引き継ぐ。
+
+| 対象 | 短期の実装方式 | 短期方式の理由 | 将来の推奨移行先 |
+|---|---|---|---|
+| C-1 契約範囲 | `IDeviceStateAccessor.GetController(int)` を基本契約とする | 実行時経路の依存を最小化し、入力ループへの影響を抑える | 状態取得、TouchPad 操作などを用途別の小さなアクセサへ分離 |
+| UI の `ControlService` 依存 | まず `ControlService` を注入する | 既存の UI 操作とデバイス反映の順序を保ちやすい | `IControllerInteractionService` 等の画面用インターフェースへ分離 |
+| `AutoProfileChecker` | `IDeviceStateAccessor`、`IProfileRepository`、`IProfileSwitcher` へ分割注入 | 判定と実行を分離し、ControlService 全体への依存を避ける | 自動プロファイル専用サービスが必要になった時点で `IAutoProfileService` を検討 |
+| `PresetOption` | `ControlService` 注入から開始 | Blank／Default 適用時の既存デバイス反映を維持する | `IProfilePresetService` 等へ移し、UI から ControlService を隠す |
+| MainWindow のプロファイル適用 | 既存 `IProfileSwitcher`／`IProfileRepository` 等を組み合わせる | `Global.ApplyProfile` の副作用を短期的に保持する | 手動適用手順を `IManualProfileApplicationService` に集約 |
+| `rootHub` 互換代入 | CP4 完了まで `App.rootHub`／`Program.rootHub` を維持 | 既存呼び出し元の段階移行とロールバックを可能にする | 全呼び出し元移行後に互換代入を削除するか別途判断 |
+| `[DI]`／`[Legacy]` ログ | 通常操作は入口単位、フォールバック・失敗・重要変更は必須 | 高頻度ログを避けつつ経路を判別できる | CP4 後にログ実績を確認し、不要な Legacy ログを整理 |
+
 ## 4. 採用方針
 
 ### 4.1 Composition Root
@@ -144,6 +158,7 @@ UI や、複数の ControlService 機能を同時に必要とする画面には 
 - まず呼び出し元ごとに必要メンバーを列挙する
 - 実行時経路は C-1 を第一候補、UI は C-2 を第一候補とする
 - 境界が不明確な場合は、対象ファイル、使用メンバー、呼出頻度、循環依存の有無を記載して確認する
+- 短期方式で `ControlService` を注入した UI は、将来 `IControllerInteractionService` 等へ分離する候補として記録する
 
 ### 4.4 ViewModel フォールバック
 
@@ -209,11 +224,11 @@ viewModel = factory != null
 | 呼び出し元 | 使用メンバー | 呼出頻度 | 分類候補 | 方針 | 状態 |
 |---|---|---:|---|---|---|
 | `Mapping.cs` | コントローラー取得・状態参照 | 高 | C-1 | `IDeviceStateAccessor` | 要実装 |
-| `ProfileEditor.xaml.cs` | 入力停止、状態取得、出力操作 | UI操作 | C-2 | `ControlService` 注入で既存の画面操作・デバイス反映を維持 | 方針確定 |
+| `ProfileEditor.xaml.cs` | 入力停止、状態取得、出力操作 | UI操作 | C-2 | 短期は `ControlService` 注入。将来は画面用操作サービスへ分離 | 方針確定 |
 | `MainWindow.xaml.cs` | 開始停止、状態、出力スロット | UI操作 | C-2候補 | 画面用依存を整理 | 要判断 |
 | `MainWindow.xaml.cs` のプロファイル適用箇所 | プロファイル適用、通知、デバイス停止 | UI操作 | C-1 | `IProfileSwitcher`／`IProfileRepository` 等へ責務分割 | 方針確定 |
 | `AutoProfileChecker.cs` | 自動切替、接続状態 | 常駐処理 | C-1 | `IDeviceStateAccessor`、`IProfileSwitcher`、`IProfileRepository` 等へ責務分割 | 方針確定 |
-| `PresetOption.cs` | Blank／Default プロファイル生成とデバイス操作 | UI操作 | C-2開始 | `ControlService` 注入で既存挙動を維持。安定後に専用サービスを再評価 | 方針確定 |
+| `PresetOption.cs` | Blank／Default プロファイル生成とデバイス操作 | UI操作 | C-2開始 | 短期は `ControlService` 注入。将来は `IProfilePresetService` へ移行 | 方針確定 |
 | `DS4Sixaxis.cs` | TouchPad／ControlService状態 | 高 | C-1候補 | 最小アクセサを確認 | 要判断 |
 | `App.rootHub` と `Program.rootHub` の併存 | 互換代入と正規参照の管理 | 横断 | 分類対象外 | 呼び出し元ごとの C-1/C-2 を適用し、CP4 まで互換代入を維持 | 方針確定 |
 

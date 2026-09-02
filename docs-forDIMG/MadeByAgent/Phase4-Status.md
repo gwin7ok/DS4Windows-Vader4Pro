@@ -25,7 +25,7 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 9 | ViewModel DI 移行 (Pattern C) | **完了** | 2026-09-01 | `IViewModelFactory.cs`, `ViewModelFactory.cs`, DI登録, View直接new全廃, `PatternCViewModelTests.cs`, **Step9-4-α監査合格**, **実機検証CP3全件合格** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **完了** | 2026-09-01 | `Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
 | Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **一部進行中** | - | [DI]/[Legacy] Trace ログ整備は着手済み。呼び出し元DI直接参照化（Step10-2）を前倒しで追加実施中のため、実機検証CP4はStep10-2完了後に実施 |
-| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-C C-3 分類完了・実装方針確認待ち** | 2026-09-02 | C-1/C-2 の実装・テスト・コミット・リモート反映完了。`rootHub` 呼び出し元を、実行時経路は最小アクセサ、UI は ControlService 注入候補、AutoProfile 等は判断保留に分類。次は分類 A〜D の確認後に個別移行する。 |
+| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-C 計画確定・C-3 実装準備完了** | 2026-09-02 | C-1/C-2 の実装・テスト・コミット・リモート反映完了。C-3 の4項目について短期方式と将来の推奨移行先を確定し、計画書・分類報告書・Legacy 調査報告書へ反映。次は具体的契約範囲を確認して個別移行する。 |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10・Step10-2完了時） |
 
 ---

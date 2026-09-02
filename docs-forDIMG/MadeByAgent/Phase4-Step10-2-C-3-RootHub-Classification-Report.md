@@ -19,7 +19,7 @@
 | `ControllerReadingsControl.xaml.cs` の状態取得部分 | 指定デバイスの状態取得 | UI更新 | 状態取得だけなら `IDeviceStateAccessor` で十分なため |
 | `BindingWindow.xaml.cs` のデバイス取得部分 | 対象デバイスの取得 | UI操作 | コントローラー全体の管理機能を必要としないため |
 
-最小契約は、既存 `IDeviceStateAccessor` の `GetController(int)` を基本とする。TouchPad や状態取得メソッドが必要な場合は、必要性を確認したうえで別の小さなアクセサへ分ける。
+最小契約は、既存 `IDeviceStateAccessor` の `GetController(int)` を基本とする。短期はこの契約で移行し、TouchPad や状態取得メソッドが必要になった時点で別の小さなアクセサへ分ける。将来的には、呼び出し元の用途ごとに状態取得と TouchPad 操作を分離する。
 
 ### 2.2 C-2: `ControlService` 注入方式を第一候補とするもの
 
@@ -30,20 +30,20 @@
 | `RecordBox.xaml.cs`／`RecordBoxViewModel.cs` | 録画状態、デバイス／TouchPad 参照 | 画面操作と録画ライフサイクルの複数機能を使用するため |
 | `StickCalibrationWindow.xaml.cs` | 状態取得とキャリブレーション関連操作 | 画面単位のデバイス操作として依存をまとめた方が明確なため |
 
-UI へ直接 `ControlService` を注入すると依存が大きくなるため、実装時には `IControllerInteractionService` を新設する派生案も比較する。ただし、分類としては C-2 を採用する。
+短期は `ControlService` を注入して既存の UI 操作とデバイス反映順序を維持する。将来的には `IControllerInteractionService` 等の画面用インターフェースへ分離し、UI から `ControlService` の具象型を隠す。ただし、分類としては C-2 を採用する。
 
 ### 2.3 今回確定した4項目
 
 | 呼び出し元 | 決定 | 適用方針 |
 |---|---|---|
-| `AutoProfileChecker.cs` | **C-1** | `IDeviceStateAccessor`、`IProfileSwitcher`、`IProfileRepository` 等へ責務別に分割する。接続監視・判定・切替実行を `ControlService` 全体へまとめて依存させない |
-| `PresetOption.cs` | **C-2 から開始** | `ControlService` 注入で既存のプリセット適用・デバイス反映を維持する。安定後に専用サービス化を再評価する |
-| `MainWindow.xaml.cs` のプロファイル適用箇所 | **C-1** | `IProfileSwitcher`、`IProfileRepository`、通知等へ責務分割し、UI に適用処理の詳細を持たせない |
-| `App.rootHub` と `Program.rootHub` の併存箇所 | **C-1/C-2 の分類対象外** | 呼び出し元ごとの C-1／C-2 を適用する。互換代入自体は CP4 完了まで維持し、DI 解決インスタンスとの同一性を検証する |
+| `AutoProfileChecker.cs` | **C-1** | 短期は `IDeviceStateAccessor`、`IProfileSwitcher`、`IProfileRepository` 等へ責務別に分割する。将来は必要に応じて `IAutoProfileService` を検討する |
+| `PresetOption.cs` | **C-2 から開始** | 短期は `ControlService` 注入で既存のプリセット適用・デバイス反映を維持する。将来は `IProfilePresetService` 等へ移行する |
+| `MainWindow.xaml.cs` のプロファイル適用箇所 | **C-1** | 短期は `IProfileSwitcher`、`IProfileRepository`、通知等へ責務分割する。将来は `IManualProfileApplicationService` に適用手順を集約する |
+| `App.rootHub` と `Program.rootHub` の併存箇所 | **分類対象外** | 呼び出し元ごとの C-1／C-2 を適用する。互換代入は CP4 完了まで維持し、全呼び出し元移行後に削除可否を判断する |
 
 ## 3. 実装時に確認する事項
 
-分類方針は確定しているため、以下は方式の再選択ではなく、具体的な契約範囲と副作用を確認するための事項である。
+分類方針は確定しているため、以下は方式の再選択ではなく、短期実装の具体的な契約範囲と副作用を確認するための事項である。短期方式で導入した依存は、各項目の将来移行先へ引き継ぐ。
 
 ### 確認 A: C-1 の契約範囲
 
@@ -51,7 +51,7 @@ UI へ直接 `ControlService` を注入すると依存が大きくなるため�
 
 ### 確認 B: UI の依存方式
 
-`MainWindow`、`ProfileEditor`、`RecordBox` は C-2 を適用する。各画面で `ControlService` 具象型を直接注入するか、画面用の `IControllerInteractionService` を新設するかは、使用メンバー確認後に決定する。
+`MainWindow`、`ProfileEditor`、`RecordBox` は短期 C-2 を適用する。まず `ControlService` 具象型を注入し、使用メンバーと画面操作を固定する。将来は `IControllerInteractionService` 等の画面用インターフェースへ分離する。
 
 ### 確認 C: AutoProfile
 
@@ -63,4 +63,4 @@ UI へ直接 `ControlService` を注入すると依存が大きくなるため�
 
 ## 4. 今回の結論
 
-4項目の C-1／C-2 分類と、`rootHub` 互換代入を CP4 まで維持する方針は確定した。今後は、実装単位ごとに契約範囲、副作用、UI の注入形態を確認しながら、小さな単位で実装する。
+4項目の C-1／C-2 分類、短期実装方式、将来の推奨移行先、および `rootHub` 互換代入を CP4 まで維持する方針は確定した。今後は、各短期実装の完了時に将来移行先を報告書へ引き継ぎ、小さな単位で実装する。
