@@ -67,13 +67,22 @@ Stage2-B までの実装と検証を踏まえ、Phase4 の計画上は DI 化さ
 
 ただし、対象外とした理由と、将来の担当フェーズは監査報告に残す。
 
-### 3.3 判断保留
+### 3.3 今回確定した分類
 
-次の項目は複数の実装方法があり、承認なしに一方へ決め打ちしない。
+判断保留としていた4項目について、次の方針を採用する。実装時はこの分類を初期方針とし、既存動作を維持できない具体的な問題が見つかった場合だけ、該当項目単位で再確認する。
 
-- `rootHub` を C-1 最小アクセサ方式で移すか、C-2 `ControlService` 注入方式で移すか
+| 項目 | 採用方針 | 補足 |
+|---|---|---|
+| `AutoProfileChecker.cs` | **C-1** | `IDeviceStateAccessor`、`IProfileSwitcher`、`IProfileRepository` 等へ責務別に分割して注入する。接続監視・判定・切替実行を一つの `ControlService` 依存にまとめない |
+| `PresetOption.cs` | **C-2 から開始** | 既存のプリセット適用とデバイス反映の挙動を維持するため、初期移行は `ControlService` 注入とする。安定後に `IProfilePresetService` 等の C-1 へ再評価する |
+| `MainWindow.xaml.cs` のプロファイル適用 | **C-1** | `IProfileSwitcher`／`IProfileRepository`／通知等の責務別サービスへ分け、UI が適用処理の詳細を直接持たないようにする |
+| `App.rootHub` と `Program.rootHub` の併存 | **C-1/C-2 の分類対象外** | 呼び出し元ごとに上記分類を適用し、互換代入自体は CP4 完了まで維持する。DI 解決インスタンスとの同一性を検証する |
+
+### 3.4 判断保留として残すもの
+
+次の項目は、今回の4項目とは別に、実装箇所と責務を確認してから決定する。
+
 - `SpecialActionEditor` 等の固定引数 ViewModel 群を個別 Factory にするか、用途別の統合 Factory にするか
-- `AutoProfileChecker` のプロファイル切替、デバイス状態、アプリ状態をどのサービス境界へ分けるか
 - Legacy Trace ログを全シムへ追加する際の高頻度アクセス抑制方法
 
 ## 4. 採用方針
@@ -200,15 +209,18 @@ viewModel = factory != null
 | 呼び出し元 | 使用メンバー | 呼出頻度 | 分類候補 | 方針 | 状態 |
 |---|---|---:|---|---|---|
 | `Mapping.cs` | コントローラー取得・状態参照 | 高 | C-1 | `IDeviceStateAccessor` | 要実装 |
-| `ProfileEditor.xaml.cs` | 入力停止、状態取得、出力操作 | UI操作 | C-2候補 | 必要機能を確認 | 要判断 |
+| `ProfileEditor.xaml.cs` | 入力停止、状態取得、出力操作 | UI操作 | C-2 | `ControlService` 注入で既存の画面操作・デバイス反映を維持 | 方針確定 |
 | `MainWindow.xaml.cs` | 開始停止、状態、出力スロット | UI操作 | C-2候補 | 画面用依存を整理 | 要判断 |
-| `AutoProfileChecker.cs` | 自動切替、接続状態 | 常駐処理 | 判断保留 | サービス責務を分解 | 要相談 |
+| `MainWindow.xaml.cs` のプロファイル適用箇所 | プロファイル適用、通知、デバイス停止 | UI操作 | C-1 | `IProfileSwitcher`／`IProfileRepository` 等へ責務分割 | 方針確定 |
+| `AutoProfileChecker.cs` | 自動切替、接続状態 | 常駐処理 | C-1 | `IDeviceStateAccessor`、`IProfileSwitcher`、`IProfileRepository` 等へ責務分割 | 方針確定 |
+| `PresetOption.cs` | Blank／Default プロファイル生成とデバイス操作 | UI操作 | C-2開始 | `ControlService` 注入で既存挙動を維持。安定後に専用サービスを再評価 | 方針確定 |
 | `DS4Sixaxis.cs` | TouchPad／ControlService状態 | 高 | C-1候補 | 最小アクセサを確認 | 要判断 |
+| `App.rootHub` と `Program.rootHub` の併存 | 互換代入と正規参照の管理 | 横断 | 分類対象外 | 呼び出し元ごとの C-1/C-2 を適用し、CP4 まで互換代入を維持 | 方針確定 |
 
 完了条件:
 
-- 各呼び出し元に C-1／C-2／保留の判定理由がある
-- 判断保留項目は承認後にのみ実装する
+- 各呼び出し元に C-1／C-2／分類対象外の判定理由がある
+- 今回確定した4項目は承認済み方針に沿って実装する
 - `Mapping` の高頻度経路で毎回 DI 解決しない
 
 ### C-4: ViewModel フォールバックの可視化
@@ -318,14 +330,14 @@ CP4 完了後、フォールバック削除専用の変更として次を再評�
 
 C-6 では、テストで確認できる論理を実機検証から除外したことを、CP4 チェックリスト上で追跡可能にする。
 
-## 7. 判断確認が必要な事項
+## 7. 実装前に確認する事項
 
-実装開始前に、次の項目は対象ファイルと使用メンバーを提示して確認する。
+4項目の分類方針は確定したため、次は実装単位ごとに使用メンバーと変更範囲を確認する。以下は分類を再決定するためではなく、具体的な契約範囲と副作用を確認するための項目である。
 
-- `Mapping.cs` の `Program.rootHub` を `IDeviceStateAccessor` に切り出す具体的メンバー
-- UI ごとの C-2 注入範囲と、C-1 ではなく C-2 とする理由
-- `AutoProfileChecker` のサービス責務境界
-- 旧 Provider 削除時に Action 系登録をどこまで `ServiceRegistration` へ移すか
+- `Mapping.cs` の `Program.rootHub` から `IDeviceStateAccessor` へ切り出す具体的メンバー
+- `AutoProfileChecker` の `IDeviceStateAccessor`／`IProfileSwitcher`／`IProfileRepository` の責務分担
+- `PresetOption` に注入する `ControlService` の機能範囲と、将来の専用サービス移行条件
+- `MainWindow` のプロファイル適用で使用する `IProfileSwitcher`／`IProfileRepository` の契約範囲
 - Legacy ログを入口だけにする対象と、変更操作ログを必須にする対象
 
 ## 8. 完了条件
@@ -339,4 +351,4 @@ C-6 では、テストで確認できる論理を実機検証から除外した�
 - CP4 で主要機能、長時間動作、ログ経路を確認している
 - CP4 後にフォールバック削除の可否を別判断できる
 
-本計画の判断保留項目は、ユーザー確認なしに実装を開始しない。
+本計画で分類を確定した項目は実装へ進める。新たに複数方式が発生した場合は、実装前に対象・影響範囲・代替案を提示して確認する。
