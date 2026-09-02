@@ -13,13 +13,13 @@
 - Action エントリの事前確保を AppHost の Host 構築後に移動した。
 - `Host.Services` を `ServiceProviderHolder` へ設定し、Provider を一本化した。
 
-### C-2 ControlService DI 化（未着手）
+### C-2 ControlService DI 化（実装完了・検証待ち）
 
-- `ControlService` を `ServiceRegistration.cs` に Singleton 登録する。
-- App 側の通常生成を削除し、AppHost から解決する。
-- 起動時 parser は AppHost の parser 付き構築経路から注入する。
-- `App.rootHub`／`Program.rootHub` への互換代入を維持する。
-- 既存の `Stop`、`ShutDown`、Host Dispose による終了処理を維持する。
+- `ControlService` を `ServiceRegistration.cs` に Singleton 登録した。
+- App 側の通常生成を削除し、AppHost から解決するようにした。
+- 起動時 parser は AppHost の parser 付き構築経路から注入するようにした。
+- `App.rootHub`／`Program.rootHub` への互換代入を維持した。
+- 既存の `Stop`、`ShutDown`、Host Dispose による終了処理を維持している。
 
 ## 2. 実装前の確認事項
 
@@ -32,13 +32,13 @@
 
 - C-0 の文書調査・方針整理: 完了
 - C-1: コード実装完了、Debug ビルド成功。Actions／Standalone テストと実機検証待ち
-- C-2: コード実装未着手
+- C-2: コード実装完了、Debug ビルド成功。Actions／Standalone テストと実機検証待ち
 - 実機起動・終了、Singleton 同一性、バックグラウンドスレッド終了: 未実施
 - C-1 の実装コミット・リモート反映: 未確認
-- C-2 の実装コミット・リモート反映: 未実施
+- C-2 の実装コミット・リモート反映: 完了（Git 作業ツリー clean、リモート同期済み）
 
 ## 4. 次の作業
 
 1. C-1 の Actions／Standalone テストと実機確認を行う。
 2. C-1 の問題がなければコミット・push 状態を確認する。
-3. C-2 の実装へ進む。
+3. C-2 の Actions／Standalone テストと実機確認後、C-3 の実装へ進む。
