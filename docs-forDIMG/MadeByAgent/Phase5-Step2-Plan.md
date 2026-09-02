@@ -1,6 +1,6 @@
 # フェーズ5-Step2 計画書: プロファイル XML 読込・保存の責務分離
 
-作成日: 2026-09-02
+作成日: 2026-09-02（改訂日: 2026-09-03）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
@@ -17,20 +17,20 @@
 - **§2.1 フォールバック実装・シム維持の原則**:
   - 古い経路（`Global.LoadProfile`／`Global.SaveProfile`）は、新しいDI経由の実装が完成し動作確認が取れるまで削除しない。新旧を同時に複数経路実装することはしない。
 - **§2.2 現在の機能の完全維持 (No Feature Drop)**:
-  - プロファイルのロード順、既定値、欠落設定時のフォールバック、`tempProfileDistance`／`loggedInvalidActions`等の付随状態管理を100%維持する。
+  - プロファイルのロード順、既定値、欠落設定時のフォールバック、`tempProfileDistance`／`loggedInvalidActions` 等の付随状態管理を100%維持する。
 - **§2.3 ログ出力の厳格な維持**:
   - `AppLogger.LogToGui`／`AppLogger.LogTrace`／`AppLogger.LogDebug` 等、既存のログ出力とログレベルを維持する。
 - **§3.1 DI (Dependency Injection) の実装**:
   - コンテナ登録は `DS4Windows/DI/ServiceRegistration.cs` に行う。インターフェース名には `I` プレフィックスを付ける。
 - **§3.2 巨大ファイルの編集方針**:
-  - `ScpUtil.cs`（`Global`クラス・`BackingStore`クラス）はファイル全体を再生成せず、対象メソッドのみをピンポイントで置換する。
+  - `ScpUtil.cs`（`Global` クラス・`BackingStore` クラス）はファイル全体を再生成せず、対象メソッドのみをピンポイントで置換する。
 
 ---
 
 ## 0. Step2の位置づけと現状分析
 
 ### 0.1 Step1監査結果に基づく対象範囲
-`Phase5-Step1-legacy-delegation-audit-report.md` §2 表の#7（`IProfileRepository`→`ProfileRepository`）に基づき、以下を対象とする。
+`Phase5-Step1-legacy-delegation-audit-report.md` §2 表の#7（`IProfileRepository` → `ProfileRepository`）に基づき、以下を対象とする。
 
 - `ProfileRepository.LoadProfile(deviceIndex, profileName)` 内部の `Global.LoadProfile(deviceIndex, false, control, false)` 呼び出し
 - `ProfileRepository.SaveProfile(deviceIndex, profileName)` 内部の `Global.SaveProfile(deviceIndex, profileName)` 呼び出し
@@ -45,7 +45,7 @@
 `ProfileRepository` は現在、この2種類が混在した `Global.LoadProfile`／`Global.SaveProfile` を単一の呼び出しとして利用しており、「XMLパース」と「設定値反映（状態調整）」の境界が `ProfileRepository` の外（`Global`）に隠れている。
 
 ### 0.3 全体4層モデルにおける位置づけ
-`DI-App-Wide-Migration-Plan.md` の4層モデルにおいて、`ProfileRepository` は **第4層 4-c 設定・プロファイル・アクション・環境・通知サービス** に属する（`ServiceRegistration.cs` のコメント区分に準拠）。本Stepはこの層内で、XML永続化（データアクセス）と状態調整（アプリケーションロジック）の責務を分離する。
+`DI-App-Wide-Migration-Plan.md` の4層モデルにおいて、`ProfileRepository` は **第4層 4-c 設定・プロファイル・アクション・環境・通知サービス** に属する。本Stepはこの層内で、XML永続化（データアクセス）と状態調整（アプリケーションロジック）の責務を明確に分離する。
 
 ---
 
@@ -53,6 +53,9 @@
 
 ### 1.1 `IProfileXmlStore` インターフェース設計（新規、第4層 4-c）
 XML実I/Oと状態調整を明確に分離するため、`BackingStore` への薄いラッパーとして契約を新設する。`DS4Windows/DI/IProfileXmlStore.cs`（名前空間 `DS4Windows.DI`）に定義する。
+
+#### 【仕様調整: SaveProfileXml の戻り値を bool に統一】
+Step4（結果・通知の統一）において、保存成否を呼び出し元へ伝播させログやUI通知を行う設計となっている。手戻りを防ぐため、**本Step（Step2）の設計時点で最初から戻り値を `bool`（`BackingStore.SaveProfile` の成否結果）として定義**する。
 
 ```csharp
 namespace DS4Windows.DI
@@ -63,19 +66,25 @@ namespace DS4Windows.DI
         bool LoadProfileXml(int deviceIndex, bool launchProgram, ControlService control,
             string overridePath = "", bool xinputChange = true, bool postLoad = true);
 
-        // 純粋なXML書込
-        void SaveProfileXml(int deviceIndex, string profileName);
+        // 純粋なXML書込（BackingStore.SaveProfile の成否 bool をそのまま返す）
+        // ※ Step4 との整合性により最初から bool で定義
+        bool SaveProfileXml(int deviceIndex, string profileName);
     }
 }
 ```
 
+---
+
 ### 1.2 `ProfileXmlStore` 実装クラス設計
 - `DS4Windows/DS4Control/Services/ProfileXmlStore.cs`（新規作成、名前空間: `DS4Windows`）。
 - コンストラクタで `BackingStore` を受け取る（デフォルトは既存シムパターンに倣い `Global.store`）。
-- `LoadProfileXml`／`SaveProfileXml` は `BackingStore.LoadProfile`／`BackingStore.SaveProfile` へそのまま委譲する（XML実装自体はPhase5の対象外、変更しない）。
+- `LoadProfileXml`／`SaveProfileXml` は `BackingStore.LoadProfile`／`BackingStore.SaveProfile` へそのまま委譲し、その成否（`bool`）を返す（XML実装自体はPhase5の対象外、変更しない）。
+
+---
 
 ### 1.3 状態調整ロジックの `ProfileRepository` への集約
-`Global.LoadProfile`／`Global.SaveProfile` に混在していた状態調整ロジック（`loggedInvalidActions.Clear()`、一時プロファイルフラグのリセット等）を `ProfileRepository.LoadProfile`／`SaveProfile` 内へ直接移設する。`ProfileRepository` は `IProfileXmlStore`（XML I/O）と `IProfileSettingsService`（状態）を注入され、両者を組み合わせて既存と同一の振る舞いを実現する。
+`Global.LoadProfile`／`Global.SaveProfile` に混在していた状態調整ロジック（`loggedInvalidActions.Clear()`、一時プロファイルフラグのリセット等）を `ProfileRepository.LoadProfile`／`SaveProfile` 内へ直接移設する。
+`ProfileRepository` は `IProfileXmlStore`（XML I/O）と `IProfileSettingsService`（状態）を注入され、両者を組み合わせて既存と同一の振る舞いを実現する。
 
 ```csharp
 // ProfileRepository.LoadProfile 内の想定変更（イメージ）
@@ -83,81 +92,83 @@ Global.loggedInvalidActions.Clear(); // 現状維持（Step6でGlobal委譲を�
 bool result = _profileXmlStore.LoadProfileXml(deviceIndex, false, control, "", true, true);
 _profileSettings.SetTempProfileName(deviceIndex, string.Empty);
 _profileSettings.SetUseTempProfile(deviceIndex, false);
-// tempProfileDistance 相当のフラグ更新（IProfileSettingsService経由に統一するか本Stepで確認）
+
+// ProfileRepository.SaveProfile 内の想定変更（イメージ）
+// IProfileXmlStore.SaveProfileXml の戻り値 bool を受け取り、成否を伝播
+bool saveSuccess = _profileXmlStore.SaveProfileXml(deviceIndex, profileName);
+return saveSuccess;
 ```
 
-### 1.4 `Global.LoadProfile`／`Global.SaveProfile` のシム化
-既存の `Global.LoadProfile`／`Global.SaveProfile` は、他の75ファイルからの呼び出し元互換のため即座には削除せず、`Global.ProfileRepositoryInstance.LoadProfile(...)` へ委譲する薄いシムとして残す（既存の `Phase4-Step1〜3` シムパターンに倣う）。
+---
 
-### 1.5 `ProfilesPath` の `IPathService` 経由への切替
-`ProfileRepository.ProfilesPath` 内の `Global.appdatapath` 直接参照を、既にDI登録済みの `IPathService.AppDataPath` 経由に置き換える（`IPathService` はPhase3で導入済みのためコンストラクタ注入を追加するのみで完結する）。
+### 1.4 `Global.LoadProfile`／`Global.SaveProfile` のシム化
+既存の `Global.LoadProfile`／`Global.SaveProfile` は、他の多数のファイルからの呼び出し元互換のため即座に削除せず、内部で `IProfileRepository`（または `IProfileXmlStore`）を呼び出す薄いシム（委譲ラッパー）とする。
+これにより、段階的な移行期間中も既存コードの動作を100%維持する（§2.1 準拠）。
+
+### 1.5 ProfilesPath の `IPathService` 経由への切替
+`ProfileRepository.ProfilesPath` 内部で参照されている静的 `Global.appdatapath` を、Phase3 で導入済みの `IPathService.ProfilesPath`（または `PathService` 経由）に切り替え、ファイルシステムパスの取得を DI 化する。
 
 ---
 
 ## 2. 成果物一覧
 
-| ファイルパス | 種別 | ライフサイクル | 内容 |
-|---|---|---|---|
-| `DS4Windows/DI/IProfileXmlStore.cs` | 新規 | **DI永続資産** | プロファイルXML読込・保存の専用契約インターフェース |
-| `DS4Windows/DS4Control/Services/ProfileXmlStore.cs` | 新規 | **DI永続資産** | `IProfileXmlStore` の実装（`BackingStore`への薄いラッパー） |
-| `DS4Windows/DI/ServiceRegistration.cs` | 更新 | **DI永続資産** | `IProfileXmlStore` の Singleton 登録追加 |
-| `DS4Windows/DS4Control/Services/ProfileRepository.cs` | 更新 | **DI永続資産** | `Global.LoadProfile`／`Global.SaveProfile`直接呼び出しを`IProfileXmlStore`＋状態調整ロジックの組み合わせへ置換。`IPathService`注入によるパス解決変更 |
-| `DS4Windows/DS4Control/ScpUtil.cs`（`Global`クラス） | 更新（ピンポイント） | 過渡期シム | `Global.LoadProfile`／`Global.SaveProfile` を `Global.ProfileRepositoryInstance` への委譲シムへ変更 |
-| `DS4WindowsTests/ProfileXmlStoreTests.cs` | 新規 | **テスト資産** | `IProfileXmlStore`実装、および`ProfileRepository`の状態調整ロジック（一時プロファイルフラグリセット等）の単体テスト |
-| `docs-forDIMG/MadeByAgent/Phase5-Step2-Plan.md` | 新規 | ドキュメント | 本計画書 |
-| `docs-forDIMG/MadeByAgent/Phase5-Step2-Completion-Report.md` | 新規 | ドキュメント | Step2完了報告書 |
-| `docs-forDIMG/MadeByAgent/Phase5-Status.md` | 更新 | ドキュメント | Step2進捗ステータス更新 |
+| 種別 | ファイルパス | 変更内容 |
+|---|---|---|
+| インターフェース | `DS4Windows/DI/IProfileXmlStore.cs` | 純粋な XML I/O を表す新規契約（`SaveProfileXml` は `bool` を返す） |
+| サービス実装 | `DS4Windows/DS4Control/Services/ProfileXmlStore.cs` | `BackingStore` への薄い委譲ラッパー実装 |
+| リポジトリ改修 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | `IProfileXmlStore` 注入、状態調整ロジックの内包、`ProfilesPath` の DI 参照化 |
+| DI 登録 | `DS4Windows/DI/ServiceRegistration.cs` | `IProfileXmlStore` → `ProfileXmlStore` の Singleton 登録 |
+| シム化 | `DS4Windows/DS4Control/ScpUtil.cs` | `Global.LoadProfile`／`Global.SaveProfile` をシム化 |
+| 単体テスト | `DS4WindowsTests/ProfileXmlStoreTests.cs` | `IProfileXmlStore` の読込・保存成否モック検証テスト新設 |
+| 単体テスト拡充 | `DS4WindowsTests/ProfileRepositoryTests.cs` | 責務分離後の状態更新および成否伝播テストの拡充 |
 
 ---
 
 ## 3. 作業手順（マイクロタスク分割）
 
 ### タスク Step2-1: `IProfileXmlStore` & `ProfileXmlStore` の設計・作成
-- `IProfileXmlStore.cs`（`DS4Windows/DI/`）および `ProfileXmlStore.cs`（`DS4Windows/DS4Control/Services/`）を作成する。
-- `BackingStore.LoadProfile`／`SaveProfile` の既存シグネチャ・既定値・戻り値をそのまま踏襲する（内部ロジックは変更しない）。
+1. `DS4Windows/DI/IProfileXmlStore.cs` を新規作成し、`LoadProfileXml` および `bool SaveProfileXml` を定義する。
+2. `DS4Windows/DS4Control/Services/ProfileXmlStore.cs` を新規作成し、`BackingStore` 呼び出しを実装する（`SaveProfile` の戻り値をそのまま返す）。
 
 ### タスク Step2-2: DI コンテナ登録追加
-- `DS4Windows/DI/ServiceRegistration.cs` に `IProfileXmlStore` の Singleton 登録を追加する。
+1. `DS4Windows/DI/ServiceRegistration.cs` に `services.AddSingleton<IProfileXmlStore, ProfileXmlStore>();` を追加する。
 
 ### タスク Step2-3: `ProfileRepository` の責務分離実装
-- コンストラクタに `IProfileXmlStore` を追加注入する（`IProfileSettingsService` は導入済み）。
-- `LoadProfile`／`SaveProfile` メソッド内の `Global.LoadProfile`／`Global.SaveProfile` 呼び出しを、`IProfileXmlStore` 呼び出し＋状態調整ロジック（`loggedInvalidActions`クリア、一時プロファイルフラグリセット等）の組み合わせへピンポイント置換する。
-- `ProfilesPath` プロパティを `IPathService.AppDataPath` 経由に変更する（コンストラクタに `IPathService` を追加注入）。
+1. `ProfileRepository` のコンストラクタに `IProfileXmlStore` を追加注入する。
+2. `LoadProfile` 内で `Global.LoadProfile` 呼び出しを廃止し、`_profileXmlStore.LoadProfileXml` + 状態調整ロジックに置き換える。
+3. `SaveProfile` 内で `_profileXmlStore.SaveProfileXml` を呼び出し、成否（`bool`）を戻り値として反映する。
+4. `ProfilesPath` プロパティを `_pathService` 経由に変更する。
 
 ### タスク Step2-4: `Global.LoadProfile`／`Global.SaveProfile` のシム化
-- `ScpUtil.cs` 内の該当メソッドを、`Global.ProfileRepositoryInstance.LoadProfile(...)`／`SaveProfile(...)` への委譲シムへピンポイント置換する。
-- 既存の呼び出し元（75ファイル中の該当箇所）の戻り値・シグネチャ互換を維持する。
+1. `Global.LoadProfile` および `Global.SaveProfile` の内部を、DI サービス（`AppHost.ServiceProvider` 経由の `IProfileRepository` 等）へ委譲する形にピンポイント置換する。
 
 ### タスク Step2-5: 単体テスト作成と自動テスト実行
-- `DS4WindowsTests/ProfileXmlStoreTests.cs` を作成し、以下を検証する。
-  - `IProfileXmlStore` 経由でのプロファイル読込・保存が既存 `BackingStore` 呼び出しと同一結果になること。
-  - `ProfileRepository.LoadProfile` 実行後に一時プロファイルフラグ（`UseTempProfileArray`／`TempProfileNameArray`）が正しくリセットされること。
-- 既存回帰テスト（`DS4WindowsTests`／`StandaloneTests`）が全件通過することを確認する。
+1. `ProfileXmlStoreTests.cs` を新設し、XML I/O 委譲および `SaveProfileXml` の `true`/`false` 戻り値を検証する。
+2. `ProfileRepositoryTests.cs` を拡充し、読込時の状態調整ロジック（一時プロファイル名クリア等）が実行されることを検証する。
+3. `dotnet test` を実行し、全テストパスを確認する。
 
 ### タスク Step2-6: ビルド検証、進捗更新、完了報告書の作成
-- `dotnet build DS4WindowsWPF.sln --nologo` を実行し警告0・エラー0を確認する。
-- `Phase5-Status.md` のStep2欄を更新し、`Phase5-Step2-Completion-Report.md` を作成する。
+1. Debug / Release ビルドの成功を確認する。
+2. `Phase5-Status.md` の Step2 進捗を「完了」に更新する。
+3. `Phase5-Step2-Completion-Report.md` を作成する。
 
 ---
 
 ## 4. リスクと回避策
 
-| リスク | 該当タスク | 回避策 |
+| リスク | 影響度 | 回避策 |
 |---|---|---|
-| `Global.LoadProfile`が持つ状態調整ロジック（`loggedInvalidActions`、一時プロファイルフラグ）の移設漏れによる挙動差異 | Step2-3 | 移設前後でメソッド本体を1行単位で突き合わせ、全ての副作用（フィールド更新・ログ出力）を`ProfileRepository`側に過不足なく再現する。単体テストで一時プロファイルフラグの状態遷移を検証する。 |
-| `Global.LoadProfile`／`Global.SaveProfile`をシム化した際、75ファイルに及ぶ既存呼び出し元の一部が未初期化のDIコンテナ経由で失敗する | Step2-4 | 既存シムパターン（`Global.ProfileRepositoryInstance`のフォールバックインスタンス）をそのまま流用し、DIコンテナ未初期化時は`fallbackProfileRepository`が使われることを確認する。 |
-| `IPathService`未登録環境（テスト等）で`ProfilesPath`解決が失敗する | Step2-3 | `IPathService`は既にPhase3でDI登録済みのため通常経路では問題ないが、コンストラクタのデフォルト引数で`null`許容とし、`null`の場合は`Global.appdatapath`へのフォールバックを一時的に残す（Step6で解消を検討）。 |
+| **ScpUtil.cs 編集による破壊** | 高 | `ScpUtil.cs` 全体を書き換えず、`Global.LoadProfile`／`Global.SaveProfile` の本体のみをピンポイントで委譲シムに置換する（§3.2）。 |
+| **状態調整の欠落** | 高 | `tempProfileDistance` や `loggedInvalidActions` のクリア順序を既存の `Global.LoadProfile` と完全に一致させる（§2.2）。 |
+| **Step4 との仕様不整合** | 低 | `SaveProfileXml` の戻り値を最初から `bool` に統一し、保存失敗の握りつぶしを未然に防止する。 |
 
 ---
 
 ## 5. 完了判定基準
 
-- [ ] `IProfileXmlStore` が `DS4Windows/DI/` に定義されている（DI永続資産）。
-- [ ] `ProfileXmlStore` が `DS4Windows/DS4Control/Services/` に実装されている（DI永続資産）。
-- [ ] `ServiceRegistration.cs` に `IProfileXmlStore` が登録されている（DI永続資産）。
-- [ ] `ProfileRepository.LoadProfile`／`SaveProfile` が `Global.LoadProfile`／`Global.SaveProfile` を直接呼び出さず、`IProfileXmlStore`＋状態調整ロジックの組み合わせに置き換わっている。
-- [ ] `ProfileRepository.ProfilesPath` が `IPathService.AppDataPath` 経由でパス解決している。
-- [ ] `Global.LoadProfile`／`Global.SaveProfile` が `Global.ProfileRepositoryInstance` への委譲シムになっている（既存呼び出し元は無修正で動作する）。
-- [ ] 新設した `ProfileXmlStoreTests` および既存の全回帰テスト（`DS4WindowsTests`／`StandaloneTests`）が成功する。
-- [ ] ソリューションビルドが警告0・エラー0で成功する。
-- [ ] `Phase5-Status.md` が更新され、`Phase5-Step2-Completion-Report.md` が作成されている。
+- [ ] `IProfileXmlStore` が新規作成され、`bool SaveProfileXml(...)` として成否を返す契約になっていること。
+- [ ] `ProfileXmlStore` が `BackingStore` に純粋に委譲していること。
+- [ ] `ProfileRepository` が `IProfileXmlStore` を利用し、状態調整ロジックが内包されていること。
+- [ ] `Global.LoadProfile`／`Global.SaveProfile` がシム化され、既存の呼び出し元互換が維持されていること。
+- [ ] 単体テストが新規作成・拡充され、すべてパスすること。
+- [ ] ビルドエラーおよび警告の増加がないこと。
