@@ -1,10 +1,10 @@
 # フェーズ5-Step4 計画書: Save／Applyの操作結果と通知の統一
 
-作成日: 2026-09-02（改訂日: 2026-09-03）
+作成日: 2026-09-02（改訂日: 2026-09-03・アーキテクチャガードレール反映）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
-- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step4（Phase5詳細計画書）
+- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step4, §5.2, §5.6（Phase5詳細計画書・ガードレール）
 - `docs-forDIMG/MadeByAgent/Phase5-Status.md`（Phase5進捗管理）
 - `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegation-audit-report.md`（Step1監査結果）
 - `docs-forDIMG/MadeByAgent/Phase5-Step2-Plan.md`（Step2計画書。保存成否bool化を先行反映済み）
@@ -38,8 +38,8 @@
 2. **プロファイル切替時の通知抑制不整合**: `ProfileApplicationService.ApplyFromAction` ではユーザーの通知設定（`ProfileChangedNotification`）を尊重しているのに対し、`DefaultProfileSwitcher.SwitchProfile` では `Global.ApplyProfile` の既定引数（`displayNotification = true`）に依存していたため、通知オフ設定が無視される実害バグが存在する。
 3. **操作ログの不足**: プロファイルの保存および適用において、DI境界を通過した操作の成否を一貫して追跡できる統一ログ（`[DI]`）が存在しない。
 
-### 0.3 本Stepの非対象（Step8への委譲）
-`Global.CompleteProfileApplication` 内部にある `ActionManager` の静的呼び出し（アクション再ロード）は、Action基盤全体の刷新を担う **Step8** のスコープとし、本Stepでは現状維持とする。
+### 0.3 本Stepの非対象（Step9への委譲）
+`Global.CompleteProfileApplication` 内部にある `ActionManager` の静的呼び出し（アクション再ロード）は、Action基盤全体の刷新を担う **Step9** のスコープとし、本Stepでは現状維持とする。
 
 ### 0.4 全体4層モデルにおける位置づけ
 第4層 4-c（設定・プロファイルサービス）とアクション実行層（Actions/）の間で、操作結果の伝播と通知・ログの責務を整流化する。
@@ -107,14 +107,29 @@ public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp, bool 
     // null の場合は内部保持している _profileSettings から自動解決
     bool shouldDisplay = displayNotification ?? _profileSettings.ProfileChangedNotification;
 
-    bool success = Global.ApplyProfile(
-        deviceIndex,
-        launchProgram,
-        Program.rootHub,
-        load: true,
-        source: source,
-        prolog: prolog,
-        displayNotification: shouldDisplay);
+    bool success = false;
+    DS4Device device = _control?.DS4Controllers[deviceIndex] ?? Program.rootHub?.DS4Controllers[deviceIndex];
+
+    Action applyAction = () =>
+    {
+        success = Global.ApplyProfile(
+            deviceIndex,
+            launchProgram,
+            Program.rootHub,
+            load: true,
+            source: source,
+            prolog: prolog,
+            displayNotification: shouldDisplay);
+    };
+
+    if (device != null && device.IsAlive())
+    {
+        device.HaltReportingRunAction(applyAction);
+    }
+    else
+    {
+        applyAction();
+    }
 
     if (success)
     {
@@ -125,6 +140,7 @@ public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp, bool 
         AppLogger.LogToGui($"Failed to apply profile '{profileName}' for device {deviceIndex + 1}", true);
         AppLogger.LogTrace($"[DI] ApplyProfile failed: Slot {deviceIndex}, Profile '{profileName}'");
     }
+
     return success;
 }
 ```
@@ -151,15 +167,31 @@ _profileApplicationService.ApplyProfile(
 
 ---
 
+### 1.4 アーキテクチャ・ガードレール: Halt停止中の結果判定と切断クリーンアップのログ統一（Phase5-Plan §5.2, §5.6準拠）
+
+#### 1.4.1 [入力スレッド保護] プロファイル適用時の「入力ポーリング停止（Halt）」と結果伝播（§5.2）
+- **【問題の実態】**:
+  Step3 で導入される `device.HaltReportingRunAction` の実行中において、`Global.ApplyProfile` の内部でマッピング再構築中に例外が発生したり成否判定が握りつぶされると、外側の呼び出し元は適用が成功したか失敗したかを検知できず、UI のプロファイル表示やログが不整合に陥る。最悪の場合、入力ループが一時停止した状態のまま例外で脱落し、コントローラーが反応しなくなる危険がある。
+- **【推奨対策】**:
+  `HaltReportingRunAction` デリゲート内部で実行された `Global.ApplyProfile` の戻り値 `bool` を外側のスコープ変数 `success` に確実に格納して返却する。失敗時には GUI エラーログおよび標準化ログ `[DI] ApplyProfile failed: Slot {deviceIndex}, Profile '{profileName}'` を出力し、例外発生時も入力ループの復帰（Halt 解除）が `finally` 等で確実に保証されることを検証する。
+
+#### 1.4.2 [状態管理] コントローラー物理切断時の復帰スタックリセットとログ通知（§5.6）
+- **【問題の実態】**:
+  一時プロファイル適用中にコントローラーが物理切断された際、復帰スタックの古い情報が残留するだけでなく、UIトレイ通知やGUIログに「一時プロファイルが強制リセットされたのか維持されているのか」のフィードバックが記録されないため、次回接続時の不具合調査が困難になる。
+- **【推奨対策】**:
+  物理切断検知時のクリーンアップ処理（`ClearPendingRestoreProfile` 等）において、保留スタックがリセットされたことを示す標準化トレースログ `[DI] Cleared pending restore profile on disconnect: Slot {deviceIndex}` を出力し、状態管理の透明性を確保する。
+
+---
+
 ## 2. 成果物一覧
 
 | 種別 | ファイルパス | 変更内容 |
 |---|---|---|
 | インターフェース | `DS4Windows/DI/IProfileApplicationService.cs` | `ApplyProfile` の通知引数を `bool? displayNotification = null` に更新 |
-| サービス実装 | `DS4Windows/DS4Control/Services/ProfileApplicationService.cs` | 通知設定自動解決ロジックおよび標準化ログ（`[DI]`）の実装 |
+| サービス実装 | `DS4Windows/DS4Control/Services/ProfileApplicationService.cs` | 通知設定自動解決ロジック、Halt下での成否伝播、切断ログ、標準化ログ（`[DI]`）の実装 |
 | サービス実装 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | 保存成否の `bool` 伝播および標準化ログ（`[DI]`）の実装 |
 | スイッチャー | `DS4Windows/Actions/DefaultProfileSwitcher.cs` | `ApplyProfile` 呼び出し（通知引数は既定 null を利用し依存追加を回避） |
-| 単体テスト拡充 | `DS4WindowsTests/ProfileApplicationServiceTests.cs` | `displayNotification` が `null` / `true` / `false` それぞれの動作検証テスト |
+| 単体テスト拡充 | `DS4WindowsTests/ProfileApplicationServiceTests.cs` | `displayNotification` が `null` / `true` / `false` それぞれの動作検証テスト、Halt下成否検証 |
 | 単体テスト拡充 | `DS4WindowsTests/ProfileRepositoryTests.cs` | 保存成功・失敗時の戻り値およびログ検証テスト |
 
 ---
@@ -168,7 +200,7 @@ _profileApplicationService.ApplyProfile(
 
 ### タスク Step4-1: Step2／Step3 の前提状況確認
 1. Step2 の `IProfileXmlStore.SaveProfileXml` が `bool` を返していることを確認する。
-2. Step3 の `ProfileApplicationService.ApplyProfile` の骨格を確認する。
+2. Step3 の `ProfileApplicationService.ApplyProfile` の Halt 停止ガードおよび戻り値構造を確認する。
 
 ### タスク Step4-2: 保存系成否伝播とログの実装
 1. `ProfileRepository.SaveProfile` の戻り値を `bool` とし、成否判定と `[DI]` ログを追加する。
@@ -194,15 +226,18 @@ _profileApplicationService.ApplyProfile(
 
 | リスク | 影響度 | 回避策 |
 |---|---|---|
+| **Halt停止下の適用失敗握りつぶし** | 高 | `HaltReportingRunAction` 内の成否を外側の戻り値に確実に格納し、失敗ログを出力する（§1.4.1）。 |
 | **不要な結合の増加** | 中 | `DefaultProfileSwitcher` に `IProfileSettingsService` を注入せず、`ProfileApplicationService` 内部で自動解決する（§1.2）。 |
+| **切断時状態の不可視性** | 低 | 物理切断時のスタックリセットを標準化ログ `[DI]` として明示的に記録する（§1.4.2）。 |
 | **保存失敗の握りつぶし** | 低 | `SaveProfile` が `bool` を返すことで、呼び出し元が失敗を確実にハンドリング可能にする。 |
-| **通知設定の意図しない上書き** | 低 | 明示的に `true`/`false` を渡した場合はそちらを優先し、既存の特殊ユースケースを壊さない。 |
 
 ---
 
 ## 5. 完了判定基準
 
 - [ ] `IProfileApplicationService.ApplyProfile` が `bool? displayNotification = null` を受け付け、`null` 時に内部の `_profileSettings.ProfileChangedNotification` を自動適用すること。
+- [ ] `device.HaltReportingRunAction` 実行下でのプロファイル適用成否が正しく呼び出し元へ返却されること（§1.4.1）。
+- [ ] コントローラー物理切断時の復帰スタック強制リセットが `[DI]` ログとして追跡可能であること（§1.4.2）。
 - [ ] `DefaultProfileSwitcher` が `IProfileSettingsService` を追加注入されることなく、通知設定を尊重した切り替えを行えること。
 - [ ] `ProfileRepository.SaveProfile` が `bool` を返し、失敗時にエラーログが出力されること。
 - [ ] すべての適用・保存操作で標準化された `[DI]` トレースログが出力されること。
