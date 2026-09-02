@@ -59,13 +59,21 @@ namespace DS4Windows
             if (profileName == null)
                 return false;
 
+            bool loaded;
             if (previousProfileWasTemporary)
-                Global.LoadTempProfile(deviceIndex, profileName, true, _control);
+                loaded = Global.LoadTempProfile(deviceIndex, profileName, true, _control);
             else
             {
                 Global.ProfilePath[deviceIndex] = profileName;
-                Global.LoadProfile(deviceIndex, false, _control);
+                loaded = Global.LoadProfile(deviceIndex, false, _control);
             }
+
+            if (!loaded)
+                return false;
+
+            Global.CompleteProfileApplication(deviceIndex, profileName, previousProfileWasTemporary,
+                _control, ProfileChangeSource.MappingAction, null,
+                _profileSettings.ProfileChangedNotification);
 
             if (AppLogger.IsTraceEnabled)
                 AppLogger.LogTrace($"[DI] ProfileApplicationService.RestoreFromAction: Slot {deviceIndex}, Profile '{profileName}'");

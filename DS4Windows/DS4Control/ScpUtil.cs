@@ -3146,121 +3146,7 @@ namespace DS4Windows
             }
 
             if (result)
-            {
-                AppLogger.LogDebug($"ApplyProfile: Profile loaded successfully. Updating state...");
-
-                // SelectedProfile を更新（UI表示用）
-                SelectedProfile[device] = profileName;
-
-                // 通常プロファイルの場合のみ OlderProfilePath を更新
-                // 一時プロファイル（Auto Profile、スペシャルアクション）の場合は
-                // デフォルトプロファイルを保持するため更新しない
-                if (!isTemp)
-                {
-                    OlderProfilePath[device] = profileName;
-                    AppLogger.LogDebug($"ApplyProfile: OlderProfilePath updated to '{profileName}'");
-                }
-                else
-                {
-                    AppLogger.LogDebug($"ApplyProfile: OlderProfilePath NOT updated (isTemp=true). Current value: '{OlderProfilePath[device]}'");
-                }
-
-                // ログ出力（ここで1回のみ）
-                if (prolog == null)
-                {
-                    // デバイス情報からプロローグを生成
-                    DS4Device ds4Device = control.DS4Controllers[device];
-                    string battery = ds4Device != null ? $"{ds4Device.Battery}" : "N/A";
-                    prolog = $"Controller {device + 1} is now using Profile \"{profileName}\" (Battery: {battery}%)";
-                }
-
-                // プロファイル切り替えメッセージを出力
-                AppLogger.LogToGui(prolog, false);
-
-                AppLogger.LogDebug($"ApplyProfile: Calling LogProfileChanged...");
-                try
-                {
-                    AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow, displayNotification);
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogError($"[ApplyProfile] Failed to log profile change: {ex.Message}");
-                }
-
-                // UI更新通知
-                AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");
-                RaiseSelectedProfileChanged(device, profileName);
-
-                // Ensure global Action entries are reloaded so SpecialAction changes take effect.
-                try
-                {
-                    try { DS4Windows.ActionManager.ClearAllEntries(); } catch { }
-                    AppLogger.LogDebug($"ApplyProfile: Cleared ActionManager global entries to force re-creation of Action instances for new profile");
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogTrace($"ApplyProfile: Failed to clear ActionManager entries: {ex}");
-                }
-
-                // Clear any per-device SpecialAction controllers so new profile's SpecialAction settings
-                // will cause fresh controllers to be created with updated mode/behavior.
-                try
-                {
-                    DS4Windows.Mapping.ClearKeyButtonControllersForDevice(device);
-                    try { DS4Windows.ActionManager.ClearDeviceState(device); } catch { }
-                    AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers and ActionManager state for device {device}");
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogTrace($"ApplyProfile: Failed to clear per-device controllers: {ex}");
-                }
-
-                // Preallocate runtime instances for this device so SpecialAction instances and controllers
-                // are ready immediately after profile application.
-                try { DS4Windows.ActionManager.PreallocateForProfileApply(device); } catch { }
-
-                // Set controller activation flags based on profile SpecialAction settings.
-                try
-                {
-                    bool foundToggle = false;
-                    bool foundPress = false;
-                    var profileActionNames = getProfileActions(device);
-                    if (profileActionNames != null)
-                    {
-                        foreach (var actionName in profileActionNames)
-                        {
-                            try
-                            {
-                                var sa = GetProfileAction(device, actionName);
-                                if (sa == null) continue;
-                                if (sa.typeID == SpecialAction.ActionTypeId.Key || sa.typeID == SpecialAction.ActionTypeId.Button)
-                                {
-                                    if (sa.KeyButtonSwitchMode.HasValue)
-                                    {
-                                        if (sa.KeyButtonSwitchMode.Value == SpecialAction.KeyButtonSwitchModeEnum.Toggle) foundToggle = true; else foundPress = true;
-                                    }
-                                    else
-                                    {
-                                        // fall back to existing heuristic: keyType flag then default to Press
-                                        bool isToggle = false;
-                                        try { isToggle = sa.keyType.HasFlag(DS4KeyType.Toggle); } catch { }
-                                        if (isToggle) foundToggle = true; else foundPress = true;
-                                    }
-                                }
-                            }
-                            catch { }
-                            if (foundToggle && foundPress) break;
-                        }
-                    }
-
-                    // Controller activation is managed per SpecialAction via KeyButtonActionController
-                    AppLogger.LogDebug("ApplyProfile: Controller activation handled per-SpecialAction SwitchMode");
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogTrace($"ApplyProfile: Controller activation check failed: {ex}");
-                }
-            }
+                CompleteProfileApplication(device, profileName, isTemp, control, source, prolog, displayNotification);
             else
             {
                 AppLogger.LogDebug($"ApplyProfile: Profile load FAILED for '{profileName}'");
@@ -3268,6 +3154,106 @@ namespace DS4Windows
 
             AppLogger.LogDebug($"ApplyProfile COMPLETED: device={device}, profile={profileName}, result={result}");
             return result;
+        }
+
+        internal static void CompleteProfileApplication(int device, string profileName, bool isTemp,
+            ControlService control, ProfileChangeSource source, string prolog, bool displayNotification)
+        {
+            AppLogger.LogDebug($"ApplyProfile: Profile loaded successfully. Updating state...");
+            SelectedProfile[device] = profileName;
+
+            if (!isTemp)
+            {
+                OlderProfilePath[device] = profileName;
+                AppLogger.LogDebug($"ApplyProfile: OlderProfilePath updated to '{profileName}'");
+            }
+            else
+            {
+                AppLogger.LogDebug($"ApplyProfile: OlderProfilePath NOT updated (isTemp=true). Current value: '{OlderProfilePath[device]}'");
+            }
+
+            if (prolog == null)
+            {
+                DS4Device ds4Device = control.DS4Controllers[device];
+                string battery = ds4Device != null ? $"{ds4Device.Battery}" : "N/A";
+                prolog = $"Controller {device + 1} is now using Profile \"{profileName}\" (Battery: {battery}%)";
+            }
+
+            AppLogger.LogToGui(prolog, false);
+            AppLogger.LogDebug($"ApplyProfile: Calling LogProfileChanged...");
+            try
+            {
+                AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow, displayNotification);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError($"[ApplyProfile] Failed to log profile change: {ex.Message}");
+            }
+
+            AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");
+            RaiseSelectedProfileChanged(device, profileName);
+
+            try
+            {
+                try { DS4Windows.ActionManager.ClearAllEntries(); } catch { }
+                AppLogger.LogDebug($"ApplyProfile: Cleared ActionManager global entries to force re-creation of Action instances for new profile");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ApplyProfile: Failed to clear ActionManager entries: {ex}");
+            }
+
+            try
+            {
+                DS4Windows.Mapping.ClearKeyButtonControllersForDevice(device);
+                try { DS4Windows.ActionManager.ClearDeviceState(device); } catch { }
+                AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers and ActionManager state for device {device}");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ApplyProfile: Failed to clear per-device controllers: {ex}");
+            }
+
+            try { DS4Windows.ActionManager.PreallocateForProfileApply(device); } catch { }
+
+            try
+            {
+                bool foundToggle = false;
+                bool foundPress = false;
+                var profileActionNames = getProfileActions(device);
+                if (profileActionNames != null)
+                {
+                    foreach (var actionName in profileActionNames)
+                    {
+                        try
+                        {
+                            var sa = GetProfileAction(device, actionName);
+                            if (sa == null) continue;
+                            if (sa.typeID == SpecialAction.ActionTypeId.Key || sa.typeID == SpecialAction.ActionTypeId.Button)
+                            {
+                                if (sa.KeyButtonSwitchMode.HasValue)
+                                {
+                                    if (sa.KeyButtonSwitchMode.Value == SpecialAction.KeyButtonSwitchModeEnum.Toggle) foundToggle = true; else foundPress = true;
+                                }
+                                else
+                                {
+                                    bool isToggle = false;
+                                    try { isToggle = sa.keyType.HasFlag(DS4KeyType.Toggle); } catch { }
+                                    if (isToggle) foundToggle = true; else foundPress = true;
+                                }
+                            }
+                        }
+                        catch { }
+                        if (foundToggle && foundPress) break;
+                    }
+                }
+
+                AppLogger.LogDebug("ApplyProfile: Controller activation handled per-SpecialAction SwitchMode");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ApplyProfile: Controller activation check failed: {ex}");
+            }
         }
 
         public static List<string>[] ProfileActions => m_Config.profileActions;

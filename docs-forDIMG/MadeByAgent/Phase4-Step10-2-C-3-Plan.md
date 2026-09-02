@@ -28,6 +28,8 @@
 
 一時 Profile Action の解除条件は Mapping 側で判定するが、復帰の正規入口は `ProfileSwitchAction.Stop()` とする。`Stop()` から `IProfileSwitcher`、`IProfileApplicationService` を経由して一度だけ復帰する。切替前の通常／一時状態は `UntriggerAction` に保持し、通常プロファイルの場合は `ProfilePath` を復元してからロードする。
 
+通常復帰は `ProfilePath` を設定してから `LoadProfile` を一度だけ実行し、適用成功後は `ApplyProfile` と共通のロード後処理（`SelectedProfile`、`OlderProfilePath`、ログ、`SelectedProfileChanged`、Action 再構築）を実行する。`LoadProfile` の後に `ApplyProfile` を重ねて二重ロードしない。
+
 ## 1. 目的
 
 `Mapping.cs` に残る `Program.rootHub` 直接依存と、そこから呼び出されるプロファイル適用・復帰の副作用を、専用の実行サービスへ移す。
