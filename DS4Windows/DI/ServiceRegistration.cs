@@ -21,6 +21,9 @@ namespace DS4Windows.DI
             services.AddSingleton<IControllerRegistry, DefaultControllerRegistry>();
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();
+            services.AddSingleton<IProfileActionProvider, ProfileActionProvider>();
+            services.AddSingleton<IProfileActionChainService, ProfileActionChainService>();
+            services.AddSingleton<IProfileApplicationService, ProfileApplicationService>();
             services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
             services.AddSingleton<ISpecialActionRepository, SpecialActionRepository>();
             services.AddSingleton<IPathService, PathService>();
@@ -31,6 +34,8 @@ namespace DS4Windows.DI
             services.AddSingleton<IDeviceStateService, DeviceStateService>();
             services.AddSingleton<IDs4DeviceRegistry, Ds4DeviceRegistryAdapter>();
             services.AddSingleton<ControlService>();
+            services.AddSingleton<DS4Windows.Services.IDeviceStateAccessor>(sp =>
+                sp.GetRequiredService<ControlService>());
 
             // 第3層 信号出力層（仮想コントローラー出力スロット・プロセス起動）
             services.AddSingleton<IOutputSlotService, OutputSlotService>();

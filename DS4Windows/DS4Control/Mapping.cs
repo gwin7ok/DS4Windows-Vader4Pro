@@ -73,6 +73,8 @@ namespace DS4Windows
         private static readonly DS4Windows.DI.IProfileSettingsService profileSettings =
             DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>()
             ?? Global.ProfileSettingsServiceInstance;
+        private static readonly DS4Windows.DI.IProfileApplicationService profileApplication =
+            DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileApplicationService>();
         private static IVirtualKBM VirtualKBM => AppHost.GetService<IVirtualKBM>() ?? Global.outputKBMHandler;
         // SpecialAction名ごとのエラーログ抑制用（1プロファイル切り替えごとに1回だけ）
         // private static HashSet<string> loggedInvalidActions = new HashSet<string>();
@@ -1135,6 +1137,11 @@ namespace DS4Windows
             {
                 try { SetBeingTriggeredIf(-1, action, device, value); } catch { }
             }
+        }
+
+        internal static void DispatchProfileActionEdge(SpecialAction action, int device, bool value)
+        {
+            DispatchOrSetBeingTriggered(action, device, value);
         }
 
         // Centralized Mapping-side input-edge handler. Detects input-level rise/fall per (action,device)
@@ -6041,45 +6048,25 @@ namespace DS4Windows
             EndMacro(device, new bool[4], string.Empty, DS4Controls.None);
         }
 
+        internal static string TakePendingRestoreProfileName(int device)
+        {
+            if (device < 0 || device >= deviceRuntime.Length)
+                return null;
+
+            if (deviceRuntime[device].UntriggerAction == null)
+                return null;
+
+            string profileName = deviceRuntime[device].UntriggerAction.prevProfileName;
+            deviceRuntime[device].UntriggerAction = null;
+            return profileName;
+        }
+
         /// <summary>
         /// DI/IProfileSwitcher 用のプロファイル切り替えエントリーポイント
         /// </summary>
         internal static void ApplyProfileDirect(int device, SpecialAction action)
         {
-            if (device < 0 || device >= 4 || action == null) return;
-
-            var ctrl = Program.rootHub;
-            if (ctrl == null) return;
-
-            DS4Device d = ctrl.DS4Controllers[device];
-            if (d == null) return;
-
-            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
-                (device + 1).ToString(), action.details, $"{d.Battery}");
-            bool display = profileSettings.ProfileChangedNotification;
-
-            Task.Run(() =>
-            {
-                d.HaltReportingRunAction(() =>
-                {
-                    Global.ApplyProfile(device, action.details, false, true, ctrl,
-                        DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
-
-                    if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
-                    {
-                        List<string> profileActionsNext = getProfileActions(device);
-                        for (int actionIndexNext = 0, profileListLenNext = profileActionsNext.Count; actionIndexNext < profileListLenNext; actionIndexNext++)
-                        {
-                            string actionnameNext = profileActionsNext[actionIndexNext];
-                            SpecialAction actionNext = GetProfileAction(device, actionnameNext);
-                            int indexNext = GetProfileActionIndexOf(device, actionnameNext);
-
-                            if (actionNext != null && actionNext.controls == action.controls)
-                                DispatchOrSetBeingTriggered(actionNext, device, true);
-                        }
-                    }
-                });
-            });
+            profileApplication?.ApplyFromAction(device, action);
         }
 
         /// <summary>
@@ -6087,21 +6074,7 @@ namespace DS4Windows
         /// </summary>
         internal static void RestoreProfileDirect(int device)
         {
-            if (device < 0 || device >= 4) return;
-
-            var ctrl = Program.rootHub;
-            if (ctrl == null) return;
-
-            if (deviceRuntime[device].UntriggerAction != null)
-            {
-                string profileName = deviceRuntime[device].UntriggerAction.prevProfileName;
-                deviceRuntime[device].UntriggerAction = null;
-
-                if (string.IsNullOrEmpty(profileName))
-                    LoadProfile(device, false, ctrl);
-                else
-                    LoadTempProfile(device, profileName, true, ctrl);
-            }
+            profileApplication?.RestoreFromAction(device);
         }
 
         // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).

@@ -9,6 +9,17 @@
 - `docs-forDIMG/MadeByAgent/Phase4-Step10-2-C-Plan.md`
 - `docs-forDIMG/MadeByAgent/Phase4-Step10-2-C-3-RootHub-Classification-Report.md`
 
+## 0. 現在の進捗
+
+| 段階 | 状態 | 備考 |
+|---|---|---|
+| C-3-1 | **完了** | 対象メソッド、分岐、非同期、停止、復帰条件を固定 |
+| C-3-2 | **実装完了・Actions検証済み** | `IProfileApplicationService`、`IProfileActionProvider`、`IProfileActionChainService` と DI 登録を追加 |
+| C-3-3 | **実装完了・Actions検証済み** | `Mapping` の適用・復帰入口を専用サービスへ委譲 |
+| C-3-4 | **実装完了・Actions検証済み** | 静的キャッシュ境界と互換状態アクセサを追加。既存 dispatch は互換境界として残存 |
+| C-3-5 | **Actions検証済み・Standalone待ち** | Actions 85件成功。専用サービスの追加境界テストと Standalone 確認を継続 |
+| C-3-6〜C-3-7 | **未着手** | 実機引継ぎ、完了報告 |
+
 ## 1. 目的
 
 `Mapping.cs` に残る `Program.rootHub` 直接依存と、そこから呼び出されるプロファイル適用・復帰の副作用を、専用の実行サービスへ移す。

@@ -1,5 +1,6 @@
 ﻿﻿using Xunit;
 using DS4Windows.Services;
+using DS4Windows;
 using DS4WinWPF;
 
 namespace DS4WindowsTests
@@ -55,21 +56,17 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void AppHost_ResolvesIDeviceStateAccessor_WithoutThrowing_WhenRootHubNotSet()
+        public void AppHost_ResolvesIDeviceStateAccessor_FromControlServiceSingleton()
         {
-            // 注意: このテストは DS4Windows.Program.rootHub がテストプロセス内で
-            // 未設定（null）であることを前提とする。他のテストが ControlService を
-            // 生成して Program.rootHub を設定するようになった場合は本テストの見直しが必要。
             DS4WinWPF.AppHost.CreateHost();
 
             IDeviceStateAccessor accessor = null;
             var ex = Record.Exception(() => accessor = DS4WinWPF.AppHost.GetService<IDeviceStateAccessor>());
+            var controlService = DS4WinWPF.AppHost.GetService<ControlService>();
 
-            // ファクトリ委譲 (sp => (IDeviceStateAccessor)Program.rootHub) は
-            // Program.rootHub が null であっても例外を投げず、null を返すべきである
-            // （Phase3-Step3-6-Plan.md §2.1 のリスク欄で明記した挙動）。
             Assert.Null(ex);
-            Assert.Null(accessor);
+            Assert.NotNull(accessor);
+            Assert.Same(controlService, accessor);
         }
     }
 }
