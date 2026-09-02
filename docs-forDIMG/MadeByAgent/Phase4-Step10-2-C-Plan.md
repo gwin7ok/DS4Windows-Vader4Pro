@@ -33,7 +33,9 @@ Phase4 の Step10 は、目的の異なる作業を次の単位に分けて管�
 | C-4 | **完了（実機ログ確認済み）** | ViewModelフォールバック5箇所に画面名・ViewModel名付きの`[Legacy]`ログを追加し、通常利用時の出力を確認 |
 | C-5-1 | **完了（実機確認済み）** | `linkedProfileCheck`の呼び出し元をDI APIへ移行し、対象Legacy getterログが出ないことを確認 |
 | C-5-2 | **実装・自動検証済み、実機確認待ち** | `tempprofilename`／`useTempProfile`の状態更新・呼び出し元をDI APIへ移行。詳細は `Phase4-Step10-2-C-5-2-Completion-Report.md` |
-| C-5-3〜C-8 | **未着手** | C-5-3以降でGlobalシムのログ監査、CP4前自動テスト化、CP4実機検証を実施する |
+| C-5-3 | **監査完了** | DIサービス内部のGlobal／rootHub再委譲を監査。詳細は `Phase4-Step10-2-C-5-3-Nested-Legacy-Audit-Report.md` |
+| C-5-4〜C-5-7 | **計画作成済み・未着手** | プロファイル読込・適用、Action永続化、残存サービス境界を責務別に移行する |
+| C-6〜C-8 | **未着手** | C-6で自動テスト化、C-7でCP4実機検証、C-8でフォールバック削除判断を実施する |
 
 本書に記載された採用方針や分類は、実装を開始するための計画上の決定であり、実装完了を意味しない。各段階はコード変更、検証、コミット・リモート反映が完了した時点で個別に完了と判定する。
 
@@ -355,6 +357,40 @@ viewModel = factory != null
 - 両Globalシムは互換定義としてのみ残る。
 - 一時プロファイル適用時、復帰時、再接続時の状態が従来どおり維持される。
 - Actions／Standaloneのビルド・テストと実機確認が完了する。
+
+### C-5-3: DIサービス内部 Legacy 経路監査（Step10-2-C-5-3）
+
+Step10-2-B で見落とした「DI の入口から内部で `Global`／`Program.rootHub` へ戻る経路」を監査する。監査結果は `Phase4-Step10-2-C-5-3-Nested-Legacy-Audit-Report.md` を正本とする。
+
+監査対象は、DI 登録済みサービスの実装、Global shim、サービス間の再委譲、実行時副作用の境界である。文字列件数ではなく、DI契約が実際の責務実装を所有しているかで判定する。
+
+完了条件:
+
+- DIサービス内部の `Global`／`rootHub` 参照が対象ごとに分類されている。
+- 各残存経路について、後続フェーズ、維持理由、移行時の副作用が記録されている。
+- プロファイル読込・適用、Action永続化、パス、KBM、設定状態の責務境界が区別されている。
+
+### C-5-4: プロファイル XML 読込・保存の責務分離（Step10-2-C-5-4）
+
+`ProfileRepository` 内部の `Global.LoadProfile`／`Global.SaveProfile` 再委譲を対象とする。まず XML パースと設定サービスへの反映を専用ローダー／ライターへ分離し、入力停止・出力デバイス操作・Action再構築などの副作用を混在させない構造を設計する。
+
+実装前に、`BackingStore.LoadProfile` の設定項目群と副作用を棚卸しし、既存のロード順、欠落設定時の既定値、ログ、例外・失敗結果を固定する。完全な置換は分割単位ごとにビルド・テスト・実機確認を行う。
+
+### C-5-5: プロファイル適用・復帰の責務分離（Step10-2-C-5-5）
+
+`ProfileApplicationService` 内部の `Global.ApplyProfile`／`Global.LoadProfile`／`Global.LoadTempProfile`／`Global.CompleteProfileApplication` 再委譲を対象とする。プロファイルデータ読込、デバイス停止・再開、状態更新、通知、Action再構築を専用契約へ分離する。
+
+`ProfileSwitchAction.Stop()` を復帰の正規入口とする既存方針、二重ロード防止、`isTemp`、`prevProfileName`、`prevProfileWasTemporary`、通知回数を維持する。
+
+### C-5-6: SpecialAction 永続化の責務分離（Step10-2-C-5-6）
+
+`SpecialActionRepository` 内部の `Global.LoadActions`／`Global.SaveActions` 再委譲を対象とする。Actions XML の読込・保存・一覧更新を Repository の責務として確立し、`Global` shim は互換境界へ限定する。Action runtime registry との責務混同を避ける。
+
+### C-5-7: 残存 DI サービス内部参照の整理（Step10-2-C-5-7）
+
+`PathService`、`ProfileSettingsService`、`OutputKBMHandlerAdapter` など C-5-3 で分類した残存参照を、担当フェーズに従って整理する。Phase2対象のKBM、rootHub／デバイス状態、共有 `BackingStore` 境界はそれぞれの既存計画へ引き継ぎ、重複実装を作らない。
+
+各移行では、Legacy shim の削除を先行せず、DI実装の動作確認後に使用実績と実機結果を記録する。
 
 ### C-6: CP4 前自動テスト化判定・実装・実行（Step10-2-C-6）
 

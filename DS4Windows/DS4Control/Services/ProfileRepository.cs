@@ -87,7 +87,11 @@ namespace DS4Windows
 
                     string normalizedName = Path.GetFileNameWithoutExtension(profileName);
                     Global.ProfilePath[deviceIndex] = normalizedName;
-                    Global.LoadProfile(deviceIndex, false, null, false);
+                    ControlService control = DS4WinWPF.AppHost.GetService<ControlService>();
+                    if (control == null)
+                        return false;
+
+                    Global.LoadProfile(deviceIndex, false, control, false);
                     if (AppLogger.IsTraceEnabled)
                         AppLogger.LogTrace($"[DI] ProfileRepository.LoadProfile: Slot {deviceIndex}, Profile '{profileName}' loaded via DI");
                     return true;

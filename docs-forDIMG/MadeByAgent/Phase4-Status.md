@@ -27,13 +27,13 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 10-1 | `[DI]`／`[Legacy]` Trace ログ整備 | **進行中** | - | DI 新経路と Legacy シム経路の識別ログを整備中。高頻度アクセスはログ抑制方針。 |
 | Step 10-2-A | `Global` シム接続拡張 | **完了** | 2026-09-02 | `IProfileSettingsService` 等へのシム接続、A-1〜A-9 完了。 |
 | Step 10-2-B | 呼び出し元の DI 直接参照化 | **完了** | 2026-09-02 | `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` の対象経路を移行。テスト・コミット・リモート反映完了。 |
-| Step 10-2-C | Legacy 経路残存の整理と段階移行 | **C-0〜C-5-1完了、C-5-2実装・自動検証済み** | 2026-09-02 | 詳細は `Phase4-Step10-2-C-Plan.md`。`tempprofilename`／`useTempProfile`のDI API移行を実装。実機確認待ち。 |
+| Step 10-2-C | Legacy 経路残存の整理と段階移行 | **C-0〜C-5-2完了、C-5-3監査完了、C-5-4〜C-5-7計画済み** | 2026-09-02 | DIサービス内部のGlobal／rootHub再委譲を監査。次はプロファイル読込・適用、Action永続化などの責務分離。 |
 | Step 10-2-C-0 | 現状基準の固定 | **完了** | 2026-09-02 | Legacy 残存量の棚卸しと分類ルールを文書化。 |
 | Step 10-2-C-1 | Composition Root 一本化 | **実装完了・検証待ち** | 2026-09-02 | 旧 `ServiceCollection` 削除、Action 系登録統合、Provider 一本化を実装。Debug ビルド成功。 |
 | Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | **実装完了・検証待ち** | 2026-09-02 | Singleton 登録、AppHost 解決、parser 注入、`rootHub` 互換代入を実装。Debug ビルド成功。 |
 | Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **完了（自動ビルド・主要実機確認済み）** | 2026-09-02 | `Phase4-Step10-2-C-3-Completion-Report.md`。一時プロファイル適用・通常プロファイル復帰、入力停止・再開、通知、接続・切断を確認。通常切替重複、通知設定、Action連鎖確認は引き継ぎ。 |
 | Step 10-2-C-4 | ViewModel フォールバックの可視化 | **完了（実機ログ確認済み）** | 2026-09-02 | 5画面の解決失敗時に画面名・ViewModel名を含む `[Legacy]` Traceログを追加し、通常利用時の出力がないことを確認。 |
-| Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **C-5-1完了、C-5-2実装・自動検証済み** | 2026-09-02 | `linkedProfileCheck`のDI API移行と実機確認を完了。`tempprofilename`／`useTempProfile`の呼び出し元移行と高頻度 getter ログ抑制を実装。実機確認待ち。 |
+| Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **C-5-1〜C-5-3完了、C-5-4〜C-5-7計画済み** | 2026-09-02 | 呼び出し元だけでなくDIサービス内部の再委譲を監査。`Phase4-Step10-2-C-5-3-Nested-Legacy-Audit-Report.md` に分類結果を記録。 |
 | Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | **未着手** | - | 自動テスト／実機／両方を分類し、実機確認項目を縮小。 |
 | Step 10-2-C-7 | CP4 実機検証 | **未着手（計画）** | - | C-6 で残った HID、WPF、ドライバ、長時間安定性等を確認。 |
 | Step 10-2-C-8 | CP4 後のフォールバック削除判断 | **未着手（計画）** | - | CP4 結果を基に互換フォールバック削除可否を別変更で判断。 |
