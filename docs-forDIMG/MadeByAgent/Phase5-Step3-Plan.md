@@ -1,13 +1,13 @@
 # フェーズ5-Step3 計画書: プロファイル適用・復帰の責務分離
 
-作成日: 2026-09-02
+作成日: 2026-09-02（改訂日: 2026-09-03）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
-- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step3（Phase5詳細計画書。`IProfileSwitcher`の本Stepへの統合方針を含む）
+- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step3（Phase5詳細計画書）
 - `docs-forDIMG/MadeByAgent/Phase5-Status.md`（Phase5進捗管理）
-- `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegation-audit-report.md`（Step1監査結果。本Stepの対象根拠）
-- `docs-forDIMG/MadeByAgent/Phase5-Step2-Plan.md`（前Step。`IProfileXmlStore`によるXML I/O分離。本StepはXML層より上位の「適用」層を対象とする）
+- `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegation-audit-report.md`（Step1監査結果）
+- `docs-forDIMG/MadeByAgent/Phase5-Step2-Plan.md`（前Step）
 - `.github/copilot-instructions.md`（エージェント作業ルール）
 
 ---
@@ -15,13 +15,15 @@
 ## ルール確認（作業開始前に毎回読む）
 
 - **§2.1 フォールバック実装・シム維持の原則**:
-  - `Global.ApplyProfile`等の古い経路は、新しい適用契約が完成し動作確認が取れるまで削除しない。
+  - `Global.ApplyProfile` 等の古い経路は、新しい適用契約が完成し動作確認が取れるまで削除しない。
 - **§2.2 現在の機能の完全維持 (No Feature Drop)**:
-  - `isTemp`判定、一時プロファイルの復帰スナップショット、カスケードループ防止ガード（250ms デバウンス）、`touchpadActive`等の状態管理を100%維持する。特に本Stepで発見した**2種類の復帰追跡機構**（後述0.3）はどちらも安易に単純化・削除しない。
+  - `isTemp` 判定、一時プロファイルの復帰スナップショット、カスケードループ防止ガード（250ms デバウンス）、`touchpadActive` 等の状態管理を100%維持する。
+  - 特に本Stepで確認された **2種類の復帰追跡機構**（後述0.2）はどちらも安易に単純化・削除しない。
 - **§2.3 ログ出力の厳格な維持**:
-  - `AppLogger.LogToGui`／`AppLogger.LogTrace`／`AppLogger.LogDebug`、および`AppLogger.LogProfileChanged`を維持する。
+  - `AppLogger.LogToGui`／`AppLogger.LogTrace`／`AppLogger.LogDebug`、および `AppLogger.LogProfileChanged` を維持する。
 - **§3.1 DI (Dependency Injection) の実装**:
-  - コンテナ登録は`ServiceRegistration.cs`に行う。既存の`IProfileApplicationService`／`IProfileSwitcher`のインターフェース名・登録ライフタイムは維持する。
+  - コンテナ登録は `ServiceRegistration.cs` に行う。既存の `IProfileApplicationService`／`IProfileSwitcher` のインターフェース名・登録ライフタイムは維持する。
+  - **DI 原則の徹底**: 呼び出し元（Switcher や ViewModel）にインフラストラクチャ層のインスタンス（`ControlService` / `Program.rootHub`）を引き回させず、サービス内部で解決・カプセル化する。
 - **§3.2 巨大ファイルの編集方針**:
   - `ScpUtil.cs`（`Global.ApplyProfile`／`CompleteProfileApplication`）はピンポイント置換のみ行う。
 
@@ -30,35 +32,37 @@
 ## 0. Step3の位置づけと現状分析
 
 ### 0.1 Step1監査結果に基づく対象範囲
-`Phase5-Step1-legacy-delegation-audit-report.md` §2, §4-4 に基づき、以下の**2つのDIサービス**を対象とする。これらは同一の「プロファイル適用」という機能領域を別々の経路で実装しており、`Phase5-Plan.md` Step3は「SpecialAction経由の適用契約統一」としてこの重複解消をStep3スコープに含めることを定めている。
+`Phase5-Step1-legacy-delegation-audit-report.md` §2, §4-4 に基づき、以下の**2つのDIサービス**を対象とする。これらは同一の「プロファイル適用」という機能領域を別々の経路で実装しており、重複の解消と `Program.rootHub` への直接依存排除を行う。
 
-- `IProfileApplicationService`→`ProfileApplicationService`（#10）: `Global.ApplyProfile`／`Global.LoadTempProfile`／`Global.LoadProfile`／`Global.CompleteProfileApplication`、`Mapping.TakePendingRestoreProfileName`
-- `IProfileSwitcher`→`DefaultProfileSwitcher`（#11）: `Global.ApplyProfile`（3箇所）、`Program.rootHub`（2箇所）
+- `IProfileApplicationService` → `ProfileApplicationService`（#10）: `Global.ApplyProfile`／`Global.LoadTempProfile`／`Global.LoadProfile`／`Global.CompleteProfileApplication`、`Mapping.TakePendingRestoreProfileName`
+- `IProfileSwitcher` → `DefaultProfileSwitcher`（#11）: `Global.ApplyProfile`（3箇所）、`Program.rootHub`（2箇所）
 
 ### 0.2 現状のコード構造（GitHub実コード確認済み）
-`ProfileApplicationService`と`DefaultProfileSwitcher`は、いずれもSpecialAction経由のプロファイル切替を扱うが、**実装が完全に独立しており、互いの存在をほぼ意識していない**。
+`ProfileApplicationService` と `DefaultProfileSwitcher` は、いずれもプロファイル切替を扱うが、実装が独立して並存している。
 
 | 項目 | `ProfileApplicationService` | `DefaultProfileSwitcher` |
 |---|---|---|
-| 切替実行 | `ApplyFromAction`: `device.HaltReportingRunAction`でデバイス入力を一時停止した上で`Global.ApplyProfile`を実行し、`IProfileActionChainService.DispatchNextActions`で連鎖アクションを発火 | `SwitchProfile`: 250msデバウンスガード後、直接`Global.ApplyProfile`を`Program.rootHub`引数で実行（デバイス入力停止は行っていない） |
-| 復帰追跡 | `Mapping.TakePendingRestoreProfileName`（`Mapping`静的クラスが管理するデバイス単位の保留復帰スタック） | インスタンスフィールド`_previousProfiles[4]`／`_temporaryProfiles[4]`（自前のバックアップ配列） |
-| 復帰実行 | `RestoreFromAction`: 上記スタックからプロファイル名を取得し`Global.LoadTempProfile`または`Global.LoadProfile`＋`Global.CompleteProfileApplication`を実行 | `RestoreProfile`: まず`IProfileApplicationService.RestoreFromAction`を試み、失敗時のみ自前の`_previousProfiles`から`Global.ApplyProfile`を再実行（**フォールバックとして`ProfileApplicationService`に依存しているが、Global直呼び出しの独自経路も残存**） |
-| 手動適用 | なし | `ApplyManualProfile`: `Global.ApplyProfile`への単純なパススルー |
-
-**重要な発見**: `DefaultProfileSwitcher.RestoreProfile`は既に`IProfileApplicationService.RestoreFromAction`を優先的に呼び出す実装になっており、部分的な統合が行われている。しかし（a）`SwitchProfile`（切替の入口）と`ApplyManualProfile`は依然として`Global.ApplyProfile`を直接呼び出しており、（b）復帰追跡機構が2系統（`Mapping`の保留スタック／`DefaultProfileSwitcher`自前配列）並存している。
+| 切替実行 | `ApplyFromAction`: `device.HaltReportingRunAction` で入力停止した上で `Global.ApplyProfile` を実行し、連鎖アクションを発火 | `SwitchProfile`: 250msデバウンスガード後、直接 `Global.ApplyProfile` を `Program.rootHub` 引数で実行 |
+| 復帰追跡 | `Mapping.TakePendingRestoreProfileName`（`Mapping` 静的クラスが管理する保留復帰スタック） | インスタンスフィールド `_previousProfiles[4]`／`_temporaryProfiles[4]`（自前のバックアップ配列） |
+| 復帰実行 | `RestoreFromAction`: 上記スタックから取得し、`Global.LoadTempProfile` 等を実行 | `RestoreProfile`: まず `IProfileApplicationService.RestoreFromAction` を試み、失敗時のみ自前の `_previousProfiles` から `Global.ApplyProfile` を再実行（`Program.rootHub` 直接参照） |
+| 手動適用 | なし | `ApplyManualProfile`: `Global.ApplyProfile`（`Program.rootHub` 引数）へのパススルー |
 
 ### 0.3 「通常GUI切替」経路の要確認事項
-`Phase5-Plan.md` Step3は「通常GUI切替、編集画面Save／Apply、SpecialAction、AutoProfileのすべてが同じ適用契約を使用すること」を目標としているが、本Stepの事前調査では**通常のGUIプロファイル切替（コントローラー一覧のドロップダウン等）およびProfileEditor Save／Applyが、`IProfileApplicationService`と`IProfileSwitcher`のいずれを経由しているか未確認**である。これらは別のViewModel／View（`ControllersViewModel`、`ProfileEditor.xaml.cs`等）から直接`Global.ApplyProfile`を呼んでいる可能性がある。タスクStep3-1でこれを特定し、対象に含めるかを確定する。
+通常のGUIプロファイル切替（コントローラー一覧のドロップダウン等）および `ProfileEditor` Save／Apply が、`IProfileApplicationService` を経由しているか、あるいは View / ViewModel から直接 `Global.ApplyProfile` を呼んでいるかをタスク Step3-1 で特定する。
 
 ### 0.4 全体4層モデルにおける位置づけ
-`ProfileApplicationService`／`DefaultProfileSwitcher`はいずれも**第4層 4-c**（設定・プロファイル適用サービス）に属する。本Stepはこの層内で、プロファイル「適用」という単一機能に対する重複実装を統合する。
+いずれも**第4層 4-c**（設定・プロファイル適用サービス）に属する。本層内でプロファイル「適用」契約を一本化し、下位または上位への不正な静的シングルトンアクセスを断ち切る。
 
 ---
 
 ## 1. 設計方針とアーキテクチャ
 
-### 1.1 `IProfileApplicationService`を単一の適用契約として拡張
-既存の`IProfileApplicationService`を「プロファイル適用の唯一の入口」と位置づけ、以下のメソッドを追加する。
+### 1.1 `IProfileApplicationService` を単一の適用契約として拡張
+既存の `IProfileApplicationService` を「プロファイル適用の唯一の契約」と位置づけ、汎用の `ApplyProfile` メソッドを追加する。
+
+#### 【設計の要点: ControlService 引数の排除】
+旧設計案では `ControlService control` を引数として要求していたが、これでは呼び出し元（`DefaultProfileSwitcher` や UI）が `Program.rootHub` を直接知る必要が生じ、DI化の趣旨に反する。
+したがって、**引数から `ControlService` を完全に排除**し、`ProfileApplicationService` の内部で解決（内部で `Program.rootHub` を渡す、または将来的に注入されたサービスを利用する）する設計とする。
 
 ```csharp
 namespace DS4Windows.DI
@@ -69,100 +73,147 @@ namespace DS4Windows.DI
         void ApplyFromAction(int deviceIndex, SpecialAction action);
         bool RestoreFromAction(int deviceIndex);
 
-        // 新規追加: DefaultProfileSwitcherのSwitchProfile/ApplyManualProfileを統合する汎用適用メソッド
+        // 新規追加: SwitchProfile / ApplyManualProfile / GUI切替を統合する汎用適用メソッド
+        // ※ ControlService 引数は外部に公開せず、実装内部でカプセル化する
         bool ApplyProfile(int deviceIndex, string profileName, bool isTemp, bool launchProgram,
-            ControlService control, ProfileChangeSource source,
+            ProfileChangeSource source = ProfileChangeSource.ProfileChange,
             string prolog = null, bool displayNotification = true);
     }
 }
 ```
 
-`ApplyProfile`の実装は、現時点では`Global.ApplyProfile`への薄い委譲とする（`Global.ApplyProfile`内部のXML再読込・状態更新ロジック自体の分解はStep4以降の対象）。本Stepの主眼は「呼び出し元の集約」であり、`Global.ApplyProfile`の内部実装分解は行わない。
+---
 
-### 1.2 `DefaultProfileSwitcher`のリファクタリング方針
-`DefaultProfileSwitcher`から`Global.ApplyProfile`／`Program.rootHub`への直接依存を排除し、`IProfileApplicationService`をコンストラクタ注入して置き換える。
+### 1.2 【重要注記: `Global.ProfilePath[deviceIndex]` の更新タイミング】
+`Global.ApplyProfile` の内部挙動として、事前にスロット配列 `Global.ProfilePath[deviceIndex] = profileName;` が更新されていることを前提としている処理が存在する。
+一時プロファイル（`isTemp == true`）の場合はスロットパスを上書きしてはならないが、通常プロファイルの適用時は必須となる。
 
-- `SwitchProfile`: `Global.ApplyProfile(...)`直接呼び出しを`_profileApplicationService.ApplyProfile(...)`へ置換。**250msデバウンスガードと`_previousProfiles`／`_temporaryProfiles`によるバックアップは維持する**（`Mapping`の保留復帰スタックとは異なる目的＝カスケードループ防止のためのローカル状態であり、統合の対象外と判断する）。
-- `RestoreProfile`: 既存の「`IProfileApplicationService.RestoreFromAction`優先、フォールバックで自前配列から復帰」という構造を維持しつつ、フォールバック時の`Global.ApplyProfile`直接呼び出しを`_profileApplicationService.ApplyProfile`へ置換する。
-- `ApplyManualProfile`: `Global.ApplyProfile`直接呼び出しを`_profileApplicationService.ApplyProfile`へ置換する。
+したがって、`ProfileApplicationService.ApplyProfile` の実装内では、**`Global.ApplyProfile` を呼び出す直前に以下のスロット更新処理を確実に実行**する（`DefaultProfileSwitcher.SwitchProfile` line 41 と厳格に整合させる）。
 
-### 1.3 2系統の復帰追跡機構に関する方針
-`Mapping.TakePendingRestoreProfileName`（`ProfileApplicationService`が使用）と`DefaultProfileSwitcher`自前の`_previousProfiles`配列は、**用途が異なる可能性がある**（前者はマッピングエンジン側が管理する「保留中の復帰」、後者はSpecialAction切替時のUI/呼び出し側バックアップ）ため、本Stepでは安易に統合・削除しない。タスクStep3-2で両者の実際の呼び出しタイミングと用途を精査し、完全な重複であれば統合案を、異なる用途であれば併存の妥当性を`Phase5-Step3-Completion-Report.md`に記録する。
+```csharp
+if (!isTemp)
+{
+    Global.ProfilePath[deviceIndex] = profileName;
+}
+```
 
-### 1.4 「通常GUI切替」の扱い
-タスクStep3-1の調査結果に応じて、通常GUI切替が`Global.ApplyProfile`を直接呼んでいる場合は、可能な範囲で`IProfileApplicationService.ApplyProfile`経由に統一する。ただし影響範囲（呼び出し元ファイル数）によっては本Stepでは見送り、別Stepとして切り出す判断もありうる（判断基準・結果を完了報告書に記録する）。
+---
+
+### 1.3 `DefaultProfileSwitcher` のリファクタリング方針
+`DefaultProfileSwitcher` から `Global.ApplyProfile` および `Program.rootHub` への直接依存を完全に排除し、注入された `IProfileApplicationService` へ処理を委譲する。
+
+- **`SwitchProfile`**:
+  - 250msデバウンスガードおよび自前バックアップ配列 `_previousProfiles` の退避処理は**そのまま維持**する（カスケード防止のため必須）。
+  - その後の適用呼び出しを `_profileApplicationService.ApplyProfile(deviceIndex, profileName, false, false, ...)` に置換する。
+- **`RestoreProfile`**:
+  - 既存の「`IProfileApplicationService.RestoreFromAction` 優先、失敗時に自前バックアップ配列から復帰」というフォールバック順序を維持する。
+  - フォールバック時の `Global.ApplyProfile` 呼び出しを `_profileApplicationService.ApplyProfile(...)` に置換する。
+- **`ApplyManualProfile`**:
+  - `_profileApplicationService.ApplyProfile(...)` への委譲に置換する。
+- **効果**:
+  - `DefaultProfileSwitcher.cs` 内の **`Program.rootHub` 参照（2箇所）および `Global.ApplyProfile` 参照（3箇所）がすべて消滅し、依存が 0 件**になる。
+
+---
+
+### 1.4 2系統の復帰追跡機構に関する方針
+- `Mapping.TakePendingRestoreProfileName`（`Mapping.cs` 内部の静的スタック）: SpecialAction 由来の一時プロファイル復帰用。
+- `DefaultProfileSwitcher._previousProfiles`（自前配列）: カスケードループ防止および Switcher 単体での直前復帰用。
+
+この2系統は用途とライフサイクルが異なるため、本Stepでは安易に1つに統合せず、それぞれの責任範囲を維持したまま適用経路（`IProfileApplicationService`）のみを統一する。
 
 ---
 
 ## 2. 成果物一覧
 
-| ファイルパス | 種別 | ライフサイクル | 内容 |
-|---|---|---|---|
-| `DS4Windows/DI/IProfileApplicationService.cs` | 更新 | **DI永続資産** | `ApplyProfile`メソッドの追加 |
-| `DS4Windows/DS4Control/Services/ProfileApplicationService.cs` | 更新 | **DI永続資産** | `ApplyProfile`実装の追加（`Global.ApplyProfile`への薄い委譲） |
-| `DS4Windows/Actions/DefaultProfileSwitcher.cs` | 更新 | **DI永続資産** | `Global.ApplyProfile`／`Program.rootHub`直接呼び出しを`IProfileApplicationService`経由へ置換。コンストラクタ注入追加 |
-| `DS4Windows/DI/ServiceRegistration.cs` | 確認・必要に応じ更新 | **DI永続資産** | `DefaultProfileSwitcher`への`IProfileApplicationService`注入経路の確認（登録順序に依存関係がある場合は調整） |
-| （調査対象、タスクStep3-1で特定） | 更新（要確認） | **DI永続資産** | 通常GUI切替・ProfileEditor Save／Applyの呼び出し元。対象と判断された場合のみピンポイント修正 |
-| `DS4WindowsTests/ProfileApplicationServiceTests.cs` | 新規 | **テスト資産** | `ApplyProfile`／`ApplyFromAction`／`RestoreFromAction`の単体テスト |
-| `DS4WindowsTests/DefaultProfileSwitcherTests.cs` | 新規 | **テスト資産** | デバウンスガード、復帰フォールバック順序、`IProfileApplicationService`連携の単体テスト |
-| `docs-forDIMG/MadeByAgent/Phase5-Step3-Plan.md` | 新規 | ドキュメント | 本計画書 |
-| `docs-forDIMG/MadeByAgent/Phase5-Step3-Completion-Report.md` | 新規 | ドキュメント | Step3完了報告書（0.3・1.3の調査結果を含む） |
-| `docs-forDIMG/MadeByAgent/Phase5-Status.md` | 更新 | ドキュメント | Step3進捗ステータス更新 |
+| 種別 | ファイルパス | 変更内容 |
+|---|---|---|
+| インターフェース | `DS4Windows/DI/IProfileApplicationService.cs` | `ApplyProfile` メソッドの追加（`ControlService` 引数なし） |
+| サービス実装 | `DS4Windows/DS4Control/Services/ProfileApplicationService.cs` | `ApplyProfile` の実装（スロット更新 + `Global.ApplyProfile` 呼び出し、`Program.rootHub` のカプセル化） |
+| スイッチャー | `DS4Windows/Actions/DefaultProfileSwitcher.cs` | `Global.ApplyProfile` および `Program.rootHub` 直接参照の排除、`IProfileApplicationService` 経由への統一 |
+| 単体テスト | `DS4WindowsTests/ProfileApplicationServiceTests.cs`（新設または拡充） | 新設 `ApplyProfile` の動作検証、通知抑制・スロット更新確認 |
+| 単体テスト | `DS4WindowsTests/ProfileSwitchActionTests.cs` | `DefaultProfileSwitcher` のモック検証 |
 
 ---
 
 ## 3. 作業手順（マイクロタスク分割）
 
-### タスク Step3-1: 「通常GUI切替」「ProfileEditor Save／Apply」呼び出し元の調査
-- `Global.ApplyProfile`の全呼び出し箇所をリポジトリ全体で検索し、`IProfileApplicationService`／`IProfileSwitcher`経由でないもの（View／ViewModelからの直接呼び出し）を洗い出す。
-- 調査結果を`Phase5-Step3-Completion-Report.md`に一覧化し、本Stepで統一する範囲を確定する。
+### タスク Step3-1: 「通常GUI切替」「ProfileEditor Save／Apply」呼び出し元の調査【前提】
+1. `ControllersViewModel.cs` 等で、プロファイルドロップダウン選択時にどのメソッドが呼ばれているかを grep 調査。
+2. `ProfileEditor.xaml.cs` の「Apply」「Save」ボタン押下時の適用呼び出し経路を調査。
+3. 調査結果に基づき、Step3-5 でこれらを `IProfileApplicationService` 経由に切り替える対象とするかを確定する。
 
-### タスク Step3-2: 復帰追跡機構（`Mapping`保留スタック vs `DefaultProfileSwitcher`自前配列）の用途精査
-- `Mapping.TakePendingRestoreProfileName`／対となる登録処理の呼び出しタイミングを確認する。
-- `DefaultProfileSwitcher`の`_previousProfiles`／`_temporaryProfiles`が更新・参照されるタイミングを確認する。
-- 完全重複か別用途かを判定し、統合方針（統合する／併存を維持する）を決定・記録する。
+### タスク Step3-2: 復帰追跡機構の用途精査
+1. `Mapping.TakePendingRestoreProfileName` の参照箇所を全件洗い出し、`DefaultProfileSwitcher._previousProfiles` との競合がないかを再確認する。
 
-### タスク Step3-3: `IProfileApplicationService.ApplyProfile`の追加
-- インターフェースおよび実装クラスに`ApplyProfile`メソッドを追加する（1.1節のシグネチャ）。
-- 内部実装は`Global.ApplyProfile`への薄い委譲とし、既存の戻り値・ログ出力を維持する。
+### タスク Step3-3: `IProfileApplicationService.ApplyProfile` の追加
+1. `DS4Windows/DI/IProfileApplicationService.cs` に `ApplyProfile` を定義。
+2. `DS4Windows/DS4Control/Services/ProfileApplicationService.cs` に実装を追加。
+   - スロット更新注記（§1.2）に基づき `if (!isTemp) Global.ProfilePath[deviceIndex] = profileName;` を配置。
+   - 内部で `Global.ApplyProfile(deviceIndex, launchProgram, Program.rootHub, true, source, prolog, displayNotification)` を呼び出す（戻り値 `bool` を返す）。
 
-### タスク Step3-4: `DefaultProfileSwitcher`のリファクタリング
-- コンストラクタに`IProfileApplicationService`を追加注入する。
-- `SwitchProfile`／`RestoreProfile`（フォールバック部分）／`ApplyManualProfile`内の`Global.ApplyProfile`直接呼び出しを`_profileApplicationService.ApplyProfile`へピンポイント置換する。
-- `Program.rootHub`への直接参照を、注入済み`ControlService`（既存コンストラクタに追加が必要な場合は追加）経由に置換する。
+```csharp
+// ProfileApplicationService.cs 実装イメージ
+public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp, bool launchProgram,
+    ProfileChangeSource source = ProfileChangeSource.ProfileChange,
+    string prolog = null, bool displayNotification = true)
+{
+    if (deviceIndex < 0 || deviceIndex >= ControlService.MAX_NUM_CONTROLLERS)
+        return false;
+
+    // 重要: 通常適用の場合はスロットパスを先行更新
+    if (!isTemp && !string.IsNullOrEmpty(profileName))
+    {
+        Global.ProfilePath[deviceIndex] = profileName;
+    }
+
+    // Program.rootHub をサービス内部でカプセル化して Global.ApplyProfile に渡す
+    return Global.ApplyProfile(
+        deviceIndex,
+        launchProgram,
+        Program.rootHub,
+        load: true,
+        source: source,
+        prolog: prolog,
+        displayNotification: displayNotification);
+}
+```
+
+### タスク Step3-4: `DefaultProfileSwitcher` のリファクタリング
+1. `DS4Windows/Actions/DefaultProfileSwitcher.cs` の `SwitchProfile`, `RestoreProfile`, `ApplyManualProfile` を修正。
+2. `Program.rootHub` の参照（line 44, line 78 等）および `Global.ApplyProfile` の直接呼び出しを、`_profileApplicationService.ApplyProfile` に置き換える。
+3. `using` から不要となった参照を整理。
 
 ### タスク Step3-5: Step3-1調査結果に基づく追加対象の修正（対象がある場合のみ）
-- タスクStep3-1で特定した通常GUI切替／ProfileEditor Save／Apply呼び出し元を、範囲・リスクに応じて`IProfileApplicationService.ApplyProfile`経由へ置換する。
+1. Step3-1 で特定された GUI 側の呼び出し元が容易に DI 注入可能な構成であれば、`IProfileApplicationService.ApplyProfile` を使用するように変更。
+2. 結合度が高くリスクが大きい場合は、本Stepではスコープ外とし Step6 または別タスクへ送る判断を明記する。
 
 ### タスク Step3-6: 単体テスト作成と自動テスト実行
-- `ProfileApplicationServiceTests.cs`／`DefaultProfileSwitcherTests.cs`を作成する。
-- 特にデバウンスガード（250ms以内の連続切替を無視すること）、復帰フォールバック順序（`IProfileApplicationService`優先→自前配列）を回帰的に検証する。
-- 既存回帰テスト（`DS4WindowsTests`／`StandaloneTests`）が全件通過することを確認する。
+1. `ProfileApplicationServiceTests` に `ApplyProfile` のテストを追加。
+2. `DefaultProfileSwitcher` のテストを実行し、`IProfileApplicationService` への委譲が正しく機能していることを検証。
+3. 全テスト実行（`dotnet test`）で既存機能にリグレッションがないことを確認。
 
 ### タスク Step3-7: ビルド検証、進捗更新、完了報告書の作成
-- `dotnet build DS4WindowsWPF.sln --nologo` を実行し警告0・エラー0を確認する。
-- `Phase5-Status.md`のStep3欄を更新し、`Phase5-Step3-Completion-Report.md`を作成する（0.3・1.3の調査結果を含める）。
+1. Debug / Release ビルドの成功を確認。
+2. `Phase5-Status.md` の Step3 進捗を「完了」に更新。
+3. `Phase5-Step3-Completion-Report.md` を作成。
 
 ---
 
 ## 4. リスクと回避策
 
-| リスク | 該当タスク | 回避策 |
+| リスク | 影響度 | 回避策 |
 |---|---|---|
-| 2系統の復帰追跡機構を誤って統合し、いずれかのシナリオ（SpecialAction経由の一時切替 vs マッピングエンジン側の保留復帰）で復帰が失敗する | Step3-2, Step3-4 | タスクStep3-2で用途が異なると判明した場合は統合せず併存を維持する。統合する場合も、既存の全呼び出しパターンを単体テストで網羅してから実施する。 |
-| `DefaultProfileSwitcher`のカスケードループ防止ガード（250msデバウンス）が、`IProfileApplicationService.ApplyProfile`への置換時に意図せず失われる | Step3-4 | デバウンス判定は`SwitchProfile`の入口でこれまで通り維持し、`ApplyProfile`呼び出しはガード通過後にのみ行う設計とする。単体テストでガード動作を検証する。 |
-| 通常GUI切替の呼び出し元修正が想定より広範囲（多数のView/ViewModel）に及び、他機能への影響が読みきれない | Step3-1, Step3-5 | 影響範囲が大きいと判断した場合は本Stepでの修正を見送り、独立したStepとして切り出す（Phase5-Plan.md・Phase5-Status.mdへの追記が必要になる場合は事前に確認を取る）。 |
-| `Global.ApplyProfile`薄い委譲化により、既存の75ファイルからの直接呼び出し元に予期せぬ影響が出る | Step3-3 | `Global.ApplyProfile`自体のシグネチャ・戻り値は変更せず、`IProfileApplicationService.ApplyProfile`はあくまで新しい呼び出し経路の追加として扱う（既存経路の削除はしない）。 |
+| **スロット配列の不整合** | 高 | `Global.ApplyProfile` 呼び出し前に `if (!isTemp) Global.ProfilePath[deviceIndex] = profileName;` を必ず実行する（§1.2 の徹底）。 |
+| **カスケードループ再発** | 高 | `DefaultProfileSwitcher` 内の 250ms デバウンスガード（`_lastSwitchedTimes`）および `_previousProfiles` 退避機構には一切手を触れずそのまま維持する。 |
+| **GUI通知の重複・抑制不全** | 中 | `displayNotification` 引数を正しく伝播させ、Step4 の「通知統一」計画と整合させる。 |
 
 ---
 
 ## 5. 完了判定基準
 
-- [ ] `IProfileApplicationService`に`ApplyProfile`メソッドが追加され、`Global.ApplyProfile`への薄い委譲として実装されている。
-- [ ] `DefaultProfileSwitcher`が`Global.ApplyProfile`／`Program.rootHub`を直接呼び出さず、`IProfileApplicationService`経由に置き換わっている（`SwitchProfile`／`RestoreProfile`／`ApplyManualProfile`の3箇所）。
-- [ ] カスケードループ防止ガード（250msデバウンス）の動作が単体テストで確認されている。
-- [ ] 2系統の復帰追跡機構（`Mapping`保留スタック／`DefaultProfileSwitcher`自前配列）の用途精査結果が完了報告書に記録され、統合方針（統合する／併存を維持する）が明確になっている。
-- [ ] 通常GUI切替・ProfileEditor Save／Applyの呼び出し元調査結果が完了報告書に記録され、本Stepでの対応範囲が明確になっている。
-- [ ] 新設した`ProfileApplicationServiceTests`／`DefaultProfileSwitcherTests`および既存の全回帰テスト（`DS4WindowsTests`／`StandaloneTests`）が成功する。
-- [ ] ソリューションビルドが警告0・エラー0で成功する。
-- [ ] `Phase5-Status.md`が更新され、`Phase5-Step3-Completion-Report.md`が作成されている。
+- [ ] `IProfileApplicationService` に `ControlService` 引数を持たないクリーンな `ApplyProfile` が定義されていること。
+- [ ] `ProfileApplicationService.ApplyProfile` 内でスロット更新（`Global.ProfilePath`）とプロファイル適用が正しく行われていること。
+- [ ] `DefaultProfileSwitcher.cs` 内から `Program.rootHub` への参照が 0 件になっていること。
+- [ ] `DefaultProfileSwitcher.cs` 内から `Global.ApplyProfile` への直接参照が 0 件になり、`_profileApplicationService` 経由になっていること。
+- [ ] 250ms デバウンスおよびカスケードガードが機能していること。
+- [ ] 単体テストがすべて成功し、ビルドエラー・警告増がないこと。
