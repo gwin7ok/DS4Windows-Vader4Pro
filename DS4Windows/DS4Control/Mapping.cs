@@ -5916,7 +5916,6 @@ namespace DS4Windows
                     if ((action.controls == action.ucontrols && !GetBeingTriggered(index, action, device)) || //if trigger and end trigger are the same
                     action.controls != action.ucontrols)
                     {
-                        if (useTempProfile[device])
                         {
                             //foreach (DS4Controls dc in action.uTrigger)
                             for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
