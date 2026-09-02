@@ -27,11 +27,11 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 10-1 | `[DI]`／`[Legacy]` Trace ログ整備 | **進行中** | - | DI 新経路と Legacy シム経路の識別ログを整備中。高頻度アクセスはログ抑制方針。 |
 | Step 10-2-A | `Global` シム接続拡張 | **完了** | 2026-09-02 | `IProfileSettingsService` 等へのシム接続、A-1〜A-9 完了。 |
 | Step 10-2-B | 呼び出し元の DI 直接参照化 | **完了** | 2026-09-02 | `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` の対象経路を移行。テスト・コミット・リモート反映完了。 |
-| Step 10-2-C | Legacy 経路残存の整理と段階移行 | **C-0〜C-3完了、C-4以降未着手** | 2026-09-02 | 詳細は `Phase4-Step10-2-C-Plan.md`。短期方式と将来移行先を確定済み。 |
+| Step 10-2-C | Legacy 経路残存の整理と段階移行 | **C-0完了、C-1以降未着手** | 2026-09-02 | 詳細は `Phase4-Step10-2-C-Plan.md`。Legacy 残存量の調査、対象判定、実装方針の整理まで完了。コード変更・検証は C-1 から開始する。 |
 | Step 10-2-C-0 | 現状基準の固定 | **完了** | 2026-09-02 | Legacy 残存量の棚卸しと分類ルールを文書化。 |
-| Step 10-2-C-1 | Composition Root 一本化 | **完了** | 2026-09-02 | 旧 `ServiceCollection` 削除、Action 系登録統合、Provider 一本化。 |
-| Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | **完了** | 2026-09-02 | Singleton 登録、AppHost 解決、`rootHub` 互換代入を実装。 |
-| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **分類完了・実装待ち** | 2026-09-02 | C-1／C-2 の分類、短期方式、将来移行先を確定。具体的契約範囲を確認後に実装。 |
+| Step 10-2-C-1 | Composition Root 一本化 | **未着手** | - | 旧 `ServiceCollection` 削除、Action 系登録統合、Provider 一本化を実装する。 |
+| Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | **未着手** | - | Singleton 登録、AppHost 解決、`rootHub` 互換代入を実装する。 |
+| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **未着手** | - | 確定済みの C-1／C-2 分類に基づき、具体的契約範囲を確認して実装する。 |
 | Step 10-2-C-4 | ViewModel フォールバックの可視化 | **未着手** | - | CP4 までフォールバックを維持し、使用時の `[Legacy]` ログを追加。 |
 | Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **未着手** | - | 高頻度ログを抑制しつつ、入口・変更・失敗を監査。 |
 | Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | **未着手** | - | 自動テスト／実機／両方を分類し、実機確認項目を縮小。 |

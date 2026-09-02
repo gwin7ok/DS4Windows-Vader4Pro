@@ -91,11 +91,11 @@
 | Step 10-1 | `[DI]`／`[Legacy]` Trace ログ整備 | DI 実行経路と従来シム経路を識別できる Trace ログを整備し、高頻度ログを抑制する | 各サービス・シムへのログ導入、ログ監査記録 | **進行中** |
 | Step 10-2-A | `Global` シム接続拡張 | `IProfileSettingsService` 等へ `Global` の設定 API を接続する | `Phase4-Step10-2-A` 成果物、A-1〜A-9報告書 | **完了** |
 | Step 10-2-B | 呼び出し元の DI 直接参照化 | `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` の対象経路を DI へ移行する | `Phase4-Step10-2-B-Plan.md`、カテゴリ別完了報告書 | **完了** |
-| Step 10-2-C | Legacy 経路残存の整理と段階移行 | Phase4 対象の Legacy 経路を分類し、Composition Root、`rootHub`、ViewModel フォールバック等を段階整理する | `Phase4-Step10-2-C-Plan.md`、Legacy調査・分類報告書 | **C-0〜C-3完了、C-4以降未着手** |
+| Step 10-2-C | Legacy 経路残存の整理と段階移行 | Phase4 対象の Legacy 経路を分類し、Composition Root、`rootHub`、ViewModel フォールバック等を段階整理する | `Phase4-Step10-2-C-Plan.md`、Legacy調査・分類報告書 | **C-0完了、C-1以降未着手** |
 | Step 10-2-C-0 | 現状基準の固定 | Legacy 残存量、対象判定ルール、判断項目を固定する | Legacy残存調査報告書 | **完了** |
-| Step 10-2-C-1 | Composition Root 一本化 | 旧 `ServiceCollection` を削除し、AppHost／ServiceRegistration を唯一の構築経路にする | C-1/C-2完了報告書 | **完了** |
-| Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | `ControlService` を Singleton 登録し、AppHost から解決する。`rootHub` 代入は維持する | C-1/C-2完了報告書 | **完了** |
-| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | 実行時経路を C-1、UI を C-2、AutoProfile 等を確定方針に沿って整理する | `C-3-RootHub-Classification-Report.md` | **分類完了・実装待ち** |
+| Step 10-2-C-1 | Composition Root 一本化 | 旧 `ServiceCollection` を削除し、AppHost／ServiceRegistration を唯一の構築経路にする | C-1/C-2実装前確認記録 | **未着手** |
+| Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | `ControlService` を Singleton 登録し、AppHost から解決する。`rootHub` 代入は維持する | C-1/C-2実装前確認記録 | **未着手** |
+| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | 実行時経路を C-1、UI を C-2、AutoProfile 等を確定方針に沿って整理する | `C-3-RootHub-Classification-Report.md` | **未着手** |
 | Step 10-2-C-4 | ViewModel フォールバックの可視化 | CP4 までフォールバックを維持し、使用時に `[Legacy]` ログを出力する | フォールバックログ、テスト | **未着手** |
 | Step 10-2-C-5 | Legacy シムのログ網羅性監査 | 高頻度ログを抑制しながら、シム入口・変更・失敗を監査する | シムログ監査報告書 | **未着手** |
 | Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | CP4 項目を自動テスト／実機／両方に分類し、自動化可能な項目を実装する | 自動テスト、CP4項目分類表 | **未着手** |
