@@ -1,10 +1,10 @@
 # フェーズ5-Step3 計画書: プロファイル適用・復帰の責務分離
 
-作成日: 2026-09-02（改訂日: 2026-09-03）
+作成日: 2026-09-02（改訂日: 2026-09-03・アーキテクチャガードレール反映）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
-- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step3（Phase5詳細計画書）
+- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step3, §5.2, §5.6（Phase5詳細計画書・ガードレール）
 - `docs-forDIMG/MadeByAgent/Phase5-Status.md`（Phase5進捗管理）
 - `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegation-audit-report.md`（Step1監査結果）
 - `docs-forDIMG/MadeByAgent/Phase5-Step2-Plan.md`（前Step）
@@ -42,7 +42,7 @@
 
 | 項目 | `ProfileApplicationService` | `DefaultProfileSwitcher` |
 |---|---|---|
-| 切替実行 | `ApplyFromAction`: `device.HaltReportingRunAction` で入力停止した上で `Global.ApplyProfile` を実行し、連鎖アクションを発火 | `SwitchProfile`: 250msデバウンスガード後、直接 `Global.ApplyProfile` を `Program.rootHub` 引数で実行 |
+| 切替実行 | `ApplyFromAction`: `device.HaltReportingRunAction` で入力停止した上で `Global.ApplyProfile` を実行し、連鎖アクションを発火 | `SwitchProfile`: 250msデバウンスガード後、直接 `Global.ApplyProfile` を `Program.rootHub` 引数で実行（入力停止なし） |
 | 復帰追跡 | `Mapping.TakePendingRestoreProfileName`（`Mapping` 静的クラスが管理する保留復帰スタック） | インスタンスフィールド `_previousProfiles[4]`／`_temporaryProfiles[4]`（自前のバックアップ配列） |
 | 復帰実行 | `RestoreFromAction`: 上記スタックから取得し、`Global.LoadTempProfile` 等を実行 | `RestoreProfile`: まず `IProfileApplicationService.RestoreFromAction` を試み、失敗時のみ自前の `_previousProfiles` から `Global.ApplyProfile` を再実行（`Program.rootHub` 直接参照） |
 | 手動適用 | なし | `ApplyManualProfile`: `Global.ApplyProfile`（`Program.rootHub` 引数）へのパススルー |
@@ -61,7 +61,7 @@
 既存の `IProfileApplicationService` を「プロファイル適用の唯一の契約」と位置づけ、汎用の `ApplyProfile` メソッドを追加する。
 
 #### 【設計の要点: ControlService 引数の排除】
-旧設計案では `ControlService control` を引数として要求していたが、これでは呼び出し元（`DefaultProfileSwitcher` や UI）が `Program.rootHub` を直接知る必要が生じ、DI化の趣旨に反する。
+旧設計案では `ControlService control` を引数として要求していたが、これでは呼び出し元（`DefaultProfileSwitcher` や UI）が `Program.rootHub` を直接知る必要が生じ、DI化の趣旨に反する。  
 したがって、**引数から `ControlService` を完全に排除**し、`ProfileApplicationService` の内部で解決（内部で `Program.rootHub` を渡す、または将来的に注入されたサービスを利用する）する設計とする。
 
 ```csharp
@@ -85,7 +85,7 @@ namespace DS4Windows.DI
 ---
 
 ### 1.2 【重要注記: `Global.ProfilePath[deviceIndex]` の更新タイミング】
-`Global.ApplyProfile` の内部挙動として、事前にスロット配列 `Global.ProfilePath[deviceIndex] = profileName;` が更新されていることを前提としている処理が存在する。
+`Global.ApplyProfile` の内部挙動として、事前にスロット配列 `Global.ProfilePath[deviceIndex] = profileName;` が更新されていることを前提としている処理が存在する。  
 一時プロファイル（`isTemp == true`）の場合はスロットパスを上書きしてはならないが、通常プロファイルの適用時は必須となる。
 
 したがって、`ProfileApplicationService.ApplyProfile` の実装内では、**`Global.ApplyProfile` を呼び出す直前に以下のスロット更新処理を確実に実行**する（`DefaultProfileSwitcher.SwitchProfile` line 41 と厳格に整合させる）。
@@ -123,14 +123,33 @@ if (!isTemp)
 
 ---
 
+### 1.5 アーキテクチャ・ガードレール: プロファイル適用時と切断時の安全性保証（Phase5-Plan §5.2, §5.6準拠）
+
+#### 1.5.1 [入力スレッド保護] プロファイル適用時における「入力ポーリング停止（Halt）」保証（§5.2）
+- **【問題の実態】**:
+  `ProfileApplicationService.ApplyFromAction` では `device.HaltReportingRunAction` を呼び、コントローラーの高速入力ポーリングループ（毎秒250〜1000回）を一時停止させた状態で `Global.ApplyProfile` を安全に実行している。
+  しかし、`DefaultProfileSwitcher` や通常の GUI 切替ではこれを行っておらず、入力ループが稼働している最中にマッピングテーブルやアクション辞書の再構築が走っている。
+  この状態でプロファイルが切り替わると、走査スレッド側で **`InvalidOperationException: コレクションが変更されました`** が発生し、アプリがサイレントクラッシュする重大なリスクがある。
+- **【推奨対策】**:
+  新設する `ProfileApplicationService.ApplyProfile` 実装内において、対象スロットに接続されているデバイス（`DS4Device`）が存在し稼働中の場合は、**必ず `device.HaltReportingRunAction(() => { ... })` により安全に入力レポートを一時停止させた状態で `Global.ApplyProfile` を実行するガード**を標準実装する。
+
+#### 1.5.2 [状態管理] コントローラー物理切断時の一時プロファイル（TempProfile）残留防止（§5.6）
+- **【問題の実態】**:
+  一時プロファイル（特定ボタンを押している間だけ適用される設定）が適用されている最中に、ユーザーが USB ケーブルを抜去したり Bluetooth 接続が切断された場合、ボタンを離すイベント（復帰アクション）が発火しない。
+  そのため、`Mapping.TakePendingRestoreProfileName` の復帰スタックに古いプロファイル情報が残留したままになり、次回コントローラーを再接続した際に「一時プロファイルが適用されたまま復帰不能になる」という状態リークが発生する。
+- **【推奨対策】**:
+  `ControlService` のデバイス切断イベント（`DeviceRemoved` / `Hotplug`）または `IProfileApplicationService` にクリーンアップメソッド（`ClearPendingRestoreProfile(int deviceIndex)`）を設け、**物理切断を検知した際に該当スロットの一時プロファイル保留スタックおよびフラグを強制クリアする安全機構**を確立する。
+
+---
+
 ## 2. 成果物一覧
 
 | 種別 | ファイルパス | 変更内容 |
 |---|---|---|
 | インターフェース | `DS4Windows/DI/IProfileApplicationService.cs` | `ApplyProfile` メソッドの追加（`ControlService` 引数なし） |
-| サービス実装 | `DS4Windows/DS4Control/Services/ProfileApplicationService.cs` | `ApplyProfile` の実装（スロット更新 + `Global.ApplyProfile` 呼び出し、`Program.rootHub` のカプセル化） |
+| サービス実装 | `DS4Windows/DS4Control/Services/ProfileApplicationService.cs` | `ApplyProfile` の実装（スロット先行更新、`HaltReportingRunAction` 入力停止ガード組み込み、切断時クリーンアップ対応） |
 | スイッチャー | `DS4Windows/Actions/DefaultProfileSwitcher.cs` | `Global.ApplyProfile` および `Program.rootHub` 直接参照の排除、`IProfileApplicationService` 経由への統一 |
-| 単体テスト | `DS4WindowsTests/ProfileApplicationServiceTests.cs`（新設または拡充） | 新設 `ApplyProfile` の動作検証、通知抑制・スロット更新確認 |
+| 単体テスト | `DS4WindowsTests/ProfileApplicationServiceTests.cs`（新設または拡充） | 新設 `ApplyProfile` の動作検証、通知抑制・スロット更新・Halt実行確認 |
 | 単体テスト | `DS4WindowsTests/ProfileSwitchActionTests.cs` | `DefaultProfileSwitcher` のモック検証 |
 
 ---
@@ -145,11 +164,11 @@ if (!isTemp)
 ### タスク Step3-2: 復帰追跡機構の用途精査
 1. `Mapping.TakePendingRestoreProfileName` の参照箇所を全件洗い出し、`DefaultProfileSwitcher._previousProfiles` との競合がないかを再確認する。
 
-### タスク Step3-3: `IProfileApplicationService.ApplyProfile` の追加
+### タスク Step3-3: `IProfileApplicationService.ApplyProfile` の追加（Haltガード内包）
 1. `DS4Windows/DI/IProfileApplicationService.cs` に `ApplyProfile` を定義。
 2. `DS4Windows/DS4Control/Services/ProfileApplicationService.cs` に実装を追加。
    - スロット更新注記（§1.2）に基づき `if (!isTemp) Global.ProfilePath[deviceIndex] = profileName;` を配置。
-   - 内部で `Global.ApplyProfile(deviceIndex, launchProgram, Program.rootHub, true, source, prolog, displayNotification)` を呼び出す（戻り値 `bool` を返す）。
+   - ガードレール（§1.5.1）に基づき、デバイス稼働時は `device.HaltReportingRunAction` 経由で `Global.ApplyProfile` を呼び出す。
 
 ```csharp
 // ProfileApplicationService.cs 実装イメージ
@@ -166,15 +185,32 @@ public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp, bool 
         Global.ProfilePath[deviceIndex] = profileName;
     }
 
-    // Program.rootHub をサービス内部でカプセル化して Global.ApplyProfile に渡す
-    return Global.ApplyProfile(
-        deviceIndex,
-        launchProgram,
-        Program.rootHub,
-        load: true,
-        source: source,
-        prolog: prolog,
-        displayNotification: displayNotification);
+    bool success = false;
+    DS4Device device = _control?.DS4Controllers[deviceIndex] ?? Program.rootHub?.DS4Controllers[deviceIndex];
+
+    // ガードレール: デバイス稼働時は入力ループを安全に一時停止して適用
+    Action applyAction = () =>
+    {
+        success = Global.ApplyProfile(
+            deviceIndex,
+            launchProgram,
+            Program.rootHub,
+            load: true,
+            source: source,
+            prolog: prolog,
+            displayNotification: displayNotification);
+    };
+
+    if (device != null && device.IsAlive())
+    {
+        device.HaltReportingRunAction(applyAction);
+    }
+    else
+    {
+        applyAction();
+    }
+
+    return success;
 }
 ```
 
@@ -185,10 +221,10 @@ public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp, bool 
 
 ### タスク Step3-5: Step3-1調査結果に基づく追加対象の修正（対象がある場合のみ）
 1. Step3-1 で特定された GUI 側の呼び出し元が容易に DI 注入可能な構成であれば、`IProfileApplicationService.ApplyProfile` を使用するように変更。
-2. 結合度が高くリスクが大きい場合は、本Stepではスコープ外とし Step6 または別タスクへ送る判断を明記する。
+2. 結合度が高くリスクが大きい場合は、本Stepではスコープ外とし Step13（UI統合）へ送る判断を明記する。
 
 ### タスク Step3-6: 単体テスト作成と自動テスト実行
-1. `ProfileApplicationServiceTests` に `ApplyProfile` のテストを追加。
+1. `ProfileApplicationServiceTests` に `ApplyProfile` のテストを追加（Halt呼び出し検証含む）。
 2. `DefaultProfileSwitcher` のテストを実行し、`IProfileApplicationService` への委譲が正しく機能していることを検証。
 3. 全テスト実行（`dotnet test`）で既存機能にリグレッションがないことを確認。
 
@@ -203,7 +239,9 @@ public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp, bool 
 
 | リスク | 影響度 | 回避策 |
 |---|---|---|
-| **スロット配列の不整合** | 高 | `Global.ApplyProfile` 呼び出し前に `if (!isTemp) Global.ProfilePath[deviceIndex] = profileName;` を必ず実行する（§1.2 の徹底）。 |
+| **コレクション変更クラッシュ** | 高 | プロファイル適用時に入力ポーリングを `device.HaltReportingRunAction` で一時停止して辞書を再構築する（§1.5.1）。 |
+| **物理切断時の状態リーク** | 中 | コントローラー物理切断時に該当スロットの一時プロファイル保留スタックをリセットする安全機構を設ける（§1.5.2）。 |
+| **スロット配列の不整合** | 高 | `Global.ApplyProfile` 呼び出し前に `if (!isTemp) Global.ProfilePath[deviceIndex] = profileName;` を必ず実行する（§1.2）。 |
 | **カスケードループ再発** | 高 | `DefaultProfileSwitcher` 内の 250ms デバウンスガード（`_lastSwitchedTimes`）および `_previousProfiles` 退避機構には一切手を触れずそのまま維持する。 |
 | **GUI通知の重複・抑制不全** | 中 | `displayNotification` 引数を正しく伝播させ、Step4 の「通知統一」計画と整合させる。 |
 
@@ -213,6 +251,8 @@ public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp, bool 
 
 - [ ] `IProfileApplicationService` に `ControlService` 引数を持たないクリーンな `ApplyProfile` が定義されていること。
 - [ ] `ProfileApplicationService.ApplyProfile` 内でスロット更新（`Global.ProfilePath`）とプロファイル適用が正しく行われていること。
+- [ ] プロファイル適用時に `device.HaltReportingRunAction` による入力停止が行われ、マルチスレッド下での `InvalidOperationException` が防止されていること（§1.5.1）。
+- [ ] コントローラー切断時に一時プロファイル保留スタックが残留しないクリーンアップ設計が担保されていること（§1.5.2）。
 - [ ] `DefaultProfileSwitcher.cs` 内から `Program.rootHub` への参照が 0 件になっていること。
 - [ ] `DefaultProfileSwitcher.cs` 内から `Global.ApplyProfile` への直接参照が 0 件になり、`_profileApplicationService` 経由になっていること。
 - [ ] 250ms デバウンスおよびカスケードガードが機能していること。
