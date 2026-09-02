@@ -25,7 +25,7 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 9 | ViewModel DI 移行 (Pattern C) | **完了** | 2026-09-01 | `IViewModelFactory.cs`, `ViewModelFactory.cs`, DI登録, View直接new全廃, `PatternCViewModelTests.cs`, **Step9-4-α監査合格**, **実機検証CP3全件合格** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **完了** | 2026-09-01 | `Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
 | Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **一部進行中** | - | [DI]/[Legacy] Trace ログ整備は着手済み。呼び出し元DI直接参照化（Step10-2）を前倒しで追加実施中のため、実機検証CP4はStep10-2完了後に実施 |
-| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-C Legacy 残存調査完了・方針確認待ち** | 2026-09-02 | Phase4 基準で Legacy 経路の残存を棚卸し。二重 Composition Root、ControlService 未登録、ViewModel フォールバック、rootHub 直接依存、Legacy ログ網羅性を残存課題として確認。複数方式の選択が必要な項目はユーザー確認後に実装する。 |
+| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-C 計画完了・実装前確認待ち** | 2026-09-02 | Legacy 残存調査を基に、旧 ServiceCollection の AppHost 統合、ControlService Singleton 登録、rootHub の C-1/C-2 分類、ViewModel フォールバックの CP4 までの維持・可視化を計画化。実装方法が複数の項目は作業前に確認する。 |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10・Step10-2完了時） |
 
 ---
