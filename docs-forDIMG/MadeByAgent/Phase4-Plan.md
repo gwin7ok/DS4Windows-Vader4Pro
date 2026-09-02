@@ -88,25 +88,48 @@
 | Step 8 | ViewModel DI 移行 (Pattern B) | 共有依存 ViewModel（Controllers, Main 等: 第4層 4-b）の DI 移行 | 共有サービス経由注入 | **完了** |
 | Step 9 | ViewModel DI 移行 (Pattern C) | 実行時引数付き ViewModel（ProfileSettings, **RecordBox**, SpecialActEditor, AutoProfiles 等: 第4層 4-b）の Factory 移行 | Factory パターン注入, **Step9-4-α監査合格** | **完了** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **全画面 UI 結合・ViewModel 直接 new 全廃後の UI バインディング・画面遷移検証** | **`Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格)** | **完了** |
-| Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]/[Legacy]ログ整備 | DI 実行経路（`[DI]`）および従来経路（`[Legacy]`）の Trace 監査ログ整備、残存シムの安全監査、Phase3引継ぎ事項の完全解消確認 | 各サービス・シムへのログ導入、監査レポート | **未着手 (次)** |
+| Step 10-1 | `[DI]`／`[Legacy]` Trace ログ整備 | DI 実行経路と従来シム経路を識別できる Trace ログを整備し、高頻度ログを抑制する | 各サービス・シムへのログ導入、ログ監査記録 | **進行中** |
+| Step 10-2-A | `Global` シム接続拡張 | `IProfileSettingsService` 等へ `Global` の設定 API を接続する | `Phase4-Step10-2-A` 成果物、A-1〜A-9報告書 | **完了** |
+| Step 10-2-B | 呼び出し元の DI 直接参照化 | `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` の対象経路を DI へ移行する | `Phase4-Step10-2-B-Plan.md`、カテゴリ別完了報告書 | **完了** |
+| Step 10-2-C | Legacy 経路残存の整理と段階移行 | Phase4 対象の Legacy 経路を分類し、Composition Root、`rootHub`、ViewModel フォールバック等を段階整理する | `Phase4-Step10-2-C-Plan.md`、Legacy調査・分類報告書 | **C-0〜C-3完了、C-4以降未着手** |
+| Step 10-2-C-0 | 現状基準の固定 | Legacy 残存量、対象判定ルール、判断項目を固定する | Legacy残存調査報告書 | **完了** |
+| Step 10-2-C-1 | Composition Root 一本化 | 旧 `ServiceCollection` を削除し、AppHost／ServiceRegistration を唯一の構築経路にする | C-1/C-2完了報告書 | **完了** |
+| Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | `ControlService` を Singleton 登録し、AppHost から解決する。`rootHub` 代入は維持する | C-1/C-2完了報告書 | **完了** |
+| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | 実行時経路を C-1、UI を C-2、AutoProfile 等を確定方針に沿って整理する | `C-3-RootHub-Classification-Report.md` | **分類完了・実装待ち** |
+| Step 10-2-C-4 | ViewModel フォールバックの可視化 | CP4 までフォールバックを維持し、使用時に `[Legacy]` ログを出力する | フォールバックログ、テスト | **未着手** |
+| Step 10-2-C-5 | Legacy シムのログ網羅性監査 | 高頻度ログを抑制しながら、シム入口・変更・失敗を監査する | シムログ監査報告書 | **未着手** |
+| Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | CP4 項目を自動テスト／実機／両方に分類し、自動化可能な項目を実装する | 自動テスト、CP4項目分類表 | **未着手** |
+| Step 10-2-C-7 | CP4 実機検証 | C-6 で代替できない HID、WPF、ドライバ、長時間安定性等を確認する | CP4 実機チェックリスト | **未着手（計画）** |
+| Step 10-2-C-8 | CP4 後のフォールバック削除判断 | CP4 結果を基に互換フォールバック削除の可否を別変更として判断する | フォールバック削除判断報告書 | **未着手（計画）** |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | **`[DI]` および `[Legacy]` ログを活用したシム整理後・Phase 4 完了総合実機検証（長時間接続・負荷・安定性）** | **実機検証チェックリスト CP4** | 未着手 (計画) |
 
 ---
 
 ## 3. 各ステップの詳細
 
-### Step 10: Phase3引継ぎ再確認・シム整理・[DI]/[Legacy]ログ整備 & 最終実機検証 CP4
-- **1. [DI] および [Legacy] Trace 監査ログの整備（タスク Step10-1）**:
+### Step 10-1: [DI] および [Legacy] Trace ログ整備
+- **対象**:
   - **新方式 DI 経路**: `AppHost.GetService`、全 DI サービス、`ViewModelFactory` に `[DI] <クラス名>.<メソッド名>: <詳細>` ログを出力。
   - **従来レガシー経路**: `Global`（`ScpUtil.cs`）の各静的シム（`touchpadActive`, `LoadProfile`, `SaveProfile`, `actions`, `devices` 等）に `[Legacy] Global.<メンバー名>: <詳細>` ログを出力。
-  - アプリ実行時に「どの処理が DI 新経路を通り、どの処理がまだ古いシムを経由しているか」をログ上で完全に可視化・比較可能にする。
-  - **【最重要申し送り事項】**: 今後発生するすべての変更・機能追加においても、新経路には `[DI]`、従来シム経路には `[Legacy]` の Trace ログ出力を必須とする。
-- **2. Phase 3 引継ぎ事項の完全解消確認（タスク Step10-2）**:
-  - 第2層（信号変換層）と第3層（信号出力層）の責務境界が正しく維持されていることを再確認。
-- **3. 残存シムの安全監査と不要シム整理（タスク Step10-3）**:
-  - `Global` のシム呼び出し状況を監査し、可能な箇所の直接 DI 化と安全なシム維持の総点検を実施。
-- **4. 最終総合実機動作確認 Checkpoint 4 の実施（タスク Step10-4）**:
-  - `Phase4-Step10-RealDevice-Verification-Checklist.md` を作成し、`[DI]` / `[Legacy]` ログを確認しながら最終 E2E 総合テストを実施。
+  - アプリ実行時に「どの処理が DI 新経路を通り、どの処理がまだ古いシムを経由しているか」をログ上で可視化・比較可能にする。
+  - 今後の変更・機能追加でも、新経路には `[DI]`、従来シム経路には `[Legacy]` の Trace ログを付与する。
+
+### Step 10-2-A: `Global` シム接続拡張
+
+- `IProfileSettingsService` 等の契約へ `Global` の設定 API を接続する。
+- A-1〜A-9 の各カテゴリについて、後方互換シムと既存挙動を確認する。
+
+### Step 10-2-B: 呼び出し元の DI 直接参照化
+
+- `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` の対象設定参照を DI 経由へ移行する。
+- 実行時引数付き ViewModel は Factory 経由で生成し、互換フォールバックは検証完了まで維持する。
+
+### Step 10-2-C: Legacy 経路残存の整理と段階移行
+
+- Phase3 引継ぎ事項と残存シムを C-0〜C-8 で整理する。
+- Composition Root、`ControlService`、`rootHub`、ViewModel フォールバック、Legacy ログを段階的に整理する。
+- C-6 で自動テスト化できる CP4 項目を抽出し、C-7 では実機必須項目に集中する。
+- 第2層（信号変換層）と第3層（信号出力層）の責務境界を再確認する。
 
 ---
 
@@ -134,7 +157,7 @@
    - **対象**: 第4層 4-a (View) / 4-b (ViewModel) における全 29 箇所の直接 new の全廃（Pattern A, B, C 全網羅）、DI コンテナ / Factory 経由の UI バインディング
    - **検証内容**: 全画面（メイン、Controllers、Profiles、Special Actions、Settings、Log、RecordBox、AutoProfiles）のデータバインディング、ダイアログ表示、画面遷移、直接 new の残存ゼロ確認。
    - **成果物**: `Phase4-Step9-RealDevice-Verification-Checklist.md`
-4. **Checkpoint 4 (Step 10 完了時: Phase 4 最終総合 E2E 検証) 【計画】**:
+4. **Checkpoint 4 (Step10-2-C-7 完了時: Phase 4 最終総合 E2E 検証) 【計画】**:
    - **対象**: 過渡期シム整理後・`[DI]` / `[Legacy]` ログ導入後の DS4Windows 全体（第1層〜第4層の完全統合）
    - **検証内容**: `[DI]` および `[Legacy]` Trace ログの出力を確認しながらの総合 E2E テスト（長時間ゲームプレイ、プロファイル切替、マクロ再生、複数コントローラー接続、スリープ復帰、エラーログゼロ確認）。
    - **成果物**: `Phase4-Step10-RealDevice-Verification-Checklist.md`
