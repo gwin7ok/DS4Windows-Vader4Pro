@@ -2155,12 +2155,12 @@ namespace DS4Windows
                 {
                     string linkedProfile = getLinkedProfile(device.getMacAddress());
                     Global.LinkedProfileUI[index] = linkedProfile;
-                    Global.linkedProfileCheck[index] = true;
+                    _profileSettings.SetLinkedProfileCheck(index, true);
                 }
                 else
                 {
                     Global.LinkedProfileUI[index] = string.Empty;
-                    Global.linkedProfileCheck[index] = false;
+                    _profileSettings.SetLinkedProfileCheck(index, false);
                 }
 
                 // プロファイル適用

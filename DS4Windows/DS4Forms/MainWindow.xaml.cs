@@ -123,7 +123,8 @@ namespace DS4WinWPF.DS4Forms
             StartStopBtn.Content = App.rootHub.running ? Translations.Strings.StopText :
                 Translations.Strings.StartText;
 
-            conLvViewModel = new ControllerListViewModel(App.rootHub, profileListHolder);
+            conLvViewModel = new ControllerListViewModel(App.rootHub, profileListHolder,
+                DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>());
             controllerLV.DataContext = conLvViewModel;
             controllerLV.ItemsSource = conLvViewModel.ControllerCol;
             ChangeControllerPanel();

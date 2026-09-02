@@ -982,8 +982,6 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogTrace("[Legacy] Global.linkedProfileCheck getter accessed via static shim");
-                AppLogger.LogToGui("[Legacy] Global.linkedProfileCheck getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.LinkedProfileCheckArray;
             }
             set
@@ -9042,7 +9040,7 @@ namespace DS4Windows
             for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
             {
                 string contTagName = $"Controller{i + 1}";
-                XmlNode xmlControllerNode = m_Xdoc.CreateNode(XmlNodeType.Element, contTagName, null); xmlControllerNode.InnerText = !Global.linkedProfileCheck[i] ? profilePath[i] : olderProfilePath[i];
+                XmlNode xmlControllerNode = m_Xdoc.CreateNode(XmlNodeType.Element, contTagName, null); xmlControllerNode.InnerText = !Global.ProfileSettingsServiceInstance.GetLinkedProfileCheck(i) ? profilePath[i] : olderProfilePath[i];
                 if (!string.IsNullOrEmpty(xmlControllerNode.InnerText))
                 {
                     rootElement.AppendChild(xmlControllerNode);
@@ -9205,7 +9203,7 @@ namespace DS4Windows
                 throw new ArgumentOutOfRangeException();
             }
 
-            return !Global.linkedProfileCheck[index] ?
+            return !Global.ProfileSettingsServiceInstance.GetLinkedProfileCheck(index) ?
                 profilePath[index] : olderProfilePath[index];
         }
 

@@ -305,6 +305,13 @@ viewModel = factory != null
 5. `Global.linkedProfileCheck` getterは互換用に残すが、高頻度getterの`[Legacy]`ログは出力しない。setter、変更操作、DI解決失敗は必要な監査ログを維持する。
 6. 接続、切断、再接続、リンク設定変更、プロファイル保存で値と通知が変わらないことを検証する。
 
+実装方針の確定事項:
+
+- `ControlService` は既存の`IProfileSettingsService _profileSettings`を使用し、追加の依存注入は行わない。
+- `ControllerListViewModel` は`IProfileSettingsService`をコンストラクターから受け取り、`MainWindow`の生成時にAppHostから渡す。既存の直接生成・テスト互換性のため、移行期間中はnull時のシムフォールバックを許可する。
+- `ScpUtil`は既存の`ProfileSettingsServiceInstance.GetLinkedProfileCheck`を使用し、配列プロパティgetterを通さない。
+- `Global.linkedProfileCheck`のgetterは互換シムとして残すが、getter内部の高頻度TraceログとGUIログは削除する。setterの変更監査ログは維持する。
+
 移行時の制約:
 
 - 配列の直接公開を新しいDI APIとして拡張しない。
