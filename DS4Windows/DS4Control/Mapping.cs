@@ -2882,7 +2882,7 @@ namespace DS4Windows
             //DS4StateFieldMapping outputfieldMapping = new DS4StateFieldMapping(cState, eState, tp);
 
             SyntheticState deviceState = Mapping.deviceState[device];
-            if (getProfileActionCount(device) > 0 || useTempProfile[device])
+            if (getProfileActionCount(device) > 0 || profileSettings.GetUseTempProfile(device))
                 MapCustomAction(device, cState, MappedState, eState, tp, ctrl, fieldMapping, outputfieldMapping);
             //if (ctrl.DS4Controllers[device] == null) return;
 
@@ -5130,10 +5130,10 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!GetBeingTriggered(index, action, device) && (!useTempProfile[device] || deviceRuntime[device].UntriggerAction == null || deviceRuntime[device].UntriggerAction.typeID != SpecialAction.ActionTypeId.Profile))
+                                if (!GetBeingTriggered(index, action, device) && (!profileSettings.GetUseTempProfile(device) || deviceRuntime[device].UntriggerAction == null || deviceRuntime[device].UntriggerAction.typeID != SpecialAction.ActionTypeId.Profile))
                                 {
                                     DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
-                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={useTempProfile[device]}");
+                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={profileSettings.GetUseTempProfile(device)}");
 
                                     LogActionDoneCountOnTrigger(index, action, device, "Profile");
 
@@ -5143,9 +5143,9 @@ namespace DS4Windows
                                         deviceRuntime[device].UntriggerAction = action;
                                         deviceRuntime[device].UntriggerIndex = index;
 
-                                        deviceRuntime[device].UntriggerAction.prevProfileWasTemporary = useTempProfile[device];
-                                        deviceRuntime[device].UntriggerAction.prevProfileName = useTempProfile[device]
-                                            ? tempprofilename[device]
+                                        deviceRuntime[device].UntriggerAction.prevProfileWasTemporary = profileSettings.GetUseTempProfile(device);
+                                        deviceRuntime[device].UntriggerAction.prevProfileName = profileSettings.GetUseTempProfile(device)
+                                            ? profileSettings.GetTempProfileName(device)
                                             : ProfilePath[device];
                                     }
 

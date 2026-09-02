@@ -32,7 +32,7 @@ Phase4 の Step10 は、目的の異なる作業を次の単位に分けて管�
 | C-3 | **完了（自動ビルド・主要実機確認済み）** | 専用プロファイル適用・復帰経路を実装し、主要実機確認を完了。詳細は `Phase4-Step10-2-C-3-Completion-Report.md` |
 | C-4 | **完了（実機ログ確認済み）** | ViewModelフォールバック5箇所に画面名・ViewModel名付きの`[Legacy]`ログを追加し、通常利用時の出力を確認 |
 | C-5-1 | **完了（実機確認済み）** | `linkedProfileCheck`の呼び出し元をDI APIへ移行し、対象Legacy getterログが出ないことを確認 |
-| C-5-2 | **計画作成済み・未着手** | `tempprofilename`／`useTempProfile`の呼び出し元をDI APIへ移行する |
+| C-5-2 | **実装・自動検証済み、実機確認待ち** | `tempprofilename`／`useTempProfile`の状態更新・呼び出し元をDI APIへ移行。詳細は `Phase4-Step10-2-C-5-2-Completion-Report.md` |
 | C-5-3〜C-8 | **未着手** | C-5-3以降でGlobalシムのログ監査、CP4前自動テスト化、CP4実機検証を実施する |
 
 本書に記載された採用方針や分類は、実装を開始するための計画上の決定であり、実装完了を意味しない。各段階はコード変更、検証、コミット・リモート反映が完了した時点で個別に完了と判定する。

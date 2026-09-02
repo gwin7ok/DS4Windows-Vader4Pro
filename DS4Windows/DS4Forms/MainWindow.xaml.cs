@@ -69,6 +69,7 @@ namespace DS4WinWPF.DS4Forms
         private NonFormTimer hotkeysTimer;
         private NonFormTimer autoProfilesTimer;
         private AutoProfileChecker autoprofileChecker;
+        private readonly DS4Windows.DI.IProfileSettingsService profileSettingsService;
         private ProfileEditor editor;
         private int previousTabIndex = 0;
 #pragma warning disable CS0414 // preserveSize kept for behavior compatibility with older logic
@@ -95,6 +96,7 @@ namespace DS4WinWPF.DS4Forms
             Height = WindowLayoutDefaults.MAIN_WINDOW_HEIGHT;
 
             InitializeComponent();
+            profileSettingsService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
 
             // Initialize log settings ComboBox
             logMinLevelComboBox.ItemsSource = new string[] { "Trace", "Debug", "Info", "Warn", "Error", "Fatal" };
@@ -176,7 +178,7 @@ namespace DS4WinWPF.DS4Forms
             autoProfileHolder = autoProfControl.AutoProfileHolder;
             autoProfControl.SetupDataContext(profileListHolder);
 
-            autoprofileChecker = new AutoProfileChecker(autoProfileHolder);
+            autoprofileChecker = new AutoProfileChecker(autoProfileHolder, profileSettingsService);
 
             slotManControl.SetupDataContext(controlService: App.rootHub,
                 App.rootHub.OutputslotMan);
@@ -1380,8 +1382,8 @@ Suspend support not enabled.", true);
 
                                             if (propName == "profilename")
                                             {
-                                                if (Global.useTempProfile[tdevice])
-                                                    propValue = Global.tempprofilename[tdevice];
+                                                if (profileSettingsService.GetUseTempProfile(tdevice))
+                                                    propValue = profileSettingsService.GetTempProfileName(tdevice);
                                                 else
                                                     propValue = Global.ProfilePath[tdevice];
                                             }

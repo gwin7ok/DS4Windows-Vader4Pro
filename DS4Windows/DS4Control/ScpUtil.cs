@@ -928,8 +928,6 @@ namespace DS4Windows
         {
             get
             {
-                AppLogger.LogTrace("[Legacy] Global.tempprofilename getter accessed via static shim");
-                AppLogger.LogToGui("[Legacy] Global.tempprofilename getter accessed via static shim", false, true);
                 return ProfileSettingsServiceInstance.TempProfileNameArray;
             }
             set
@@ -3524,8 +3522,8 @@ namespace DS4Windows
             Global.loggedInvalidActions.Clear();
             bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
             //bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
 
             return result;
@@ -3539,8 +3537,8 @@ namespace DS4Windows
             //bool result = m_Config.LoadProfile(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
             if (result)
             {
-                tempprofilename[device] = name;
-                useTempProfile[device] = true;
+                ProfileSettingsServiceInstance.SetTempProfileName(device, name);
+                ProfileSettingsServiceInstance.SetUseTempProfile(device, true);
                 tempprofileDistance[device] = name.ToLower().Contains("distance");
             }
 
@@ -3554,8 +3552,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3566,8 +3564,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3578,8 +3576,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3590,8 +3588,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3602,8 +3600,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3614,8 +3612,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3626,8 +3624,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3638,8 +3636,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3650,8 +3648,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3662,8 +3660,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -4958,8 +4956,8 @@ namespace DS4Windows
                         else
                         {
                             // Determine the profile name actually in use for this device (temporary or regular)
-                            profName = (Global.useTempProfile != null && device >= 0 && device < Global.useTempProfile.Length && Global.useTempProfile[device])
-                                ? (Global.tempprofilename != null && device >= 0 && device < Global.tempprofilename.Length ? Global.tempprofilename[device] : string.Empty)
+                            profName = (Global.ProfileSettingsServiceInstance.GetUseTempProfile(device))
+                                ? Global.ProfileSettingsServiceInstance.GetTempProfileName(device)
                                 : (profilePath != null && device >= 0 && device < profilePath.Length ? profilePath[device] : string.Empty);
                         }
 

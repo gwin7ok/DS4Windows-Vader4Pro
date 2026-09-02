@@ -2111,7 +2111,7 @@ namespace DS4Windows
 
             touchPad[index] = new Mouse(index, device);
             bool profileLoaded = false;
-            bool useAutoProfile = useTempProfile[index];
+            bool useAutoProfile = _profileSettings.GetUseTempProfile(index);
 
             DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: device={index}, useAutoProfile={useAutoProfile}, isFirstConnection={Global.IsFirstConnection(index)}");
 
@@ -2815,7 +2815,7 @@ namespace DS4Windows
 
                 cState = Mapping.SetCurveAndDeadzone(ind, cState, TempState[ind]);
 
-                if (!recordingMacro && (useTempProfile[ind] ||
+                if (!recordingMacro && (_profileSettings.GetUseTempProfile(ind) ||
                     containsCustomAction(ind) || containsCustomExtras(ind) ||
                     getProfileActionCount(ind) > 0))
                 {
