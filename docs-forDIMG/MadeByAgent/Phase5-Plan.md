@@ -1,7 +1,7 @@
 # フェーズ5計画書: DIサービス内部 Legacy 経路監査と責務分離
 
 作成日: 2026-09-02
-最終更新日: 2026-09-03（A案ドメイン集約型順序および6大アーキテクチャ・ガードレールを反映）
+最終更新日: 2026-09-03（A案ドメイン集約型順序および各Stepガードレール注記を反映）
 対象ブランチ: `For-DI-migration-work`
 前フェーズ: `Phase4-Plan.md`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
@@ -83,10 +83,24 @@ DI登録済み23サービスおよびコード全体を精査し、全残存Lega
 #### Phase5-Step5（旧Step10）: AutoProfile（自動プロファイル切替）の自律実行系DI化
 - **対象**: `AutoProfileChecker.cs` / `AutoProfileHolder.cs`
 - **内容**: バックグラウンドでアクティブウィンドウを監視しプロファイルを自動切替する処理を `IAutoProfileService`（仮）としてDI管理下に置く。切替実行を Step3・Step4 で完成した `IProfileApplicationService.ApplyProfile` 経由に統一し、`Global.ApplyProfile` / `Program.rootHub` 直参照を排除する。
+- **【アーキテクチャ・ガードレール注記（個別計画書策定時への必須要件）】**:
+  - **[マルチスレッド直列化]（§5.3）**:
+    - **問題の実態**: `AutoProfileChecker` はバックグラウンドタイマースレッドで稼働し、UIは WPF スレッドで動作する。`BackingStore` 内部のデータ構造はスレッドセーフではないため、プロファイル編集中に自動切替が発火すると競合状態・データ破壊が発生する。
+    - **推奨対策**: `AutoProfile` からプロファイル切替を発火する際は、UI スレッド（WPF Dispatcher）へマーシャリングして直列化するか、BackingStore 操作を同期ロックで保護する。
+  - **[適用時入力停止]（§5.2）**:
+    - **問題の実態**: コントローラーの高速入力ループ（毎秒250〜1000回）が回っている最中にプロファイル辞書が再構築されると、走査スレッドで `InvalidOperationException: コレクションが変更されました` が発生しクラッシュする。
+    - **推奨対策**: Step3 で導入された `device.HaltReportingRunAction` ガードを経由した `ApplyProfile` を呼び出し、入力停止状態を保証する。
+  - **[切断時クリーンアップ]（§5.6）**:
+    - **問題の実態**: 一時プロファイル適用中にコントローラーが物理切断されると復帰イベントが脱落し、スタックが残留する。
+    - **推奨対策**: 切断イベント（`DeviceRemoved`）時に保留復帰スタックを強制クリアする安全機構と連動させる。
 
 #### Phase5-Step6（旧Step11）: アプリ全体設定（AppSettings）の永続化・状態管理のDI化
 - **対象**: `Global.SaveSettings` / `Global.LoadSettings`、`Profiles.xml` 内 `<AppSettings>` セクション
 - **内容**: コントローラー個別プロファイルとは独立したアプリ本体全般設定（スタートアップ起動、トレイ最小化、通知設定、UDPサーバー設定等）を扱う `IAppSettingsService` / `IAppSettingsRepository` を新設し、UIや起動処理からの静的直呼び出しを分離する。
+- **【アーキテクチャ・ガードレール注記（個別計画書策定時への必須要件）】**:
+  - **[同一XMLファイルI/O競合・ロストアップデート防止]（§5.1）**:
+    - **問題の実態**: `Profiles.xml` には `<Profile>`（Step2）と `<AppSettings>`（本Step6）が同居している。別々のDIサービスが並行して `XmlDocument` で上書き保存すると、ファイルロック競合（`IOException`）や、一方の更新が消えるロストアップデートが発生する。
+    - **推奨対策**: Step2 で導入されるファイルI/O層（`IProfileXmlStore` / `BackingStore`）と連携し、プロセス内排他ロック（`ReaderWriterLockSlim` または同一同期オブジェクト）内でファイル保存を直列化する。
 
 ---
 
@@ -119,6 +133,10 @@ DI登録済み23サービスおよびコード全体を精査し、全残存Lega
 #### Phase5-Step12（旧Step12スロット）: 出力スロット層（OutputSlot）の整理
 - **対象**: `IOutputSlotService` / `OutputSlotService.cs`, `OutputSlotManager.cs`, `OutputSlotPersist.cs`
 - **内容**: `OutputSlotService` が `Program.rootHub.outputSlotManager` に直結している構造およびスロット永続化（`OutputSlotPersist.cs`）の静的ファイルI/Oを整理・境界化する。
+- **【アーキテクチャ・ガードレール注記（個別計画書策定時への必須要件）】**:
+  - **[ViGEm PnP非同期遅延とリソース破棄順序の維持]（§5.5）**:
+    - **問題の実態**: 仮想コントローラーのプラグイン／アンプラグは Windows カーネルドライバ（`ViGEmBus.sys`）との非同期 PnP 通信を伴う。DIコンテナ破棄時やスロット切替時にハンドルの破棄順序が崩れると、ドライバハングや OS デバイス認識スタック（最悪の場合は BSoD）を引き起こす。
+    - **推奨対策**: `OutputSlotManager` の直列化通信キューおよび既存の `ViGEmClient` 破棄順序を崩さず、物理層の挙動を完全に温存した薄いアダプター境界に留める。
 
 ---
 
@@ -171,7 +189,7 @@ DI 化によりモジュール間の結合を切り離したことで、従来�
 - [ ] Step2〜Step12 の各領域において、DIサービス実装内部の `Global`／`Program.rootHub`／静的実体への再委譲が解消されていること。
 - [ ] バックグラウンド自律実行系（AutoProfile）およびアプリ全体設定（AppSettings）がDIコンテナ経由で管理されていること。
 - [ ] 各 ViewModel 内部から静的直アクセスが排除され、DIサービス経由で動作していること（Step13）。
-- [ ] 第5章に規定された **6大アーキテクチャ・ガードレール**（ファイル排他、Halt停止、スレッド直列化、オンデマンドパス評価、ドライバ破棄順、切断時クリーンアップ）が遵守されていること。
+- [ ] 第5章に規定された **6大アーキテクチャ・ガードレール**（ファイル排他、Halt停止、スレッド直列化、オンデマンドパス評価、ドライバ破棄順、切断時クリーンアップ）が各Stepで遵守されていること。
 - [ ] 既存の全単体テストが成功し、新設された単体テストのカバレッジが確保されていること。
 - [ ] ビルドエラーおよび警告の増加がないこと。
 - [ ] 実機検証チェックリストにより、コントローラー入力・プロファイル切替・SpecialAction発火が正常動作すること。
