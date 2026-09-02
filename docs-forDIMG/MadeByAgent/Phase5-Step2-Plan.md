@@ -1,10 +1,10 @@
 # フェーズ5-Step2 計画書: プロファイル XML 読込・保存の責務分離
 
-作成日: 2026-09-02（改訂日: 2026-09-03）
+作成日: 2026-09-02（改訂日: 2026-09-03・アーキテクチャガードレール反映）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
-- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step2（Phase5詳細計画書）
+- `docs-forDIMG/MadeByAgent/Phase5-Plan.md` §2, §3 Step2, §5.1（Phase5詳細計画書・ガードレール）
 - `docs-forDIMG/MadeByAgent/Phase5-Status.md`（Phase5進捗管理）
 - `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegation-audit-report.md`（Step1監査結果。本Stepの対象根拠）
 - `docs-forDIMG/MadeByAgent/Phase4-Step10-2-C-5-3-Nested-Legacy-Audit-Report.md`（Phase4基準監査）
@@ -88,7 +88,7 @@ namespace DS4Windows.DI
 
 ```csharp
 // ProfileRepository.LoadProfile 内の想定変更（イメージ）
-Global.loggedInvalidActions.Clear(); // 現状維持（Step6でGlobal委譲を再検討）
+Global.loggedInvalidActions.Clear(); // 現状維持（Step10でGlobal委譲を再検討）
 bool result = _profileXmlStore.LoadProfileXml(deviceIndex, false, control, "", true, true);
 _profileSettings.SetTempProfileName(deviceIndex, string.Empty);
 _profileSettings.SetUseTempProfile(deviceIndex, false);
@@ -110,12 +110,25 @@ return saveSuccess;
 
 ---
 
+### 1.6 アーキテクチャ・ガードレール: 同一XMLファイルI/Oの排他ロックとロストアップデート防止（Phase5-Plan §5.1準拠）
+
+#### 【問題の実態】
+- DS4Windows のメイン設定ファイルである `Profiles.xml` には、各コントローラーのプロファイル設定（`<Profile>`: 本Step2の対象）と、アプリ全体の基本設定（`<AppSettings>`: Step6の対象）が**単一の同一XMLファイル内に同居**している。
+- 実コード（`ScpUtil.cs`）の `m_Config.SaveProfile` や `Global.SaveSettings` は、それぞれが独自に `XmlDocument` でファイルを開いて該当ノードを修正し、ファイル全体を上書き保存している。
+- そのため、プロファイルの保存処理（Step2）とアプリ全体設定の保存処理（Step6）がマルチスレッドで並行して実行された場合、**ファイルロック競合による `IOException`** が発生するか、あるいは**先に行われた変更ノードが後からの保存によって丸ごと消し去られる（ロストアップデート）という重大なデータ破壊**のリスクが存在する。
+
+#### 【推奨対策】
+- `BackingStore` レベル、または `ProfileXmlStore` のファイルアクセスにおいて、同一の物理設定ファイルに対する書き込みを直列化する **プロセス内排他ロック（`object _fileLock = new object();` または `ReaderWriterLockSlim`）** を確立する。
+- `SaveProfileXml` 実行中はファイル書き込み操作をロック内で保護し、後続の Step6（`AppSettingsService`）新設時にも同一の同期メカニズムを共有できるように設計する。
+
+---
+
 ## 2. 成果物一覧
 
 | 種別 | ファイルパス | 変更内容 |
 |---|---|---|
 | インターフェース | `DS4Windows/DI/IProfileXmlStore.cs` | 純粋な XML I/O を表す新規契約（`SaveProfileXml` は `bool` を返す） |
-| サービス実装 | `DS4Windows/DS4Control/Services/ProfileXmlStore.cs` | `BackingStore` への薄い委譲ラッパー実装 |
+| サービス実装 | `DS4Windows/DS4Control/Services/ProfileXmlStore.cs` | `BackingStore` への薄い委譲ラッパー実装（ファイル排他同期対応） |
 | リポジトリ改修 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | `IProfileXmlStore` 注入、状態調整ロジックの内包、`ProfilesPath` の DI 参照化 |
 | DI 登録 | `DS4Windows/DI/ServiceRegistration.cs` | `IProfileXmlStore` → `ProfileXmlStore` の Singleton 登録 |
 | シム化 | `DS4Windows/DS4Control/ScpUtil.cs` | `Global.LoadProfile`／`Global.SaveProfile` をシム化 |
@@ -128,7 +141,7 @@ return saveSuccess;
 
 ### タスク Step2-1: `IProfileXmlStore` & `ProfileXmlStore` の設計・作成
 1. `DS4Windows/DI/IProfileXmlStore.cs` を新規作成し、`LoadProfileXml` および `bool SaveProfileXml` を定義する。
-2. `DS4Windows/DS4Control/Services/ProfileXmlStore.cs` を新規作成し、`BackingStore` 呼び出しを実装する（`SaveProfile` の戻り値をそのまま返す）。
+2. `DS4Windows/DS4Control/Services/ProfileXmlStore.cs` を新規作成し、`BackingStore` 呼び出しを実装する（排他ロック保護および成否 `bool` 返却）。
 
 ### タスク Step2-2: DI コンテナ登録追加
 1. `DS4Windows/DI/ServiceRegistration.cs` に `services.AddSingleton<IProfileXmlStore, ProfileXmlStore>();` を追加する。
@@ -158,6 +171,7 @@ return saveSuccess;
 
 | リスク | 影響度 | 回避策 |
 |---|---|---|
+| **同一XML並行書き込み・ロストアップデート** | 高 | `ProfileXmlStore` または `BackingStore` 内でファイルI/Oをプロセス内排他ロックで保護し直列化する（§1.6）。 |
 | **ScpUtil.cs 編集による破壊** | 高 | `ScpUtil.cs` 全体を書き換えず、`Global.LoadProfile`／`Global.SaveProfile` の本体のみをピンポイントで委譲シムに置換する（§3.2）。 |
 | **状態調整の欠落** | 高 | `tempProfileDistance` や `loggedInvalidActions` のクリア順序を既存の `Global.LoadProfile` と完全に一致させる（§2.2）。 |
 | **Step4 との仕様不整合** | 低 | `SaveProfileXml` の戻り値を最初から `bool` に統一し、保存失敗の握りつぶしを未然に防止する。 |
@@ -167,6 +181,7 @@ return saveSuccess;
 ## 5. 完了判定基準
 
 - [ ] `IProfileXmlStore` が新規作成され、`bool SaveProfileXml(...)` として成否を返す契約になっていること。
+- [ ] `Profiles.xml` への保存処理がプロセス内排他制御され、並行保存によるロストアップデートやファイル競合が防止されていること（§1.6）。
 - [ ] `ProfileXmlStore` が `BackingStore` に純粋に委譲していること。
 - [ ] `ProfileRepository` が `IProfileXmlStore` を利用し、状態調整ロジックが内包されていること。
 - [ ] `Global.LoadProfile`／`Global.SaveProfile` がシム化され、既存の呼び出し元互換が維持されていること。
