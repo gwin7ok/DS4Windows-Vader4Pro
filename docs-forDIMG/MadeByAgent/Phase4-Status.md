@@ -1,6 +1,6 @@
 ﻿# フェーズ4 進捗管理表: Global 分割と ViewModel DI 化
 
-最終更新日: 2026-09-01
+最終更新日: 2026-09-02
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
@@ -24,8 +24,19 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 8 | ViewModel DI 移行 (Pattern B) | **完了** | 2026-08-31 | `ControllersViewModel.cs` 新設、`MainWindowsViewModel` DI化、`MainWindow.xaml.cs` DI解決化、`PatternBViewModelTests.cs` |
 | Step 9 | ViewModel DI 移行 (Pattern C) | **完了** | 2026-09-01 | `IViewModelFactory.cs`, `ViewModelFactory.cs`, DI登録, View直接new全廃, `PatternCViewModelTests.cs`, **Step9-4-α監査合格**, **実機検証CP3全件合格** |
 | **実機CP3** | **全ViewModel DI移行完了 実機検証** | **完了** | 2026-09-01 | `Phase4-Step9-RealDevice-Verification-Checklist.md` (全12項目 ○ 合格) |
-| Step 10 | Phase3 引継ぎ再確認・シム整理・[DI]ログ整備 | **一部進行中** | - | [DI]/[Legacy] Trace ログ整備は着手済み。呼び出し元DI直接参照化（Step10-2）を前倒しで追加実施中のため、実機検証CP4はStep10-2完了後に実施 |
-| Step 10-2 | 呼び出し元の実稼働DIサービス直接参照化（フェーズ5前倒し・先行着手） | **Stage2-C 計画確定・C-3 実装準備完了** | 2026-09-02 | C-1/C-2 の実装・テスト・コミット・リモート反映完了。C-3 の4項目について短期方式と将来の推奨移行先を確定し、計画書・分類報告書・Legacy 調査報告書へ反映。次は具体的契約範囲を確認して個別移行する。 |
+| Step 10-1 | `[DI]`／`[Legacy]` Trace ログ整備 | **進行中** | - | DI 新経路と Legacy シム経路の識別ログを整備中。高頻度アクセスはログ抑制方針。 |
+| Step 10-2-A | `Global` シム接続拡張 | **完了** | 2026-09-02 | `IProfileSettingsService` 等へのシム接続、A-1〜A-9 完了。 |
+| Step 10-2-B | 呼び出し元の DI 直接参照化 | **完了** | 2026-09-02 | `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` の対象経路を移行。テスト・コミット・リモート反映完了。 |
+| Step 10-2-C | Legacy 経路残存の整理と段階移行 | **C-0〜C-3完了、C-4以降未着手** | 2026-09-02 | 詳細は `Phase4-Step10-2-C-Plan.md`。短期方式と将来移行先を確定済み。 |
+| Step 10-2-C-0 | 現状基準の固定 | **完了** | 2026-09-02 | Legacy 残存量の棚卸しと分類ルールを文書化。 |
+| Step 10-2-C-1 | Composition Root 一本化 | **完了** | 2026-09-02 | 旧 `ServiceCollection` 削除、Action 系登録統合、Provider 一本化。 |
+| Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | **完了** | 2026-09-02 | Singleton 登録、AppHost 解決、`rootHub` 互換代入を実装。 |
+| Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **分類完了・実装待ち** | 2026-09-02 | C-1／C-2 の分類、短期方式、将来移行先を確定。具体的契約範囲を確認後に実装。 |
+| Step 10-2-C-4 | ViewModel フォールバックの可視化 | **未着手** | - | CP4 までフォールバックを維持し、使用時の `[Legacy]` ログを追加。 |
+| Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **未着手** | - | 高頻度ログを抑制しつつ、入口・変更・失敗を監査。 |
+| Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | **未着手** | - | 自動テスト／実機／両方を分類し、実機確認項目を縮小。 |
+| Step 10-2-C-7 | CP4 実機検証 | **未着手（計画）** | - | C-6 で残った HID、WPF、ドライバ、長時間安定性等を確認。 |
+| Step 10-2-C-8 | CP4 後のフォールバック削除判断 | **未着手（計画）** | - | CP4 結果を基に互換フォールバック削除可否を別変更で判断。 |
 | **実機CP4** | **Phase4 最終総合 E2E 実機検証** | 未着手 (計画) | - | 残存シム整理後・フェーズ4完了総合実機検証（Step10・Step10-2完了時） |
 
 ---

@@ -9,6 +9,19 @@
 - `docs-forDIMG/MadeByAgent/Phase4-Step10-2-B-Plan.md`
 - `docs-forDIMG/MadeByAgent/Phase4-Step10-2-C-Legacy-Inventory-Report.md`
 
+## 0. Step10 の作業階層
+
+Phase4 の Step10 は、目的の異なる作業を次の単位に分けて管理する。
+
+| 区分 | 内容 | 本書との関係 |
+|---|---|---|
+| Step10-1 | `[DI]`／`[Legacy]` Trace ログ整備 | Legacy 経路を判別する共通基盤。本書の C-5 と連携する |
+| Step10-2-A | `Global` シム接続拡張 | `IProfileSettingsService` 等へのシム接続。完了済み |
+| Step10-2-B | 呼び出し元の DI 直接参照化 | `ProfileSettingsViewModel`、`ProfileEditor`、`ControlService`、`Mapping` を対象。完了済み |
+| **Step10-2-C** | **Legacy 経路残存の整理と段階移行** | **本書の対象。C-0〜C-8 で実施する** |
+
+本書では、Step10-2-C の実装・検証段階を `C-0` から `C-8` まで分けて追跡する。C-6 は CP4 前の自動テスト化、C-7 は CP4 実機検証、C-8 は CP4 後のフォールバック削除判断を担当する。
+
 ## 1. 目的
 
 Stage2-B までの実装と検証を踏まえ、Phase4 の計画上は DI 化されているべきでありながら、現在も Legacy 経路に残っている箇所を整理する。
@@ -180,7 +193,7 @@ viewModel = factory != null
 
 ## 5. 実施フェーズ
 
-### C-0: 現状基準の固定
+### C-0: 現状基準の固定（Step10-2-C-0）
 
 - 本書と Legacy 残存調査報告書を基準版として保存する
 - 生の検索件数と対象判定済み件数を分けて記録する
@@ -191,7 +204,7 @@ viewModel = factory != null
 - 調査対象と分類ルールが文書化されている
 - 判断保留項目が明示されている
 
-### C-1: Composition Root 一本化
+### C-1: Composition Root 一本化（Step10-2-C-1）
 
 - `App.xaml.cs` の旧 Action 登録を `ServiceRegistration.cs` へ統合する
 - 旧 `ServiceCollection` と旧 Provider の生成を削除する
@@ -204,7 +217,7 @@ viewModel = factory != null
 - `AppHost.CreateHost()` が唯一の Host 構築経路
 - Action／Profile／Settings サービスが同一 Provider から解決される
 
-### C-2: `ControlService` DI 登録と互換代入
+### C-2: `ControlService` DI 登録と互換代入（Step10-2-C-2）
 
 - `ControlService` を Singleton 登録する
 - AppHost から解決する
@@ -217,7 +230,7 @@ viewModel = factory != null
 - DI 解決したインスタンスと `rootHub` が同一である
 - 終了時にバックグラウンド処理が残らない
 
-### C-3: `rootHub` 呼び出し元の分類と個別移行
+### C-3: `rootHub` 呼び出し元の分類と個別移行（Step10-2-C-3）
 
 各呼び出し元を、次の台帳で管理する。
 
@@ -238,7 +251,7 @@ viewModel = factory != null
 - 今回確定した4項目は承認済み方針に沿って実装する
 - `Mapping` の高頻度経路で毎回 DI 解決しない
 
-### C-4: ViewModel フォールバックの可視化
+### C-4: ViewModel フォールバックの可視化（Step10-2-C-4）
 
 - Factory 解決失敗時に `[Legacy]` Trace ログを追加する
 - 全画面を起動し、通常時に DI 経路が選ばれることを確認する
@@ -249,7 +262,7 @@ viewModel = factory != null
 - フォールバック使用時の画面名・ViewModel 名がログで判別できる
 - 通常起動で予期しないフォールバックがない
 
-### C-5: Legacy シムのログ網羅性監査
+### C-5: Legacy シムのログ網羅性監査（Step10-2-C-5）
 
 - `Global` の設定シム、Repository シム、Factory フォールバックを一覧化する
 - 高頻度 getter にはログを追加せず、必要な入口・変更操作だけを記録する
@@ -260,7 +273,7 @@ viewModel = factory != null
 - 監査対象シムごとにログ有無と理由が記録される
 - 実機接続時に高頻度ログが連発しない
 
-### C-6: CP4 前自動テスト化判定・実装・実行
+### C-6: CP4 前自動テスト化判定・実装・実行（Step10-2-C-6）
 
 CP4 の直前に、実機で確認予定の項目を「自動テストで代替できるか」「実機確認が必要か」に分類する段階を設ける。目的は実機確認を無条件に削減することではなく、同じ論理を何度も実機で確認する部分を自動テストへ移し、実機ではハードウェア依存部分に集中することである。
 
@@ -302,7 +315,7 @@ CP4 の直前に、実機で確認予定の項目を「自動テストで代替�
 - 自動テストで代替した CP4 項目が明示されている
 - 実機に残す項目が HID、WPF、ドライバ、長時間安定性などに限定されている
 
-### C-7: CP4 実機検証
+### C-7: CP4 実機検証（Step10-2-C-7）
 
 C-1〜C-6 の実装・検証後、自動テストで代替できなかった項目を中心に Phase4 最終総合 E2E 実機検証を実施する。
 
@@ -319,7 +332,7 @@ CP4 の対象:
 - `[DI]`／`[Legacy]` ログの判別
 - ViewModel フォールバックが予期せず使用されていないこと
 
-### C-8: CP4 後のフォールバック削除判断
+### C-8: CP4 後のフォールバック削除判断（Step10-2-C-8）
 
 CP4 完了後、フォールバック削除専用の変更として次を再評価する。
 
@@ -370,7 +383,7 @@ C-6 では、テストで確認できる論理を実機検証から除外した�
 
 ## 8. 完了条件
 
-- Phase4 対象の Legacy 経路が C-1〜C-5 のいずれかで整理されている
+- Phase4 対象の Legacy 経路が C-1〜C-5 のいずれかで整理され、自動テスト化対象は C-6 で検証されている
 - 旧 Composition Root が削除され、AppHost が唯一の構築経路になっている
 - `ControlService` が DI Singleton として解決され、互換 `rootHub` 代入が維持されている
 - `Mapping` の高頻度経路で毎回 DI 解決していない
