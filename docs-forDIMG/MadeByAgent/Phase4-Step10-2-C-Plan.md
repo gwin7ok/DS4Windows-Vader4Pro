@@ -29,7 +29,9 @@ Phase4 の Step10 は、目的の異なる作業を次の単位に分けて管�
 | C-0 | **完了** | Legacy 残存量、対象判定ルール、判断事項を調査・文書化済み |
 | C-1 | **実装完了・検証待ち** | 旧 Provider 構築削除、Action 登録統合、Provider 一本化を実装済み。ユーザー側検証待ち |
 | C-2 | **実装完了・検証待ち** | `ControlService` の Singleton 登録、AppHost 解決、parser 注入、`rootHub` 互換代入を実装済み。ユーザー側検証待ち |
-| C-3〜C-8 | **未着手** | 方針と実施計画は定義済みだが、各段階の実装・検証は未実施 |
+| C-3 | **完了（自動ビルド・主要実機確認済み）** | 専用プロファイル適用・復帰経路を実装し、主要実機確認を完了。詳細は `Phase4-Step10-2-C-3-Completion-Report.md` |
+| C-4 | **実装完了・実機確認待ち** | ViewModelフォールバック5箇所に画面名・ViewModel名付きの`[Legacy]`ログを追加 |
+| C-5〜C-8 | **未着手** | C-5ではGlobalシムの監査と`linkedProfileCheck`呼び出し元移行を実施する |
 
 本書に記載された採用方針や分類は、実装を開始するための計画上の決定であり、実装完了を意味しない。各段階はコード変更、検証、コミット・リモート反映が完了した時点で個別に完了と判定する。
 
@@ -281,10 +283,41 @@ viewModel = factory != null
 - 高頻度 getter にはログを追加せず、必要な入口・変更操作だけを記録する
 - `[DI]` と `[Legacy]` の表記を統一する
 
+#### C-5-1: `linkedProfileCheck` 呼び出し元のDI直接参照化
+
+`linkedProfileCheck` は、保持データ自体は `ProfileSettingsService` に移行済みだが、呼び出し元の一部が `Global.linkedProfileCheck` 配列を参照する過渡期シム状態である。配列プロパティのgetterは要素参照だけでも呼び出されるため、接続・切断・プロファイル再構築時に同じLegacyログが出力される。
+
+移行対象は次の呼び出し元とする。
+
+| 呼び出し元 | 現在の参照 | 移行先 | 方針 |
+|---|---|---|---|
+| `ControlService` | `Global.linkedProfileCheck[index]` | 注入した`IProfileSettingsService` | 接続時の取得・設定を`GetLinkedProfileCheck`／`SetLinkedProfileCheck`へ置換 |
+| `ControllerListViewModel` | `Global.linkedProfileCheck[devIndex]` | 注入した`IProfileSettingsService` | UI getter/setterとリンク状態判定をサービスAPIへ置換 |
+| `ScpUtil`内部の保存・参照処理 | `Global.linkedProfileCheck[i]` | `ProfileSettingsServiceInstance`または専用API | 保存処理の責務を維持し、Global配列getterを直接通さない |
+
+実施順序:
+
+1. C-5-1開始前に参照箇所と既存の接続・切断・保存動作を固定する。
+2. `IProfileSettingsService` の既存 `GetLinkedProfileCheck`／`SetLinkedProfileCheck` 契約を使用する。
+3. `ControllerListViewModel` と`ControlService`へ必要なサービスをコンストラクタ注入する。
+4. `ScpUtil`の内部参照は、既存のサービスインスタンス境界を利用して直接参照へ置換する。
+5. `Global.linkedProfileCheck` getterは互換用に残すが、高頻度getterの`[Legacy]`ログは出力しない。setter、変更操作、DI解決失敗は必要な監査ログを維持する。
+6. 接続、切断、再接続、リンク設定変更、プロファイル保存で値と通知が変わらないことを検証する。
+
+移行時の制約:
+
+- 配列の直接公開を新しいDI APIとして拡張しない。
+- getterログを単に削除するだけで呼び出し元移行済みとは扱わない。
+- `ProfileSettingsService`の既存変更通知、LinkedProfiles.xmlの保存、UIバインディングの挙動を維持する。
+- `Global`シムの削除は、全呼び出し元の移行と実機確認が完了した後に別判断とする。
+
 完了条件:
 
 - 監査対象シムごとにログ有無と理由が記録される
 - 実機接続時に高頻度ログが連発しない
+- `linkedProfileCheck`の対象呼び出し元がDIサービスAPIを直接使用している
+- 接続・切断・再接続・リンク設定変更・プロファイル保存の既存動作が維持される
+- `Global.linkedProfileCheck`は互換シムとして残し、削除判断をC-8へ引き継ぐ
 
 ### C-6: CP4 前自動テスト化判定・実装・実行（Step10-2-C-6）
 
@@ -397,6 +430,7 @@ C-6 では、テストで確認できる論理を実機検証から除外した�
 ## 8. 完了条件
 
 - Phase4 対象の Legacy 経路が C-1〜C-5 のいずれかで整理され、自動テスト化対象は C-6 で検証されている
+- `linkedProfileCheck`の呼び出し元がC-5-1でDIサービスAPIへ移行されている
 - 旧 Composition Root が削除され、AppHost が唯一の構築経路になっている
 - `ControlService` が DI Singleton として解決され、互換 `rootHub` 代入が維持されている
 - `Mapping` の高頻度経路で毎回 DI 解決していない

@@ -33,7 +33,7 @@ Phase4計画書: `docs-forDIMG/MadeByAgent/Phase4-Plan.md`
 | Step 10-2-C-2 | `ControlService` DI 登録と互換代入 | **実装完了・検証待ち** | 2026-09-02 | Singleton 登録、AppHost 解決、parser 注入、`rootHub` 互換代入を実装。Debug ビルド成功。 |
 | Step 10-2-C-3 | `rootHub` 呼び出し元の分類と個別移行 | **完了（自動ビルド・主要実機確認済み）** | 2026-09-02 | `Phase4-Step10-2-C-3-Completion-Report.md`。一時プロファイル適用・通常プロファイル復帰、入力停止・再開、通知、接続・切断を確認。通常切替重複、通知設定、Action連鎖確認は引き継ぎ。 |
 | Step 10-2-C-4 | ViewModel フォールバックの可視化 | **実装完了・実機確認待ち** | 2026-09-02 | `AutoProfiles`、`ProfileEditor`、`RecordBox`、`SpecialActionEditor`、`MainWindow` の解決失敗時に画面名・ViewModel名を含む `[Legacy]` Traceログを追加。Debugビルド成功。通常起動時にフォールバックが0件であることを確認する。 |
-| Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **未着手** | - | 高頻度ログを抑制しつつ、入口・変更・失敗を監査。 |
+| Step 10-2-C-5 | Legacy シムのログ網羅性監査 | **未着手（C-5-1計画追加）** | - | 高頻度ログを抑制しつつ、入口・変更・失敗を監査。`linkedProfileCheck`の`ControlService`、`ControllerListViewModel`、`ScpUtil`呼び出し元をDIサービスAPIへ移行する。 |
 | Step 10-2-C-6 | CP4 前自動テスト化判定・実装・実行 | **未着手** | - | 自動テスト／実機／両方を分類し、実機確認項目を縮小。 |
 | Step 10-2-C-7 | CP4 実機検証 | **未着手（計画）** | - | C-6 で残った HID、WPF、ドライバ、長時間安定性等を確認。 |
 | Step 10-2-C-8 | CP4 後のフォールバック削除判断 | **未着手（計画）** | - | CP4 結果を基に互換フォールバック削除可否を別変更で判断。 |
