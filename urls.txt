@@ -61,6 +61,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/Changelog.json
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/Changelog.min.json
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/AppHost.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IAppSettingsService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IAutoProfileService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IDeviceStateService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IEnvironmentService.cs
@@ -150,6 +151,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/RepeatHelper.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/ScpUtil.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/AppNotificationService.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/AppSettingsService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/AutoProfileService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/DefaultElevatedProcessLauncher.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/DefaultProcessInspector.cs
@@ -488,6 +490,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ActionControllerTests/MockManagedActionManager.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ActionControllerTests/TestActionControllerTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ActionControllerTests/ToggleAndPressedOnceTests.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/AppSettingsServiceTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/AutoProfileServiceTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/CompositionRootTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/ControlTabAndSpecialActionKeyTests.cs
