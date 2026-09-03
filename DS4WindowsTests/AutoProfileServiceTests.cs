@@ -10,6 +10,15 @@ namespace DS4WindowsTests
 {
     public class AutoProfileServiceTests
     {
+        public AutoProfileServiceTests()
+        {
+            var pathService = new PathService();
+            if (string.IsNullOrEmpty(Global.appdatapath))
+            {
+                Global.appdatapath = pathService.AppDataPath;
+            }
+        }
+
         private class MockProcessInspector : IProcessInspector
         {
             public string ForegroundPath { get; set; } = string.Empty;

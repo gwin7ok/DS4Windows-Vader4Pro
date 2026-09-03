@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using DS4Windows.Actions;
 using DS4Windows.Services;
 using DS4WinWPF;
+using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4Windows.DI
 {
@@ -51,6 +52,15 @@ namespace DS4Windows.DI
 
             // Phase 4: UI層 ViewModel ファクトリの登録
             services.AddSingleton<IViewModelFactory, ViewModelFactory>();
+
+            // Phase 4: Pattern A ViewModel (Transient)
+            services.AddTransient<SettingsViewModel>();
+            services.AddTransient<LogViewModel>();
+            services.AddTransient<AboutViewModel>();
+
+            // Phase 4: Pattern B ViewModel (Singleton)
+            services.AddSingleton<ControllersViewModel>();
+            services.AddSingleton<MainWindowsViewModel>();
 
             // === 既存Singletonインスタンスの取得登録 ===
             services.AddSingleton<IDs4DeviceRegistry>(sp => new Ds4DeviceRegistryAdapter());
