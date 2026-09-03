@@ -64,7 +64,11 @@ namespace DS4WinWPF
         }
 
         private Thread controlThread;
-        public static DS4Windows.ControlService rootHub;
+        public static DS4Windows.ControlService rootHub
+        {
+            get => Program.rootHub;
+            set => Program.rootHub = value;
+        }
         public static HttpClient requestClient;
         private bool skipSave;
         private bool runShutdown;
