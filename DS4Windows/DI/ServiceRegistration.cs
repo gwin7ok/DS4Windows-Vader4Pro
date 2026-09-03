@@ -2,6 +2,7 @@ using System;
 using Microsoft.Extensions.DependencyInjection;
 using DS4Windows.Actions;
 using DS4Windows.Services;
+using DS4WinWPF;
 
 namespace DS4Windows.DI
 {
@@ -30,7 +31,8 @@ namespace DS4Windows.DI
             // Phase 5 Step 3: プロファイル適用サービス
             services.AddSingleton<IProfileApplicationService, ProfileApplicationService>();
 
-            // Phase 5 Step 5: 自動プロファイル実行サービス
+            // Phase 5 Step 5: 自動プロファイル設定コレクション・実行サービス
+            services.AddSingleton<AutoProfileHolder>();
             services.AddSingleton<IAutoProfileService, AutoProfileService>();
 
             // === 第3層: Actions基盤サービス ===
@@ -42,9 +44,6 @@ namespace DS4Windows.DI
             services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
             services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
             services.AddSingleton<IMacroPlayer, DefaultMacroPlayer>();
-            services.AddSingleton<IActionRegistry, ActionRegistry>();
-            services.AddSingleton<IControllerRegistry, DefaultControllerRegistry>();
-            services.AddSingleton<IManagedActionManager, DefaultActionManager>();
 
             // Phase 4: UI層 ViewModel ファクトリの登録
             services.AddSingleton<IViewModelFactory, ViewModelFactory>();
@@ -53,11 +52,6 @@ namespace DS4Windows.DI
             services.AddSingleton<ControlService>(sp => Program.rootHub);
             services.AddSingleton<IDeviceStateAccessor>(sp => Program.rootHub);
             services.AddSingleton<IDs4DeviceRegistry>(sp => new Ds4DeviceRegistryAdapter());
-            services.AddSingleton<IProfileActionProvider>(sp => new ProfileActionProvider());
-            services.AddSingleton<IProfileActionChainService>(sp => new ProfileActionChainService(
-                sp.GetRequiredService<IProfileActionProvider>(),
-                sp.GetRequiredService<IActionRegistry>()
-            ));
 
             return services;
         }

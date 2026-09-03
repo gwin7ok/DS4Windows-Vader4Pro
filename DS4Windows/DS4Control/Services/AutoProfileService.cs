@@ -39,7 +39,7 @@ namespace DS4Windows
             IProfileSettingsService profileSettings = null,
             IProcessInspector processInspector = null)
         {
-            _holder = holder ?? Global.AutoProfileHolderInstance;
+            _holder = holder ?? new AutoProfileHolder();
             _profileAppService = profileAppService ?? DS4WinWPF.AppHost.GetService<IProfileApplicationService>();
             _profileSettings = profileSettings ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>();
             _processInspector = processInspector ?? DS4WinWPF.AppHost.GetService<IProcessInspector>();
