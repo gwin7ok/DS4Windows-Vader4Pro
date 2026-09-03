@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -740,6 +740,37 @@ namespace DS4Windows
                 return fallbackProfileSettingsService;
             }
             set => profileSettingsService = value;
+        }
+
+        // =========================================================================
+        // Phase5-Step2: IProfileXmlStore DI シム (Strangler Fig 移行用)
+        // Global.LoadProfile/SaveProfileのフォールバック(ProfileRepository経由)より前に
+        // 静的フィールド初期化される必要があるため、Phase4-Step2ブロックの直前に配置する。
+        // =========================================================================
+        private static DS4Windows.DI.IProfileXmlStore profileXmlStore = null;
+        private static readonly DS4Windows.DI.IProfileXmlStore fallbackProfileXmlStore = new ProfileXmlStore();
+
+        public static DS4Windows.DI.IProfileXmlStore ProfileXmlStoreInstance
+        {
+            get
+            {
+                if (profileXmlStore != null) return profileXmlStore;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileXmlStore>();
+                    if (service != null)
+                    {
+                        profileXmlStore = service;
+                        return profileXmlStore;
+                    }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.ProfileXmlStoreInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.ProfileXmlStoreInstance: Fallback instance used", false, true);
+                return fallbackProfileXmlStore;
+            }
+            set => profileXmlStore = value;
         }
 
         // =========================================================================
@@ -3520,8 +3551,9 @@ namespace DS4Windows
             bool xinputChange = true, bool postLoad = true)
         {
             Global.loggedInvalidActions.Clear();
-            bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
-            //bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
+            // Phase5-Step2: XML実体I/OをIProfileXmlStore経由に変更。
+            // 内部実装は引き続きBackingStore.LoadProfileへ委譲するため挙動は変更しない。
+            bool result = ProfileXmlStoreInstance.LoadProfileXml(device, launchprogram, control, "", xinputChange, postLoad);
             ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
             ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
@@ -3670,9 +3702,11 @@ namespace DS4Windows
             return m_Config.Save();
         }
 
-        public static void SaveProfile(int device, string proName)
+        public static bool SaveProfile(int device, string proName)
         {
-            m_Config.SaveProfile(device, proName);
+            // Phase5-Step2: XML実体I/OをIProfileXmlStore経由に変更し、保存成否(bool)を
+            // 呼び出し元へ伝播する(従来はvoidで成否を握りつぶしていた)。
+            return ProfileXmlStoreInstance.SaveProfileXml(device, proName);
         }
 
         public static void SaveAsProfile(int device, string propath)

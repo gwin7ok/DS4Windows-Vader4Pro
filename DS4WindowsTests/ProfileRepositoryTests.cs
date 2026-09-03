@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using Xunit;
 using DS4Windows;
@@ -8,6 +8,27 @@ namespace DS4WindowsTests
 {
     public class ProfileRepositoryTests
     {
+        private class FakeProfileXmlStore : IProfileXmlStore
+        {
+            public bool LoadReturnValue = true;
+            public bool SaveReturnValue = true;
+            public int LoadCallCount;
+            public int SaveCallCount;
+
+            public bool LoadProfileXml(int deviceIndex, bool launchProgram, ControlService control,
+                string overridePath = "", bool xinputChange = true, bool postLoad = true)
+            {
+                LoadCallCount++;
+                return LoadReturnValue;
+            }
+
+            public bool SaveProfileXml(int deviceIndex, string profileName)
+            {
+                SaveCallCount++;
+                return SaveReturnValue;
+            }
+        }
+
         [Fact]
         public void ProfilesPath_ShouldReturnValidPath()
         {
@@ -58,13 +79,11 @@ namespace DS4WindowsTests
             var settings = new ProfileSettingsService();
             var repository = new ProfileRepository(settings);
 
-            // Apply temporary profile
             repository.ApplyProfileDirect(1, "TemporaryTest");
 
             Assert.True(settings.GetUseTempProfile(1));
             Assert.Equal("TemporaryTest", settings.GetTempProfileName(1));
 
-            // Restore profile
             repository.RestoreProfileDirect(1);
 
             Assert.False(settings.GetUseTempProfile(1));
@@ -88,6 +107,57 @@ namespace DS4WindowsTests
 
             Global.ProfileRepositoryInstance.RestoreProfileDirect(2);
             Assert.False(settings.GetUseTempProfile(2));
+        }
+
+        [Fact]
+        public void LoadProfile_ExistingFile_ShouldDelegateToXmlStoreAndResetTempProfileState()
+        {
+            DS4WinWPF.AppHost.CreateHost();
+
+            var settings = new ProfileSettingsService();
+            var fakeXmlStore = new FakeProfileXmlStore();
+            var repository = new ProfileRepository(settings, fakeXmlStore);
+
+            string profileName = "Phase5Step2_LoadProfileTest";
+            string path = repository.GetProfilePath(profileName);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllText(path, string.Empty);
+
+            try
+            {
+                settings.SetUseTempProfile(4, true);
+                settings.SetTempProfileName(4, "SomeOldTempProfile");
+                settings.SetTempProfileDistance(4, true);
+
+                bool result = repository.LoadProfile(4, profileName);
+
+                Assert.True(result);
+                Assert.Equal(1, fakeXmlStore.LoadCallCount);
+                Assert.False(settings.GetUseTempProfile(4));
+                Assert.Equal(string.Empty, settings.GetTempProfileName(4));
+                Assert.False(settings.GetTempProfileDistance(4));
+            }
+            finally
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+        }
+
+        [Fact]
+        public void SaveProfile_ShouldPropagateXmlStoreSuccessResult()
+        {
+            var settings = new ProfileSettingsService();
+            var fakeXmlStore = new FakeProfileXmlStore();
+            var repository = new ProfileRepository(settings, fakeXmlStore);
+
+            bool result = repository.SaveProfile(0, "Phase5Step2_SaveProfileTest");
+            Assert.True(result);
+            Assert.Equal(1, fakeXmlStore.SaveCallCount);
+
+            fakeXmlStore.SaveReturnValue = false;
+            bool result2 = repository.SaveProfile(0, "Phase5Step2_SaveProfileTest");
+            Assert.False(result2);
         }
     }
 }

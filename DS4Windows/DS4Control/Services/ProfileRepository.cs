@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,34 +10,22 @@ namespace DS4Windows
     {
         private readonly object _fileLock = new object();
         private readonly IProfileSettingsService _profileSettings;
+        private readonly IProfileXmlStore _profileXmlStore;
+        private IPathService _pathService;
 
-        public ProfileRepository(IProfileSettingsService profileSettings = null)
+        public ProfileRepository(IProfileSettingsService profileSettings = null,
+            IProfileXmlStore profileXmlStore = null, IPathService pathService = null)
         {
             _profileSettings = profileSettings ?? Global.ProfileSettingsServiceInstance;
+            _profileXmlStore = profileXmlStore ?? Global.ProfileXmlStoreInstance;
+            // Phase5-Step2: IPathServiceは静的フィールド初期化順序ハザード回避のため
+            // コンストラクタでは解決せず、初回プロパティアクセス時に遅延解決する
+            _pathService = pathService;
         }
 
-        public string ProfilesPath
-        {
-            get
-            {
-                string baseDir = !string.IsNullOrEmpty(Global.appdatapath)
-                    ? Global.appdatapath
-                    : AppContext.BaseDirectory;
-                string path = Path.Combine(baseDir, "Profiles");
-                if (!Directory.Exists(path))
-                {
-                    try
-                    {
-                        Directory.CreateDirectory(path);
-                    }
-                    catch
-                    {
-                        // フォールバック
-                    }
-                }
-                return path;
-            }
-        }
+        private IPathService PathSvc => _pathService ??= Global.PathServiceInstance;
+
+        public string ProfilesPath => PathSvc.ProfilesPath;
 
         public string GetProfilePath(string profileName)
         {
@@ -91,7 +79,15 @@ namespace DS4Windows
                     if (control == null)
                         return false;
 
-                    Global.LoadProfile(deviceIndex, false, control, false);
+                    // Phase5-Step2: Global.LoadProfileへの委譲をやめ、XML I/O(IProfileXmlStore)と
+                    // 状態調整ロジック(旧Global.LoadProfile内で行っていたもの)をここに直接内包する。
+                    // 挙動はGlobal.LoadProfileと完全に同一に維持する。
+                    Global.loggedInvalidActions.Clear();
+                    _profileXmlStore.LoadProfileXml(deviceIndex, false, control, "", false, true);
+                    _profileSettings?.SetTempProfileName(deviceIndex, string.Empty);
+                    _profileSettings?.SetUseTempProfile(deviceIndex, false);
+                    _profileSettings?.SetTempProfileDistance(deviceIndex, false);
+
                     if (AppLogger.IsTraceEnabled)
                         AppLogger.LogTrace($"[DI] ProfileRepository.LoadProfile: Slot {deviceIndex}, Profile '{profileName}' loaded via DI");
                     return true;
@@ -113,10 +109,12 @@ namespace DS4Windows
                     if (string.IsNullOrEmpty(path))
                         return false;
 
-                    Global.SaveProfile(deviceIndex, profileName);
+                    // Phase5-Step2: IProfileXmlStore.SaveProfileXmlの成否(bool)をそのまま呼び出し元へ伝播する
+                    // (従来はGlobal.SaveProfileがvoidで成否を握りつぶしていたため常にtrueを返していた)
+                    bool saveSuccess = _profileXmlStore.SaveProfileXml(deviceIndex, profileName);
                     if (AppLogger.IsTraceEnabled)
-                        AppLogger.LogTrace($"[DI] ProfileRepository.SaveProfile: Slot {deviceIndex}, Profile '{profileName}' saved via DI");
-                    return true;
+                        AppLogger.LogTrace($"[DI] ProfileRepository.SaveProfile: Slot {deviceIndex}, Profile '{profileName}' saved via DI, success={saveSuccess}");
+                    return saveSuccess;
                 }
                 catch
                 {

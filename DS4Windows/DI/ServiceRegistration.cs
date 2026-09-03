@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.Extensions.DependencyInjection;
 using DS4Windows;
 using DS4Windows.DI;
@@ -20,6 +20,7 @@ namespace DS4Windows.DI
             services.AddSingleton<IKeyButtonActionControllerFactory, DefaultKeyButtonActionControllerFactory>();
             services.AddSingleton<IControllerRegistry, DefaultControllerRegistry>();
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
+            services.AddSingleton<IProfileXmlStore, ProfileXmlStore>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();
             services.AddSingleton<IProfileActionProvider, ProfileActionProvider>();
             services.AddSingleton<IProfileActionChainService, ProfileActionChainService>();
@@ -37,7 +38,7 @@ namespace DS4Windows.DI
             services.AddSingleton<DS4Windows.Services.IDeviceStateAccessor>(sp =>
                 sp.GetRequiredService<ControlService>());
 
-            // 第3層 信号出力層（仮想コントローラー出力スロット・プロセス起動）
+            // 第3層 信号出力層(仮想コントローラー出力スロット・プロセス起動)
             services.AddSingleton<IOutputSlotService, OutputSlotService>();
             services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
             services.AddSingleton<IProcessInspector, DefaultProcessInspector>();
