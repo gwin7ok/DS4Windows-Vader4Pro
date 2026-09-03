@@ -27,6 +27,9 @@ namespace DS4WindowsTests
                 SaveCallCount++;
                 return SaveReturnValue;
             }
+
+            public bool LoadAppSettingsXml() => true;
+            public bool SaveAppSettingsXml() => true;
         }
 
         [Fact]
