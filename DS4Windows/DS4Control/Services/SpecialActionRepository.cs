@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,17 +9,26 @@ namespace DS4Windows
     public class SpecialActionRepository : ISpecialActionRepository
     {
         private readonly object _actionLock = new object();
-        private readonly List<SpecialAction> _actions = new List<SpecialAction>();
+        private readonly BackingStore _config;
+        private IPathService _pathService;
 
         public event EventHandler ActionsChanged;
+
+        public SpecialActionRepository(BackingStore config = null, IPathService pathService = null)
+        {
+            _config = config ?? Global.store;
+            _pathService = pathService;
+        }
+
+        private IPathService PathSvc => _pathService ??= Global.PathServiceInstance;
 
         public string ActionsPath
         {
             get
             {
-                string baseDir = !string.IsNullOrEmpty(Global.appdatapath)
-                    ? Global.appdatapath
-                    : AppContext.BaseDirectory;
+                string baseDir = PathSvc != null && !string.IsNullOrEmpty(PathSvc.AppDataPath)
+                    ? PathSvc.AppDataPath
+                    : (!string.IsNullOrEmpty(Global.appdatapath) ? Global.appdatapath : AppContext.BaseDirectory);
                 return Path.Combine(baseDir, "Actions.xml");
             }
         }
@@ -30,14 +39,16 @@ namespace DS4Windows
             {
                 lock (_actionLock)
                 {
-                    return _actions.ToList().AsReadOnly();
+                    return _config != null && _config.actions != null
+                        ? _config.actions.ToList().AsReadOnly()
+                        : Array.Empty<SpecialAction>();
                 }
             }
         }
 
         public List<SpecialAction> ActionList
         {
-            get => _actions;
+            get => _config != null ? _config.actions : null;
         }
 
         public bool LoadActions()
@@ -49,11 +60,11 @@ namespace DS4Windows
                     if (!File.Exists(ActionsPath))
                         return false;
 
-                    Global.LoadActions();
+                    bool result = _config != null ? _config.LoadActions() : Global.LoadActions();
                     if (AppLogger.IsTraceEnabled)
-                        AppLogger.LogTrace("[DI] SpecialActionRepository.LoadActions: Actions.xml loaded via DI");
+                        AppLogger.LogTrace($"[DI] SpecialActionRepository.LoadActions: Actions.xml loaded via DI (result={result})");
                     OnActionsChanged();
-                    return true;
+                    return result;
                 }
                 catch
                 {
@@ -68,10 +79,10 @@ namespace DS4Windows
             {
                 try
                 {
-                    Global.SaveActions();
+                    bool result = _config != null ? _config.SaveActions() : Global.SaveActions();
                     if (AppLogger.IsTraceEnabled)
-                        AppLogger.LogTrace("[DI] SpecialActionRepository.SaveActions: Actions.xml saved via DI");
-                    return true;
+                        AppLogger.LogTrace($"[DI] SpecialActionRepository.SaveActions: Actions.xml saved via DI (result={result})");
+                    return result;
                 }
                 catch
                 {
@@ -82,23 +93,23 @@ namespace DS4Windows
 
         public SpecialAction GetAction(string actionName)
         {
-            if (string.IsNullOrWhiteSpace(actionName))
+            if (string.IsNullOrWhiteSpace(actionName) || _config == null || _config.actions == null)
                 return null;
 
             lock (_actionLock)
             {
-                return _actions.FirstOrDefault(a => string.Equals(a.name, actionName, StringComparison.OrdinalIgnoreCase));
+                return _config.actions.FirstOrDefault(a => string.Equals(a.name, actionName, StringComparison.OrdinalIgnoreCase));
             }
         }
 
         public int GetActionIndex(string actionName)
         {
-            if (string.IsNullOrWhiteSpace(actionName))
+            if (string.IsNullOrWhiteSpace(actionName) || _config == null || _config.actions == null)
                 return -1;
 
             lock (_actionLock)
             {
-                return _actions.FindIndex(a => string.Equals(a.name, actionName, StringComparison.OrdinalIgnoreCase));
+                return _config.actions.FindIndex(a => string.Equals(a.name, actionName, StringComparison.OrdinalIgnoreCase));
             }
         }
 
@@ -109,7 +120,7 @@ namespace DS4Windows
 
         public bool AddAction(SpecialAction action)
         {
-            if (action == null || string.IsNullOrWhiteSpace(action.name))
+            if (action == null || string.IsNullOrWhiteSpace(action.name) || _config == null || _config.actions == null)
                 return false;
 
             lock (_actionLock)
@@ -117,12 +128,13 @@ namespace DS4Windows
                 int index = GetActionIndex(action.name);
                 if (index >= 0)
                 {
-                    _actions[index] = action;
+                    _config.actions[index] = action;
                 }
                 else
                 {
-                    _actions.Add(action);
+                    _config.actions.Add(action);
                 }
+
                 if (AppLogger.IsTraceEnabled)
                     AppLogger.LogTrace($"[DI] SpecialActionRepository.AddAction: Action '{action.name}' added via DI");
                 OnActionsChanged();
@@ -132,7 +144,7 @@ namespace DS4Windows
 
         public bool RemoveAction(string actionName)
         {
-            if (string.IsNullOrWhiteSpace(actionName))
+            if (string.IsNullOrWhiteSpace(actionName) || _config == null || _config.actions == null)
                 return false;
 
             lock (_actionLock)
@@ -140,7 +152,7 @@ namespace DS4Windows
                 int index = GetActionIndex(actionName);
                 if (index >= 0)
                 {
-                    _actions.RemoveAt(index);
+                    _config.actions.RemoveAt(index);
                     if (AppLogger.IsTraceEnabled)
                         AppLogger.LogTrace($"[DI] SpecialActionRepository.RemoveAction: Action '{actionName}' removed via DI");
                     OnActionsChanged();
@@ -152,7 +164,7 @@ namespace DS4Windows
 
         public bool ReplaceAction(string oldActionName, SpecialAction newAction)
         {
-            if (string.IsNullOrWhiteSpace(oldActionName) || newAction == null)
+            if (string.IsNullOrWhiteSpace(oldActionName) || newAction == null || _config == null || _config.actions == null)
                 return false;
 
             lock (_actionLock)
@@ -160,7 +172,7 @@ namespace DS4Windows
                 int index = GetActionIndex(oldActionName);
                 if (index >= 0)
                 {
-                    _actions[index] = newAction;
+                    _config.actions[index] = newAction;
                     if (AppLogger.IsTraceEnabled)
                         AppLogger.LogTrace($"[DI] SpecialActionRepository.ReplaceAction: Action '{oldActionName}' replaced via DI");
                     OnActionsChanged();
