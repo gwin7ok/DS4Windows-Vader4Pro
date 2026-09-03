@@ -79,13 +79,23 @@ namespace DS4Windows
             {
                 try
                 {
-                    bool result = _config != null ? _config.SaveActions() : Global.SaveActions();
+                    if (_config != null)
+                    {
+                        _config.SaveActions();
+                    }
+                    else
+                    {
+                        Global.SaveActions();
+                    }
+
                     if (AppLogger.IsTraceEnabled)
-                        AppLogger.LogTrace($"[DI] SpecialActionRepository.SaveActions: Actions.xml saved via DI (result={result})");
-                    return result;
+                        AppLogger.LogTrace("[DI] SpecialActionRepository.SaveActions: Actions.xml saved via DI");
+
+                    return true;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    AppLogger.LogToGui($"Failed to save Actions.xml: {ex.Message}", true);
                     return false;
                 }
             }
