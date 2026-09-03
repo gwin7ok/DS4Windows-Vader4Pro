@@ -3545,7 +3545,16 @@ namespace DS4Windows
         }
 
         //public static bool Load() => m_Config.Load();
-        public static bool Load() => m_Config.Load();
+        public static bool Load()
+        {
+            var appSettings = DS4WinWPF.AppHost.GetService<DI.IAppSettingsService>();
+            if (appSettings != null)
+            {
+                return appSettings.Load();
+            }
+
+            return m_Config.Load();
+        }
 
         public static bool LoadProfile(int device, bool launchprogram, ControlService control,
             bool xinputChange = true, bool postLoad = true)
@@ -3699,6 +3708,12 @@ namespace DS4Windows
 
         public static bool Save()
         {
+            var appSettings = DS4WinWPF.AppHost.GetService<DI.IAppSettingsService>();
+            if (appSettings != null)
+            {
+                return appSettings.Save();
+            }
+
             return m_Config.Save();
         }
 

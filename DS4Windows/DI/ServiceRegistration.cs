@@ -40,6 +40,9 @@ namespace DS4Windows.DI
             services.AddSingleton<AutoProfileHolder>();
             services.AddSingleton<IAutoProfileService, AutoProfileService>();
 
+            // Phase 5 Step 6: アプリ全体設定サービス
+            services.AddSingleton<IAppSettingsService, AppSettingsService>();
+
             // === 第3層: Actions基盤サービス ===
             services.AddSingleton<IActionFactory, DefaultActionFactory>();
             services.AddSingleton<IKeyActionCreator, DefaultKeyActionCreator>();

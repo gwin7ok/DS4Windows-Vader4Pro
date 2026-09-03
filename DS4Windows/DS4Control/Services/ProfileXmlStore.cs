@@ -3,19 +3,13 @@ using DS4Windows.DI;
 
 namespace DS4Windows
 {
-    /// <summary>
-    /// IProfileXmlStore の実装。BackingStore.LoadProfile/SaveProfile への薄い委譲ラッパー。
-    /// Phase5-Plan Section5.1 / Phase5-Step2-Plan Section1.6 ガードレール対応:
-    /// BackingStoreのm_Xdoc(XmlDocument)はLoadProfile/SaveProfile/Save/Load(AppSettings)間で
-    /// 共有される単一インスタンスでありスレッドセーフでないため、同一XMLファイルI/O競合および
-    /// ロストアップデートを防止する目的でプロセス内排他ロックにより直列化する。
-    /// Step6(AppSettingsService)新設時にも同一ロックを共有できるよう public static で公開する。
-    /// </summary>
     public class ProfileXmlStore : IProfileXmlStore
     {
-        public static readonly object XmlIoLock = new object();
-
         private readonly BackingStore _backingStore;
+
+        // Phase 5 ガードレール: Profiles.xml に対する同一プロセス内の並行アクセス競合を防ぐための静的排他ロックオブジェクト
+        // (Step6: AppSettingsService との同一ファイル排他ロック共有)
+        public static readonly object XmlIoLock = new object();
 
         public ProfileXmlStore(BackingStore backingStore = null)
         {
@@ -27,10 +21,16 @@ namespace DS4Windows
         {
             lock (XmlIoLock)
             {
-                bool result = _backingStore.LoadProfile(deviceIndex, launchProgram, control, overridePath, xinputChange, postLoad);
-                if (AppLogger.IsTraceEnabled)
-                    AppLogger.LogTrace($"[DI] ProfileXmlStore.LoadProfileXml: Slot {deviceIndex}, result={result}");
-                return result;
+                try
+                {
+                    return _backingStore.LoadProfile(deviceIndex, launchProgram, control,
+                        overridePath, xinputChange, postLoad);
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogToGui($"Failed to load profile XML: {ex.Message}", true);
+                    return false;
+                }
             }
         }
 
@@ -38,10 +38,57 @@ namespace DS4Windows
         {
             lock (XmlIoLock)
             {
-                bool result = _backingStore.SaveProfile(deviceIndex, profileName);
-                if (AppLogger.IsTraceEnabled)
-                    AppLogger.LogTrace($"[DI] ProfileXmlStore.SaveProfileXml: Slot {deviceIndex}, Profile '{profileName}', result={result}");
-                return result;
+                try
+                {
+                    return _backingStore.SaveProfile(deviceIndex, profileName);
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogToGui($"Failed to save profile XML: {ex.Message}", true);
+                    return false;
+                }
+            }
+        }
+
+        public bool LoadAppSettingsXml()
+        {
+            lock (XmlIoLock)
+            {
+                try
+                {
+                    bool result = _backingStore.Load();
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] ProfileXmlStore.LoadAppSettingsXml: loaded={result}");
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogToGui($"Failed to load application settings XML: {ex.Message}", true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] ProfileXmlStore.LoadAppSettingsXml failed: {ex}");
+                    return false;
+                }
+            }
+        }
+
+        public bool SaveAppSettingsXml()
+        {
+            lock (XmlIoLock)
+            {
+                try
+                {
+                    bool result = _backingStore.Save();
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] ProfileXmlStore.SaveAppSettingsXml: saved={result}");
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogToGui($"Failed to save application settings XML: {ex.Message}", true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] ProfileXmlStore.SaveAppSettingsXml failed: {ex}");
+                    return false;
+                }
             }
         }
     }
