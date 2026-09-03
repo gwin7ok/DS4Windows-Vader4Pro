@@ -1,9 +1,7 @@
-﻿﻿namespace DS4Windows.Services
+namespace DS4Windows.Services
 {
     /// <summary>
-    /// 指定した実行ファイルパスのプロセスが既に起動しているかを調べる抽象化。
-    /// Global.LoadProfile 内の LaunchProgram（プロファイル関連付けアプリの自動起動）
-    /// における多重起動防止チェック専用。Phase 3 Step 3-6.
+    /// プロセス状態およびアクティブウィンドウを調査するサービスのインターフェース。
     /// </summary>
     public interface IProcessInspector
     {
@@ -12,5 +10,13 @@
         /// あるかどうかを返す。情報取得に失敗したプロセス（アクセス権限不足等）は無視する。
         /// </summary>
         bool IsProcessRunning(string exePath);
+
+        /// <summary>
+        /// 現在フォアグラウンド（最前面）にあるウィンドウの実行ファイルパスおよびタイトルを取得します。
+        /// </summary>
+        /// <param name="processPath">プロセス実行ファイルパス（小文字・バックスラッシュ正規化）</param>
+        /// <param name="windowTitle">ウィンドウタイトル（小文字）</param>
+        /// <returns>取得できた場合 true</returns>
+        bool GetForegroundProcessInfo(out string processPath, out string windowTitle);
     }
 }

@@ -1,24 +1,19 @@
-﻿﻿using System;
+using System;
 using System.Diagnostics;
 using Xunit;
 using DS4Windows.Services;
 
 namespace DS4WindowsTests
 {
-    /// <summary>
-    /// Phase3-Step3-6-B で新設した DefaultProcessInspector の単体テスト。
-    /// 実プロセス一覧を走査する実装のため、実行中の自プロセス（テストランナー自身）を
-    /// 既知の「起動中プロセス」として利用し、UACや実機を必要とせずに検証する。
-    /// </summary>
     public class ProcessInspectorTests
     {
         [Fact]
         public void IsProcessRunning_CurrentProcess_ReturnsTrue()
         {
             var inspector = new DefaultProcessInspector();
-            string currentExePath = Process.GetCurrentProcess().MainModule.FileName;
+            string currentExe = Process.GetCurrentProcess().MainModule.FileName;
 
-            bool result = inspector.IsProcessRunning(currentExePath);
+            bool result = inspector.IsProcessRunning(currentExe);
 
             Assert.True(result);
         }
@@ -27,9 +22,7 @@ namespace DS4WindowsTests
         public void IsProcessRunning_NonExistentPath_ReturnsFalse()
         {
             var inspector = new DefaultProcessInspector();
-            string bogusPath = @"C:\this\path\definitely\does\not\exist\ghost12345.exe";
-
-            bool result = inspector.IsProcessRunning(bogusPath);
+            bool result = inspector.IsProcessRunning(@"C:\non_existent_process_12345.exe");
 
             Assert.False(result);
         }
@@ -38,10 +31,21 @@ namespace DS4WindowsTests
         public void IsProcessRunning_EmptyPath_ReturnsFalse()
         {
             var inspector = new DefaultProcessInspector();
-
-            bool result = inspector.IsProcessRunning(string.Empty);
+            bool result = inspector.IsProcessRunning("");
 
             Assert.False(result);
+        }
+
+        [Fact]
+        public void GetForegroundProcessInfo_ReturnsBooleanWithoutException()
+        {
+            var inspector = new DefaultProcessInspector();
+            string path;
+            string title;
+
+            var ex = Record.Exception(() => inspector.GetForegroundProcessInfo(out path, out title));
+
+            Assert.Null(ex);
         }
     }
 }

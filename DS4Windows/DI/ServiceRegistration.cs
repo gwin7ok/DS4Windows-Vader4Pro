@@ -1,60 +1,65 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using DS4Windows;
-using DS4Windows.DI;
-using DS4Windows.Services;
 using DS4Windows.Actions;
-using DS4WinWPF;
-using DS4WinWPF.DS4Forms.ViewModels;
+using DS4Windows.Services;
 
 namespace DS4Windows.DI
 {
+    /// <summary>
+    /// Phase 3 / Phase 4 / Phase 5: アプリケーション全体のDIコンテナ初期登録を一元管理する。
+    /// </summary>
     public static class ServiceRegistration
     {
-        public static void RegisterServices(IServiceCollection services)
+        public static IServiceCollection RegisterServices(this IServiceCollection services)
         {
-            // 第4層 4-c 設定・プロファイル・アクション・環境・通知サービス
-            services.AddSingleton<IActionFactory, DefaultActionFactory>();
-            services.AddSingleton<IManagedActionManager, DefaultActionManager>();
-            services.AddSingleton<IKeyActionCreator, DefaultKeyActionCreator>();
-            services.AddSingleton<IKeyButtonActionControllerFactory, DefaultKeyButtonActionControllerFactory>();
-            services.AddSingleton<IControllerRegistry, DefaultControllerRegistry>();
+            // === 第4層: 4-c DIサービス群 (Singleton) ===
+            services.AddSingleton<IPathService, PathService>();
+            services.AddSingleton<IDeviceStateService, DeviceStateService>();
+            services.AddSingleton<IEnvironmentService, EnvironmentService>();
+            services.AddSingleton<INotificationService, AppNotificationService>();
+            services.AddSingleton<IOutputSlotService, OutputSlotService>();
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
             services.AddSingleton<IProfileXmlStore, ProfileXmlStore>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();
-            services.AddSingleton<IProfileActionProvider, ProfileActionProvider>();
-            services.AddSingleton<IProfileActionChainService, ProfileActionChainService>();
-            services.AddSingleton<IProfileApplicationService, ProfileApplicationService>();
-            services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
             services.AddSingleton<ISpecialActionRepository, SpecialActionRepository>();
-            services.AddSingleton<IPathService, PathService>();
-            services.AddSingleton<IEnvironmentService, EnvironmentService>();
-            services.AddSingleton<INotificationService, AppNotificationService>();
 
-            // 第1層 入力監視層・デバイス状態管理サービス
-            services.AddSingleton<IDeviceStateService, DeviceStateService>();
-            services.AddSingleton<IDs4DeviceRegistry, Ds4DeviceRegistryAdapter>();
-            services.AddSingleton<ControlService>();
-            services.AddSingleton<DS4Windows.Services.IDeviceStateAccessor>(sp =>
-                sp.GetRequiredService<ControlService>());
-
-            // 第3層 信号出力層(仮想コントローラー出力スロット・プロセス起動)
-            services.AddSingleton<IOutputSlotService, OutputSlotService>();
-            services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
+            // Phase 3 Step 3-6: プロセス検査・昇格起動サービスの登録
             services.AddSingleton<IProcessInspector, DefaultProcessInspector>();
-            services.AddSingleton<DS4WinWPF.ArgumentParser>();
+            services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
 
-            // 第4層 4-c ViewModel Factory (Pattern C: 実行時引数付き ViewModel 生成)
+            // Phase 5 Step 3: プロファイル適用サービス
+            services.AddSingleton<IProfileApplicationService, ProfileApplicationService>();
+
+            // Phase 5 Step 5: 自動プロファイル実行サービス
+            services.AddSingleton<IAutoProfileService, AutoProfileService>();
+
+            // === 第3層: Actions基盤サービス ===
+            services.AddSingleton<IActionFactory, DefaultActionFactory>();
+            services.AddSingleton<IKeyActionCreator, DefaultKeyActionCreator>();
+            services.AddSingleton<IKeyButtonActionControllerFactory, DefaultKeyButtonActionControllerFactory>();
+            services.AddSingleton<IRepeater, RepeatHelperToIRepeaterAdapter>();
+            services.AddSingleton<IProcessLauncher, DefaultProcessLauncher>();
+            services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
+            services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
+            services.AddSingleton<IMacroPlayer, DefaultMacroPlayer>();
+            services.AddSingleton<IActionRegistry, ActionRegistry>();
+            services.AddSingleton<IControllerRegistry, DefaultControllerRegistry>();
+            services.AddSingleton<IManagedActionManager, DefaultActionManager>();
+
+            // Phase 4: UI層 ViewModel ファクトリの登録
             services.AddSingleton<IViewModelFactory, ViewModelFactory>();
 
-            // 第4層 4-b ViewModel (Pattern A: 引数なし ViewModel)
-            services.AddTransient<SettingsViewModel>();
-            services.AddTransient<LogViewModel>();
-            services.AddTransient<AboutViewModel>();
+            // === 既存Singletonインスタンスの取得登録 ===
+            services.AddSingleton<ControlService>(sp => Program.rootHub);
+            services.AddSingleton<IDeviceStateAccessor>(sp => Program.rootHub);
+            services.AddSingleton<IDs4DeviceRegistry>(sp => new Ds4DeviceRegistryAdapter());
+            services.AddSingleton<IProfileActionProvider>(sp => new ProfileActionProvider());
+            services.AddSingleton<IProfileActionChainService>(sp => new ProfileActionChainService(
+                sp.GetRequiredService<IProfileActionProvider>(),
+                sp.GetRequiredService<IActionRegistry>()
+            ));
 
-            // 第4層 4-b ViewModel (Pattern B: 共有依存 ViewModel)
-            services.AddSingleton<ControllersViewModel>();
-            services.AddSingleton<MainWindowsViewModel>();
+            return services;
         }
     }
 }
