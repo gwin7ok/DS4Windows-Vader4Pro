@@ -1,6 +1,6 @@
 # フェーズ5進捗管理表: DIサービス内部 Legacy 経路監査と責務分離
 
-最終更新日: 2026-09-04（Step 6: AppSettings 永続化・状態管理のDI化 完了 / ドメイン1全完了）
+最終更新日: 2026-09-04（Step 7: SpecialAction 永続化の責務分離 完了）
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 Phase5全体計画書: `docs-forDIMG/MadeByAgent/Phase5-Plan.md`
@@ -9,7 +9,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 1. 全体進捗サマリ（ドメイン1全完了・ドメイン2着手へ）
+## 1. 全体進捗サマリ（ドメイン1全完了・ドメイン2進行中）
 
 | ステップ | 名称 | 状態 | 完了日 | 成果物・備考 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -20,8 +20,8 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 | Step 4 | Save／Apply の結果伝播と通知の統一 | **完了** | 2026-09-04 | `Phase5-Step4-Completion-Report.md`。保存成否伝播・GUI通知、`bool?` による通知自動解決、`[DI]` ログ標準化完了。 |
 | Step 5 | AutoProfile（自動プロファイル切替）の自律実行系DI化 | **完了** | 2026-09-04 | `Phase5-Step5-Completion-Report.md`。`IAutoProfileService`新設、`IProcessInspector`集約、スレッド直列化、適用一本化・シム化完了。 |
 | Step 6 | アプリ全体設定（AppSettings）の永続化・状態管理のDI化 | **完了** | 2026-09-04 | `Phase5-Step6-Completion-Report.md`。`IAppSettingsService`新設、同一XML排他ロック(`XmlIoLock`)統合、`Global.Save`/`Load`シム化完了。【ドメイン1全完了】 |
-| **【ドメイン2】** | **アクション系** | | | |
-| Step 7 | SpecialAction 永続化の責務分離 | **個別計画書完成** | - | `Phase5-Step7-Plan.md`。`BackingStore.actions` 二重管理解消、排他ロック整合。 |
+| **【ドメイン2】** | **アクション系（進行中）** | | | |
+| Step 7 | SpecialAction 永続化の責務分離 | **完了** | 2026-09-04 | `Phase5-Step7-Completion-Report.md`。独自リスト廃止・`BackingStore.actions`一本化、二重管理解消、ActionsPath DI化完了。 |
 | Step 8 | アクション連鎖処理の責務分離 | **個別計画書完成** | - | `Phase5-Step8-Plan.md`。`IMappingActionDispatcher` 新設による `Mapping.cs` 境界化。 |
 | Step 9 | Actions基盤とMacroPlayerの整理 | **個別計画書完成** | - | `Phase5-Step9-Plan.md`。`DefaultActionManager` 整理、`DefaultMacroPlayer` への `IVirtualKBM` 注入。 |
 | **【ドメイン3】** | **デバイス・インフラ系** | | | |
@@ -49,15 +49,15 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 - **Step 5（AutoProfile）**: **完了**（2026-09-04）。`IAutoProfileService` 新設、`IProcessInspector` へのネイティブ API 集約、スレッド直列化（§5.3）、適用一本化・シム化完了。成果物: `Phase5-Step5-Completion-Report.md`。
 - **Step 6（AppSettings）**: **完了**（2026-09-04）。`IAppSettingsService` 新設、`ProfileXmlStore.XmlIoLock` へのファイル排他ロック共有統合（ロストアップデート防止 §5.1）、`Global.Save` / `Global.Load` シム化完了。成果物: `Phase5-Step6-Completion-Report.md`。
 
-### 【ドメイン2】アクション系（Step 7 〜 Step 9）【次期着手】
-- **Step 7（SpecialAction永続化）**: `BackingStore.actions` との二重管理・非同期バグ解消、`XmlIoLock` との排他整合。個別計画書完成。
-- **Step 8（アクション連鎖）**: 巨大ファイル `Mapping.cs` を解体せず `IMappingActionDispatcher` で境界化しテスト容易性を確立済み。個別計画書完成。
-- **Step 9（Actions基盤＆マクロ）**: `DefaultActionManager` への `IActionFactory` 注入、トグル状態内包、`DefaultMacroPlayer` への `IVirtualKBM` 注入組み込み済み。個別計画書完成。
+### 【ドメイン2】アクション系（Step 7 〜 Step 9）【進行中】
+- **Step 7（SpecialAction永続化）**: **完了**（2026-09-04）。孤立独自リスト廃止・`BackingStore.actions` 一本化、二重管理解消、`ActionsPath` DI化、排他制御実装完了。成果物: `Phase5-Step7-Completion-Report.md`。
+- **Step 8（アクション連鎖）**: 巨大ファイル `Mapping.cs` を解体せず `IMappingActionDispatcher` で境界化しテスト容易性を確立予定。個別計画書完成。
+- **Step 9（Actions基盤＆マクロ）**: `DefaultActionManager` への `IActionFactory` 注入、トグル状態内包、`DefaultMacroPlayer` への `IVirtualKBM` 注入予定。個別計画書完成。
 
 ### 【ドメイン3】デバイス・インフラ系（Step 10 〜 Step 12）【全計画書 策定・承認完了】
 - **Step 10（残存サービス）**: `PathService` のキャッシュ完全撤廃（On-Demand評価）、`ProfileSettingsService` の `IDeviceStateAccessor` 活用組み込み済み。
 - **Step 11（デバイス検出）**: `IDs4DeviceRegistry` 契約強化と `DS4Devices` 段階的シム化（生デバイス列挙に専念）組み込み済み。
-- **Step 12（出力スロット）**: `IOutputSlotStore` 新設（永続化抽象化）、ViGEm ネイティブドライバ保護（PnP遅延・破棄順序の温存）組み込み済み。
+- **Step 12（出力スロット）**: `IOutputSlotStore` 新設（永続化抽象化）、ViGEm ネイティブドライバ保護（PnP遅延維持）。
 
 ### 【ドメイン4】UI統合・検証・クリーンアップ（Step 13 〜 Step 15）
 - **Step 13（UI層DI接続）**: **計画書策定完了**。Pure DI（`ViewModelFactory` 経由の手渡し注入）堅持、コア4大ViewModel優先順次改修による静的直参照一掃。
@@ -70,7 +70,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 以下の 6 大アーキテクチャ・ガードレールが、該当するすべての個別計画書に事前設計として組み込まれ、実装適用が進められています。
 
-1. **[同一XML排他ロック・ロストアップデート防止]**: Step 2 実装完了、Step 6 にて `SaveAppSettingsXml` との完全な共有統合を達成（`ProfileXmlStore.XmlIoLock`）。
+1. **[同一XML排他ロック・ロストアップデート防止]**: Step 2 実装完了、Step 6 にて `SaveAppSettingsXml` との完全な共有統合を達成（`ProfileXmlStore.XmlIoLock`）。Step 7 の `Actions.xml` も排他保護完了。
 2. **[プロファイル適用時のHalt停止保証]**: Step 3 実装完了（`ProfileApplicationService.ApplyProfile` に内包）、Step 4 / Step 5 にて適用完了。
 3. **[AutoProfileスレッド直列化]**: Step 5 実装完了（`AutoProfileService.CheckProfiles` の `_syncLock` 排他直列化保護）。
 4. **[On-Demandパス評価]**: Step 10 の計画書に反映済み（起動順序逆転によるパス固定化防止）。
@@ -79,10 +79,10 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 4. 次のアクション（【ドメイン2】アクション系 Step 7 への着手）
+## 4. 次のアクション（Step 8 への着手）
 
-1. 【ドメイン2】アクション系の第 1 ステップである **「Step 7: SpecialAction 永続化の責務分離（`Phase5-Step7-Plan.md`）」の実コード改修作業に着手**する。
-2. `ISpecialActionRepository` の `BackingStore.actions` 二重管理・非同期バグ解消、および `ProfileXmlStore.XmlIoLock` との排他整合を進める。
+1. 【ドメイン2】アクション系の第 2 ステップである **「Step 8: アクション連鎖処理の責務分離（`Phase5-Step8-Plan.md`）」の実コード改修作業に着手**する。
+2. `IMappingActionDispatcher` 新設による巨大ファイル `Mapping.cs` の境界化、およびアクション連鎖発火処理の DI 整理を進める。
 
 ---
 
@@ -94,7 +94,8 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 - [x] Step 4（Save／Apply の結果伝播と通知の統一）の責務分離が完了している。
 - [x] Step 5（AutoProfile の自律実行系DI化）の責務分離が完了している。
 - [x] Step 6（AppSettings の永続化・状態管理のDI化）の責務分離が完了している。
-- [ ] 各ドメイン（プロファイル【完】、アクション、デバイス、UI）の責務分離が個別計画書通りに完了している。
+- [x] Step 7（SpecialAction 永続化の責務分離）の責務分離が完了している。
+- [ ] 各ドメイン（プロファイル【完】、アクション【進行中】、デバイス、UI）の責務分離が個別計画書通りに完了している。
 - [ ] DI サービス内部から `Global` / `Program.rootHub` / `BackingStore` への不正な委譲・再委譲が排除されている。
 - [ ] 6 大アーキテクチャ・ガードレールが実コードに正しく組み込まれ、競合・クラッシュ・リークが防止されている。
 - [ ] 全自動テスト（Actions 85件、Standalone 13件、新規単体テスト）が常時グリーン（合格）を維持している。
