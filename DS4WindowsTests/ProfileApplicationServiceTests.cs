@@ -120,7 +120,7 @@ namespace DS4WindowsTests
             }
 
             DS4WinWPF.AppHost.CreateHost();
-            var control = DS4WinWPF.AppHost.GetService<ControlService>();
+            var control = DS4WinWPF.AppHost.GetService<ControlService>() ?? new ControlService();
 
             var settings = new ProfileSettingsService();
             settings.ProfileChangedNotification = false;
@@ -142,7 +142,7 @@ namespace DS4WindowsTests
             }
 
             DS4WinWPF.AppHost.CreateHost();
-            var control = DS4WinWPF.AppHost.GetService<ControlService>();
+            var control = DS4WinWPF.AppHost.GetService<ControlService>() ?? new ControlService();
 
             var settings = new ProfileSettingsService();
             settings.ProfileChangedNotification = false;

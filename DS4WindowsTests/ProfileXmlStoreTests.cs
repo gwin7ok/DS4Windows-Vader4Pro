@@ -45,7 +45,7 @@ namespace DS4WindowsTests
             }
 
             DS4WinWPF.AppHost.CreateHost();
-            var control = DS4WinWPF.AppHost.GetService<ControlService>();
+            var control = DS4WinWPF.AppHost.GetService<ControlService>() ?? new ControlService();
 
             var store = new ProfileXmlStore(new BackingStore());
 

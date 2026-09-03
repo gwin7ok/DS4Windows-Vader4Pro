@@ -28,6 +28,10 @@ namespace DS4Windows.DI
             services.AddSingleton<IProcessInspector, DefaultProcessInspector>();
             services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
 
+            // プロファイルアクション連鎖サービス（ProfileApplicationServiceの依存先）
+            services.AddSingleton<IProfileActionProvider, ProfileActionProvider>();
+            services.AddSingleton<IProfileActionChainService, ProfileActionChainService>();
+
             // Phase 5 Step 3: プロファイル適用サービス
             services.AddSingleton<IProfileApplicationService, ProfileApplicationService>();
 
