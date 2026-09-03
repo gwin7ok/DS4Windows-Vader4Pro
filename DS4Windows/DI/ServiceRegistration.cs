@@ -53,9 +53,16 @@ namespace DS4Windows.DI
             services.AddSingleton<IViewModelFactory, ViewModelFactory>();
 
             // === 既存Singletonインスタンスの取得登録 ===
-            services.AddSingleton<ControlService>(sp => Program.rootHub);
-            services.AddSingleton<IDeviceStateAccessor>(sp => Program.rootHub);
             services.AddSingleton<IDs4DeviceRegistry>(sp => new Ds4DeviceRegistryAdapter());
+            services.AddSingleton<ControlService>(sp =>
+            {
+                return Program.rootHub ?? new ControlService(
+                    new ArgumentParser(),
+                    sp.GetRequiredService<IDs4DeviceRegistry>(),
+                    sp.GetRequiredService<IProfileSettingsService>()
+                );
+            });
+            services.AddSingleton<IDeviceStateAccessor>(sp => sp.GetRequiredService<ControlService>());
 
             return services;
         }

@@ -45,12 +45,15 @@ namespace DS4WindowsTests
             }
 
             DS4WinWPF.AppHost.CreateHost();
-            var control = DS4WinWPF.AppHost.GetService<ControlService>() ?? new ControlService();
+            var control = DS4WinWPF.AppHost.GetService<ControlService>();
 
             var store = new ProfileXmlStore(new BackingStore());
 
+            // ブロック構文にして Action に強制推論させ、CS0619 警告を回避
             var exception = Record.Exception(() =>
-                store.LoadProfileXml(0, false, control, @"NonExistent_Phase5Step2_Path.xml", false, true));
+            {
+                store.LoadProfileXml(0, false, control, @"NonExistent_Phase5Step2_Path.xml", false, true);
+            });
 
             Assert.Null(exception);
         }
