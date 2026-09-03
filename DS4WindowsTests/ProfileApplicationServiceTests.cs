@@ -113,23 +113,40 @@ namespace DS4WindowsTests
         [Fact]
         public void ApplyProfile_NullDisplayNotification_ResolvesFromSettings()
         {
+            var pathService = new PathService();
+            if (string.IsNullOrEmpty(Global.appdatapath))
+            {
+                Global.appdatapath = pathService.AppDataPath;
+            }
+
+            DS4WinWPF.AppHost.CreateHost();
+            var control = DS4WinWPF.AppHost.GetService<ControlService>();
+
             var settings = new ProfileSettingsService();
             settings.ProfileChangedNotification = false;
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
+            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), control);
 
             // displayNotification を省略（null）した状態で呼び出す
             bool result = service.ApplyProfile(0, "Default");
 
-            // デバイス未接続でも false にならず安全に完了（No Feature Drop）
             Assert.True(result);
         }
 
         [Fact]
         public void ApplyProfile_ExplicitDisplayNotification_AcceptsExplicitValue()
         {
+            var pathService = new PathService();
+            if (string.IsNullOrEmpty(Global.appdatapath))
+            {
+                Global.appdatapath = pathService.AppDataPath;
+            }
+
+            DS4WinWPF.AppHost.CreateHost();
+            var control = DS4WinWPF.AppHost.GetService<ControlService>();
+
             var settings = new ProfileSettingsService();
             settings.ProfileChangedNotification = false;
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
+            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), control);
 
             // 明示的に true を渡す
             bool result = service.ApplyProfile(0, "Default", displayNotification: true);
