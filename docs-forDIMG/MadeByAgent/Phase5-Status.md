@@ -1,6 +1,6 @@
 # フェーズ5進捗管理表: DIサービス内部 Legacy 経路監査と責務分離
 
-最終更新日: 2026-09-03（全個別計画書 Step 2〜13 の策定完了・A案同期）
+最終更新日: 2026-09-04（Step 2: プロファイル XML 読込・保存の責務分離 完了）
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 Phase5全体計画書: `docs-forDIMG/MadeByAgent/Phase5-Plan.md`
@@ -9,13 +9,13 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 1. 全体進捗サマリ（全個別計画書 完成）
+## 1. 全体進捗サマリ（全個別計画書 完成・実装フェーズ進行中）
 
 | ステップ | 名称 | 状態 | 完了日 | 成果物・備考 |
-|---|---|---|---|---|
+| :--- | :--- | :--- | :--- | :--- |
 | Step 1 | DIサービス内部 Legacy 経路の詳細監査と優先度付け | **完了** | 2026-09-03 | `Phase5-Step1-legacy-delegation-audit-report.md`。DI登録23サービスおよびコード全体（4大ブラインドスポット）の棚卸し完了。 |
 | **【ドメイン1】** | **プロファイル・設定系** | | | |
-| Step 2 | プロファイル XML 読込・保存の責務分離 | **個別計画書完成** | - | `Phase5-Step2-Plan.md`。`IProfileXmlStore` 新設、`bool SaveProfileXml` 統一、XML排他ロック追記。 |
+| Step 2 | プロファイル XML 読込・保存の責務分離 | **完了** | 2026-09-04 | `Phase5-Step2-Completion-Report.md`。`IProfileXmlStore`・`ProfileXmlStore`新設、排他ロック実装、`ProfileRepository`責務分離・シム化完了。 |
 | Step 3 | プロファイル適用・復帰の一本化 | **個別計画書完成** | - | `Phase5-Step3-Plan.md`。`IProfileApplicationService` 一本化、Halt停止ガード、切断時リセット追記。 |
 | Step 4 | Save／Apply の結果伝播と通知の統一 | **個別計画書完成** | - | `Phase5-Step4-Plan.md`。通知自動解決（`bool?`）、保存成否伝播、`[DI]` ログ統一。 |
 | Step 5 | AutoProfile（自動プロファイル切替）の自律実行系DI化 | **個別計画書完成** | - | `Phase5-Step5-Plan.md`。`IAutoProfileService` 新設、`IProcessInspector` 活用、直列化保証。 |
@@ -36,18 +36,18 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 2. 詳細ステータス（全ドメインの計画が完了）
+## 2. 詳細ステータス（全ドメインの計画が完了・実装進行中）
 
 ### Step 1: 詳細監査と優先度付け【完了】
 - 登録済み23サービスおよびコード全体の4大ブラインドスポットを特定・分類完了。
 - 成果物: `Phase5-Step1-legacy-delegation-audit-report.md`。
 
-### 【ドメイン1】プロファイル・設定系（Step 2 〜 Step 6）【全計画書 策定・承認完了】
-- **Step 2（プロファイルXML）**: `IProfileXmlStore` 新設、`bool SaveProfileXml` 統一、`Profiles.xml` 排他ロック組み込み済み。
-- **Step 3（プロファイル適用）**: `IProfileApplicationService` 一本化、入力ポーリング停止（`Halt`）保証、切断時スタッククリア組み込み済み。
-- **Step 4（結果と通知）**: 通知自動解決（`bool?`）、保存成否伝播、Halt下成否ログ、`[DI]` ログ統一組み込み済み。
-- **Step 5（AutoProfile）**: `IAutoProfileService` 新設、`IProcessInspector` 活用によるテスト自動化、スレッド直列化組み込み済み。
-- **Step 6（AppSettings）**: `IAppSettingsService` 新設、`IProfileXmlStore` とのファイル排他ロック共有（ロストアップデート防止）組み込み済み。
+### 【ドメイン1】プロファイル・設定系（Step 2 〜 Step 6）【実装進行中】
+- **Step 2（プロファイルXML）**: **完了**（2026-09-04）。`IProfileXmlStore` 新設、`ProfileXmlStore` による同一XML排他ロック（`_fileLock`）実装、`ProfileRepository` への状態調整集約、`Global.LoadProfile` / `SaveProfile` シム化完了。成果物: `Phase5-Step2-Completion-Report.md`。
+- **Step 3（プロファイル適用）**: `IProfileApplicationService` 一本化、入力ポーリング停止（`Halt`）保証、切断時スタッククリア組み込み済み。個別計画書完成。
+- **Step 4（結果と通知）**: 通知自動解決（`bool?`）、保存成否伝播、Halt下成否ログ、`[DI]` ログ統一組み込み済み。個別計画書完成。
+- **Step 5（AutoProfile）**: `IAutoProfileService` 新設、`IProcessInspector` 活用によるテスト自動化、スレッド直列化組み込み済み。個別計画書完成。
+- **Step 6（AppSettings）**: `IAppSettingsService` 新設、`IProfileXmlStore` とのファイル排他ロック共有（ロストアップデート防止）組み込み済み。個別計画書完成。
 
 ### 【ドメイン2】アクション系（Step 7 〜 Step 9）【全計画書 策定・承認完了】
 - **Step 7（SpecialAction永続化）**: `BackingStore.actions` との二重管理・非同期バグ解消、調査先行タスク組み込み済み。
@@ -57,7 +57,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 ### 【ドメイン3】デバイス・インフラ系（Step 10 〜 Step 12）【全計画書 策定・承認完了】
 - **Step 10（残存サービス）**: `PathService` のキャッシュ完全撤廃（On-Demand評価）、`ProfileSettingsService` の `IDeviceStateAccessor` 活用組み込み済み。
 - **Step 11（デバイス検出）**: `IDs4DeviceRegistry` 契約強化と `DS4Devices` 段階的シム化（生デバイス列挙に専念）組み込み済み。
-- **Step 12（出力スロット）**: `IOutputSlotStore` 新設（永続化抽象化）、ViGEm ネイティブドライバ保護（PnP遅延・破棄順序の完全温存）組み込み済み。
+- **Step 12（出力スロット）**: `IOutputSlotStore` 新設（永続化抽象化）、ViGEm ネイティブドライバ保護（PnP遅延・破棄順序の温存）組み込み済み。
 
 ### 【ドメイン4】UI統合・検証・クリーンアップ（Step 13 〜 Step 15）
 - **Step 13（UI層DI接続）**: **計画書策定完了**。Pure DI（`ViewModelFactory` 経由の手渡し注入）堅持、コア4大ViewModel優先順次改修による静的直参照一掃。
@@ -68,9 +68,9 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ## 3. ガードレール対策の確立状況（Phase5-Plan §5 準拠）
 
-以下の 6 大アーキテクチャ・ガードレールが、該当するすべての個別計画書に事前設計として組み込まれました。
+以下の 6 大アーキテクチャ・ガードレールが、該当するすべての個別計画書に事前設計として組み込まれ、Step 2 より実装適用が開始されました。
 
-1. **[同一XML排他ロック・ロストアップデート防止]**: Step 2 および Step 6 の計画書に反映済み（`_fileLock` 共有）。
+1. **[同一XML排他ロック・ロストアップデート防止]**: Step 2 実装完了（`_fileLock` 実装済み）、Step 6 にて共有統合予定。
 2. **[プロファイル適用時のHalt停止保証]**: Step 3, Step 4, Step 5 の計画書に反映済み（コレクション変更クラッシュ防止）。
 3. **[AutoProfileスレッド直列化]**: Step 5 の計画書に反映済み（UI Dispatcher マーシャリング）。
 4. **[On-Demandパス評価]**: Step 10 の計画書に反映済み（起動順序逆転によるパス固定化防止）。
@@ -79,24 +79,20 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 4. 次のアクション（実装フェーズへの突入）
+## 4. 次のアクション（Step 3 への着手）
 
-**個別計画書（Step 2〜13）の策定フェーズが 100% 完了いたしました。**
-これにより、アーキテクチャの全貌と安全策（ガードレール）が完全に固まりました。
-
-1. 承認済みの `Phase5-Step2-Plan.md` に基づき、**ドメイン1の第1歩である「Step 2: プロファイル XML 読込・保存の責務分離」の実コード改修作業（マイクロタスク Step2-1 の実装）に着手**する。
-2. ドメイン1（Step 2〜6）→ ドメイン2（Step 7〜9）→ ドメイン3（Step 10〜12）→ ドメイン4（Step 13）の順序で、各個別計画書に従って段階的かつ安全に実装と自動テストを進める。
+1. ドメイン1 の第2ステップである **「Step 3: プロファイル適用・復帰の一本化（`Phase5-Step3-Plan.md`）」の実コード改修作業に着手**する。
+2. `IProfileApplicationService` の適用処理一本化（`DefaultProfileSwitcher` 統合）、および入力ポーリング停止（`Halt`）ガードの実装を進める。
 
 ---
 
 ## 5. Phase5完了判定基準
 
 - [x] DIサービス内部およびコード全体の Legacy 経路が詳細監査され、分類・記録されている（Step1完了）。
-- [x] Step 2 〜 Step 13 までの全個別計画書が作成・承認され、6大ガードレールが網羅されている（計画策定完了）。
-- [ ] ドメイン1（Step 2〜6: プロファイル・設定系）の実装・単体テストが完了していること。
-- [ ] ドメイン2（Step 7〜9: アクション系）の実装・単体テストが完了していること。
-- [ ] ドメイン3（Step 10〜12: デバイス・インフラ系）の実装・単体テストが完了していること。
-- [ ] ドメイン4（Step 13: UI層）により全 ViewModel から静的直参照が排除され、DI接続されていること。
-- [ ] 全自動テスト（ユニットテスト・統合テスト）が成功し、リグレッションがないこと（Step 14）。
-- [ ] 実機CP4検証チェックリストにより、コントローラーの全機能が正常動作すること（Step 14）。
-- [ ] Legacy shim の存置／削除判断が完了していること（Step 15）。
+- [x] Step 2（プロファイル XML 読込・保存）の責務分離が完了している。
+- [ ] 各ドメイン（プロファイル、アクション、デバイス、UI）の責務分離が個別計画書通りに完了している。
+- [ ] DI サービス内部から `Global` / `Program.rootHub` / `BackingStore` への不正な委譲・再委譲が排除されている。
+- [ ] 6 大アーキテクチャ・ガードレールが実コードに正しく組み込まれ、競合・クラッシュ・リークが防止されている。
+- [ ] 全自動テスト（Actions 85件、Standalone 13件、新規単体テスト）が常時グリーン（合格）を維持している。
+- [ ] 実機コントローラーを用いた E2E 実機検証（実機CP4）が合格している。
+- [ ] 未使用となった Legacy shim の安全な削除判断が行われ、移行が完了している。
