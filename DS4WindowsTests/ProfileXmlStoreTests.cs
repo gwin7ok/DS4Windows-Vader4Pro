@@ -44,10 +44,13 @@ namespace DS4WindowsTests
                 Global.appdatapath = pathService.AppDataPath;
             }
 
+            DS4WinWPF.AppHost.CreateHost();
+            var control = DS4WinWPF.AppHost.GetService<ControlService>();
+
             var store = new ProfileXmlStore(new BackingStore());
 
             var exception = Record.Exception(() =>
-                store.LoadProfileXml(0, false, null, @"NonExistent_Phase5Step2_Path.xml", false, true));
+                store.LoadProfileXml(0, false, control, @"NonExistent_Phase5Step2_Path.xml", false, true));
 
             Assert.Null(exception);
         }
