@@ -16,11 +16,11 @@ namespace DS4Windows.DI
         /// <param name="launchProgram">関連プログラムを起動するか（既定: false）</param>
         /// <param name="source">プロファイル切替要因（既定: Manual）</param>
         /// <param name="prolog">通知ログ等の前置テキスト（既定: null）</param>
-        /// <param name="displayNotification">UI通知を表示するか（既定: true）</param>
+        /// <param name="displayNotification">UI通知を表示するか（既定: null。null の場合は IProfileSettingsService.ProfileChangedNotification を自動解決）</param>
         /// <returns>適用の成否（true: 成功, false: 失敗）</returns>
         bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false, bool launchProgram = false,
             ProfileChangeSource source = ProfileChangeSource.Manual,
-            string prolog = null, bool displayNotification = true);
+            string prolog = null, bool? displayNotification = null);
 
         /// <summary>
         /// 切断時等に指定スロットの一時プロファイル復帰予約状態をクリアします（§5.6 ガードレール）。

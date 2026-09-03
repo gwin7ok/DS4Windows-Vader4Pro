@@ -107,17 +107,32 @@ namespace DS4Windows
                 {
                     string path = GetProfilePath(profileName);
                     if (string.IsNullOrEmpty(path))
+                    {
+                        AppLogger.LogToGui($"Failed to save profile: invalid path for '{profileName}'", true);
                         return false;
+                    }
 
-                    // Phase5-Step2: IProfileXmlStore.SaveProfileXmlの成否(bool)をそのまま呼び出し元へ伝播する
-                    // (従来はGlobal.SaveProfileがvoidで成否を握りつぶしていたため常にtrueを返していた)
+                    // Phase5-Step2/Step4: IProfileXmlStore.SaveProfileXmlの成否(bool)を伝播し、成否に応じた通知・ログを出力
                     bool saveSuccess = _profileXmlStore.SaveProfileXml(deviceIndex, profileName);
-                    if (AppLogger.IsTraceEnabled)
-                        AppLogger.LogTrace($"[DI] ProfileRepository.SaveProfile: Slot {deviceIndex}, Profile '{profileName}' saved via DI, success={saveSuccess}");
+                    if (saveSuccess)
+                    {
+                        if (AppLogger.IsTraceEnabled)
+                            AppLogger.LogTrace($"[DI] SaveProfile succeeded: Slot {deviceIndex}, Profile '{profileName}'");
+                    }
+                    else
+                    {
+                        AppLogger.LogToGui($"Failed to save profile '{profileName}' for device {deviceIndex + 1}", true);
+                        if (AppLogger.IsTraceEnabled)
+                            AppLogger.LogTrace($"[DI] SaveProfile failed: Slot {deviceIndex}, Profile '{profileName}'");
+                    }
+
                     return saveSuccess;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    AppLogger.LogToGui($"Failed to save profile '{profileName}' for device {deviceIndex + 1}: {ex.Message}", true);
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] SaveProfile failed with exception: Slot {deviceIndex}, Profile '{profileName}', error={ex}");
                     return false;
                 }
             }

@@ -45,6 +45,7 @@ namespace DS4WindowsTests
                 public bool IsTemp { get; set; }
                 public bool LaunchProgram { get; set; }
                 public ProfileChangeSource Source { get; set; }
+                public bool? DisplayNotification { get; set; }
             }
 
             public List<ApplyCall> ApplyCalls { get; } = new List<ApplyCall>();
@@ -61,7 +62,7 @@ namespace DS4WindowsTests
 
             public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false, bool launchProgram = false,
                 ProfileChangeSource source = ProfileChangeSource.Manual,
-                string prolog = null, bool displayNotification = true)
+                string prolog = null, bool? displayNotification = null)
             {
                 ApplyCalls.Add(new ApplyCall
                 {
@@ -69,7 +70,8 @@ namespace DS4WindowsTests
                     ProfileName = profileName,
                     IsTemp = isTemp,
                     LaunchProgram = launchProgram,
-                    Source = source
+                    Source = source,
+                    DisplayNotification = displayNotification
                 });
                 return true;
             }
@@ -109,6 +111,33 @@ namespace DS4WindowsTests
         }
 
         [Fact]
+        public void ApplyProfile_NullDisplayNotification_ResolvesFromSettings()
+        {
+            var settings = new ProfileSettingsService();
+            settings.ProfileChangedNotification = false;
+            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
+
+            // displayNotification を省略（null）した状態で呼び出す
+            bool result = service.ApplyProfile(0, "Default");
+
+            // デバイス未接続でも false にならず安全に完了（No Feature Drop）
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ApplyProfile_ExplicitDisplayNotification_AcceptsExplicitValue()
+        {
+            var settings = new ProfileSettingsService();
+            settings.ProfileChangedNotification = false;
+            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
+
+            // 明示的に true を渡す
+            bool result = service.ApplyProfile(0, "Default", displayNotification: true);
+
+            Assert.True(result);
+        }
+
+        [Fact]
         public void RestoreFromAction_InvalidDeviceIndex_ReturnsFalse()
         {
             var settings = new ProfileSettingsService();
@@ -143,6 +172,7 @@ namespace DS4WindowsTests
             Assert.Equal(0, mockAppService.ApplyCalls[0].DeviceIndex);
             Assert.Equal("TargetProfile", mockAppService.ApplyCalls[0].ProfileName);
             Assert.Equal(ProfileChangeSource.MappingAction, mockAppService.ApplyCalls[0].Source);
+            Assert.Null(mockAppService.ApplyCalls[0].DisplayNotification);
         }
 
         [Fact]

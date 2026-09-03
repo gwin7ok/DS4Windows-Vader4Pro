@@ -101,23 +101,25 @@ namespace DS4Windows
         /// <summary>
         /// 指定されたスロットに対してプロファイルを適用します。
         /// デバイスが接続されている場合は HaltReportingRunAction により入力ループを安全に一時停止します（§5.2 ガードレール）。
+        /// displayNotification が null の場合は _profileSettings.ProfileChangedNotification を自動解決します（Phase5-Step4）。
         /// </summary>
         public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false, bool launchProgram = false,
             ProfileChangeSource source = ProfileChangeSource.Manual,
-            string prolog = null, bool displayNotification = true)
+            string prolog = null, bool? displayNotification = null)
         {
             if (deviceIndex < 0 || deviceIndex >= 4 || string.IsNullOrWhiteSpace(profileName))
                 return false;
 
             DS4Device device = _deviceState?.GetController(deviceIndex);
             bool success = false;
+            bool shouldDisplay = displayNotification ?? (_profileSettings?.ProfileChangedNotification ?? true);
 
             try
             {
                 Action applyAction = () =>
                 {
                     Global.ApplyProfile(deviceIndex, profileName, isTemp, launchProgram,
-                        _control, source, prolog, displayNotification);
+                        _control, source, prolog, shouldDisplay);
                     success = true;
                 };
 
@@ -131,7 +133,7 @@ namespace DS4Windows
                 }
 
                 if (AppLogger.IsTraceEnabled)
-                    AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyProfile: Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, success={success}");
+                    AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyProfile: Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, displayNotification={shouldDisplay}, success={success}");
             }
             catch (Exception ex)
             {
