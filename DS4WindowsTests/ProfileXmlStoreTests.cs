@@ -11,17 +11,15 @@ namespace DS4WindowsTests
         [Fact]
         public void SaveProfileXml_ShouldReturnTrueOnSuccessfulWrite()
         {
-            DS4WinWPF.AppHost.CreateHost();
-
-            string profilesDir = Path.Combine(Global.appdatapath, "Profiles");
-            if (!Directory.Exists(profilesDir))
+            var pathService = new PathService();
+            if (string.IsNullOrEmpty(Global.appdatapath))
             {
-                Directory.CreateDirectory(profilesDir);
+                Global.appdatapath = pathService.AppDataPath;
             }
 
             var store = new ProfileXmlStore(new BackingStore());
             string profileName = "Phase5Step2_ProfileXmlStore_SaveTest";
-            string path = Path.Combine(profilesDir, $"{profileName}.xml");
+            string path = pathService.GetProfilePath(profileName);
 
             try
             {
@@ -40,13 +38,16 @@ namespace DS4WindowsTests
         [Fact]
         public void LoadProfileXml_NonExistentPath_ShouldNotThrow()
         {
-            DS4WinWPF.AppHost.CreateHost();
+            var pathService = new PathService();
+            if (string.IsNullOrEmpty(Global.appdatapath))
+            {
+                Global.appdatapath = pathService.AppDataPath;
+            }
 
             var store = new ProfileXmlStore(new BackingStore());
-            var control = DS4WinWPF.AppHost.GetService<ControlService>();
 
             var exception = Record.Exception(() =>
-                store.LoadProfileXml(0, false, control, @"NonExistent_Phase5Step2_Path.xml", false, true));
+                store.LoadProfileXml(0, false, null, @"NonExistent_Phase5Step2_Path.xml", false, true));
 
             Assert.Null(exception);
         }
