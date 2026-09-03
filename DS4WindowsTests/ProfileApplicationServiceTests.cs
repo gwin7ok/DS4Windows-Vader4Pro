@@ -24,19 +24,6 @@ namespace DS4WindowsTests
                 if (index < 0 || index >= 4) return null;
                 return _devices[index];
             }
-
-            public IEnumerable<DS4Device> GetControllers() => _devices;
-        }
-
-        private class FakeProfileSettings : IProfileSettingsService
-        {
-            public bool ProfileChangedNotification { get; set; } = false;
-            public string GetProfilePath(int deviceIndex) => string.Empty;
-            public void SetProfilePath(int deviceIndex, string path) { }
-            public string GetTempProfileName(int deviceIndex) => string.Empty;
-            public void SetTempProfileName(int deviceIndex, string name) { }
-            public bool GetUseTempProfile(int deviceIndex) => false;
-            public void SetUseTempProfile(int deviceIndex, bool useTemp) { }
         }
 
         private class FakeActionChainService : IProfileActionChainService
@@ -96,7 +83,8 @@ namespace DS4WindowsTests
         [Fact]
         public void ApplyProfile_InvalidDeviceIndex_ReturnsFalse()
         {
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), new FakeProfileSettings(), new FakeActionChainService(), null);
+            var settings = new ProfileSettingsService();
+            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
 
             bool resNegative = service.ApplyProfile(-1, "Default");
             bool resTooHigh = service.ApplyProfile(4, "Default");
@@ -108,7 +96,8 @@ namespace DS4WindowsTests
         [Fact]
         public void ApplyProfile_NullOrWhitespaceProfile_ReturnsFalse()
         {
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), new FakeProfileSettings(), new FakeActionChainService(), null);
+            var settings = new ProfileSettingsService();
+            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
 
             bool resNull = service.ApplyProfile(0, null);
             bool resEmpty = service.ApplyProfile(0, "");
@@ -122,7 +111,8 @@ namespace DS4WindowsTests
         [Fact]
         public void RestoreFromAction_InvalidDeviceIndex_ReturnsFalse()
         {
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), new FakeProfileSettings(), new FakeActionChainService(), null);
+            var settings = new ProfileSettingsService();
+            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
 
             Assert.False(service.RestoreFromAction(-1));
             Assert.False(service.RestoreFromAction(4));
@@ -131,7 +121,8 @@ namespace DS4WindowsTests
         [Fact]
         public void ClearPendingRestore_ExecutesWithoutException()
         {
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), new FakeProfileSettings(), new FakeActionChainService(), null);
+            var settings = new ProfileSettingsService();
+            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
 
             var ex = Record.Exception(() => service.ClearPendingRestore(0));
             Assert.Null(ex);
