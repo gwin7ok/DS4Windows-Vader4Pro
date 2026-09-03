@@ -1,6 +1,6 @@
 # フェーズ5進捗管理表: DIサービス内部 Legacy 経路監査と責務分離
 
-最終更新日: 2026-09-04（Step 2: プロファイル XML 読込・保存の責務分離 完了）
+最終更新日: 2026-09-04（Step 3: プロファイル適用・復帰の一本化 完了）
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 Phase5全体計画書: `docs-forDIMG/MadeByAgent/Phase5-Plan.md`
@@ -16,7 +16,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 | Step 1 | DIサービス内部 Legacy 経路の詳細監査と優先度付け | **完了** | 2026-09-03 | `Phase5-Step1-legacy-delegation-audit-report.md`。DI登録23サービスおよびコード全体（4大ブラインドスポット）の棚卸し完了。 |
 | **【ドメイン1】** | **プロファイル・設定系** | | | |
 | Step 2 | プロファイル XML 読込・保存の責務分離 | **完了** | 2026-09-04 | `Phase5-Step2-Completion-Report.md`。`IProfileXmlStore`・`ProfileXmlStore`新設、排他ロック実装、`ProfileRepository`責務分離・シム化完了。 |
-| Step 3 | プロファイル適用・復帰の一本化 | **個別計画書完成** | - | `Phase5-Step3-Plan.md`。`IProfileApplicationService` 一本化、Halt停止ガード、切断時リセット追記。 |
+| Step 3 | プロファイル適用・復帰の一本化 | **完了** | 2026-09-04 | `Phase5-Step3-Completion-Report.md`。`IProfileApplicationService` 一本化、Halt保護内包、`Program.rootHub` 直参照排除、切断時クリア実装完了。 |
 | Step 4 | Save／Apply の結果伝播と通知の統一 | **個別計画書完成** | - | `Phase5-Step4-Plan.md`。通知自動解決（`bool?`）、保存成否伝播、`[DI]` ログ統一。 |
 | Step 5 | AutoProfile（自動プロファイル切替）の自律実行系DI化 | **個別計画書完成** | - | `Phase5-Step5-Plan.md`。`IAutoProfileService` 新設、`IProcessInspector` 活用、直列化保証。 |
 | Step 6 | アプリ全体設定（AppSettings）の永続化・状態管理のDI化 | **個別計画書完成** | - | `Phase5-Step6-Plan.md`。`IAppSettingsService` 新設、`Profiles.xml` ロストアップデート防止排他統合。 |
@@ -44,7 +44,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ### 【ドメイン1】プロファイル・設定系（Step 2 〜 Step 6）【実装進行中】
 - **Step 2（プロファイルXML）**: **完了**（2026-09-04）。`IProfileXmlStore` 新設、`ProfileXmlStore` による同一XML排他ロック（`_fileLock`）実装、`ProfileRepository` への状態調整集約、`Global.LoadProfile` / `SaveProfile` シム化完了。成果物: `Phase5-Step2-Completion-Report.md`。
-- **Step 3（プロファイル適用）**: `IProfileApplicationService` 一本化、入力ポーリング停止（`Halt`）保証、切断時スタッククリア組み込み済み。個別計画書完成。
+- **Step 3（プロファイル適用）**: **完了**（2026-09-04）。`IProfileApplicationService` 一本化、Halt保護内包、`DefaultProfileSwitcher` からの `Program.rootHub` 直参照完全排除、切断時スタッククリア実装完了。成果物: `Phase5-Step3-Completion-Report.md`。
 - **Step 4（結果と通知）**: 通知自動解決（`bool?`）、保存成否伝播、Halt下成否ログ、`[DI]` ログ統一組み込み済み。個別計画書完成。
 - **Step 5（AutoProfile）**: `IAutoProfileService` 新設、`IProcessInspector` 活用によるテスト自動化、スレッド直列化組み込み済み。個別計画書完成。
 - **Step 6（AppSettings）**: `IAppSettingsService` 新設、`IProfileXmlStore` とのファイル排他ロック共有（ロストアップデート防止）組み込み済み。個別計画書完成。
@@ -68,21 +68,21 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ## 3. ガードレール対策の確立状況（Phase5-Plan §5 準拠）
 
-以下の 6 大アーキテクチャ・ガードレールが、該当するすべての個別計画書に事前設計として組み込まれ、Step 2 より実装適用が開始されました。
+以下の 6 大アーキテクチャ・ガードレールが、該当するすべての個別計画書に事前設計として組み込まれ、実装適用が進められています。
 
 1. **[同一XML排他ロック・ロストアップデート防止]**: Step 2 実装完了（`_fileLock` 実装済み）、Step 6 にて共有統合予定。
-2. **[プロファイル適用時のHalt停止保証]**: Step 3, Step 4, Step 5 の計画書に反映済み（コレクション変更クラッシュ防止）。
+2. **[プロファイル適用時のHalt停止保証]**: Step 3 実装完了（`ProfileApplicationService.ApplyProfile` に内包）、Step 4, Step 5 へ継続連携。
 3. **[AutoProfileスレッド直列化]**: Step 5 の計画書に反映済み（UI Dispatcher マーシャリング）。
 4. **[On-Demandパス評価]**: Step 10 の計画書に反映済み（起動順序逆転によるパス固定化防止）。
 5. **[ViGEmネイティブドライバ保護]**: Step 12 の計画書に反映済み（PnP遅延・破棄順序の温存）。
-6. **[物理切断時の復帰スタック残留防止]**: Step 3, Step 4, Step 5 の計画書に反映済み（状態リーク防止）。
+6. **[物理切断時の復帰スタック残留防止]**: Step 3 実装完了（`ClearPendingRestore` / `ClearState` 実装済み）、Step 4, Step 5 へ継続連携。
 
 ---
 
-## 4. 次のアクション（Step 3 への着手）
+## 4. 次のアクション（Step 4 への着手）
 
-1. ドメイン1 の第2ステップである **「Step 3: プロファイル適用・復帰の一本化（`Phase5-Step3-Plan.md`）」の実コード改修作業に着手**する。
-2. `IProfileApplicationService` の適用処理一本化（`DefaultProfileSwitcher` 統合）、および入力ポーリング停止（`Halt`）ガードの実装を進める。
+1. ドメイン1 の第3ステップである **「Step 4: Save／Apply の結果伝播と通知の統一（`Phase5-Step4-Plan.md`）」の実コード改修作業に着手**する。
+2. `bool?` による通知自動解決、UI への成否通知・ステータスバー連動、および `[DI]` ログプレフィックスの標準化を進める。
 
 ---
 
@@ -90,6 +90,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 - [x] DIサービス内部およびコード全体の Legacy 経路が詳細監査され、分類・記録されている（Step1完了）。
 - [x] Step 2（プロファイル XML 読込・保存）の責務分離が完了している。
+- [x] Step 3（プロファイル適用・復帰の一本化）の責務分離が完了している。
 - [ ] 各ドメイン（プロファイル、アクション、デバイス、UI）の責務分離が個別計画書通りに完了している。
 - [ ] DI サービス内部から `Global` / `Program.rootHub` / `BackingStore` への不正な委譲・再委譲が排除されている。
 - [ ] 6 大アーキテクチャ・ガードレールが実コードに正しく組み込まれ、競合・クラッシュ・リークが防止されている。
