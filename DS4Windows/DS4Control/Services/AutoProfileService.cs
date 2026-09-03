@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using DS4Windows.DI;
 using DS4Windows.Services;
+using DS4WinWPF;
 
 namespace DS4Windows
 {

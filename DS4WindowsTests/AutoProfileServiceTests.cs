@@ -4,6 +4,7 @@ using Xunit;
 using DS4Windows;
 using DS4Windows.DI;
 using DS4Windows.Services;
+using DS4WinWPF;
 
 namespace DS4WindowsTests
 {
@@ -87,7 +88,7 @@ namespace DS4WindowsTests
             var settings = new ProfileSettingsService();
             var holder = new AutoProfileHolder();
 
-            var entity = new AutoProfileEntity(@"c:\games\testgame.exe", "test game window", false);
+            var entity = new AutoProfileEntity(@"c:\games\testgame.exe", "test game window");
             entity.ProfileNames[0] = "GameProfile";
             holder.AutoProfileColl.Add(entity);
 
@@ -117,7 +118,7 @@ namespace DS4WindowsTests
             var settings = new ProfileSettingsService();
             var holder = new AutoProfileHolder();
 
-            var entity = new AutoProfileEntity(@"c:\games\testgame.exe", "test game window", false);
+            var entity = new AutoProfileEntity(@"c:\games\testgame.exe", "test game window");
             entity.ProfileNames[0] = "GameProfile";
             holder.AutoProfileColl.Add(entity);
 
