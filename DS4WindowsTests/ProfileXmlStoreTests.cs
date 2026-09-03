@@ -11,16 +11,30 @@ namespace DS4WindowsTests
         [Fact]
         public void SaveProfileXml_ShouldReturnTrueOnSuccessfulWrite()
         {
+            DS4WinWPF.AppHost.CreateHost();
+
+            string profilesDir = Path.Combine(Global.appdatapath, "Profiles");
+            if (!Directory.Exists(profilesDir))
+            {
+                Directory.CreateDirectory(profilesDir);
+            }
+
             var store = new ProfileXmlStore(new BackingStore());
             string profileName = "Phase5Step2_ProfileXmlStore_SaveTest";
+            string path = Path.Combine(profilesDir, $"{profileName}.xml");
 
-            bool result = store.SaveProfileXml(0, profileName);
-
-            Assert.True(result);
-
-            string path = $@"{Global.appdatapath}\Profiles\{profileName}.xml";
-            if (File.Exists(path))
-                File.Delete(path);
+            try
+            {
+                bool result = store.SaveProfileXml(0, profileName);
+                Assert.True(result);
+            }
+            finally
+            {
+                if (File.Exists(path))
+                {
+                    try { File.Delete(path); } catch { }
+                }
+            }
         }
 
         [Fact]
