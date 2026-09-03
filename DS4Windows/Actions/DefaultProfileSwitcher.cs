@@ -1,5 +1,6 @@
 using System;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4Windows.Services;
 
 namespace DS4Windows.Actions
@@ -7,6 +8,7 @@ namespace DS4Windows.Actions
     /// <summary>
     /// IProfileSwitcher の標準実装。
     /// プロファイル切り替えと、切り替え直後の連鎖発火（カスケードループ）防止ガードを提供します。
+    /// プロファイル適用の実体は IProfileApplicationService に委譲し、Halt保護および一元管理を行います。
     /// </summary>
     public class DefaultProfileSwitcher : IProfileSwitcher
     {
@@ -14,6 +16,17 @@ namespace DS4Windows.Actions
         private readonly long[] _lastSwitchTicks = new long[4];
         private readonly string[] _previousProfiles = new string[4];
         private readonly bool[] _temporaryProfiles = new bool[4];
+        private readonly IProfileApplicationService _profileAppService;
+
+        public DefaultProfileSwitcher(IProfileApplicationService profileAppService = null)
+        {
+            _profileAppService = profileAppService;
+        }
+
+        private IProfileApplicationService ResolveAppService()
+        {
+            return _profileAppService ?? DS4WinWPF.AppHost.GetService<IProfileApplicationService>();
+        }
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
@@ -38,10 +51,19 @@ namespace DS4Windows.Actions
                 bool isTemporaryProfile = action.IsTemporaryProfileAction;
                 _temporaryProfiles[deviceIndex] = isTemporaryProfile;
 
-                // プロファイル適用: Global.ApplyProfile 経由で ProfilePath 更新 + LoadProfile を一括実行
-                // (source=MappingAction は SpecialAction 経由の切替であることを示す)
-                Global.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
-                    Program.rootHub, ProfileChangeSource.MappingAction);
+                // プロファイル適用: IProfileApplicationService へ一本化（Halt保護内包、Program.rootHub 直参照排除）
+                var appService = ResolveAppService();
+                if (appService != null)
+                {
+                    appService.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
+                        ProfileChangeSource.MappingAction);
+                }
+                else
+                {
+                    // 極限フォールバック: DI未初期化時（§2.1 原則）
+                    Global.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
+                        Program.rootHub, ProfileChangeSource.MappingAction);
+                }
 
                 try { AppLogger.LogToGui($"Profile switched to '{targetProfile}' on controller {deviceIndex + 1}", false); } catch { }
             }
@@ -62,8 +84,8 @@ namespace DS4Windows.Actions
                     _temporaryProfiles[deviceIndex] = false;
                 }
 
-                var profileApplication = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileApplicationService>();
-                if (profileApplication != null && profileApplication.RestoreFromAction(deviceIndex))
+                var appService = ResolveAppService();
+                if (appService != null && appService.RestoreFromAction(deviceIndex))
                 {
                     return;
                 }
@@ -71,8 +93,17 @@ namespace DS4Windows.Actions
                 string prevProfile = _previousProfiles[deviceIndex];
                 if (!string.IsNullOrWhiteSpace(prevProfile))
                 {
-                    Global.ApplyProfile(deviceIndex, prevProfile, false, false,
-                        Program.rootHub, ProfileChangeSource.MappingAction);
+                    if (appService != null)
+                    {
+                        appService.ApplyProfile(deviceIndex, prevProfile, false, false,
+                            ProfileChangeSource.MappingAction);
+                    }
+                    else
+                    {
+                        Global.ApplyProfile(deviceIndex, prevProfile, false, false,
+                            Program.rootHub, ProfileChangeSource.MappingAction);
+                    }
+
                     try { AppLogger.LogToGui($"Profile restored to '{prevProfile}' on controller {deviceIndex + 1}", false); } catch { }
                 }
             }
@@ -86,8 +117,32 @@ namespace DS4Windows.Actions
             bool xinputChange, ControlService control, ProfileChangeSource source,
             string prolog, bool showNotification)
         {
-            Global.ApplyProfile(deviceIndex, profileName, launchProgram, xinputChange,
-                control, source, prolog, showNotification);
+            var appService = ResolveAppService();
+            if (appService != null)
+            {
+                appService.ApplyProfile(deviceIndex, profileName, false, launchProgram,
+                    source, prolog, showNotification);
+            }
+            else
+            {
+                Global.ApplyProfile(deviceIndex, profileName, launchProgram, xinputChange,
+                    control, source, prolog, showNotification);
+            }
+        }
+
+        /// <summary>
+        /// 切断時等に指定スロットの内部状態をクリアします（§5.6 ガードレール）。
+        /// </summary>
+        public void ClearState(int deviceIndex)
+        {
+            if (deviceIndex < 0 || deviceIndex >= 4) return;
+
+            _previousProfiles[deviceIndex] = null;
+            _temporaryProfiles[deviceIndex] = false;
+            _lastSwitchTicks[deviceIndex] = 0;
+
+            var appService = ResolveAppService();
+            appService?.ClearPendingRestore(deviceIndex);
         }
     }
 }

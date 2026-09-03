@@ -24,5 +24,11 @@ namespace DS4Windows.Actions
         void ApplyManualProfile(int deviceIndex, string profileName, bool launchProgram,
             bool xinputChange, ControlService control, ProfileChangeSource source,
             string prolog, bool showNotification);
+
+        /// <summary>
+        /// 切断時等に指定スロットの切り替え内部状態（直前プロファイル等）をクリアします（§5.6 ガードレール）。
+        /// </summary>
+        /// <param name="deviceIndex">コントローラーのデバイスインデックス（0〜3）</param>
+        void ClearState(int deviceIndex);
     }
 }

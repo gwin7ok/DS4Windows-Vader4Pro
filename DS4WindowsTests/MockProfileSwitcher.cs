@@ -18,6 +18,7 @@ namespace DS4WindowsTests
 
         public List<SwitchCall> SwitchProfileCalls { get; } = new List<SwitchCall>();
         public List<int> RestoreProfileCalls { get; } = new List<int>();
+        public List<int> ClearStateCalls { get; } = new List<int>();
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
@@ -39,10 +40,16 @@ namespace DS4WindowsTests
         {
         }
 
+        public void ClearState(int deviceIndex)
+        {
+            ClearStateCalls.Add(deviceIndex);
+        }
+
         public void Reset()
         {
             SwitchProfileCalls.Clear();
             RestoreProfileCalls.Clear();
+            ClearStateCalls.Clear();
         }
     }
 }
