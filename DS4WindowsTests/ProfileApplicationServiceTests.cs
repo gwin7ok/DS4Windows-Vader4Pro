@@ -133,7 +133,9 @@ namespace DS4WindowsTests
         {
             var mockAppService = new MockProfileAppService();
             var switcher = new DefaultProfileSwitcher(mockAppService);
-            var action = new SpecialAction("SwitchTest", "Cross", "Profile", "Profile", 0, "TargetProfile");
+            var action = new SpecialAction("SwitchTest", "Cross", "Profile", "TargetProfile", 0, "");
+            action.typeID = SpecialAction.ActionTypeId.Profile;
+            action.details = "TargetProfile";
 
             switcher.SwitchProfile(0, action);
 
