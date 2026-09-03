@@ -79,7 +79,7 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void Properties_UpdateGlobalAndFiresSettingChangedEvent()
+        public void Properties_SetAndGet_FiresSettingChangedEvent()
         {
             var mockXmlStore = new MockProfileXmlStore();
             var service = new AppSettingsService(mockXmlStore);
@@ -87,27 +87,27 @@ namespace DS4WindowsTests
             service.SettingChanged += (s, prop) => changedProperty = prop;
 
             // StartMinimized
-            bool originalMin = service.StartMinimized;
-            service.StartMinimized = !originalMin;
+            service.StartMinimized = true;
             Assert.Equal(nameof(service.StartMinimized), changedProperty);
-            Assert.Equal(!originalMin, Global.startMinimized);
-            service.StartMinimized = originalMin; // 復元
+            Assert.True(service.StartMinimized);
 
             // CloseMinimizes
             changedProperty = null;
-            bool originalClose = service.CloseMinimizes;
-            service.CloseMinimizes = !originalClose;
+            service.CloseMinimizes = true;
             Assert.Equal(nameof(service.CloseMinimizes), changedProperty);
-            Assert.Equal(!originalClose, Global.closeMinimizes);
-            service.CloseMinimizes = originalClose; // 復元
+            Assert.True(service.CloseMinimizes);
 
             // CheckWhen
             changedProperty = null;
-            int originalCheck = service.CheckWhen;
-            service.CheckWhen = originalCheck + 1;
+            service.CheckWhen = 24;
             Assert.Equal(nameof(service.CheckWhen), changedProperty);
-            Assert.Equal(originalCheck + 1, Global.CheckWhen);
-            service.CheckWhen = originalCheck; // 復元
+            Assert.Equal(24, service.CheckWhen);
+
+            // UdpServerPort
+            changedProperty = null;
+            service.UdpServerPort = 26761;
+            Assert.Equal(nameof(service.UdpServerPort), changedProperty);
+            Assert.Equal(26761, service.UdpServerPort);
         }
 
         [Fact]

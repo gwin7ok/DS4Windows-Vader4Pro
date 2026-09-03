@@ -8,6 +8,15 @@ namespace DS4Windows.Services
         private readonly IProfileXmlStore _xmlStore;
         private readonly IPathService _pathService;
 
+        private bool _startMinimized;
+        private bool _minimizeToTaskbar;
+        private bool _closeMinimizes;
+        private int _checkWhen;
+        private bool _useUdpServer;
+        private int _udpServerPort = 26760;
+        private string _udpServerListenAddress = "127.0.0.1";
+        private bool _useExclusiveMode;
+
         public event EventHandler<string> SettingChanged;
 
         public AppSettingsService(IProfileXmlStore xmlStore = null, IPathService pathService = null)
@@ -48,12 +57,12 @@ namespace DS4Windows.Services
 
         public bool StartMinimized
         {
-            get => Global.startMinimized;
+            get => _startMinimized;
             set
             {
-                if (Global.startMinimized != value)
+                if (_startMinimized != value)
                 {
-                    Global.startMinimized = value;
+                    _startMinimized = value;
                     NotifyChanged(nameof(StartMinimized));
                 }
             }
@@ -61,12 +70,12 @@ namespace DS4Windows.Services
 
         public bool MinimizeToTaskbar
         {
-            get => Global.minToTaskbar;
+            get => _minimizeToTaskbar;
             set
             {
-                if (Global.minToTaskbar != value)
+                if (_minimizeToTaskbar != value)
                 {
-                    Global.minToTaskbar = value;
+                    _minimizeToTaskbar = value;
                     NotifyChanged(nameof(MinimizeToTaskbar));
                 }
             }
@@ -74,12 +83,12 @@ namespace DS4Windows.Services
 
         public bool CloseMinimizes
         {
-            get => Global.closeMinimizes;
+            get => _closeMinimizes;
             set
             {
-                if (Global.closeMinimizes != value)
+                if (_closeMinimizes != value)
                 {
-                    Global.closeMinimizes = value;
+                    _closeMinimizes = value;
                     NotifyChanged(nameof(CloseMinimizes));
                 }
             }
@@ -87,12 +96,12 @@ namespace DS4Windows.Services
 
         public int CheckWhen
         {
-            get => Global.CheckWhen;
+            get => _checkWhen;
             set
             {
-                if (Global.CheckWhen != value)
+                if (_checkWhen != value)
                 {
-                    Global.CheckWhen = value;
+                    _checkWhen = value;
                     NotifyChanged(nameof(CheckWhen));
                 }
             }
@@ -100,12 +109,12 @@ namespace DS4Windows.Services
 
         public bool UseUdpServer
         {
-            get => Global.IsUsingUDPServer();
+            get => _useUdpServer;
             set
             {
-                if (Global.useUDPServer != value)
+                if (_useUdpServer != value)
                 {
-                    Global.useUDPServer = value;
+                    _useUdpServer = value;
                     NotifyChanged(nameof(UseUdpServer));
                 }
             }
@@ -113,12 +122,12 @@ namespace DS4Windows.Services
 
         public int UdpServerPort
         {
-            get => Global.GetUDPServerPort();
+            get => _udpServerPort;
             set
             {
-                if (Global.udpServerPort != value)
+                if (_udpServerPort != value)
                 {
-                    Global.udpServerPort = value;
+                    _udpServerPort = value;
                     NotifyChanged(nameof(UdpServerPort));
                 }
             }
@@ -126,12 +135,12 @@ namespace DS4Windows.Services
 
         public string UdpServerListenAddress
         {
-            get => Global.GetUDPServerListenAddress();
+            get => _udpServerListenAddress;
             set
             {
-                if (Global.udpServerListenAddress != value)
+                if (_udpServerListenAddress != value)
                 {
-                    Global.udpServerListenAddress = value;
+                    _udpServerListenAddress = value;
                     NotifyChanged(nameof(UdpServerListenAddress));
                 }
             }
@@ -139,12 +148,12 @@ namespace DS4Windows.Services
 
         public bool UseExclusiveMode
         {
-            get => Global.useExclusiveMode;
+            get => _useExclusiveMode;
             set
             {
-                if (Global.useExclusiveMode != value)
+                if (_useExclusiveMode != value)
                 {
-                    Global.useExclusiveMode = value;
+                    _useExclusiveMode = value;
                     NotifyChanged(nameof(UseExclusiveMode));
                 }
             }
