@@ -1,5 +1,6 @@
 using System;
 using DS4Windows.DI;
+using DS4WinWPF.DS4Control;
 
 namespace DS4Windows.Services
 {

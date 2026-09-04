@@ -11,6 +11,7 @@ namespace DS4Windows
     {
         private readonly OutputSlotManager _slotManager;
         private readonly IOutputSlotStore _store;
+        private readonly ControlService _control;
         private readonly object _syncLock = new object();
         public const int MAX_SLOTS = 8;
 
@@ -23,10 +24,11 @@ namespace DS4Windows
 
         private OutputDevice[] _outputDevices = new OutputDevice[MAX_SLOTS];
 
-        public OutputSlotService(OutputSlotManager slotManager = null, IOutputSlotStore store = null)
+        public OutputSlotService(OutputSlotManager slotManager = null, IOutputSlotStore store = null, ControlService control = null)
         {
-            _slotManager = slotManager ?? (Program.rootHub?.outputslotMan ?? new OutputSlotManager());
-            _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new OutputSlotStore();
+            _control = control ?? Program.rootHub;
+            _slotManager = slotManager ?? _control?.OutputslotMan ?? new OutputSlotManager();
+            _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new Services.OutputSlotStore();
         }
 
         public OutputDevice[] OutputDevices
@@ -116,26 +118,13 @@ namespace DS4Windows
 
             try
             {
-                var slotDevice = GetOutSlotDevice(slotNumber);
-                if (slotDevice == null) return false;
-
-                // §5.5 ガードレール: ViGEm ネイティブドライバ保護
-                OutputDevice outDevice = null;
-                if (devType == OutContType.X360)
+                // §5.5 最重要ガードレール: ViGEm ネイティブドライバ保護
+                // ControlService の正規 API を経由して安全にプラグイン（PnP遅延・キューイング・破棄順序の完全維持）
+                if (_control != null)
                 {
-                    outDevice = new Xbox360OutDevice();
-                }
-                else if (devType == OutContType.DS4)
-                {
-                    outDevice = DS4OutDeviceFactory.CreateDS4Device(slotNumber);
+                    _control.PluginOutDev(slotNumber, devType);
                 }
 
-                if (outDevice != null && _slotManager != null)
-                {
-                    _slotManager.DeferredPlugin(outDevice, slotNumber, slotDevice, "");
-                }
-
-                SetOutputDevice(slotNumber, outDevice);
                 SetOutputDeviceType(slotNumber, devType);
                 return true;
             }
@@ -153,13 +142,11 @@ namespace DS4Windows
 
             try
             {
-                var slotDevice = GetOutSlotDevice(slotNumber);
-                if (slotDevice == null) return false;
-
-                // §5.5 ガードレール: ViGEm ネイティブドライバ保護
-                if (_slotManager != null)
+                // §5.5 最重要ガードレール: ViGEm ネイティブドライバ保護
+                // ControlService の正規 API を経由して安全にアンプラグ（PnP遅延・キューイング・破棄順序の完全維持）
+                if (_control != null)
                 {
-                    _slotManager.DeferredUnplug(slotDevice, slotNumber);
+                    _control.UnplugOutDev(slotNumber);
                 }
 
                 SetOutputDevice(slotNumber, null);
