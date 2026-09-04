@@ -1,6 +1,6 @@
 # フェーズ5進捗管理表: DIサービス内部 Legacy 経路監査と責務分離
 
-最終更新日: 2026-09-04（Step 9: Actions基盤とMacroPlayerの整理 完了 / ドメイン2全完了）
+最終更新日: 2026-09-05（Step 10: 残存サービス境界の整理 完了）
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 Phase5全体計画書: `docs-forDIMG/MadeByAgent/Phase5-Plan.md`
@@ -9,7 +9,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 1. 全体進捗サマリ（ドメイン1・2全完了、ドメイン3着手へ）
+## 1. 全体進捗サマリ（ドメイン1・2全完了、ドメイン3進行中）
 
 | ステップ | 名称 | 状態 | 完了日 | 成果物・備考 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -24,8 +24,8 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 | Step 7 | SpecialAction 永続化の責務分離 | **完了** | 2026-09-04 | `Phase5-Step7-Completion-Report.md`。独自リスト廃止・`BackingStore.actions`一本化、二重管理解消、ActionsPath DI化完了。 |
 | Step 8 | アクション連鎖処理の責務分離 | **完了** | 2026-09-04 | `Phase5-Step8-Completion-Report.md`。`IMappingActionDispatcher`新設、`Mapping.cs`境界化、`ProfileActionProvider`一本化完了。 |
 | Step 9 | Actions基盤とMacroPlayerの整理 | **完了** | 2026-09-04 | `Phase5-Step9-Completion-Report.md`。`IActionFactory`注入、トグル状態自律管理、`DefaultMacroPlayer`への`IVirtualKBM`注入完了。【ドメイン2全完了】 |
-| **【ドメイン3】** | **デバイス・インフラ系（次期着手）** | | | |
-| Step 10 | 残存サービス境界の整理 | **個別計画書完成** | - | `Phase5-Step10-Plan.md`。`PathService` キャッシュ完全撤廃（On-Demand化）、`IDeviceStateAccessor` 活用。 |
+| **【ドメイン3】** | **デバイス・インフラ系（進行中）** | | | |
+| Step 10 | 残存サービス境界の整理 | **完了** | 2026-09-05 | `Phase5-Step10-Completion-Report.md`。`PathService` On-Demand化(§5.4)、`ProfileSettingsService`循環依存完全解消(Pure DI復帰)、UdpServer境界化完了。 |
 | Step 11 | デバイス検出・列挙の静的委譲分離 | **個別計画書完成** | - | `Phase5-Step11-Plan.md`。`IDs4DeviceRegistry` 契約強化と `DS4Devices` 段階的シム化。 |
 | Step 12 | 出力スロット層（OutputSlot）の整理 | **個別計画書完成** | - | `Phase5-Step12-Plan.md`。`IOutputSlotStore` 新設、ViGEm ネイティブドライバ保護（PnP遅延維持）。 |
 | **【ドメイン4】** | **UI統合・検証・クリーンアップ** | | | |
@@ -54,8 +54,8 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 - **Step 8（アクション連鎖）**: **完了**（2026-09-04）。`IMappingActionDispatcher` 新設による `Mapping.cs` 境界化（解体回避）、`ProfileActionProvider` の `BackingStore` 一本化完了。成果物: `Phase5-Step8-Completion-Report.md`。
 - **Step 9（Actions基盤＆マクロ）**: **完了**（2026-09-04）。`DefaultActionManager` への `IActionFactory` 注入、トグル状態自律管理・自立イベント発火、`DefaultMacroPlayer` への `IVirtualKBM` 注入完了。成果物: `Phase5-Step9-Completion-Report.md`。
 
-### 【ドメイン3】デバイス・インフラ系（Step 10 〜 Step 12）【次期着手】
-- **Step 10（残存サービス）**: `PathService` のキャッシュ完全撤廃（On-Demand評価 §5.4）、`ProfileSettingsService` の `IDeviceStateAccessor` 活用。個別計画書完成。
+### 【ドメイン3】デバイス・インフラ系（Step 10 〜 Step 12）【進行中】
+- **Step 10（残存サービス）**: **完了**（2026-09-05）。`PathService` のキャッシュ完全撤廃（On-Demand評価 §5.4）、`ProfileSettingsService` の循環依存完全解消（Pure DI復帰）、`UdpServerService` 新設（モーションサーバー境界化）。成果物: `Phase5-Step10-Completion-Report.md`。
 - **Step 11（デバイス検出）**: `IDs4DeviceRegistry` 契約強化と `DS4Devices` 段階的シム化（生デバイス列挙に専念）。個別計画書完成。
 - **Step 12（出力スロット）**: `IOutputSlotStore` 新設（永続化抽象化）、ViGEm ネイティブドライバ保護（PnP遅延維持 §5.5）。個別計画書完成。
 
@@ -73,16 +73,16 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 1. **[同一XML排他ロック・ロストアップデート防止]**: Step 2 実装完了、Step 6 にて `SaveAppSettingsXml` との完全な共有統合を達成（`ProfileXmlStore.XmlIoLock`）。Step 7 の `Actions.xml` も排他保護完了。
 2. **[プロファイル適用時のHalt停止保証]**: Step 3 実装完了（`ProfileApplicationService.ApplyProfile` に内包）、Step 4 / Step 5 にて適用完了。
 3. **[AutoProfileスレッド直列化]**: Step 5 実装完了（`AutoProfileService.CheckProfiles` の `_syncLock` 排他直列化保護）。
-4. **[On-Demandパス評価]**: Step 10 にて完全適用予定（起動順序逆転によるパス固定化防止）。
+4. **[On-Demandパス評価]**: Step 10 にて完全適用完了（起動順序逆転によるパス固定化ハザードを物理的に根絶）。
 5. **[ViGEmネイティブドライバ保護]**: Step 12 の計画書に反映済み（PnP遅延・破棄順序の温存）。
 6. **[物理切断時の復帰スタック残留防止]**: Step 3 実装完了（`ClearPendingRestore` / `ClearState` 実装済み）。
 
 ---
 
-## 4. 次のアクション（【ドメイン3】デバイス・インフラ系 Step 10 への着手）
+## 4. 次のアクション（Step 11 への着手）
 
-1. 【ドメイン3】デバイス・インフラ系の第 1 ステップである **「Step 10: 残存サービス境界の整理（`Phase5-Step10-Plan.md`）」の実コード改修作業に着手**する。
-2. `PathService` のキャッシュ完全撤廃（On-Demand パス評価 §5.4 による起動順序逆転ハザード防止）、および `ProfileSettingsService` の `IDeviceStateAccessor` 活用を進める。
+1. 【ドメイン3】デバイス・インフラ系の第 2 ステップである **「Step 11: デバイス検出・列挙の静的委譲分離（`Phase5-Step11-Plan.md`）」の実コード改修作業に着手**する。
+2. `IDs4DeviceRegistry` の契約強化（生列挙メソッドの追加）、`Ds4DeviceRegistryAdapter` の拡張、および静的クラス `DS4Devices` の段階的シム化を進める。
 
 ---
 
@@ -97,6 +97,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 - [x] Step 7（SpecialAction 永続化の責務分離）の責務分離が完了している。
 - [x] Step 8（アクション連鎖処理の責務分離）の責務分離が完了している。
 - [x] Step 9（Actions基盤とMacroPlayerの整理）の責務分離が完了している。
+- [x] Step 10（残存サービス境界の整理）の責務分離が完了している。
 - [ ] 各ドメイン（プロファイル【完】、アクション【完】、デバイス【進行中】、UI）の責務分離が個別計画書通りに完了している。
 - [ ] DI サービス内部から `Global` / `Program.rootHub` / `BackingStore` への不正な委譲・再委譲が排除されている。
 - [ ] 6 大アーキテクチャ・ガードレールが実コードに正しく組み込まれ、競合・クラッシュ・リークが防止されている。
