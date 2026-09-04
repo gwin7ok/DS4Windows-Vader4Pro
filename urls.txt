@@ -501,6 +501,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/DS4Windows.Actions.Tests.csproj
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/DefaultActionManagerTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/DeviceStateServiceTests.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/Ds4DeviceRegistryTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/EnvironmentServiceTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/LaunchProcessActionTests.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4WindowsTests/MacroActionTests.cs
