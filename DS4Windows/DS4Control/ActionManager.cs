@@ -1,4 +1,4 @@
-﻿using DS4Windows.Services;
+using DS4Windows.Services;
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -43,10 +43,10 @@ namespace DS4Windows
         public Actions.Action ActionImpl;
         public ActionInstanceState[] States;
 
-        public ActionEntry(SpecialAction action)
+        public ActionEntry(SpecialAction action, IActionFactory factory = null)
         {
             ActionDef = action;
-            ActionImpl = ActionFactory.CreateFrom(action, -1);
+            ActionImpl = factory != null ? factory.CreateFrom(action, -1) : ActionFactory.CreateFrom(action, -1);
             States = new ActionInstanceState[Global.MAX_DS4_CONTROLLER_COUNT];
             for (int i = 0; i < States.Length; ++i) States[i] = new ActionInstanceState();
             try

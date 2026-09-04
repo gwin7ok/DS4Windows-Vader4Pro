@@ -1,4 +1,4 @@
-﻿using DS4Windows.Services;
+using DS4Windows.Services;
 using System;
 using System.Collections.Generic;
 using DS4Windows.Actions;
@@ -15,6 +15,8 @@ namespace DS4Windows.Actions.Tests
         public List<string> RegisteredActions { get; } = new List<string>();
         public IReadOnlyList<Action> Actions => new List<Action>();
 
+        public event Action<SpecialAction, int, bool, bool> ToggledOnChanged;
+
         public Action GetActionByIndex(int index) => null;
         public Action GetActionByName(string name) => null;
         public ActionInstanceState GetStateFor(SpecialAction action, int device) => new ActionInstanceState();
@@ -24,7 +26,10 @@ namespace DS4Windows.Actions.Tests
         public void ClearDeviceState(int device) { }
         public bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler) => false;
         public bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler) => false;
-        public void SetToggledOn(SpecialAction action, int device, bool value) { }
+        public void SetToggledOn(SpecialAction action, int device, bool value)
+        {
+            ToggledOnChanged?.Invoke(action, device, false, value);
+        }
 
         public void RegisterAction(string actionName, IActionBinding binding)
         {

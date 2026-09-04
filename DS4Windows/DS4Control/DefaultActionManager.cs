@@ -1,4 +1,4 @@
-﻿using DS4Windows.Services;
+using DS4Windows.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,15 +17,23 @@ namespace DS4Windows.Actions
         // Button state table: device x controlIndex
         private bool[,] buttonStates = null;
         private const int ToggleReleaseHoldMsLocal = 200;
+        private readonly IActionFactory _actionFactory;
 
-        private static ActionEntry GetOrCreateEntryInternal(Dictionary<string, ActionEntry> actionsDict, SpecialAction action)
+        public event Action<SpecialAction, int, bool, bool> ToggledOnChanged;
+
+        public DefaultActionManager(IActionFactory actionFactory = null)
+        {
+            _actionFactory = actionFactory ?? DS4WinWPF.AppHost.GetService<IActionFactory>() ?? new DefaultActionFactory();
+        }
+
+        private static ActionEntry GetOrCreateEntryInternal(Dictionary<string, ActionEntry> actionsDict, SpecialAction action, IActionFactory factory)
         {
             if (action == null) return null;
             lock (actionsDict)
             {
                 if (!actionsDict.TryGetValue(action.name, out ActionEntry ent) || ent == null)
                 {
-                    ent = new ActionEntry(action);
+                    ent = new ActionEntry(action, factory);
                     actionsDict[action.name] = ent;
                 }
                 return ent;
@@ -42,7 +50,7 @@ namespace DS4Windows.Actions
                 {
                     foreach (var sa in ActionRegistry.AllActions())
                     {
-                        try { GetOrCreateEntryInternal(actions, sa); } catch { }
+                        try { GetOrCreateEntryInternal(actions, sa, _actionFactory); } catch { }
                     }
                 }
 
@@ -69,7 +77,7 @@ namespace DS4Windows.Actions
                 {
                     if (!actionInstances.TryGetValue(index, out Actions.Action act) || act == null)
                     {
-                        act = ActionFactory.CreateFrom(sa, index);
+                        act = _actionFactory.CreateFrom(sa, index);
                         actionInstances[index] = act;
                     }
                     return act;
@@ -119,7 +127,7 @@ namespace DS4Windows.Actions
         {
             try
             {
-                var ent = GetOrCreateEntryInternal(actions, action);
+                var ent = GetOrCreateEntryInternal(actions, action, _actionFactory);
                 if (ent == null) return null;
                 if (device < 0 || device >= ent.States.Length) return null;
                 return ent.States[device];
@@ -138,9 +146,9 @@ namespace DS4Windows.Actions
                         try
                         {
                             if (ent?.ActionDef == null) continue;
-                                if (ushort.TryParse(ent.ActionDef.details, out ushort k) && k == key)
+                            if (ushort.TryParse(ent.ActionDef.details, out ushort k) && k == key)
                             {
-                                for (int d = 0; d < ent.States.Length; d++) ActionManager.SetToggledOn(ent.ActionDef, d, false);
+                                for (int d = 0; d < ent.States.Length; d++) SetToggledOn(ent.ActionDef, d, false);
                             }
                         }
                         catch { }
@@ -161,7 +169,7 @@ namespace DS4Windows.Actions
                         try
                         {
                             if (ent?.States == null) continue;
-                            for (int d = 0; d < ent.States.Length; d++) ActionManager.SetToggledOn(ent.ActionDef, d, false);
+                            for (int d = 0; d < ent.States.Length; d++) SetToggledOn(ent.ActionDef, d, false);
                         }
                         catch { }
                     }
@@ -202,6 +210,7 @@ namespace DS4Windows.Actions
                                     try { AppLogger.LogTrace($"DefaultActionManager.ClearDeviceState: reset ActionInstanceState for action={(ent?.ActionDef?.name ?? "(null)")} device={device} (IsToggledOn cleared)"); } catch { }
                                     if (old != false)
                                     {
+                                        try { ToggledOnChanged?.Invoke(ent.ActionDef, device, old, false); } catch { }
                                         try { ActionManager.FireToggledOnChanged(ent.ActionDef, device, old, false); } catch { }
                                     }
                                 }
@@ -221,17 +230,16 @@ namespace DS4Windows.Actions
         {
             try
             {
-                var ent = GetOrCreateEntryInternal(actions, action);
+                var ent = GetOrCreateEntryInternal(actions, action, _actionFactory);
                 if (ent == null) return;
                 if (device < 0 || device >= ent.States.Length) return;
                 var st = ent.States[device];
                 if (st == null) return;
-            bool old = st.IsToggledOn;
-            if (old == value) return;
-            st.IsToggledOn = value;
-            try { ActionManager.FireToggledOnChanged(action, device, old, value); } catch { }
-
-                // No defensive timestamping here; toggled-on lifecycle is authoritative and single-writer.
+                bool old = st.IsToggledOn;
+                if (old == value) return;
+                st.IsToggledOn = value;
+                try { ToggledOnChanged?.Invoke(action, device, old, value); } catch { }
+                try { ActionManager.FireToggledOnChanged(action, device, old, value); } catch { }
 
                 try
                 {
@@ -285,15 +293,11 @@ namespace DS4Windows.Actions
             catch { }
         }
 
-        // NotifyTriggerEstablished removed; use DispatchTriggerEstablished or DispatchTriggerEdge instead.
-
-        // NotifyTriggerReleased removed; use DispatchTriggerReleased or DispatchTriggerEdge instead.
-
         public bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler)
         {
             try
             {
-                var ent = GetOrCreateEntryInternal(actions, action);
+                var ent = GetOrCreateEntryInternal(actions, action, _actionFactory);
                 if (ent?.ActionImpl == null) return false;
                 try
                 {
@@ -325,8 +329,7 @@ namespace DS4Windows.Actions
         {
             try
             {
-                // Dispatch release to action implementation regardless of switch mode.
-                var ent = GetOrCreateEntryInternal(actions, action);
+                var ent = GetOrCreateEntryInternal(actions, action, _actionFactory);
                 if (ent?.ActionImpl == null) return false;
                 try
                 {

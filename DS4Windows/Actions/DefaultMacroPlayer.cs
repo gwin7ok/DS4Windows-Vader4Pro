@@ -1,11 +1,13 @@
 using System;
 using System.Threading;
 using DS4Windows;
+using DS4Windows.Services;
 
 namespace DS4Windows.Actions
 {
     /// <summary>
     /// IMacroPlayer の標準実装
+    /// IVirtualKBM をコンストラクタ注入で受領し、
     /// Mapping.PlayMacroDirect / Mapping.EndMacroDirect へ安全に委譲し、
     /// 機能・エッジケース処理を 100% 維持したまま DI 境界を提供します。
     /// </summary>
@@ -13,6 +15,12 @@ namespace DS4Windows.Actions
     {
         private readonly bool[] _isPlaying = new bool[4];
         private readonly object _lock = new object();
+        private readonly IVirtualKBM _virtualKBM;
+
+        public DefaultMacroPlayer(IVirtualKBM virtualKBM = null)
+        {
+            _virtualKBM = virtualKBM ?? DS4WinWPF.AppHost.GetService<IVirtualKBM>();
+        }
 
         public bool IsPlaying(int deviceIndex)
         {
