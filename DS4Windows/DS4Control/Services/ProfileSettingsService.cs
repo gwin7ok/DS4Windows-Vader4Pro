@@ -19,12 +19,9 @@ namespace DS4Windows
         // (データの二重管理を避けるため、専用バックアップ配列は持たない)
         private readonly BackingStore _config;
 
-        private readonly IDeviceStateAccessor _deviceStateAccessor;
-
-        public ProfileSettingsService(BackingStore config = null, IDeviceStateAccessor deviceStateAccessor = null)
+        public ProfileSettingsService(BackingStore config = null)
         {
             _config = config ?? Global.store;
-            _deviceStateAccessor = deviceStateAccessor ?? DS4WinWPF.AppHost.GetService<IDeviceStateAccessor>();
         }
 
         public CultureInfo ConfigDecimalCulture { get; } = new CultureInfo("en-US");
