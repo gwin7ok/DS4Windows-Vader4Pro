@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DS4Windows.DI;
 using DS4Windows.Services;
+using DS4WinWPF.DS4Control;
 
 namespace DS4Windows
 {
@@ -10,24 +11,87 @@ namespace DS4Windows
     {
         private readonly OutputSlotManager _slotManager;
         private readonly IOutputSlotStore _store;
-        private readonly OutContType[] _deviceTypes = new OutContType[8];
-        private readonly OutputDevice[] _outputDevices = new OutputDevice[8];
+        private readonly object _syncLock = new object();
+        public const int MAX_SLOTS = 8;
 
         public event EventHandler<OutputSlotChangedEventArgs> OutputSlotChanged;
+
+        private OutContType[] _deviceTypes = new OutContType[MAX_SLOTS] {
+            OutContType.X360, OutContType.X360, OutContType.X360, OutContType.X360,
+            OutContType.X360, OutContType.X360, OutContType.X360, OutContType.X360
+        };
+
+        private OutputDevice[] _outputDevices = new OutputDevice[MAX_SLOTS];
 
         public OutputSlotService(OutputSlotManager slotManager = null, IOutputSlotStore store = null)
         {
             _slotManager = slotManager ?? (Program.rootHub?.outputslotMan ?? new OutputSlotManager());
             _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new OutputSlotStore();
+        }
 
-            for (int i = 0; i < 8; i++)
+        public OutputDevice[] OutputDevices
+        {
+            get
             {
-                _deviceTypes[i] = OutContType.None;
+                lock (_syncLock)
+                {
+                    return _outputDevices;
+                }
             }
         }
 
-        public OutputDevice[] OutputDevices => _outputDevices;
+        public OutputDevice GetOutputDevice(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= MAX_SLOTS)
+                return null;
 
+            lock (_syncLock)
+            {
+                return _outputDevices[slotIndex];
+            }
+        }
+
+        public bool IsSlotPlugin(int slotIndex)
+        {
+            var device = GetOutputDevice(slotIndex);
+            return device != null;
+        }
+
+        public OutContType GetOutputDeviceType(int slotIndex)
+        {
+            if (slotIndex >= 0 && slotIndex < _deviceTypes.Length)
+                return _deviceTypes[slotIndex];
+            return OutContType.X360;
+        }
+
+        public void SetOutputDeviceType(int slotIndex, OutContType deviceType)
+        {
+            if (slotIndex >= 0 && slotIndex < _deviceTypes.Length)
+            {
+                lock (_syncLock)
+                {
+                    _deviceTypes[slotIndex] = deviceType;
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDeviceType: Slot {slotIndex} = {deviceType}");
+                }
+            }
+        }
+
+        public void SetOutputDevice(int slotIndex, OutputDevice outputDevice)
+        {
+            if (slotIndex >= 0 && slotIndex < MAX_SLOTS)
+            {
+                lock (_syncLock)
+                {
+                    _outputDevices[slotIndex] = outputDevice;
+                    if (AppLogger.IsTraceEnabled)
+                        AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDevice: Slot {slotIndex} output device updated");
+                    OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, outputDevice));
+                }
+            }
+        }
+
+        // === Step 12 拡充: 実体 OutputSlotManager 連動操作 ===
         public IReadOnlyList<OutSlotDevice> OutputSlots
         {
             get
@@ -40,32 +104,15 @@ namespace DS4Windows
             }
         }
 
-        public OutContType GetOutputDeviceType(int slot)
-        {
-            if (slot < 0 || slot >= 8) return OutContType.None;
-            return _deviceTypes[slot];
-        }
-
-        public void SetOutputDeviceType(int slot, OutContType type)
-        {
-            if (slot < 0 || slot >= 8) return;
-            OutContType oldType = _deviceTypes[slot];
-            if (oldType != type)
-            {
-                _deviceTypes[slot] = type;
-                OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slot, type));
-            }
-        }
-
         public OutSlotDevice GetOutSlotDevice(int slotNumber)
         {
-            if (slotNumber < 0 || slotNumber >= 8) return null;
+            if (slotNumber < 0 || slotNumber >= MAX_SLOTS) return null;
             return _slotManager?.GetOutSlotDevice(slotNumber);
         }
 
         public bool PluginSlot(int slotNumber, OutContType devType)
         {
-            if (slotNumber < 0 || slotNumber >= 8) return false;
+            if (slotNumber < 0 || slotNumber >= MAX_SLOTS) return false;
 
             try
             {
@@ -73,7 +120,6 @@ namespace DS4Windows
                 if (slotDevice == null) return false;
 
                 // §5.5 ガードレール: ViGEm ネイティブドライバ保護
-                // OutputSlotManager の内部キューイング（DeferredPlugin）を経由して安全にプラグイン
                 OutputDevice outDevice = null;
                 if (devType == OutContType.X360)
                 {
@@ -89,6 +135,7 @@ namespace DS4Windows
                     _slotManager.DeferredPlugin(outDevice, slotNumber, slotDevice, "");
                 }
 
+                SetOutputDevice(slotNumber, outDevice);
                 SetOutputDeviceType(slotNumber, devType);
                 return true;
             }
@@ -102,7 +149,7 @@ namespace DS4Windows
 
         public bool UnplugSlot(int slotNumber)
         {
-            if (slotNumber < 0 || slotNumber >= 8) return false;
+            if (slotNumber < 0 || slotNumber >= MAX_SLOTS) return false;
 
             try
             {
@@ -110,12 +157,12 @@ namespace DS4Windows
                 if (slotDevice == null) return false;
 
                 // §5.5 ガードレール: ViGEm ネイティブドライバ保護
-                // OutputSlotManager の内部キューイング（DeferredUnplug）を経由して安全にアンプラグ
                 if (_slotManager != null)
                 {
                     _slotManager.DeferredUnplug(slotDevice, slotNumber);
                 }
 
+                SetOutputDevice(slotNumber, null);
                 SetOutputDeviceType(slotNumber, OutContType.None);
                 return true;
             }
