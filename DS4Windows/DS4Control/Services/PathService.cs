@@ -6,26 +6,30 @@ namespace DS4Windows
 {
     public class PathService : IPathService
     {
-        private string _appDataPath;
+        private string _customAppDataPath;
 
         public PathService(string appDataPath = null)
         {
-            _appDataPath = appDataPath;
+            _customAppDataPath = appDataPath;
         }
 
         /// <summary>
         /// アプリケーションデータパスを取得または設定します。
-        /// Global.appdatapath との相互循環再帰を防ぎ、安全に On-Demand 解決します（§5.4 ガードレール）。
+        /// 固定キャッシュを行わず、常に Global.appdatapath の最新値を On-Demand 評価します（§5.4 ガードレール）。
+        /// これにより、起動順序逆転によるパス固定化ハザードを完全に防止します。
         /// </summary>
         public string AppDataPath
         {
             get
             {
-                return !string.IsNullOrEmpty(_appDataPath)
-                    ? _appDataPath
+                if (!string.IsNullOrEmpty(_customAppDataPath))
+                    return _customAppDataPath;
+
+                return !string.IsNullOrEmpty(Global.appdatapath)
+                    ? Global.appdatapath
                     : AppContext.BaseDirectory;
             }
-            set => _appDataPath = value;
+            set => _customAppDataPath = value;
         }
 
         public string ExecutableDirectory => AppContext.BaseDirectory;

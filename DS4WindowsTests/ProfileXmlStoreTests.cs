@@ -17,6 +17,12 @@ namespace DS4WindowsTests
                 Global.appdatapath = pathService.AppDataPath;
             }
 
+            string profilesDir = pathService.ProfilesPath;
+            if (!Directory.Exists(profilesDir))
+            {
+                try { Directory.CreateDirectory(profilesDir); } catch { }
+            }
+
             var store = new ProfileXmlStore(new BackingStore());
             string profileName = "Phase5Step2_ProfileXmlStore_SaveTest";
             string path = pathService.GetProfilePath(profileName);
@@ -49,7 +55,6 @@ namespace DS4WindowsTests
 
             var store = new ProfileXmlStore(new BackingStore());
 
-            // ブロック構文にして Action に強制推論させ、CS0619 警告を回避
             var exception = Record.Exception(() =>
             {
                 store.LoadProfileXml(0, false, control, @"NonExistent_Phase5Step2_Path.xml", false, true);
