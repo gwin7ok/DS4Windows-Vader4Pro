@@ -19,11 +19,11 @@ namespace DS4WindowsTests
         public void AppDataPath_OnDemandEvaluation_ReflectsGlobalChangesDynamically()
         {
             var service = new PathService();
+            var originalInstance = Global.PathServiceInstance;
+            Global.PathServiceInstance = service;
 
-            string original = Global.appdatapath;
             try
             {
-                // 動的に Global.appdatapath を変更
                 Global.appdatapath = @"C:\TestDynamicPath1";
                 Assert.Equal(@"C:\TestDynamicPath1", service.AppDataPath);
 
@@ -32,7 +32,7 @@ namespace DS4WindowsTests
             }
             finally
             {
-                Global.appdatapath = original;
+                Global.PathServiceInstance = originalInstance;
             }
         }
 
