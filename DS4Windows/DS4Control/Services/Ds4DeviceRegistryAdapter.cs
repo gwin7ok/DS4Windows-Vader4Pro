@@ -35,13 +35,13 @@ namespace DS4Windows.Services
             return true;
         }
 
-        public void OnRemoval(HidLibrary.HidDevice hidDevice)
+        public void OnRemoval(HidDevice hidDevice)
         {
             if (hidDevice == null) return;
             DS4Devices.On_Removal(hidDevice);
         }
 
-        public void UpdateSerial(HidLibrary.HidDevice hidDevice, bool warn = true)
+        public void UpdateSerial(HidDevice hidDevice, bool warn = true)
         {
             if (hidDevice == null) return;
             DS4Devices.UpdateSerial(hidDevice, warn);

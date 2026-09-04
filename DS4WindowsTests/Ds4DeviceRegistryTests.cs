@@ -44,8 +44,8 @@ namespace DS4WindowsTests
                 return MockDevices.Remove(device);
             }
 
-            public void OnRemoval(HidLibrary.HidDevice hidDevice) { }
-            public void UpdateSerial(HidLibrary.HidDevice hidDevice, bool warn = true) { }
+            public void OnRemoval(HidDevice hidDevice) { }
+            public void UpdateSerial(HidDevice hidDevice, bool warn = true) { }
             public void ReEnableDevice(string deviceInstanceId) { }
 
             public bool IsHidHideInstalled => MockHidHideInstalled;
