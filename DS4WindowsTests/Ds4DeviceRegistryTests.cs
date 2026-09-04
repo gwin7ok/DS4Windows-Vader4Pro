@@ -44,8 +44,8 @@ namespace DS4WindowsTests
                 return MockDevices.Remove(device);
             }
 
-            public void OnRemoval(HidDevice hidDevice) { }
-            public void UpdateSerial(HidDevice hidDevice, bool warn = true) { }
+            public void OnRemoval(object sender, EventArgs e) { }
+            public void UpdateSerial(object sender, EventArgs e) { }
             public void ReEnableDevice(string deviceInstanceId) { }
 
             public bool IsHidHideInstalled => MockHidHideInstalled;
@@ -65,10 +65,10 @@ namespace DS4WindowsTests
             bool removeNull = adapter.RemoveDevice(null);
             Assert.False(removeNull);
 
-            var onRemovalEx = Record.Exception(() => adapter.OnRemoval(null));
+            var onRemovalEx = Record.Exception(() => adapter.OnRemoval(null, EventArgs.Empty));
             Assert.Null(onRemovalEx);
 
-            var updateSerialEx = Record.Exception(() => adapter.UpdateSerial(null));
+            var updateSerialEx = Record.Exception(() => adapter.UpdateSerial(null, EventArgs.Empty));
             Assert.Null(updateSerialEx);
 
             var reEnableEx = Record.Exception(() => adapter.ReEnableDevice(null));

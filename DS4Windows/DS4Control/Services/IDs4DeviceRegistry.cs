@@ -15,8 +15,8 @@ namespace DS4Windows.Services
         // === ライフサイクル・切断制御 ===
         void StopControllers();
         bool RemoveDevice(DS4Device device);
-        void OnRemoval(HidDevice hidDevice);
-        void UpdateSerial(HidDevice hidDevice, bool warn = true);
+        void OnRemoval(object sender, EventArgs e);
+        void UpdateSerial(object sender, EventArgs e);
         void ReEnableDevice(string deviceInstanceId);
 
         // === 動作モード・ドライバ状態 ===

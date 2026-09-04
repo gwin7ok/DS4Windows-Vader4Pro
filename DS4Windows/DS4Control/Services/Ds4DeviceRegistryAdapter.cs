@@ -35,16 +35,14 @@ namespace DS4Windows.Services
             return true;
         }
 
-        public void OnRemoval(HidDevice hidDevice)
+        public void OnRemoval(object sender, EventArgs e)
         {
-            if (hidDevice == null) return;
-            DS4Devices.On_Removal(hidDevice);
+            DS4Devices.On_Removal(sender, e);
         }
 
-        public void UpdateSerial(HidDevice hidDevice, bool warn = true)
+        public void UpdateSerial(object sender, EventArgs e)
         {
-            if (hidDevice == null) return;
-            DS4Devices.UpdateSerial(hidDevice, warn);
+            DS4Devices.UpdateSerial(sender, e);
         }
 
         public void ReEnableDevice(string deviceInstanceId)
@@ -59,7 +57,7 @@ namespace DS4Windows.Services
             set => DS4Devices.isExclusiveMode = value;
         }
 
-        public bool IsHidHideInstalled => Global.IsHidHideInstalled;
+        public bool IsHidHideInstalled => Global.IsHidHideInstalled();
 
         public event RequestElevationDelegate RequestElevation
         {
