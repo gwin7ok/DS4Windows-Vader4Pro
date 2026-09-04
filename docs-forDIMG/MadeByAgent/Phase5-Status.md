@@ -1,6 +1,6 @@
 # フェーズ5進捗管理表: DIサービス内部 Legacy 経路監査と責務分離
 
-最終更新日: 2026-09-05（Step 10: 残存サービス境界の整理 完了）
+最終更新日: 2026-09-05（Step 11: デバイス検出・列挙の静的委譲分離 完了）
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 Phase5全体計画書: `docs-forDIMG/MadeByAgent/Phase5-Plan.md`
@@ -9,7 +9,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 1. 全体進捗サマリ（ドメイン1・2全完了、ドメイン3進行中）
+## 1. 全体進捗サマリ（ドメイン1・2全完了、ドメイン3終盤へ）
 
 | ステップ | 名称 | 状態 | 完了日 | 成果物・備考 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -26,8 +26,8 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 | Step 9 | Actions基盤とMacroPlayerの整理 | **完了** | 2026-09-04 | `Phase5-Step9-Completion-Report.md`。`IActionFactory`注入、トグル状態自律管理、`DefaultMacroPlayer`への`IVirtualKBM`注入完了。【ドメイン2全完了】 |
 | **【ドメイン3】** | **デバイス・インフラ系（進行中）** | | | |
 | Step 10 | 残存サービス境界の整理 | **完了** | 2026-09-05 | `Phase5-Step10-Completion-Report.md`。`PathService` On-Demand化(§5.4)、`ProfileSettingsService`循環依存完全解消(Pure DI復帰)、UdpServer境界化完了。 |
-| Step 11 | デバイス検出・列挙の静的委譲分離 | **個別計画書完成** | - | `Phase5-Step11-Plan.md`。`IDs4DeviceRegistry` 契約強化と `DS4Devices` 段階的シム化。 |
-| Step 12 | 出力スロット層（OutputSlot）の整理 | **個別計画書完成** | - | `Phase5-Step12-Plan.md`。`IOutputSlotStore` 新設、ViGEm ネイティブドライバ保護（PnP遅延維持）。 |
+| Step 11 | デバイス検出・列挙の静的委譲分離 | **完了** | 2026-09-05 | `Phase5-Step11-Completion-Report.md`。`IDs4DeviceRegistry`契約強化、`Ds4DeviceRegistryAdapter`完全実装、`DS4Devices`境界化完了。 |
+| Step 12 | 出力スロット層（OutputSlot）の整理 | **個別計画書完成** | - | `Phase5-Step12-Plan.md`。`IOutputSlotStore` 新設、ViGEm ネイティブドライバ保護（PnP遅延維持 §5.5）。 |
 | **【ドメイン4】** | **UI統合・検証・クリーンアップ** | | | |
 | Step 13 | UI層（ViewModels）のDIサービス接続・残存静的参照撲滅 | **個別計画書完成** | - | `Phase5-Step13-Plan.md`。Pure DI 堅持、コア4大ViewModel優先順次改修による静的直参照一掃。 |
 | Step 14 | 自動テストと実機検証 | **基準検証完了・Phase5検証未着手** | - | Debugビルド、Actions(85件)、Standalone(13件)成功済み。実装完了後の全件テスト。 |
@@ -56,7 +56,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ### 【ドメイン3】デバイス・インフラ系（Step 10 〜 Step 12）【進行中】
 - **Step 10（残存サービス）**: **完了**（2026-09-05）。`PathService` のキャッシュ完全撤廃（On-Demand評価 §5.4）、`ProfileSettingsService` の循環依存完全解消（Pure DI復帰）、`UdpServerService` 新設（モーションサーバー境界化）。成果物: `Phase5-Step10-Completion-Report.md`。
-- **Step 11（デバイス検出）**: `IDs4DeviceRegistry` 契約強化と `DS4Devices` 段階的シム化（生デバイス列挙に専念）。個別計画書完成。
+- **Step 11（デバイス検出）**: **完了**（2026-09-05）。`IDs4DeviceRegistry` 契約強化、`Ds4DeviceRegistryAdapter` 完全実装、`DS4Devices` 境界化完了。成果物: `Phase5-Step11-Completion-Report.md`。
 - **Step 12（出力スロット）**: `IOutputSlotStore` 新設（永続化抽象化）、ViGEm ネイティブドライバ保護（PnP遅延維持 §5.5）。個別計画書完成。
 
 ### 【ドメイン4】UI統合・検証・クリーンアップ（Step 13 〜 Step 15）
@@ -74,15 +74,15 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 2. **[プロファイル適用時のHalt停止保証]**: Step 3 実装完了（`ProfileApplicationService.ApplyProfile` に内包）、Step 4 / Step 5 にて適用完了。
 3. **[AutoProfileスレッド直列化]**: Step 5 実装完了（`AutoProfileService.CheckProfiles` の `_syncLock` 排他直列化保護）。
 4. **[On-Demandパス評価]**: Step 10 にて完全適用完了（起動順序逆転によるパス固定化ハザードを物理的に根絶）。
-5. **[ViGEmネイティブドライバ保護]**: Step 12 の計画書に反映済み（PnP遅延・破棄順序の温存）。
+5. **[ViGEmネイティブドライバ保護]**: Step 12 にて適用予定（PnP遅延・破棄順序の温存 §5.5）。
 6. **[物理切断時の復帰スタック残留防止]**: Step 3 実装完了（`ClearPendingRestore` / `ClearState` 実装済み）。
 
 ---
 
-## 4. 次のアクション（Step 11 への着手）
+## 4. 次のアクション（Step 12 への着手）
 
-1. 【ドメイン3】デバイス・インフラ系の第 2 ステップである **「Step 11: デバイス検出・列挙の静的委譲分離（`Phase5-Step11-Plan.md`）」の実コード改修作業に着手**する。
-2. `IDs4DeviceRegistry` の契約強化（生列挙メソッドの追加）、`Ds4DeviceRegistryAdapter` の拡張、および静的クラス `DS4Devices` の段階的シム化を進める。
+1. 【ドメイン3】デバイス・インフラ系の最終ステップである **「Step 12: 出力スロット層（OutputSlot）の整理（`Phase5-Step12-Plan.md`）」の実コード改修作業に着手**する。
+2. `IOutputSlotStore` 新設（永続化抽象化）、`OutputSlotService` の委譲整理、ViGEm ネイティブドライバ保護（PnP遅延・破棄順序の温存 §5.5 ガードレール）を進める。
 
 ---
 
@@ -98,6 +98,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 - [x] Step 8（アクション連鎖処理の責務分離）の責務分離が完了している。
 - [x] Step 9（Actions基盤とMacroPlayerの整理）の責務分離が完了している。
 - [x] Step 10（残存サービス境界の整理）の責務分離が完了している。
+- [x] Step 11（デバイス検出・列挙の静的委譲分離）の責務分離が完了している。
 - [ ] 各ドメイン（プロファイル【完】、アクション【完】、デバイス【進行中】、UI）の責務分離が個別計画書通りに完了している。
 - [ ] DI サービス内部から `Global` / `Program.rootHub` / `BackingStore` への不正な委譲・再委譲が排除されている。
 - [ ] 6 大アーキテクチャ・ガードレールが実コードに正しく組み込まれ、競合・クラッシュ・リークが防止されている。
