@@ -36,6 +36,8 @@ namespace DS4Windows
             set => _customAppDataPath = value;
         }
 
+        public string ExecutableDirectory => AppContext.BaseDirectory;
+
         public string ProfilesPath
         {
             get
@@ -64,5 +66,7 @@ namespace DS4Windows
 
             return Path.Combine(ProfilesPath, profileName);
         }
+
+        public string GetAutoProfilesPath() => AutoProfilesPath;
     }
 }
