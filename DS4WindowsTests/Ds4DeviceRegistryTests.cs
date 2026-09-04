@@ -13,9 +13,15 @@ namespace DS4WindowsTests
         {
             public List<DS4Device> MockDevices { get; } = new List<DS4Device>();
             public int FindControllersCalls { get; private set; }
-            public List<int> ReIndexCalls { get; } = new List<int>();
+            public int StopControllersCalls { get; private set; }
             public List<DS4Device> RemoveCalls { get; } = new List<DS4Device>();
             public bool MockHidHideInstalled { get; set; } = true;
+            public bool IsExclusiveMode { get; set; }
+
+            public event RequestElevationDelegate RequestElevation;
+            public PrepareInitDelegate PrepareDS4Init { get; set; }
+            public PrepareInitDelegate PostDS4Init { get; set; }
+            public CheckPendingDevice PreparePendingDevice { get; set; }
 
             public IEnumerable<DS4Device> FindControllers()
             {
@@ -24,12 +30,12 @@ namespace DS4WindowsTests
             }
 
             public IEnumerable<DS4Device> ConnectedDevices => MockDevices;
+            public IEnumerable<DS4Device> GetDS4Controllers() => MockDevices;
             public int DeviceCount => MockDevices.Count;
-            public IEnumerable<DS4Device> GetDevices() => MockDevices;
 
-            public void ReIndexDevice(DS4Device device, int desiredIndex)
+            public void StopControllers()
             {
-                ReIndexCalls.Add(desiredIndex);
+                StopControllersCalls++;
             }
 
             public bool RemoveDevice(DS4Device device)
@@ -37,6 +43,10 @@ namespace DS4WindowsTests
                 RemoveCalls.Add(device);
                 return MockDevices.Remove(device);
             }
+
+            public void OnRemoval(HidLibrary.HidDevice hidDevice) { }
+            public void UpdateSerial(HidLibrary.HidDevice hidDevice, bool warn = true) { }
+            public void ReEnableDevice(string deviceInstanceId) { }
 
             public bool IsHidHideInstalled => MockHidHideInstalled;
         }
@@ -48,15 +58,21 @@ namespace DS4WindowsTests
 
             Assert.NotNull(adapter);
             Assert.NotNull(adapter.ConnectedDevices);
-            Assert.NotNull(adapter.GetDevices());
+            Assert.NotNull(adapter.GetDS4Controllers());
             Assert.True(adapter.DeviceCount >= 0);
 
             // Null 引数に対する安全性の検証
-            var reIndexEx = Record.Exception(() => adapter.ReIndexDevice(null, 0));
-            Assert.Null(reIndexEx);
-
             bool removeNull = adapter.RemoveDevice(null);
             Assert.False(removeNull);
+
+            var onRemovalEx = Record.Exception(() => adapter.OnRemoval(null));
+            Assert.Null(onRemovalEx);
+
+            var updateSerialEx = Record.Exception(() => adapter.UpdateSerial(null));
+            Assert.Null(updateSerialEx);
+
+            var reEnableEx = Record.Exception(() => adapter.ReEnableDevice(null));
+            Assert.Null(reEnableEx);
         }
 
         [Fact]
@@ -72,10 +88,9 @@ namespace DS4WindowsTests
             // DeviceCount
             Assert.Equal(0, mockRegistry.DeviceCount);
 
-            // ReIndexDevice
-            mockRegistry.ReIndexDevice(null, 2);
-            Assert.Single(mockRegistry.ReIndexCalls);
-            Assert.Equal(2, mockRegistry.ReIndexCalls[0]);
+            // StopControllers
+            mockRegistry.StopControllers();
+            Assert.Equal(1, mockRegistry.StopControllersCalls);
 
             // RemoveDevice
             bool removed = mockRegistry.RemoveDevice(null);
