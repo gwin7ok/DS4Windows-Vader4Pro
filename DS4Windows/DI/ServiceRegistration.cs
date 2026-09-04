@@ -29,6 +29,9 @@ namespace DS4Windows.DI
             services.AddSingleton<IProcessInspector, DefaultProcessInspector>();
             services.AddSingleton<IElevatedProcessLauncher, DefaultElevatedProcessLauncher>();
 
+            // アクション発火ディスパッチャー（Mapping.cs境界化）
+            services.AddSingleton<IMappingActionDispatcher, MappingActionDispatcher>();
+
             // プロファイルアクション連鎖サービス（ProfileApplicationServiceの依存先）
             services.AddSingleton<IProfileActionProvider, ProfileActionProvider>();
             services.AddSingleton<IProfileActionChainService, ProfileActionChainService>();
