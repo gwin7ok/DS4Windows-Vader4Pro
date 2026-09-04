@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -129,7 +129,7 @@ namespace DS4Windows
         public UDPListener oscListener;
         public UDPSender oscSender;
 
-        void GetPadDetailForIdx(int padIdx, ref DualShockPadMeta meta)
+        public void GetPadDetailForIdx(int padIdx, ref DualShockPadMeta meta)
         {
             //meta = new DualShockPadMeta();
             meta.PadId = (byte)padIdx;
