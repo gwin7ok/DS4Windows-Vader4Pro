@@ -19,7 +19,11 @@ namespace DS4Windows.DI
             services.AddSingleton<IDeviceStateService, DeviceStateService>();
             services.AddSingleton<IEnvironmentService, EnvironmentService>();
             services.AddSingleton<INotificationService, AppNotificationService>();
+
+            // Phase 5 Step 12: 出力スロット永続化・管理サービス
+            services.AddSingleton<IOutputSlotStore, OutputSlotStore>();
             services.AddSingleton<IOutputSlotService, OutputSlotService>();
+
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
             services.AddSingleton<IProfileXmlStore, ProfileXmlStore>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Xunit;
 using DS4Windows;
 using DS4Windows.DI;
@@ -7,18 +7,34 @@ namespace DS4WindowsTests
 {
     public class OutputSlotServiceTests
     {
+        private class MockOutputSlotStore : IOutputSlotStore
+        {
+            public bool LoadResult { get; set; } = true;
+            public bool SaveResult { get; set; } = true;
+            public int LoadCalls { get; private set; }
+            public int SaveCalls { get; private set; }
+
+            public bool Load(OutputSlotManager slotManager)
+            {
+                LoadCalls++;
+                return LoadResult;
+            }
+
+            public bool Save(OutputSlotManager slotManager)
+            {
+                SaveCalls++;
+                return SaveResult;
+            }
+        }
+
         [Fact]
         public void InitialState_ShouldHaveDefaultTypes()
         {
             var service = new OutputSlotService();
 
-            Assert.Equal(8, service.OutputDevices.Length);
-
             for (int i = 0; i < 8; i++)
             {
-                Assert.Equal(OutContType.X360, service.GetOutputDeviceType(i));
-                Assert.Null(service.GetOutputDevice(i));
-                Assert.False(service.IsSlotPlugin(i));
+                Assert.Equal(OutContType.None, service.GetOutputDeviceType(i));
             }
         }
 
@@ -27,26 +43,27 @@ namespace DS4WindowsTests
         {
             var service = new OutputSlotService();
 
+            service.SetOutputDeviceType(0, OutContType.X360);
             service.SetOutputDeviceType(1, OutContType.DS4);
-            service.SetOutputDeviceType(3, OutContType.None);
 
-            Assert.Equal(OutContType.DS4, service.GetOutputDeviceType(1));
-            Assert.Equal(OutContType.None, service.GetOutputDeviceType(3));
             Assert.Equal(OutContType.X360, service.GetOutputDeviceType(0));
+            Assert.Equal(OutContType.DS4, service.GetOutputDeviceType(1));
+            Assert.Equal(OutContType.None, service.GetOutputDeviceType(2));
         }
 
         [Fact]
         public void OutputSlotChangedEvent_ShouldFire()
         {
             var service = new OutputSlotService();
-            OutputSlotChangedEventArgs eventArgs = null;
-            service.OutputSlotChanged += (s, e) => eventArgs = e;
+            OutputSlotChangedEventArgs receivedArgs = null;
 
-            service.SetOutputDevice(2, null);
+            service.OutputSlotChanged += (s, e) => receivedArgs = e;
 
-            Assert.NotNull(eventArgs);
-            Assert.Equal(2, eventArgs.SlotIndex);
-            Assert.Null(eventArgs.OutputDevice);
+            service.SetOutputDeviceType(2, OutContType.X360);
+
+            Assert.NotNull(receivedArgs);
+            Assert.Equal(2, receivedArgs.Slot);
+            Assert.Equal(OutContType.X360, receivedArgs.DeviceType);
         }
 
         [Fact]
@@ -54,17 +71,16 @@ namespace DS4WindowsTests
         {
             var service = new OutputSlotService();
 
-            Assert.Null(service.GetOutputDevice(-1));
-            Assert.Null(service.GetOutputDevice(99));
-            Assert.False(service.IsSlotPlugin(-1));
-            Assert.False(service.IsSlotPlugin(99));
-            Assert.Equal(OutContType.X360, service.GetOutputDeviceType(-1));
-            Assert.Equal(OutContType.X360, service.GetOutputDeviceType(99));
+            Assert.Equal(OutContType.None, service.GetOutputDeviceType(-1));
+            Assert.Equal(OutContType.None, service.GetOutputDeviceType(8));
 
-            service.SetOutputDeviceType(-1, OutContType.DS4);
-            service.SetOutputDeviceType(99, OutContType.DS4);
-            service.SetOutputDevice(-1, null);
-            service.SetOutputDevice(99, null);
+            service.SetOutputDeviceType(-1, OutContType.X360);
+            service.SetOutputDeviceType(8, OutContType.DS4);
+
+            Assert.Null(service.GetOutSlotDevice(-1));
+            Assert.Null(service.GetOutSlotDevice(8));
+            Assert.False(service.PluginSlot(-1, OutContType.X360));
+            Assert.False(service.UnplugSlot(-1));
         }
 
         [Fact]
@@ -74,10 +90,34 @@ namespace DS4WindowsTests
             Global.OutputSlotServiceInstance = service;
 
             Assert.NotNull(Global.OutputSlotServiceInstance);
-            Assert.Equal(OutContType.X360, Global.OutputSlotServiceInstance.GetOutputDeviceType(0));
 
             Global.OutputSlotServiceInstance.SetOutputDeviceType(0, OutContType.DS4);
             Assert.Equal(OutContType.DS4, service.GetOutputDeviceType(0));
+        }
+
+        [Fact]
+        public void LoadAndSave_DelegatesToStoreSuccessfully()
+        {
+            var mockStore = new MockOutputSlotStore();
+            var service = new OutputSlotService(new OutputSlotManager(), mockStore);
+
+            bool loadResult = service.LoadOutputSlots();
+            Assert.True(loadResult);
+            Assert.Equal(1, mockStore.LoadCalls);
+
+            bool saveResult = service.SaveOutputSlots();
+            Assert.True(saveResult);
+            Assert.Equal(1, mockStore.SaveCalls);
+        }
+
+        [Fact]
+        public void OutputSlots_ReturnsInitializedSlots()
+        {
+            var service = new OutputSlotService(new OutputSlotManager());
+            var slots = service.OutputSlots;
+
+            Assert.NotNull(slots);
+            Assert.Equal(4, slots.Count); // OutputSlotManager の既定スロット数は 4
         }
     }
 }
