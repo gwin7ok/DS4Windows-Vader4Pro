@@ -1,6 +1,6 @@
 # フェーズ5進捗管理表: DIサービス内部 Legacy 経路監査と責務分離
 
-最終更新日: 2026-09-04（Step 7: SpecialAction 永続化の責務分離 完了）
+最終更新日: 2026-09-04（Step 8: アクション連鎖処理の責務分離 完了）
 対象ブランチ: `For-DI-migration-work`
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
 Phase5全体計画書: `docs-forDIMG/MadeByAgent/Phase5-Plan.md`
@@ -9,7 +9,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 1. 全体進捗サマリ（ドメイン1全完了・ドメイン2進行中）
+## 1. 全体進捗サマリ（ドメイン1全完了・ドメイン2終盤へ）
 
 | ステップ | 名称 | 状態 | 完了日 | 成果物・備考 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -22,7 +22,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 | Step 6 | アプリ全体設定（AppSettings）の永続化・状態管理のDI化 | **完了** | 2026-09-04 | `Phase5-Step6-Completion-Report.md`。`IAppSettingsService`新設、同一XML排他ロック(`XmlIoLock`)統合、`Global.Save`/`Load`シム化完了。【ドメイン1全完了】 |
 | **【ドメイン2】** | **アクション系（進行中）** | | | |
 | Step 7 | SpecialAction 永続化の責務分離 | **完了** | 2026-09-04 | `Phase5-Step7-Completion-Report.md`。独自リスト廃止・`BackingStore.actions`一本化、二重管理解消、ActionsPath DI化完了。 |
-| Step 8 | アクション連鎖処理の責務分離 | **個別計画書完成** | - | `Phase5-Step8-Plan.md`。`IMappingActionDispatcher` 新設による `Mapping.cs` 境界化。 |
+| Step 8 | アクション連鎖処理の責務分離 | **完了** | 2026-09-04 | `Phase5-Step8-Completion-Report.md`。`IMappingActionDispatcher`新設、`Mapping.cs`境界化、`ProfileActionProvider`一本化完了。 |
 | Step 9 | Actions基盤とMacroPlayerの整理 | **個別計画書完成** | - | `Phase5-Step9-Plan.md`。`DefaultActionManager` 整理、`DefaultMacroPlayer` への `IVirtualKBM` 注入。 |
 | **【ドメイン3】** | **デバイス・インフラ系** | | | |
 | Step 10 | 残存サービス境界の整理 | **個別計画書完成** | - | `Phase5-Step10-Plan.md`。`PathService` キャッシュ完全撤廃（On-Demand化）、`IDeviceStateAccessor` 活用。 |
@@ -51,7 +51,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ### 【ドメイン2】アクション系（Step 7 〜 Step 9）【進行中】
 - **Step 7（SpecialAction永続化）**: **完了**（2026-09-04）。孤立独自リスト廃止・`BackingStore.actions` 一本化、二重管理解消、`ActionsPath` DI化、排他制御実装完了。成果物: `Phase5-Step7-Completion-Report.md`。
-- **Step 8（アクション連鎖）**: 巨大ファイル `Mapping.cs` を解体せず `IMappingActionDispatcher` で境界化しテスト容易性を確立予定。個別計画書完成。
+- **Step 8（アクション連鎖）**: **完了**（2026-09-04）。`IMappingActionDispatcher` 新設による `Mapping.cs` 境界化（解体回避）、`ProfileActionProvider` の `BackingStore` 一本化完了。成果物: `Phase5-Step8-Completion-Report.md`。
 - **Step 9（Actions基盤＆マクロ）**: `DefaultActionManager` への `IActionFactory` 注入、トグル状態内包、`DefaultMacroPlayer` への `IVirtualKBM` 注入予定。個別計画書完成。
 
 ### 【ドメイン3】デバイス・インフラ系（Step 10 〜 Step 12）【全計画書 策定・承認完了】
@@ -79,10 +79,10 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 
 ---
 
-## 4. 次のアクション（Step 8 への着手）
+## 4. 次のアクション（Step 9 への着手）
 
-1. 【ドメイン2】アクション系の第 2 ステップである **「Step 8: アクション連鎖処理の責務分離（`Phase5-Step8-Plan.md`）」の実コード改修作業に着手**する。
-2. `IMappingActionDispatcher` 新設による巨大ファイル `Mapping.cs` の境界化、およびアクション連鎖発火処理の DI 整理を進める。
+1. 【ドメイン2】アクション系の最終ステップである **「Step 9: Actions基盤とMacroPlayerの整理（`Phase5-Step9-Plan.md`）」の実コード改修作業に着手**する。
+2. `DefaultActionManager` への `IActionFactory` 注入、トグル状態（`_toggled`）の完全内包、および `DefaultMacroPlayer` への `IVirtualKBM` 注入を進める。
 
 ---
 
@@ -95,6 +95,7 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 - [x] Step 5（AutoProfile の自律実行系DI化）の責務分離が完了している。
 - [x] Step 6（AppSettings の永続化・状態管理のDI化）の責務分離が完了している。
 - [x] Step 7（SpecialAction 永続化の責務分離）の責務分離が完了している。
+- [x] Step 8（アクション連鎖処理の責務分離）の責務分離が完了している。
 - [ ] 各ドメイン（プロファイル【完】、アクション【進行中】、デバイス、UI）の責務分離が個別計画書通りに完了している。
 - [ ] DI サービス内部から `Global` / `Program.rootHub` / `BackingStore` への不正な委譲・再委譲が排除されている。
 - [ ] 6 大アーキテクチャ・ガードレールが実コードに正しく組み込まれ、競合・クラッシュ・リークが防止されている。
