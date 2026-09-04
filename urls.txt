@@ -68,6 +68,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IMappingActionDispatcher.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/INotificationService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IOutputSlotService.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IOutputSlotStore.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IPathService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IProfileActionChainService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DI/IProfileActionProvider.cs
@@ -168,6 +169,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/MappingActionDispatcher.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/OutputKBMHandlerAdapter.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/OutputSlotService.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/OutputSlotStore.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/PathService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/ProfileActionChainService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/ProfileActionProvider.cs
@@ -678,6 +680,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegation-audit-report.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step10-Completion-Report.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step10-Plan.md
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step11-Completion-Report.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step11-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step12-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step13-Plan.md
