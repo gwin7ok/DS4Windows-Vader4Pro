@@ -117,7 +117,7 @@ namespace DS4WindowsTests
             var slots = service.OutputSlots;
 
             Assert.NotNull(slots);
-            Assert.Equal(4, slots.Count); // OutputSlotManager の既定スロット数は 4
+            Assert.Equal(8, slots.Count); // OutputSlotManager の既定スロット数は 8
         }
     }
 }

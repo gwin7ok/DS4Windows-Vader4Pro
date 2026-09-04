@@ -17,18 +17,15 @@ namespace DS4Windows
 
         public event EventHandler<OutputSlotChangedEventArgs> OutputSlotChanged;
 
-        private OutContType[] _deviceTypes = new OutContType[MAX_SLOTS] {
-            OutContType.X360, OutContType.X360, OutContType.X360, OutContType.X360,
-            OutContType.X360, OutContType.X360, OutContType.X360, OutContType.X360
-        };
-
-        private OutputDevice[] _outputDevices = new OutputDevice[MAX_SLOTS];
+        // 初期状態はすべて None
+        private readonly OutContType[] _deviceTypes = new OutContType[MAX_SLOTS];
+        private readonly OutputDevice[] _outputDevices = new OutputDevice[MAX_SLOTS];
 
         public OutputSlotService(OutputSlotManager slotManager = null, IOutputSlotStore store = null, ControlService control = null)
         {
             _control = control ?? Program.rootHub;
             _slotManager = slotManager ?? _control?.OutputslotMan ?? new OutputSlotManager();
-            _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new Services.OutputSlotStore();
+            _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new OutputSlotStore();
         }
 
         public OutputDevice[] OutputDevices
@@ -61,36 +58,40 @@ namespace DS4Windows
 
         public OutContType GetOutputDeviceType(int slotIndex)
         {
-            if (slotIndex >= 0 && slotIndex < _deviceTypes.Length)
+            if (slotIndex < 0 || slotIndex >= MAX_SLOTS)
+                return OutContType.None;
+
+            lock (_syncLock)
+            {
                 return _deviceTypes[slotIndex];
-            return OutContType.X360;
+            }
         }
 
         public void SetOutputDeviceType(int slotIndex, OutContType deviceType)
         {
-            if (slotIndex >= 0 && slotIndex < _deviceTypes.Length)
+            if (slotIndex < 0 || slotIndex >= MAX_SLOTS)
+                return;
+
+            lock (_syncLock)
             {
-                lock (_syncLock)
-                {
-                    _deviceTypes[slotIndex] = deviceType;
-                    if (AppLogger.IsTraceEnabled)
-                        AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDeviceType: Slot {slotIndex} = {deviceType}");
-                    OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, deviceType, _outputDevices[slotIndex]));
-                }
+                _deviceTypes[slotIndex] = deviceType;
+                if (AppLogger.IsTraceEnabled)
+                    AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDeviceType: Slot {slotIndex} = {deviceType}");
+                OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, deviceType, _outputDevices[slotIndex]));
             }
         }
 
         public void SetOutputDevice(int slotIndex, OutputDevice outputDevice)
         {
-            if (slotIndex >= 0 && slotIndex < MAX_SLOTS)
+            if (slotIndex < 0 || slotIndex >= MAX_SLOTS)
+                return;
+
+            lock (_syncLock)
             {
-                lock (_syncLock)
-                {
-                    _outputDevices[slotIndex] = outputDevice;
-                    if (AppLogger.IsTraceEnabled)
-                        AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDevice: Slot {slotIndex} output device updated");
-                    OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, _deviceTypes[slotIndex], outputDevice));
-                }
+                _outputDevices[slotIndex] = outputDevice;
+                if (AppLogger.IsTraceEnabled)
+                    AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDevice: Slot {slotIndex} output device updated");
+                OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, _deviceTypes[slotIndex], outputDevice));
             }
         }
 
