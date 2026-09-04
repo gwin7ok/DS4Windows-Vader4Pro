@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using Xunit;
 using DS4Windows;
@@ -12,39 +12,55 @@ namespace DS4WindowsTests
         public void AppDataPath_ShouldResolveValidDirectory()
         {
             var service = new PathService();
-            var appData = service.AppDataPath;
-            Assert.False(string.IsNullOrWhiteSpace(appData));
+            Assert.False(string.IsNullOrWhiteSpace(service.AppDataPath));
+        }
+
+        [Fact]
+        public void AppDataPath_OnDemandEvaluation_ReflectsGlobalChangesDynamically()
+        {
+            var service = new PathService();
+
+            string original = Global.appdatapath;
+            try
+            {
+                // 動的に Global.appdatapath を変更
+                Global.appdatapath = @"C:\TestDynamicPath1";
+                Assert.Equal(@"C:\TestDynamicPath1", service.AppDataPath);
+
+                Global.appdatapath = @"C:\TestDynamicPath2";
+                Assert.Equal(@"C:\TestDynamicPath2", service.AppDataPath);
+            }
+            finally
+            {
+                Global.appdatapath = original;
+            }
         }
 
         [Fact]
         public void ProfilesPath_ShouldCombineWithAppDataPath()
         {
-            var service = new PathService();
-            var profiles = service.ProfilesPath;
-            Assert.EndsWith("Profiles", profiles, StringComparison.OrdinalIgnoreCase);
+            var service = new PathService(@"C:\TestAppPath");
+            Assert.Equal(@"C:\TestAppPath\Profiles", service.ProfilesPath);
         }
 
         [Fact]
         public void GetProfilePath_ShouldNormalizeXmlExtension()
         {
-            var service = new PathService();
-
-            var p1 = service.GetProfilePath("Default");
-            var p2 = service.GetProfilePath("Default.xml");
-
-            Assert.EndsWith("Default.xml", p1, StringComparison.OrdinalIgnoreCase);
-            Assert.Equal(p1, p2);
+            var service = new PathService(@"C:\TestAppPath");
+            Assert.Equal(@"C:\TestAppPath\Profiles\Test.xml", service.GetProfilePath("Test"));
+            Assert.Equal(@"C:\TestAppPath\Profiles\Test.xml", service.GetProfilePath("Test.xml"));
+            Assert.Equal(string.Empty, service.GetProfilePath(null));
             Assert.Equal(string.Empty, service.GetProfilePath(""));
         }
 
         [Fact]
         public void GlobalShim_ShouldSynchronizeWithService()
         {
-            var service = new PathService();
+            var service = new PathService(@"C:\TestAppPath");
             Global.PathServiceInstance = service;
 
             Assert.NotNull(Global.PathServiceInstance);
-            Assert.Equal(service.ProfilesPath, Global.PathServiceInstance.ProfilesPath);
+            Assert.Equal(@"C:\TestAppPath\Profiles", Global.PathServiceInstance.ProfilesPath);
         }
     }
 }

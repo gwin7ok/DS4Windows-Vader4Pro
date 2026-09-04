@@ -46,6 +46,9 @@ namespace DS4Windows.DI
             // Phase 5 Step 6: アプリ全体設定サービス
             services.AddSingleton<IAppSettingsService, AppSettingsService>();
 
+            // Phase 5 Step 10: UDP サーバーサービス（Cemuhook モーションサーバー境界化）
+            services.AddSingleton<IUdpServerService, UdpServerService>();
+
             // === 第3層: Actions基盤サービス ===
             services.AddSingleton<IActionFactory, DefaultActionFactory>();
             services.AddSingleton<IKeyActionCreator, DefaultKeyActionCreator>();
