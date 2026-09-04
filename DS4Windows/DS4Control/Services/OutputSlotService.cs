@@ -28,7 +28,7 @@ namespace DS4Windows
         {
             _control = control ?? Program.rootHub;
             _slotManager = slotManager ?? _control?.OutputslotMan ?? new OutputSlotManager();
-            _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new OutputSlotStore();
+            _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new Services.OutputSlotStore();
         }
 
         public OutputDevice[] OutputDevices
@@ -75,6 +75,7 @@ namespace DS4Windows
                     _deviceTypes[slotIndex] = deviceType;
                     if (AppLogger.IsTraceEnabled)
                         AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDeviceType: Slot {slotIndex} = {deviceType}");
+                    OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, deviceType, _outputDevices[slotIndex]));
                 }
             }
         }
@@ -88,7 +89,7 @@ namespace DS4Windows
                     _outputDevices[slotIndex] = outputDevice;
                     if (AppLogger.IsTraceEnabled)
                         AppLogger.LogTrace($"[DI] OutputSlotService.SetOutputDevice: Slot {slotIndex} output device updated");
-                    OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, outputDevice));
+                    OutputSlotChanged?.Invoke(this, new OutputSlotChangedEventArgs(slotIndex, _deviceTypes[slotIndex], outputDevice));
                 }
             }
         }
