@@ -1,46 +1,39 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace DS4Windows.Services
 {
     public class Ds4DeviceRegistryAdapter : IDs4DeviceRegistry
     {
-        public event RequestElevationDelegate RequestElevation
+        public IEnumerable<DS4Device> FindControllers()
         {
-            add { DS4Devices.RequestElevation += value; }
-            remove { DS4Devices.RequestElevation -= value; }
+            DS4Devices.findControllers();
+            return DS4Devices.getDS4Controllers();
         }
 
-        public PrepareInitDelegate PrepareDS4Init
+        public IEnumerable<DS4Device> ConnectedDevices => DS4Devices.getDS4Controllers();
+
+        public int DeviceCount => DS4Devices.count();
+
+        public IEnumerable<DS4Device> GetDevices() => DS4Devices.getDS4Controllers();
+
+        public void ReIndexDevice(DS4Device device, int desiredIndex)
         {
-            get => DS4Devices.PrepareDS4Init;
-            set => DS4Devices.PrepareDS4Init = value;
+            if (device == null) return;
+            DS4Devices.reIndexDevice(device, desiredIndex);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] Ds4DeviceRegistryAdapter.ReIndexDevice: Device reindexed to slot {desiredIndex}");
         }
 
-        public PrepareInitDelegate PostDS4Init
+        public bool RemoveDevice(DS4Device device)
         {
-            get => DS4Devices.PostDS4Init;
-            set => DS4Devices.PostDS4Init = value;
+            if (device == null) return false;
+            bool result = DS4Devices.removeDevice(device);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] Ds4DeviceRegistryAdapter.RemoveDevice: Device removed (result={result})");
+            return result;
         }
 
-        public CheckPendingDevice PreparePendingDevice
-        {
-            get => DS4Devices.PreparePendingDevice;
-            set => DS4Devices.PreparePendingDevice = value;
-        }
-
-        public bool IsExclusiveMode
-        {
-            get => DS4Devices.isExclusiveMode;
-            set => DS4Devices.isExclusiveMode = value;
-        }
-
-        public void FindControllers() => DS4Devices.findControllers();
-        public IEnumerable<DS4Device> GetDS4Controllers() => DS4Devices.getDS4Controllers();
-        public void StopControllers() => DS4Devices.stopControllers();
-        public void RemoveDevice(DS4Device device) => DS4Devices.RemoveDevice(device);
-        public void UpdateSerial(object sender, EventArgs e) => DS4Devices.UpdateSerial(sender, e);
-        public void OnRemoval(object sender, EventArgs e) => DS4Devices.On_Removal(sender, e);
-        public void ReEnableDevice(string deviceInstanceId) => DS4Devices.reEnableDevice(deviceInstanceId);
+        public bool IsHidHideInstalled => DS4Devices.isHidHideInstalled;
     }
 }

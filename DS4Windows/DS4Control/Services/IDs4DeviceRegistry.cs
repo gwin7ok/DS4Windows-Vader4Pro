@@ -1,23 +1,17 @@
-﻿using System;
 using System.Collections.Generic;
-using DS4Windows;
 
 namespace DS4Windows.Services
 {
     public interface IDs4DeviceRegistry
     {
-        event RequestElevationDelegate RequestElevation;
-        PrepareInitDelegate PrepareDS4Init { get; set; }
-        PrepareInitDelegate PostDS4Init { get; set; }
-        CheckPendingDevice PreparePendingDevice { get; set; }
-        bool IsExclusiveMode { get; set; }
+        IEnumerable<DS4Device> FindControllers();
+        IEnumerable<DS4Device> ConnectedDevices { get; }
 
-        void FindControllers();
-        IEnumerable<DS4Device> GetDS4Controllers();
-        void StopControllers();
-        void RemoveDevice(DS4Device device);
-        void UpdateSerial(object sender, EventArgs e);
-        void OnRemoval(object sender, EventArgs e);
-        void ReEnableDevice(string deviceInstanceId);
+        // Phase 5 Step 11: 生デバイス管理操作の契約強化
+        int DeviceCount { get; }
+        IEnumerable<DS4Device> GetDevices();
+        void ReIndexDevice(DS4Device device, int desiredIndex);
+        bool RemoveDevice(DS4Device device);
+        bool IsHidHideInstalled { get; }
     }
 }
