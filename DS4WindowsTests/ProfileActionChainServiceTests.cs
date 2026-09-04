@@ -95,7 +95,7 @@ namespace DS4WindowsTests
             var service = new ProfileActionChainService(mockProvider, mockDispatcher);
 
             var sourceAction = new SpecialAction("SourceAction", "Cross", "Profile", "Profile", 0);
-            sourceAction.uTrigger.Add("Square");
+            sourceAction.uTrigger.Add(DS4Controls.Square);
             var nextAction = new SpecialAction("NextAction", "Cross", "Key", "Key", 0);
             mockProvider.AddAction("NextAction", nextAction);
 
