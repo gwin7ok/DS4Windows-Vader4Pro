@@ -18,7 +18,13 @@ namespace DS4WindowsTests
             public bool MockHidHideInstalled { get; set; } = true;
             public bool IsExclusiveMode { get; set; }
 
-            public event RequestElevationDelegate RequestElevation;
+            // CS0067 警告回避のための明示的空アクセサ
+            public event RequestElevationDelegate RequestElevation
+            {
+                add { }
+                remove { }
+            }
+
             public PrepareInitDelegate PrepareDS4Init { get; set; }
             public PrepareInitDelegate PostDS4Init { get; set; }
             public CheckPendingDevice PreparePendingDevice { get; set; }
