@@ -28,7 +28,7 @@ namespace DS4Windows
         {
             _control = control ?? Program.rootHub;
             _slotManager = slotManager ?? _control?.OutputslotMan ?? new OutputSlotManager();
-            _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new Services.OutputSlotStore();
+            _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new OutputSlotStore();
         }
 
         public OutputDevice[] OutputDevices
@@ -118,11 +118,14 @@ namespace DS4Windows
 
             try
             {
+                var slotDevice = GetOutSlotDevice(slotNumber);
+                if (slotDevice == null) return false;
+
                 // §5.5 最重要ガードレール: ViGEm ネイティブドライバ保護
-                // ControlService の正規 API を経由して安全にプラグイン（PnP遅延・キューイング・破棄順序の完全維持）
+                // ControlService の正規公開 API（AttachUnboundOutDev）を経由して安全にプラグイン
                 if (_control != null)
                 {
-                    _control.PluginOutDev(slotNumber, devType);
+                    _control.AttachUnboundOutDev(slotDevice, devType);
                 }
 
                 SetOutputDeviceType(slotNumber, devType);
@@ -142,11 +145,14 @@ namespace DS4Windows
 
             try
             {
+                var slotDevice = GetOutSlotDevice(slotNumber);
+                if (slotDevice == null) return false;
+
                 // §5.5 最重要ガードレール: ViGEm ネイティブドライバ保護
-                // ControlService の正規 API を経由して安全にアンプラグ（PnP遅延・キューイング・破棄順序の完全維持）
+                // ControlService の正規公開 API（DetachUnboundOutDev）を経由して安全にアンプラグ
                 if (_control != null)
                 {
-                    _control.UnplugOutDev(slotNumber);
+                    _control.DetachUnboundOutDev(slotDevice);
                 }
 
                 SetOutputDevice(slotNumber, null);
