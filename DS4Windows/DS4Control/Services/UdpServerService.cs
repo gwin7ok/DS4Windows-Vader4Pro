@@ -41,8 +41,8 @@ namespace DS4Windows.Services
                 {
                     _port = port;
                     _listenAddress = string.IsNullOrWhiteSpace(listenAddress) ? "127.0.0.1" : listenAddress;
-                    _server = new UdpServer(control, _port, _listenAddress);
-                    _server.Start();
+                    _server = new UdpServer(control.GetPadDetailForIdx);
+                    _server.Start(_port, _listenAddress);
                     _isRunning = true;
 
                     if (AppLogger.IsTraceEnabled)
