@@ -80,7 +80,11 @@ namespace DS4WinWPF.DS4Forms
             else
                 addProgramsBtn.ContextMenu.Items.Remove(steamMenuItem);
 
-            autoProfileHolder = new AutoProfileHolder();
+            // Phase5-Step13-4: IAutoProfileServiceが監視に使用している唯一のHolderを共有する。
+            // 独自に new AutoProfileHolder() すると、本画面での編集・保存がバックグラウンド監視
+            // (AutoProfileService.CheckProfiles)に反映されない二重インスタンス問題が発生するため。
+            var autoProfileSvc = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IAutoProfileService>();
+            autoProfileHolder = autoProfileSvc?.Holder ?? new AutoProfileHolder();
 
             int currentRowCount = autoProfilesGrid.RowDefinitions.Count;
             if (currentRowCount > DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT)

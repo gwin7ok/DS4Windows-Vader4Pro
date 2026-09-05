@@ -32,6 +32,14 @@ namespace DS4Windows
             set => _autoProfileDebugLogLevel = value;
         }
 
+        public AutoProfileHolder Holder => _holder;
+
+        public AutoProfileDisplayProfileSwitchChoices AutoProfileSwitchNotifyChoice
+        {
+            get => Global.autoProfileSwitchNotifyChoice;
+            set => Global.autoProfileSwitchNotifyChoice = value;
+        }
+
         public event Action<bool> RequestServiceChange;
 
         public AutoProfileService(AutoProfileHolder holder = null,

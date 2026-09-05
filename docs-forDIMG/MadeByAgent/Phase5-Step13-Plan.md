@@ -1,6 +1,6 @@
 # フェーズ5-Step13 計画書: UI層（ViewModels および MainWindow）のDIサービス接続・残存静的参照の撲滅
 
-作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映）
+作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
@@ -123,9 +123,14 @@ public class ViewModelFactory : IViewModelFactory
 - **置換後**: コンストラクタ注入された `IAppSettingsService _appSettings` インスタンスの `_appSettings.Save()` に置換する。
 - **注記**: `IAppSettingsService` インターフェースに `RunAtStartup` プロパティは存在しない（実装済みは `StartMinimized`／`MinimizeToTaskbar`／`CloseMinimizes`／`CheckWhen`／`UseUdpServer`／`UdpServerPort`／`UdpServerListenAddress`／`UseExclusiveMode`／`AutoProfileRevertDefaultProfile` の9項目）。`RunAtStartup` 等の起動設定は `SettingsViewModel` 内部の別ロジック（`StartupMethods` 経由）で管理されており、本Stepでは対象外とする。
 
-#### ③ `AutoProfilesViewModel.cs`（自動プロファイル切替設定）
-- **置換前**: `AutoProfileChecker` 具象インスタンス直参照、静的設定保存
-- **置換後**: 注入された `_autoProfileService` 経由での監視状態制御・ルール設定
+#### ③ `AutoProfilesViewModel.cs`（自動プロファイル切替設定）※2026-09-05実装済み
+- **置換前**: `Global.AutoProfileRevertDefaultProfile`／`Global.autoProfileSwitchNotifyChoice`／`App.rootHub.CheckHidHidePresence(...)` の静的直参照
+- **置換後**: `IAppSettingsService`（`AutoProfileRevertDefaultProfile`）、`IAutoProfileService`（新設 `AutoProfileSwitchNotifyChoice`）、`ControlService`（コンストラクタ注入、`Program.rootHub`フォールバック）にそれぞれ置換。いずれもDI解決に失敗した場合のみ`Global`/`Program.rootHub`へフォールバックする二重安全構成とし、機能欠落を防止。
+- **🔴重大発見: `AutoProfileHolder`二重インスタンス問題（Step1監査・Addendum未記載の新規発見）**:
+  - DIコンテナが構築する`IAutoProfileService`（`AutoProfileService`）は、コンストラクタ引数`holder`が未指定のため自前で`new AutoProfileHolder()`を生成していた。
+  - 一方、UI側（`AutoProfiles.xaml.cs`）も独立して別の`new AutoProfileHolder()`を生成しており、`AutoProfilesViewModel`はこちらを操作していた。UI層全体を検索しても`IAutoProfileService`への参照は0件。
+  - **影響**: 設定画面でAutoProfileルールを追加・編集・保存しても、バックグラウンド監視（`AutoProfileService.CheckProfiles`）側のHolderには反映されず、アプリ再起動まで自動切替に反映されない可能性があった。
+  - **是正内容**: `IAutoProfileService`に`AutoProfileHolder Holder { get; }`を追加して唯一の実体を公開し、`AutoProfiles.xaml.cs`はこの共有インスタンスを参照するよう変更（Reloadではなく単一実体の共有により根本解消）。
 
 #### ④ `SpecialActionsListViewModel.cs`（SpecialAction一覧）
 - **置換前**: 静的 `Global.store.actions` 直引き
@@ -164,7 +169,10 @@ public class ViewModelFactory : IViewModelFactory
 | インターフェース拡張 | `DS4Windows/DI/IProfileRepository.cs` | スロット別実行時プロファイル配列（ProfilePath等）・SelectedProfileChangedイベント・LinkedProfile管理メソッドを追加（Step13-2実装に伴う拡張） |
 | 実装改修 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | 上記拡張メンバーを実装（m_Config/Globalへの薄い公開アクセサとして、状態複製なし） |
 | コアVM改修 | `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | `IAppSettingsService` 接続、`Global.SaveSettings` 排除 |
-| コアVM改修 | `DS4Windows/DS4Forms/ViewModels/AutoProfilesViewModel.cs` | `IAutoProfileService` 接続 |
+| コアVM改修 | `DS4Windows/DS4Forms/ViewModels/AutoProfilesViewModel.cs` | `IAppSettingsService`／`IAutoProfileService`／`ControlService` 接続 |
+| インターフェース拡張 | `DS4Windows/DI/IAutoProfileService.cs` | `Holder`（AutoProfileHolder二重インスタンス問題是正）・`AutoProfileSwitchNotifyChoice` を追加 |
+| 実装改修 | `DS4Windows/DS4Control/Services/AutoProfileService.cs` | 上記拡張メンバーを実装 |
+| View改修 | `DS4Windows/DS4Forms/AutoProfiles.xaml.cs` | 独自`AutoProfileHolder`生成を廃止し`IAutoProfileService.Holder`を共有 |
 | コアVM改修 | `DS4Windows/DS4Forms/ViewModels/SpecialActionsListViewModel.cs` | `ISpecialActionRepository` 接続 |
 | View改修 | `DS4Windows/DS4Forms/MainWindow.xaml.cs` | `Program.rootHub` / `Global` 直参照の排除、DIサービス経由化 |
 | クリーンアップ | `DS4Windows/App.xaml.cs` | 不要となった `rootHub` シムプロパティの完全削除 |
@@ -191,8 +199,11 @@ public class ViewModelFactory : IViewModelFactory
 1. `SettingsViewModel.cs` に `IAppSettingsService` をコンストラクタ注入（インスタンスフィールド `_appSettings`）。
 2. `DS4Windows.Global.Save()` の直接呼び出し5箇所を `_appSettings.Save()` に置換。
 
-### タスク Step13-4: `AutoProfilesViewModel` の DI 接続（コア③）
-1. `AutoProfilesViewModel.cs` に `IAutoProfileService` を注入し、自動切替連携を整備。
+### タスク Step13-4: `AutoProfilesViewModel` の DI 接続（コア③、※実施済み 2026-09-05）
+1. `IAutoProfileService` を拡張し `Holder`（唯一のAutoProfileHolder実体を公開）・`AutoProfileSwitchNotifyChoice` を追加、`AutoProfileService.cs` に実装。
+2. `AutoProfiles.xaml.cs` の独自 `new AutoProfileHolder()` を廃止し、`IAutoProfileService.Holder` を共有することで二重インスタンス問題を根本解消。
+3. `AutoProfilesViewModel.cs` に `IAppSettingsService`・`IAutoProfileService`・`ControlService`（コンストラクタ注入、オプショナル引数＋フォールバック）を追加し、`Global.AutoProfileRevertDefaultProfile`／`Global.autoProfileSwitchNotifyChoice`／`App.rootHub.CheckHidHidePresence` を置換。
+4. `IViewModelFactory.CreateAutoProfilesViewModel` および全呼び出し元は2引数のまま無修正（オプショナル引数フォールバックにより互換性維持）。
 
 ### タスク Step13-5: `SpecialActionsListViewModel` の DI 接続（コア④）
 1. `SpecialActionsListViewModel.cs` に `ISpecialActionRepository` を注入し、実データ操作に一本化。
