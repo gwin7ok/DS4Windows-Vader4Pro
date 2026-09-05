@@ -1,5 +1,6 @@
 using System;
 using DS4Windows;
+using DS4WinWPF;
 
 namespace DS4Windows.DI
 {
