@@ -182,5 +182,33 @@ namespace DS4Windows
                 AppLogger.LogTrace($"[DI] ProfileRepository.RestoreProfileDirect: Slot {deviceIndex} restored via DI");
             return LoadProfile(deviceIndex, string.Empty);
         }
+
+        // ---- Phase5-Step13-2: デバイススロット別・実行時プロファイル状態 ----
+        // Global.ProfilePath 等は m_Config(BackingStore) への薄い公開アクセサであり、
+        // 本クラスの LoadProfile 内でも同一配列(Global.ProfilePath[deviceIndex])へ直接書き込んでいる
+        // 既存の単一の実体であるため、状態を複製せずそのまま公開する(Phase4-Step10の知見に準拠)。
+        public string[] ProfilePath => Global.ProfilePath;
+        public string[] OlderProfilePath => Global.OlderProfilePath;
+        public string[] SelectedProfile => Global.SelectedProfile;
+        public string[] LinkedProfileUI => Global.LinkedProfileUI;
+
+        public event EventHandler<SelectedProfileChangedEventArgs> SelectedProfileChanged
+        {
+            add => Global.SelectedProfileChanged += value;
+            remove => Global.SelectedProfileChanged -= value;
+        }
+
+        public void RaiseSelectedProfileChanged(int deviceIndex, string profileName)
+            => Global.RaiseSelectedProfileChanged(deviceIndex, profileName);
+
+        // ---- Phase5-Step13-2: LinkedProfile（コントローラーMAC単位のプロファイル紐付け）管理 ----
+        public void ChangeLinkedProfile(string serial, string profile)
+            => Global.changeLinkedProfile(serial, profile);
+
+        public void RemoveLinkedProfile(string serial)
+            => Global.removeLinkedProfile(serial);
+
+        public bool SaveLinkedProfiles()
+            => Global.SaveLinkedProfiles();
     }
 }

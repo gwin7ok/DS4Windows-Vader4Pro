@@ -1,6 +1,6 @@
 # フェーズ5-Step13 計画書: UI層（ViewModels および MainWindow）のDIサービス接続・残存静的参照の撲滅
 
-作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正）
+作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
@@ -106,11 +106,17 @@ public class ViewModelFactory : IViewModelFactory
 
 ### 1.2 コア 4 大 ViewModel の接続方針（段階的置換）
 
-#### ①' `ControllerListViewModel.cs`（メイン画面・プロファイル切替、実体725行）※2026-09-05訂正
-- **訂正理由**: 当初 `ControllersViewModel.cs` を対象としていたが、実コード確認の結果、同ファイルは34行で `IDeviceStateService`／`IProfileSettingsService`／`IProfileRepository` が既にコンストラクタ注入済みの薄いクラスであり、変更の必要がないことが判明した。プロファイル切替・コントローラー一覧ロジック（`Global.` 参照41件）は実際には `ControllerListViewModel.cs`（725行）に存在するため、以降①の対象はこちらに読み替える。
-- **置換前**: `Global.ProfilePath[deviceIndex]`、`Global.ApplyProfile(...)`、`Program.rootHub.DS4Controllers[i]` 等（`ControllerListViewModel.cs` 内、次回着手時に要再棚卸し）
-- **置換後**: 注入された `_profileRepo.ProfilePath`、`_profileAppService.ApplyProfile(...)`、`_deviceRegistry.Devices`
+#### ①' `ControllerListViewModel.cs`（メイン画面・プロファイル切替、実体725行）※2026-09-05訂正・実装済み
+- **訂正理由**: 当初 `ControllersViewModel.cs` を対象としていたが、実コード確認の結果、同ファイルは34行で `IDeviceStateService`／`IProfileSettingsService`／`IProfileRepository` が既にコンストラクタ注入済みの薄いクラスであり、変更の必要がないことが判明した。プロファイル切替・コントローラー一覧ロジック（`Global.` 参照41件）は実際には `ControllerListViewModel.cs`（725行、`ControllerListViewModel`／`CompositeDeviceModel`の2クラス構成）に存在するため、以降①の対象はこちらに読み替える。
+- **追加判明事項**: 調査の結果、`Global.ApplyProfile(...)` 呼び出しはこのファイルに存在せず、また `IProfileRepository`（Step2成果物）には `Global.ProfilePath` 等のスロット別実行時プロファイル配列や LinkedProfile 管理メソッドが未定義であることが判明した。これらは `m_Config`（BackingStore）への薄い公開アクセサ（`Global.ProfilePath` 等）として既に単一の実体で存在していたため、**`IProfileRepository` を拡張**して集約する設計とした（状態の複製は発生しない）。
+- **拡張したメンバー（`IProfileRepository`）**:
+  - `string[] ProfilePath { get; }` / `OlderProfilePath` / `SelectedProfile` / `LinkedProfileUI`
+  - `event EventHandler<SelectedProfileChangedEventArgs> SelectedProfileChanged` / `RaiseSelectedProfileChanged(...)`
+  - `ChangeLinkedProfile(...)` / `RemoveLinkedProfile(...)` / `SaveLinkedProfiles()`（LinkedProfile管理）
+- **置換内容**: `ControllerListViewModel` と `CompositeDeviceModel` の両クラスに `IProfileRepository profileRepo`（オプショナル引数＋`Global.ProfileRepositoryInstance`フォールバック）を注入し、上記の `Global.*` 直参照をすべて `profileRepo.*` に置換。既に注入済みの `profileSettingsService.LightbarSettingsInfo[devIndex]` で代替可能だった `Global.LightbarSettingsInfo[devIndex]`（6箇所）も合わせて置換。`Global.Save()`（1箇所）は Step13-3 と同様のパターンで `IAppSettingsService` を注入し `appSettings?.Save()` に置換。
+- **対象外とした参照**: `Global.RESOURCES_PREFIX`（コンパイル時定数、状態を持たないためDI化不要）。
 - **`ControllersViewModel.cs`（34行）**: 既存のDI構成を維持し、本Stepでの追加変更は不要と判断する。
+- **呼び出し元互換性**: `MainWindow.xaml.cs:128` の `new ControllerListViewModel(...)` は3引数呼び出しのままで、追加したオプショナル引数（`profileRepo`/`appSettings`）はデフォルト値`null`＋DI解決フォールバックにより無修正で動作する（§2.1原則遵守）。
 
 #### ② `SettingsViewModel.cs`（アプリ全体設定）※2026-09-05実コード確認により本Stepの先行実施対象
 - **置換前**: `DS4Windows.Global.Save()` の直接呼び出し（5箇所）
@@ -155,6 +161,8 @@ public class ViewModelFactory : IViewModelFactory
 |---|---|---|
 | ファクトリ改修 | `DS4Windows/DI/IViewModelFactory.cs` / `ViewModelFactory.cs` | 新設DIサービスのコンストラクタ注入と ViewModel への手渡し配線 |
 | コアVM改修 | `DS4Windows/DS4Forms/ViewModels/ControllerListViewModel.cs`（※2026-09-05訂正、旧`ControllersViewModel.cs`から対象変更） | プロファイル・デバイス操作を DI サービス経由に置換（`ControllersViewModel.cs` 自体は変更なし） |
+| インターフェース拡張 | `DS4Windows/DI/IProfileRepository.cs` | スロット別実行時プロファイル配列（ProfilePath等）・SelectedProfileChangedイベント・LinkedProfile管理メソッドを追加（Step13-2実装に伴う拡張） |
+| 実装改修 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | 上記拡張メンバーを実装（m_Config/Globalへの薄い公開アクセサとして、状態複製なし） |
 | コアVM改修 | `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | `IAppSettingsService` 接続、`Global.SaveSettings` 排除 |
 | コアVM改修 | `DS4Windows/DS4Forms/ViewModels/AutoProfilesViewModel.cs` | `IAutoProfileService` 接続 |
 | コアVM改修 | `DS4Windows/DS4Forms/ViewModels/SpecialActionsListViewModel.cs` | `ISpecialActionRepository` 接続 |
@@ -171,10 +179,13 @@ public class ViewModelFactory : IViewModelFactory
 1. `IViewModelFactory` および `ViewModelFactory.cs` に新設サービス群を追加注入。
 2. `ServiceRegistration.cs` における Factory の依存解決を確認。
 
-### タスク Step13-2: `ControllerListViewModel` の DI 接続（コア①、※対象ファイル訂正・次回マイクロステップで実施）
-1. `ControllerListViewModel.cs`（725行）を対象に、`Global.` 参照41件の棚卸しとコンストラクタへのサービス追加を行う。
-2. `Global.ProfilePath`、`Global.ApplyProfile` などの静的アクセスを DI サービス呼び出しにピンポイント置換。
-3. `ControllersViewModel.cs`（34行）は既存DI構成を維持し、追加変更は行わない。
+### タスク Step13-2: `ControllerListViewModel` の DI 接続（コア①、※対象ファイル訂正・実施済み 2026-09-05）
+1. `ControllerListViewModel.cs`（725行、`ControllerListViewModel`／`CompositeDeviceModel`の2クラス）の `Global.` 参照41件を棚卸しし、`IProfileRepository`・`IAppSettingsService` をコンストラクタ注入。
+2. `IProfileRepository` を拡張（ProfilePath/OlderProfilePath/SelectedProfile/LinkedProfileUI/SelectedProfileChanged/LinkedProfile管理メソッド）し、`ProfileRepository.cs` に実装。
+3. `Global.ProfilePath`、`Global.LinkedProfileUI`、`Global.changeLinkedProfile` 等の静的アクセスを `profileRepo.*` に、`Global.LightbarSettingsInfo` を既存注入済み `profileSettingsService.LightbarSettingsInfo` に、`Global.Save()` を `appSettings?.Save()` にピンポイント置換。
+4. `Global.RESOURCES_PREFIX`（定数）は対象外として維持。
+5. `ControllersViewModel.cs`（34行）は既存DI構成を維持し、追加変更は行わない。
+6. `MainWindow.xaml.cs` の呼び出し元は無修正（オプショナル引数フォールバックにより互換性維持）。
 
 ### タスク Step13-3: `SettingsViewModel` の DI 接続（コア②、※本セッションで先行実施）
 1. `SettingsViewModel.cs` に `IAppSettingsService` をコンストラクタ注入（インスタンスフィールド `_appSettings`）。
