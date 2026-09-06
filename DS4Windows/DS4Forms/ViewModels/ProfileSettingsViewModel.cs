@@ -53,6 +53,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private int device;
         public int Device { get => device; }
         private readonly IProfileSettingsService profileSettings;
+        private readonly ControlService controlService;
+        private readonly IOutputSlotService outputSlotService;
+        private readonly IProfileRepository profileRepo;
 
         private int funcDevNum;
         public int FuncDevNum { get => funcDevNum; }
@@ -704,7 +707,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool LaunchProgramExists
         {
-            get => !string.IsNullOrEmpty(Global.LaunchProgram[device]);
+            get => !string.IsNullOrEmpty(profileSettings.LaunchProgram[device]);
             set
             {
                 if (!value) ResetLauchProgram();
@@ -714,7 +717,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string LaunchProgram
         {
-            get => Global.LaunchProgram[device];
+            get => profileSettings.LaunchProgram[device];
         }
         public event EventHandler LaunchProgramChanged;
 
@@ -722,7 +725,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                string temp = Global.LaunchProgram[device];
+                string temp = profileSettings.LaunchProgram[device];
                 if (!string.IsNullOrEmpty(temp))
                 {
                     temp = Path.GetFileNameWithoutExtension(temp);
@@ -742,7 +745,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 ImageSource exeicon = null;
-                string path = Global.LaunchProgram[device];
+                string path = profileSettings.LaunchProgram[device];
                 if (File.Exists(path) && Path.GetExtension(path).ToLower() == ".exe")
                 {
                     using (Icon ico = Icon.ExtractAssociatedIcon(path))
@@ -852,7 +855,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int type = 0;
-                switch (Global.OutContType[device])
+                switch (outputSlotService.GetOutputDeviceType(device))
                 {
                     case OutContType.X360:
                         type = 0;
@@ -875,7 +878,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get => tempControllerIndex; set
             {
                 tempControllerIndex = value;
-                Global.outDevTypeTemp[device] = TempConType;
+                outputSlotService.OutDevTypeTemp[device] = TempConType;
             }
         }
 
@@ -949,7 +952,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public OutContType ContType
         {
-            get => Global.OutContType[device];
+            get => outputSlotService.GetOutputDeviceType(device);
         }
 
         public int SASteeringWheelEmulationAxisIndex
@@ -2637,7 +2640,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get => profileSettings.GyroMouseDeadZone[device];
             set
             {
-                profileSettings.SetGyroMouseDeadZone(device, value, App.rootHub);
+                profileSettings.SetGyroMouseDeadZone(device, value, controlService);
 
             }
         }
@@ -2647,7 +2650,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get => profileSettings.GyroMouseToggle[device];
             set
             {
-                profileSettings.SetGyroMouseToggle(device, value, App.rootHub);
+                profileSettings.SetGyroMouseToggle(device, value, controlService);
             }
         }
 
@@ -2671,7 +2674,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get => profileSettings.GyroMouseStickToggle[device];
             set
             {
-                profileSettings.SetGyroMouseStickToggle(device, value, App.rootHub);
+                profileSettings.SetGyroMouseStickToggle(device, value, controlService);
             }
         }
 
@@ -2746,8 +2749,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int GyroMouseStickEvalCondIndex
         {
-            get => Global.GetSAMouseStickTriggerCond(device) ? 0 : 1;
-            set => Global.SetSaMouseStickTriggerCond(device, value == 0 ? "and" : "or");
+            get => profileSettings.GetSAMouseStickTriggerCond(device) ? 0 : 1;
+            set => profileSettings.SetSaMouseStickTriggerCond(device, value == 0 ? "and" : "or");
         }
 
         public int GyroMouseStickXAxis
@@ -2850,7 +2853,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get => profileSettings.GyroControlsInf[device].triggerToggle;
             set
             {
-                profileSettings.SetGyroControlsToggle(device, value, App.rootHub);
+                profileSettings.SetGyroControlsToggle(device, value, controlService);
             }
         }
 
@@ -2993,13 +2996,19 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set => profileSettings.InverseRumbleMotors[device] = value;
         }
 
-        public ProfileSettingsViewModel(int device, IProfileSettingsService profileSettings = null)
+        public ProfileSettingsViewModel(int device, IProfileSettingsService profileSettings = null,
+            ControlService controlService = null,
+            IOutputSlotService outputSlotService = null,
+            IProfileRepository profileRepo = null)
         {
             this.device = device;
             this.profileSettings = profileSettings ?? Global.ProfileSettingsServiceInstance;
+            this.controlService = controlService ?? Program.rootHub;
+            this.outputSlotService = outputSlotService ?? DS4WinWPF.AppHost.GetService<IOutputSlotService>() ?? Global.OutputSlotServiceInstance;
+            this.profileRepo = profileRepo ?? DS4WinWPF.AppHost.GetService<IProfileRepository>() ?? Global.ProfileRepositoryInstance;
             funcDevNum = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : 0;
             tempControllerIndex = ControllerTypeIndex;
-            Global.outDevTypeTemp[device] = OutContType.X360;
+            this.outputSlotService.OutDevTypeTemp[device] = OutContType.X360;
             tempBtPollRate = profileSettings.BTPollRate[device];
 
             outputMouseSpeed = CalculateOutputMouseSpeed(ButtonMouseSensitivity);
@@ -3080,7 +3089,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void CalcProfileFlags(object sender, EventArgs e)
         {
-            Global.CacheProfileCustomsFlags(device);
+            profileRepo.CacheProfileCustomsFlags(device);
         }
 
         private void SetupEvents()
@@ -3136,7 +3145,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.touchPad[device]?.ResetTouchStickAccel(TouchMouseStickTrackballFriction);
+                controlService.touchPad[device]?.ResetTouchStickAccel(TouchMouseStickTrackballFriction);
             }
         }
 
@@ -3144,7 +3153,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.touchPad[device]?.Reset();
+                controlService.touchPad[device]?.Reset();
             }
         }
 
@@ -3152,7 +3161,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.touchPad[device]?.Reset();
+                controlService.touchPad[device]?.Reset();
             }
         }
 
@@ -3160,7 +3169,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.touchPad[device]?.PostSetup();
+                controlService.touchPad[device]?.PostSetup();
             }
         }
 
@@ -3278,7 +3287,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public void UpdateLaunchProgram(string path)
         {
-            Global.LaunchProgram[device] = path;
+            profileSettings.LaunchProgram[device] = path;
             LaunchProgramExistsChanged?.Invoke(this, EventArgs.Empty);
             LaunchProgramChanged?.Invoke(this, EventArgs.Empty);
             LaunchProgramNameChanged?.Invoke(this, EventArgs.Empty);
@@ -3287,7 +3296,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public void ResetLauchProgram()
         {
-            Global.LaunchProgram[device] = string.Empty;
+            profileSettings.LaunchProgram[device] = string.Empty;
             LaunchProgramExistsChanged?.Invoke(this, EventArgs.Empty);
             LaunchProgramChanged?.Invoke(this, EventArgs.Empty);
             LaunchProgramNameChanged?.Invoke(this, EventArgs.Empty);
@@ -3716,7 +3725,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public void UpdateLateProperties()
         {
             tempControllerIndex = ControllerTypeIndex;
-            Global.outDevTypeTemp[device] = Global.OutContType[device];
+            outputSlotService.OutDevTypeTemp[device] = outputSlotService.GetOutputDeviceType(device);
             tempBtPollRate = profileSettings.BTPollRate[device];
             outputMouseSpeed = CalculateOutputMouseSpeed(ButtonMouseSensitivity);
             mouseOffsetSpeed = RawButtonMouseOffset * outputMouseSpeed;
@@ -4174,7 +4183,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             int idx = 0;
             foreach (DS4Controls dsControl in inputControls)
             {
-                DS4ControlSettings setting = Global.GetDS4CSetting(deviceNum, dsControl);
+                DS4ControlSettings setting = profileSettings.GetDS4CSetting(deviceNum, dsControl);
                 setting.Reset();
                 if (idx < actionBtns.Count && actionBtns[idx] != null)
                 {

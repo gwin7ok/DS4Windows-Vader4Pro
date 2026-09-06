@@ -180,5 +180,8 @@ namespace DS4Windows
             if (_slotManager == null || _store == null) return false;
             return _store.Save(_slotManager);
         }
+
+        // ---- Phase5-Step13-6: Profile Editor で選択中の未確定(Temp)出力デバイスタイプ ----
+        public OutContType[] OutDevTypeTemp => Global.outDevTypeTemp;
     }
 }

@@ -1,6 +1,6 @@
 # フェーズ5-Step13 計画書: UI層（ViewModels および MainWindow）のDIサービス接続・残存静的参照の撲滅
 
-作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映／2026-09-06第4版: Step13-5実装に伴いIProfileRepository再拡張とGlobal.RemoveAction自動保存機能欠落の是正を反映）
+作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映／2026-09-06第4版: Step13-5実装に伴いIProfileRepository再拡張とGlobal.RemoveAction自動保存機能欠落の是正を反映／2026-09-06第5版: Step13-6実装（RecordBoxViewModel・ProfileSettingsViewModel）に伴いIOutputSlotService拡張を反映）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
@@ -146,8 +146,9 @@ public class ViewModelFactory : IViewModelFactory
 
 ### 1.3 サブ ViewModels の静的参照撲滅
 コア 4 画面の改修完了後、以下のサブ画面の残存参照を順次サービス経由に置換する。
-- `RecordBoxViewModel.cs`: マクロ記録・再生（`IMacroPlayer` 活用）
-- `ProfileSettingsViewModel.cs`: スロット別設定（`IProfileSettingsService` 活用）
+- `RecordBoxViewModel.cs`※2026-09-06実装済み: `Global.TouchOutMode`→既存`IProfileSettingsService.TouchOutMode`、`Program.rootHub`→新規注入`ControlService`に置換。計画書記載の「`IMacroPlayer`活用」は実態と異なり（`IMacroPlayer`はマクロ*再生*用、本ファイルは*記録*用で無関係）誤記と判明。`Global.macroDS4Values`／`Global.RESOURCES_PREFIX`は状態を持たない定数のため対象外。
+- `ProfileSettingsViewModel.cs`※2026-09-06実装済み（4248行、実質22箇所を精査）: `Global.LaunchProgram`／`GetDS4CSetting`／`GetSAMouseStickTriggerCond`／`SetSaMouseStickTriggerCond`は既存`IProfileSettingsService`シムを活用、`App.rootHub`（8箇所）は新規注入`ControlService`に、`Global.OutContType`は既存`IOutputSlotService.GetOutputDeviceType`に置換。`Global.outDevTypeTemp`（3箇所）は`IOutputSlotService`に`OutDevTypeTemp`を新設して対応、`Global.CacheProfileCustomsFlags`（1箇所）は`IProfileRepository`に追加して対応。
+  - **対象外とした参照（要検証のうえ維持）**: `Global.RefreshActionAlias`（引数への純粋操作で状態を持たない）、`Global.IsUsingMinViGEm117333()`（読み取り専用のViGEmドライババージョン判定）、`Global.defaultButtonMapping`（コードベース全体で読み取りのみと確認済みの固定配列）、`Global.exedirpath`（`IPathService.ExecutableDirectory`実装が`AppContext.BaseDirectory`ベースであり`Directory.GetParent(exelocation)`と挙動が異なる可能性を排除できなかったため、未検証の置換によるパス不具合リスクを避けて維持）。
 - ~~`LogViewModel.cs`~~: 2026-09-05実コード確認の結果、`Global.exeversion` 参照1件のみでパス解決等の静的委譲ロジックは存在しないことが判明したため、本Stepの対象から除外する。
 
 ---
@@ -184,7 +185,12 @@ public class ViewModelFactory : IViewModelFactory
 | 実装改修 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | 上記拡張メンバーを実装 |
 | View改修 | `DS4Windows/DS4Forms/MainWindow.xaml.cs` | `Program.rootHub` / `Global` 直参照の排除、DIサービス経由化 |
 | クリーンアップ | `DS4Windows/App.xaml.cs` | 不要となった `rootHub` シムプロパティの完全削除 |
-| サブVM改修 | `DS4Windows/DS4Forms/ViewModels/ProfileSettingsViewModel.cs` 等 | 残存静的参照の完全排除 |
+| サブVM改修 | `DS4Windows/DS4Forms/ViewModels/RecordBoxViewModel.cs` | `IProfileSettingsService`／`ControlService` 接続 |
+| サブVM改修 | `DS4Windows/DS4Forms/ViewModels/ProfileSettingsViewModel.cs` | `ControlService`／`IOutputSlotService`／`IProfileRepository` 接続、残存静的参照22箇所を置換 |
+| インターフェース拡張 | `DS4Windows/DI/IOutputSlotService.cs` | `OutDevTypeTemp`（Profile Editor未確定出力タイプ）を追加 |
+| 実装改修 | `DS4Windows/DS4Control/Services/OutputSlotService.cs` | 上記拡張メンバーを実装 |
+| インターフェース再拡張 | `DS4Windows/DI/IProfileRepository.cs` | `CacheProfileCustomsFlags` を追加 |
+| 実装改修 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | 上記拡張メンバーを実装 |
 | 単体テスト拡充 | `DS4WindowsTests/PatternAViewModelTests.cs` 等 | モックサービスを用いた各 ViewModel の完全自動テスト |
 
 ---
@@ -220,8 +226,12 @@ public class ViewModelFactory : IViewModelFactory
 4. `Global.GetActions()`／`Global.ProfileActions`／`Global.OutContType`をそれぞれ対応するDIサービスにピンポイント置換。`Global.NormalizeActionName`（状態を持たない純粋関数）は対象外として維持。
 5. `ProfileEditor.xaml.cs`の呼び出し元は無修正（オプショナル引数フォールバックにより互換性維持）。
 
-### タスク Step13-6: サブ ViewModels の静的参照撲滅
-1. `RecordBoxViewModel`、`ProfileSettingsViewModel` 等の残存参照を精査・置換。
+### タスク Step13-6: サブ ViewModels の静的参照撲滅（※実施済み 2026-09-06）
+1. `RecordBoxViewModel.cs`: `IProfileSettingsService`（既存`TouchOutMode`活用）・`ControlService`（新規注入）に置換。
+2. `IOutputSlotService`に`OutDevTypeTemp`、`IProfileRepository`に`CacheProfileCustomsFlags`をそれぞれ追加し、`OutputSlotService.cs`／`ProfileRepository.cs`に実装。
+3. `ProfileSettingsViewModel.cs`（4248行）: `LaunchProgram`・`GetDS4CSetting`・`SAMouseStickTriggerCond`系は既存`IProfileSettingsService`シムへ、`App.rootHub`（8箇所）は新規注入`ControlService`へ、`OutContType`／`outDevTypeTemp`は`IOutputSlotService`へそれぞれ置換。
+4. `RefreshActionAlias`・`IsUsingMinViGEm117333`・`defaultButtonMapping`・`exedirpath`は個別調査のうえ、状態を持たない／既存DI実装との挙動差異が排除できないことを理由に対象外として維持（詳細は§1.3参照）。
+5. `ProfileEditor.xaml.cs`・`RecordBox.xaml.cs`の呼び出し元は無修正（オプショナル引数フォールバックにより互換性維持）。
 
 ### タスク Step13-7: `MainWindow.xaml.cs` の静的参照排除
 1. `MainWindow.xaml.cs` を精査し、`Program.rootHub` や `Global` への直アクセスを DI サービス経由へピンポイント置換する（§1.4）。

@@ -214,5 +214,8 @@ namespace DS4Windows
         // ---- Phase5-Step13-5: デバイス別・割当済みSpecialAction名リスト ----
         public List<string>[] ProfileActions => Global.ProfileActions;
         public void CacheExtraProfileInfo(int deviceIndex) => Global.CacheExtraProfileInfo(deviceIndex);
+
+        // ---- Phase5-Step13-6: プロファイルのカスタムフラグキャッシュ更新 ----
+        public void CacheProfileCustomsFlags(int deviceIndex) => Global.CacheProfileCustomsFlags(deviceIndex);
     }
 }

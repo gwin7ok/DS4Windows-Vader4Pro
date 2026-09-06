@@ -42,5 +42,8 @@ namespace DS4Windows.DI
         bool UnplugSlot(int slotNumber);
         bool LoadOutputSlots();
         bool SaveOutputSlots();
+
+        // ---- Phase5-Step13-6: Profile Editor で選択中の未確定(Temp)出力デバイスタイプ ----
+        OutContType[] OutDevTypeTemp { get; }
     }
 }

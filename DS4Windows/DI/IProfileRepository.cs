@@ -37,5 +37,8 @@ namespace DS4Windows.DI
         // ---- Phase5-Step13-5: デバイス別・割当済みSpecialAction名リスト ----
         List<string>[] ProfileActions { get; }
         void CacheExtraProfileInfo(int deviceIndex);
+
+        // ---- Phase5-Step13-6: プロファイルのカスタムフラグキャッシュ更新 ----
+        void CacheProfileCustomsFlags(int deviceIndex);
     }
 }
