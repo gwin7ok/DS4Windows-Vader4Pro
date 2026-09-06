@@ -2,17 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Clean DS4Windows Cache",
-            "type": "shell",
-            "command": "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue DS4Windows/obj, DS4Windows/bin; exit 0",
-            "presentation": {
-                "reveal": "silent"
-            },
-            "problemMatcher": []
-        },
-        {
             "label": "Release win-x64",
-            "dependsOn": "Clean DS4Windows Cache",
             "type": "shell",
             "command": "pwsh",
             "args": [
@@ -57,11 +47,7 @@
         {
             "label": "Remove bin",
             "type": "shell",
-            "command": "cmd",
-            "args": [
-                "/c",
-                "./scripts/Remove bin.bat"
-            ],
+            "command": "& \".\\scripts\\Remove-bin.bat\"",
             "presentation": {
                 "reveal": "silent",
                 "panel": "shared",
@@ -103,7 +89,7 @@
         },
         {
             "label": "Build Debug",
-            "dependsOn": "Clean DS4Windows Cache",
+            "dependsOn": "Remove bin",
             "type": "shell",
             "command": "dotnet",
             "args": [
