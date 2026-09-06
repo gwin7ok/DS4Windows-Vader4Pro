@@ -23,22 +23,22 @@
     "omnisharp.projectLoadTimeout": 60,
     "omnisharp.enableMsBuildLoadProjectsOnDemand": false,
     "csharp.suppressDotnetInstallWarning": true,
-    "csharp.maxProjectFileCountForDiagnosticAnalysis": 0,
+    "csharp.maxProjectFileCountForDiagnosticAnalysis": 2000,
     "csharp.showOmnisharpLogOnError": false,
     "csharp.suppressDotnetRestoreNotification": true,
     "problems.showCurrentInStatus": false,
     "problems.sortOrder": "severity",
-    "problems.decorations.enabled": false,
+    "problems.decorations.enabled": true,
     "csharp.format.enable": false,
     "csharp.codeLens.enableReferencesCodeLens": false,
     "files.exclude": {
         "**/bin": false,
-        "**/obj": true,
+        "**/obj": false,
         "**/.vs": true
     },
     "search.exclude": {
         "**/bin": false,
-        "**/obj": true,
+        "**/obj": false,
         "**/.vs": true
     }
 }
