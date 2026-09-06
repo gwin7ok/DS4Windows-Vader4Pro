@@ -28,12 +28,13 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using DS4Windows;
+using DS4Windows.DI;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
     public class RecordBoxViewModel
     {
-private Stopwatch sw = new Stopwatch();
+        private Stopwatch sw = new Stopwatch();
         private int deviceNum;
         public int DeviceNum { get => deviceNum; }
 
@@ -66,7 +67,7 @@ private Stopwatch sw = new Stopwatch();
         private ObservableCollection<MacroStepItem> macroSteps =
             new ObservableCollection<MacroStepItem>();
         public ObservableCollection<MacroStepItem> MacroSteps { get => macroSteps; }
-        
+
         private int macroStepIndex;
         public int MacroStepIndex
         {
@@ -107,10 +108,16 @@ private Stopwatch sw = new Stopwatch();
         /// Needed to revert output control to Touchpad later
         /// </summary>
         private TouchpadOutMode oldTouchpadMode = TouchpadOutMode.None;
+        private readonly IProfileSettingsService profileSettingsService;
+        private readonly ControlService controlService;
 
-
-        public RecordBoxViewModel(int deviceNum, DS4ControlSettings controlSettings, bool shift, bool repeatable = true)
+        public RecordBoxViewModel(int deviceNum, DS4ControlSettings controlSettings, bool shift, bool repeatable = true,
+            IProfileSettingsService profileSettingsService = null,
+            ControlService controlService = null)
         {
+            this.profileSettingsService = profileSettingsService ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
+            this.controlService = controlService ?? Program.rootHub;
+
             if (keydownOverrides == null)
             {
                 CreateKeyDownOverrides();
@@ -149,7 +156,7 @@ private Stopwatch sw = new Stopwatch();
             this.repeatable = repeatable;
 
             BindingOperations.EnableCollectionSynchronization(macroSteps, _colLockobj);
-            
+
             // By default RECORD button appends new steps. User must select (click) an existing step to insert new steps in front of the selected step
             this.MacroStepIndex = -1;
 
@@ -157,8 +164,8 @@ private Stopwatch sw = new Stopwatch();
 
             // Temporarily use Passthru mode for Touchpad. Store old TouchOutMode.
             // Don't conflict Touchpad Click with default output Mouse button controls
-            oldTouchpadMode = Global.TouchOutMode[deviceNum];
-            Global.TouchOutMode[deviceNum] = TouchpadOutMode.Passthru;
+            oldTouchpadMode = this.profileSettingsService.TouchOutMode[deviceNum];
+            this.profileSettingsService.TouchOutMode[deviceNum] = TouchpadOutMode.Passthru;
         }
 
         private void CreateKeyDownOverrides()
@@ -183,7 +190,7 @@ private Stopwatch sw = new Stopwatch();
 
             MacroParser macroParser = new MacroParser(macro);
             macroParser.LoadMacro();
-            foreach(MacroStep step in macroParser.MacroSteps)
+            foreach (MacroStep step in macroParser.MacroSteps)
             {
                 MacroStepItem item = new MacroStepItem(step);
                 macroSteps.Add(item);
@@ -194,7 +201,7 @@ private Stopwatch sw = new Stopwatch();
         {
             int[] outmac = new int[macroSteps.Count];
             int index = 0;
-            foreach(MacroStepItem step in macroSteps)
+            foreach (MacroStepItem step in macroSteps)
             {
                 outmac[index] = step.Step.Value;
                 index++;
@@ -388,11 +395,11 @@ private Stopwatch sw = new Stopwatch();
 
         public void ProcessDS4Tick()
         {
-            if (Program.rootHub.DS4Controllers[0] != null)
+            if (controlService.DS4Controllers[0] != null)
             {
-                DS4Device dev = Program.rootHub.DS4Controllers[0];
+                DS4Device dev = controlService.DS4Controllers[0];
                 DS4State cState = dev.getCurrentStateRef();
-                DS4Windows.Mouse tp = Program.rootHub.touchPad[0];
+                DS4Windows.Mouse tp = controlService.touchPad[0];
                 for (DS4Controls dc = DS4Controls.LXNeg; dc < DS4Controls.Mute; dc++)
                 {
                     int macroValue = Global.macroDS4Values[dc];
@@ -429,7 +436,7 @@ private Stopwatch sw = new Stopwatch();
         /// </summary>
         public void RevertControlsSettings()
         {
-            Global.TouchOutMode[deviceNum] = oldTouchpadMode;
+            profileSettingsService.TouchOutMode[deviceNum] = oldTouchpadMode;
             oldTouchpadMode = TouchpadOutMode.None;
         }
     }
@@ -531,7 +538,7 @@ private Stopwatch sw = new Stopwatch();
 
         public void UpdateLightbarValue(Color color)
         {
-            step.Value = 1000000000 + (color.R*1000000)+(color.G*1000)+color.B;
+            step.Value = 1000000000 + (color.R * 1000000) + (color.G * 1000) + color.B;
         }
 
         public Color LightbarColorValue()
