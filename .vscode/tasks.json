@@ -2,7 +2,22 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Clean DS4Windows Cache",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-Command",
+                "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue .\\DS4Windows\\obj, .\\DS4Windows\\bin"
+            ],
+            "presentation": {
+                "reveal": "silent" // クリーン処理のターミナル表示を抑制（必要なら "always"）
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Release win-x64",
+            "dependsOn": "Clean DS4Windows Cache",
             "type": "shell",
             "command": "pwsh",
             "args": [
@@ -93,6 +108,7 @@
         },
         {
             "label": "Build Debug",
+            "dependsOn": "Clean DS4Windows Cache",
             "type": "shell",
             "command": "dotnet",
             "args": [
