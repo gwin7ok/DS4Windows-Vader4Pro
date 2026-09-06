@@ -4,14 +4,9 @@
         {
             "label": "Clean DS4Windows Cache",
             "type": "shell",
-            "command": "powershell",
-            "args": [
-                "-NoProfile",
-                "-Command",
-                "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue .\\DS4Windows\\obj, .\\DS4Windows\\bin"
-            ],
+            "command": "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue DS4Windows/obj, DS4Windows/bin; exit 0",
             "presentation": {
-                "reveal": "silent" // クリーン処理のターミナル表示を抑制（必要なら "always"）
+                "reveal": "silent"
             },
             "problemMatcher": []
         },
