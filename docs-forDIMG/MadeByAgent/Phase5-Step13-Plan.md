@@ -1,6 +1,6 @@
 # フェーズ5-Step13 計画書: UI層（ViewModels および MainWindow）のDIサービス接続・残存静的参照の撲滅
 
-作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映）
+作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映／2026-09-06第4版: Step13-5実装に伴いIProfileRepository再拡張とGlobal.RemoveAction自動保存機能欠落の是正を反映）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
@@ -132,9 +132,15 @@ public class ViewModelFactory : IViewModelFactory
   - **影響**: 設定画面でAutoProfileルールを追加・編集・保存しても、バックグラウンド監視（`AutoProfileService.CheckProfiles`）側のHolderには反映されず、アプリ再起動まで自動切替に反映されない可能性があった。
   - **是正内容**: `IAutoProfileService`に`AutoProfileHolder Holder { get; }`を追加して唯一の実体を公開し、`AutoProfiles.xaml.cs`はこの共有インスタンスを参照するよう変更（Reloadではなく単一実体の共有により根本解消）。
 
-#### ④ `SpecialActionsListViewModel.cs`（SpecialAction一覧）
-- **置換前**: 静的 `Global.store.actions` 直引き
-- **置換後**: 注入された `_specialActionRepo.Actions`、`AddAction`、`RemoveAction`
+#### ④ `SpecialActionsListViewModel.cs`（SpecialAction一覧）※2026-09-06実装済み
+- **置換前**: `Global.GetActions()`／`Global.ProfileActions`／`Global.OutContType`／`Global.RemoveAction(...)`／`Global.CacheExtraProfileInfo(...)` の静的直参照
+- **置換後**: `ISpecialActionRepository`（`ActionList`／`RemoveAction`／`SaveActions`）、`IProfileRepository`（新設 `ProfileActions`／`CacheExtraProfileInfo`）、`IOutputSlotService`（既存 `GetOutputDeviceType`）、`IManagedActionManager`（`ClearAllEntries`）にそれぞれ置換。
+- **🔴重大発見: `Global.RemoveAction`の隠れた自動保存機能**:
+  - `Global.RemoveAction`は内部で`m_Config.RemoveAction(name)`を呼んでおり、これが削除と同時に`SaveActions()`（XML保存）まで自動実行していた。
+  - 一方、Step7で作られた`ISpecialActionRepository.RemoveAction`はリストからの削除のみで自動保存を行わない設計だったため、単純に置き換えると「UIでアクションを削除してもXMLに保存されない」という機能後退が起きるところだった。
+  - **是正内容**: `specialActionRepo.RemoveAction(...)`が`true`を返した場合に明示的に`specialActionRepo.SaveActions()`を呼ぶよう実装。また`Global.RemoveAction`が行っていた`ActionManager.ClearAllEntries()`（実体はStep9の`IManagedActionManager.ClearAllEntries()`への薄い委譲）も`IManagedActionManager`を直接注入して踏襲。削除後のActions.xml再読込・件数検証処理（`ReloadActionsAndVerify`）は、Step7でBackingStore一本化済みのため不要と判断し省略。
+- **`IProfileRepository`の再拡張**: `List<string>[] ProfileActions { get; }`（デバイス別・割当済みSpecialAction名リスト）、`void CacheExtraProfileInfo(int deviceIndex)` を追加（`m_Config`への薄い公開アクセサ、状態複製なし）。
+- **対象外とした参照**: `Global.NormalizeActionName`・`Global.getX360ControlString`（いずれも状態を持たない純粋な文字列処理のため）。
 
 ---
 
@@ -173,7 +179,9 @@ public class ViewModelFactory : IViewModelFactory
 | インターフェース拡張 | `DS4Windows/DI/IAutoProfileService.cs` | `Holder`（AutoProfileHolder二重インスタンス問題是正）・`AutoProfileSwitchNotifyChoice` を追加 |
 | 実装改修 | `DS4Windows/DS4Control/Services/AutoProfileService.cs` | 上記拡張メンバーを実装 |
 | View改修 | `DS4Windows/DS4Forms/AutoProfiles.xaml.cs` | 独自`AutoProfileHolder`生成を廃止し`IAutoProfileService.Holder`を共有 |
-| コアVM改修 | `DS4Windows/DS4Forms/ViewModels/SpecialActionsListViewModel.cs` | `ISpecialActionRepository` 接続 |
+| コアVM改修 | `DS4Windows/DS4Forms/ViewModels/SpecialActionsListViewModel.cs` | `ISpecialActionRepository`／`IProfileRepository`／`IOutputSlotService`／`IManagedActionManager` 接続 |
+| インターフェース再拡張 | `DS4Windows/DI/IProfileRepository.cs` | `ProfileActions`・`CacheExtraProfileInfo` を追加（Step13-5実装に伴う拡張） |
+| 実装改修 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | 上記拡張メンバーを実装 |
 | View改修 | `DS4Windows/DS4Forms/MainWindow.xaml.cs` | `Program.rootHub` / `Global` 直参照の排除、DIサービス経由化 |
 | クリーンアップ | `DS4Windows/App.xaml.cs` | 不要となった `rootHub` シムプロパティの完全削除 |
 | サブVM改修 | `DS4Windows/DS4Forms/ViewModels/ProfileSettingsViewModel.cs` 等 | 残存静的参照の完全排除 |
@@ -205,8 +213,12 @@ public class ViewModelFactory : IViewModelFactory
 3. `AutoProfilesViewModel.cs` に `IAppSettingsService`・`IAutoProfileService`・`ControlService`（コンストラクタ注入、オプショナル引数＋フォールバック）を追加し、`Global.AutoProfileRevertDefaultProfile`／`Global.autoProfileSwitchNotifyChoice`／`App.rootHub.CheckHidHidePresence` を置換。
 4. `IViewModelFactory.CreateAutoProfilesViewModel` および全呼び出し元は2引数のまま無修正（オプショナル引数フォールバックにより互換性維持）。
 
-### タスク Step13-5: `SpecialActionsListViewModel` の DI 接続（コア④）
-1. `SpecialActionsListViewModel.cs` に `ISpecialActionRepository` を注入し、実データ操作に一本化。
+### タスク Step13-5: `SpecialActionsListViewModel` の DI 接続（コア④、※実施済み 2026-09-06）
+1. `IProfileRepository` を再拡張（`ProfileActions`／`CacheExtraProfileInfo`）し、`ProfileRepository.cs` に実装。
+2. `SpecialActionsListViewModel.cs` に `ISpecialActionRepository`・`IProfileRepository`・`IOutputSlotService`・`IManagedActionManager`（いずれもオプショナル引数＋フォールバック）を注入。
+3. `Global.RemoveAction`の隠れた自動保存機能（`SaveActions()`）とトグル状態クリア（`ActionManager.ClearAllEntries()`）を、DIサービス直接呼び出し（`specialActionRepo.SaveActions()`＋`actionManager.ClearAllEntries()`）で明示的に踏襲し、機能欠落を防止。
+4. `Global.GetActions()`／`Global.ProfileActions`／`Global.OutContType`をそれぞれ対応するDIサービスにピンポイント置換。`Global.NormalizeActionName`（状態を持たない純粋関数）は対象外として維持。
+5. `ProfileEditor.xaml.cs`の呼び出し元は無修正（オプショナル引数フォールバックにより互換性維持）。
 
 ### タスク Step13-6: サブ ViewModels の静的参照撲滅
 1. `RecordBoxViewModel`、`ProfileSettingsViewModel` 等の残存参照を精査・置換。

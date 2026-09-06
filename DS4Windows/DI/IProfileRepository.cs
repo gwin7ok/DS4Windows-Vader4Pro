@@ -34,5 +34,8 @@ namespace DS4Windows.DI
         void ChangeLinkedProfile(string serial, string profile);
         void RemoveLinkedProfile(string serial);
         bool SaveLinkedProfiles();
+        // ---- Phase5-Step13-5: デバイス別・割当済みSpecialAction名リスト ----
+        List<string>[] ProfileActions { get; }
+        void CacheExtraProfileInfo(int deviceIndex);
     }
 }

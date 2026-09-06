@@ -210,5 +210,9 @@ namespace DS4Windows
 
         public bool SaveLinkedProfiles()
             => Global.SaveLinkedProfiles();
+
+        // ---- Phase5-Step13-5: デバイス別・割当済みSpecialAction名リスト ----
+        public List<string>[] ProfileActions => Global.ProfileActions;
+        public void CacheExtraProfileInfo(int deviceIndex) => Global.CacheExtraProfileInfo(deviceIndex);
     }
 }
