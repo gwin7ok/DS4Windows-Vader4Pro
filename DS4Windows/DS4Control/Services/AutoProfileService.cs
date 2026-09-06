@@ -126,7 +126,7 @@ namespace DS4Windows
                     if (turnOffDS4WinApp)
                     {
                         _turnOffTemp = true;
-                        if (App.rootHub != null && App.rootHub.running)
+                        if (Program.rootHub != null && Program.rootHub.running)
                         {
                             if (AutoProfileDebugLogLevel > 0)
                                 AppLogger.LogToGui("DEBUG: Auto-Profile. Turning DS4Windows temporarily off", false, true);
@@ -141,7 +141,7 @@ namespace DS4Windows
                     if (_turnOffTemp && Global.AutoProfileRevertDefaultProfile)
                     {
                         _turnOffTemp = false;
-                        if (App.rootHub != null && !App.rootHub.running)
+                        if (Program.rootHub != null && !Program.rootHub.running)
                         {
                             if (AutoProfileDebugLogLevel > 0)
                                 AppLogger.LogToGui("DEBUG: Auto-Profile. Turning DS4Windows on before reverting to default profile", false, true);
@@ -181,11 +181,11 @@ namespace DS4Windows
 
         private void SetAndWaitServiceStatus(bool serviceRunningStatus)
         {
-            if (App.rootHub != null && App.rootHub.running != serviceRunningStatus)
+            if (Program.rootHub != null && Program.rootHub.running != serviceRunningStatus)
             {
                 RequestServiceChange?.Invoke(serviceRunningStatus);
                 Stopwatch sw = Stopwatch.StartNew();
-                while (App.rootHub.running != serviceRunningStatus && sw.Elapsed.TotalSeconds < 10)
+                while (Program.rootHub.running != serviceRunningStatus && sw.Elapsed.TotalSeconds < 10)
                 {
                     Thread.SpinWait(1000);
                 }

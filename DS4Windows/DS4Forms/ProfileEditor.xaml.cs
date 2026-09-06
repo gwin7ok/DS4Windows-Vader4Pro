@@ -151,6 +151,7 @@ namespace DS4WinWPF.DS4Forms
         private ProfileSettingsViewModel profileSettingsVM;
         private readonly DS4Windows.DI.IProfileRepository profileRepository;
         private readonly DS4Windows.Actions.IProfileSwitcher profileSwitcher;
+        private readonly DS4Windows.ControlService controlService;
         private MappingListViewModel mappingListVM;
         private ProfileEntity currentProfile;
         private SpecialActionsListViewModel specialActionsVM;
@@ -275,6 +276,7 @@ namespace DS4WinWPF.DS4Forms
                 ?? new DS4Windows.ProfileRepository();
             profileSwitcher = DS4WinWPF.AppHost.GetService<DS4Windows.Actions.IProfileSwitcher>()
                 ?? new DS4Windows.Actions.DefaultProfileSwitcher();
+            controlService = DS4Windows.Program.rootHub;
 
             // SpecialActionsリスト表示前にカルチャを明示的に再設定
             var lang = DS4Windows.Global.UseLang;
@@ -1118,7 +1120,7 @@ namespace DS4WinWPF.DS4Forms
                 presetWin.ShowDialog();
                 if (presetWin.Result == MessageBoxResult.Cancel)
                 {
-                    Global.LoadBlankDevProfile(device, false, App.rootHub, false);
+                    Global.LoadBlankDevProfile(device, false, controlService, false);
                 }
             }
 
@@ -1247,7 +1249,7 @@ namespace DS4WinWPF.DS4Forms
         {
             if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
+                controlService.setRumble(0, 0, profileSettingsVM.FuncDevNum);
             }
 
             Global.outDevTypeTemp[deviceNum] = OutContType.X360;
@@ -1255,7 +1257,7 @@ namespace DS4WinWPF.DS4Forms
             Task.Run(() =>
             {
                 DS4Device device = deviceNum >= 0 && deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT
-                    ? App.rootHub.DS4Controllers[deviceNum]
+                    ? controlService.DS4Controllers[deviceNum]
                     : null;
                 if (device != null)
                 {
@@ -1347,7 +1349,7 @@ namespace DS4WinWPF.DS4Forms
             {
                 if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
                 {
-                    App.rootHub.touchPad[deviceNum]?.ResetToggleGyroModes();
+                    controlService.touchPad[deviceNum]?.ResetToggleGyroModes();
                 }
             }
         }
@@ -1398,7 +1400,7 @@ namespace DS4WinWPF.DS4Forms
             bool result = false;
             if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
+                controlService.setRumble(0, 0, profileSettingsVM.FuncDevNum);
             }
 
             if (profileSettingsVM.HasDebouncingMsChanged)
@@ -1480,7 +1482,7 @@ namespace DS4WinWPF.DS4Forms
                     {
                         if (Global.SelectedProfile[i] == temp)
                         {
-                            DS4Device device = App.rootHub.DS4Controllers[i];
+                            DS4Device device = controlService.DS4Controllers[i];
                             if (device != null)
                             {
                                 device.HaltReportingRunAction(() =>
@@ -1488,7 +1490,7 @@ namespace DS4WinWPF.DS4Forms
                                     string prolog = string.Format(Properties.Resources.UsingProfile,
                                         (i + 1).ToString(), temp, $"{device.Battery}");
                                     bool display = Global.ProfileChangedNotification;
-                                    profileSwitcher.ApplyManualProfile(i, temp, false, true, App.rootHub,
+                                    profileSwitcher.ApplyManualProfile(i, temp, false, true, controlService,
                                         DS4Windows.ProfileChangeSource.Manual, prolog, display);
                                 });
                             }
@@ -1569,7 +1571,7 @@ namespace DS4WinWPF.DS4Forms
         {
             if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
+                controlService.setRumble(0, 0, profileSettingsVM.FuncDevNum);
             }
 
             // 画面サイズ保持チェックが有効な場合のみレイアウト保存
@@ -1638,7 +1640,7 @@ namespace DS4WinWPF.DS4Forms
             int deviceNum = profileSettingsVM.FuncDevNum;
             if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                DS4Device d = App.rootHub.DS4Controllers[deviceNum];
+                DS4Device d = controlService.DS4Controllers[deviceNum];
                 if (d != null)
                 {
                     RumbleType type;
@@ -1783,7 +1785,7 @@ namespace DS4WinWPF.DS4Forms
         {
             if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.touchPad[deviceNum]?.ResetTrackAccel(frictionUD.Value.GetValueOrDefault());
+                controlService.touchPad[deviceNum]?.ResetTrackAccel(frictionUD.Value.GetValueOrDefault());
             }
         }
 
@@ -1826,7 +1828,7 @@ namespace DS4WinWPF.DS4Forms
         {
             if (profileSettingsVM.SASteeringWheelEmulationAxisIndex > 0)
             {
-                DS4Windows.DS4Device d = App.rootHub.DS4Controllers[profileSettingsVM.FuncDevNum];
+                DS4Windows.DS4Device d = controlService.DS4Controllers[profileSettingsVM.FuncDevNum];
                 if (d != null)
                 {
                     System.Drawing.Point origWheelCenterPoint = new System.Drawing.Point(d.wheelCenterPoint.X, d.wheelCenterPoint.Y);
@@ -2446,11 +2448,11 @@ namespace DS4WinWPF.DS4Forms
             int deviceNum = profileSettingsVM.FuncDevNum;
             if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                DS4Device d = App.rootHub.DS4Controllers[deviceNum];
+                DS4Device d = controlService.DS4Controllers[deviceNum];
                 d.SixAxis.ResetContinuousCalibration();
                 if (d.JointDeviceSlotNumber != DS4Device.DEFAULT_JOINT_SLOT_NUMBER)
                 {
-                    DS4Device tempDev = App.rootHub.DS4Controllers[d.JointDeviceSlotNumber];
+                    DS4Device tempDev = controlService.DS4Controllers[d.JointDeviceSlotNumber];
                     tempDev?.SixAxis.ResetContinuousCalibration();
                 }
             }

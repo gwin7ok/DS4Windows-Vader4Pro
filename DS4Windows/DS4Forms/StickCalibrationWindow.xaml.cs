@@ -10,12 +10,14 @@ public partial class StickCalibrationWindow : Window
     private Stick _stick;
     private int _device;
     private ProfileSettingsViewModel _profileSettingsVM;
+    private readonly ControlService _controlService;
 
     public StickCalibrationWindow(Stick stick, int device, ProfileSettingsViewModel profileSettingsVm)
     {
         _stick = stick;
         _device = device;
         _profileSettingsVM = profileSettingsVm;
+        _controlService = Program.rootHub;
         InitializeComponent();
     }
 
@@ -26,7 +28,7 @@ public partial class StickCalibrationWindow : Window
 
     private void SaveButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var state = App.rootHub.getDS4State(_device);
+        var state = _controlService.getDS4State(_device);
 
         const int neutralState = 128;
         if (_stick == Stick.Left)

@@ -37,6 +37,10 @@ namespace DS4WinWPF.DS4Control
         protected string description;
         protected bool outputControllerChoice;
         protected OutputContChoice outputCont;
+        // Phase5-Step13-7: 全サブクラス共通のControlService注入(Program.rootHubフォールバック)。
+        // これらのPresetクラスはPresetOptionViewModelで new() 経由でパラメータレスに生成されるため、
+        // サブクラス側の変更は不要(既定のフォールバック付きコンストラクタが暗黙的に呼ばれる)。
+        protected readonly DS4Windows.ControlService controlService;
 
         public string Name { get => name; }
         public string Description { get => description; }
@@ -45,6 +49,11 @@ namespace DS4WinWPF.DS4Control
         {
             get => outputCont;
             set => outputCont = value;
+        }
+
+        protected PresetOption(DS4Windows.ControlService controlService = null)
+        {
+            this.controlService = controlService ?? DS4Windows.Program.rootHub;
         }
 
         public abstract void ApplyPreset(int idx);
@@ -64,11 +73,11 @@ namespace DS4WinWPF.DS4Control
         {
             if (outputCont == OutputContChoice.Xbox360)
             {
-                DS4Windows.Global.LoadBlankDevProfile(idx, false, App.rootHub, false);
+                DS4Windows.Global.LoadBlankDevProfile(idx, false, controlService, false);
             }
             else if (outputCont == OutputContChoice.DualShock4)
             {
-                DS4Windows.Global.LoadBlankDS4Profile(idx, false, App.rootHub, false);
+                DS4Windows.Global.LoadBlankDS4Profile(idx, false, controlService, false);
             }
         }
     }
@@ -87,11 +96,11 @@ namespace DS4WinWPF.DS4Control
         {
             if (outputCont == OutputContChoice.Xbox360)
             {
-                DS4Windows.Global.LoadDefaultGamepadGyroProfile(idx, false, App.rootHub, false);
+                DS4Windows.Global.LoadDefaultGamepadGyroProfile(idx, false, controlService, false);
             }
             else if (outputCont == OutputContChoice.DualShock4)
             {
-                DS4Windows.Global.LoadDefaultDS4GamepadGyroProfile(idx, false, App.rootHub, false);
+                DS4Windows.Global.LoadDefaultDS4GamepadGyroProfile(idx, false, controlService, false);
             }
         }
     }
@@ -110,11 +119,11 @@ namespace DS4WinWPF.DS4Control
         {
             if (outputCont == OutputContChoice.Xbox360)
             {
-                DS4Windows.Global.LoadDefaultMixedControlsProfile(idx, false, App.rootHub, false);
+                DS4Windows.Global.LoadDefaultMixedControlsProfile(idx, false, controlService, false);
             }
             else if (outputCont == OutputContChoice.DualShock4)
             {
-                DS4Windows.Global.LoadDefaultDS4MixedControlsProfile(idx, false, App.rootHub, false);
+                DS4Windows.Global.LoadDefaultDS4MixedControlsProfile(idx, false, controlService, false);
             }
         }
     }
@@ -133,11 +142,11 @@ namespace DS4WinWPF.DS4Control
         {
             if (outputCont == OutputContChoice.Xbox360)
             {
-                DS4Windows.Global.LoadDefaultMixedGyroMouseProfile(idx, false, App.rootHub, false);
+                DS4Windows.Global.LoadDefaultMixedGyroMouseProfile(idx, false, controlService, false);
             }
             else if (outputCont == OutputContChoice.DualShock4)
             {
-                DS4Windows.Global.LoadDefaultDS4MixedGyroMouseProfile(idx, false, App.rootHub, false);
+                DS4Windows.Global.LoadDefaultDS4MixedGyroMouseProfile(idx, false, controlService, false);
             }
         }
     }
@@ -152,7 +161,7 @@ namespace DS4WinWPF.DS4Control
 
         public override void ApplyPreset(int idx)
         {
-            DS4Windows.Global.LoadDefaultKBMProfile(idx, false, App.rootHub, false);
+            DS4Windows.Global.LoadDefaultKBMProfile(idx, false, controlService, false);
         }
     }
 
@@ -166,7 +175,7 @@ namespace DS4WinWPF.DS4Control
 
         public override void ApplyPreset(int idx)
         {
-            DS4Windows.Global.LoadDefaultKBMGyroMouseProfile(idx, false, App.rootHub, false);
+            DS4Windows.Global.LoadDefaultKBMGyroMouseProfile(idx, false, controlService, false);
         }
     }
 }

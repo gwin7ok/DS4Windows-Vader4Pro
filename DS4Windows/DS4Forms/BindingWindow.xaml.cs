@@ -48,6 +48,7 @@ namespace DS4WinWPF.DS4Forms
         private Dictionary<DS4Windows.X360Controls, Button> mouseBtnMap =
             new Dictionary<DS4Windows.X360Controls, Button>();
         private BindingWindowViewModel bindingVM;
+        private readonly DS4Windows.ControlService controlService;
         private Button highlightBtn;
         private ExposeMode expose;
 
@@ -63,6 +64,7 @@ namespace DS4WinWPF.DS4Forms
         {
             InitializeComponent();
 
+            controlService = DS4Windows.Program.rootHub;
             this.expose = expose;
             bindingVM = new BindingWindowViewModel(deviceNum, settings);
 
@@ -873,7 +875,7 @@ namespace DS4WinWPF.DS4Forms
             int deviceNum = bindingVM.DeviceNum;
             if (deviceNum < DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                DS4Windows.DS4Device d = App.rootHub.DS4Controllers[deviceNum];
+                DS4Windows.DS4Device d = controlService.DS4Controllers[deviceNum];
                 if (d != null)
                 {
                     if (!bindingVM.RumbleActive)
