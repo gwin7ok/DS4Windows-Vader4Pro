@@ -1391,7 +1391,7 @@ Suspend support not enabled.", true);
                                             else if (propName == "activeoutdevtype")
                                                 propValue = outputSlotService.ActiveOutDevType[tdevice].ToString();
                                             else if (propName == "usedinputonly")
-                                                propValue = Global.useDInputOnly[tdevice].ToString();
+                                                propValue = profileSettingsService.UseDInputOnlyArray[tdevice].ToString();
 
                                             else if (propName == "devicevidpid" && controlService.DS4Controllers[tdevice] != null)
                                                 propValue = $"VID={controlService.DS4Controllers[tdevice].HidDevice.Attributes.VendorHexId}, PID={controlService.DS4Controllers[tdevice].HidDevice.Attributes.ProductHexId}";
@@ -1888,7 +1888,7 @@ Suspend support not enabled.", true);
                     // Force emitting missing-action logs for this editor open (ignore suppression).
                     // Pass explicit profile name to avoid confusion with device's currently-assigned profile.
                     string profileNameForLog = entity != null ? entity.Name : "(new profile)";
-                    Global.store.EmitMissingActionLogsForDevice(device, true, profileNameForLog);
+                    profileRepo.EmitMissingActionLogsForDevice(device, true, profileNameForLog);
                 }
                 catch (Exception ex)
                 {

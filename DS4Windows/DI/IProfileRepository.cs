@@ -43,5 +43,8 @@ namespace DS4Windows.DI
 
         // ---- Phase5-Step13-7: 一時プロファイル読込（スワイプ操作等での即時切替用） ----
         bool LoadTempProfile(int deviceIndex, string profileName, bool launchProgram, ControlService control, bool xinputChange = true);
+
+        // ---- Phase5-Step13-7 Tier4: プロファイル未定義アクションの警告ログ出力 ----
+        void EmitMissingActionLogsForDevice(int deviceIndex, bool forceEmit = false, string overrideProfileName = null);
     }
 }
