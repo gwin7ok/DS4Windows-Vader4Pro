@@ -55,6 +55,19 @@
             }
         },
         {
+            "label": "Update Changelog",
+            "type": "shell",
+            "command": "pwsh",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "./scripts/update-summary.ps1"
+            ],
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
             "label": "release-tag-and-push-short",
             "type": "shell",
             "command": "pwsh",
