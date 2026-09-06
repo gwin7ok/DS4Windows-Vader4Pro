@@ -369,8 +369,8 @@ namespace DS4WinWPF.DS4Forms
 
             Dispatcher.BeginInvoke((Action)(() =>
             {
-                if (Global.Notifications == 2 ||
-                    (Global.Notifications == 1 && e.Warning))
+                if (appSettingsService.Notifications == 2 ||
+                    (appSettingsService.Notifications == 1 && e.Warning))
                 {
                     if (notifyIcon.IsCreated)
                     {
@@ -504,7 +504,7 @@ Suspend support not enabled.", true);
 
         private void ControlServiceStarted(object sender, EventArgs e)
         {
-            if (Global.SwipeProfiles)
+            if (appSettingsService.SwipeProfiles)
             {
                 ChangeHotkeysStatus(true);
             }
@@ -626,7 +626,7 @@ Suspend support not enabled.", true);
         {
             hotkeysTimer.Stop();
 
-            if (Global.SwipeProfiles)
+            if (appSettingsService.SwipeProfiles)
             {
                 foreach (CompositeDeviceModel item in conLvViewModel.ControllerCol)
                 //for (int i = 0; i < 4; i++)
@@ -680,7 +680,7 @@ Suspend support not enabled.", true);
 
         private void ShowHotkeyNotification(string message)
         {
-            if (Global.Notifications == 2)
+            if (appSettingsService.Notifications == 2)
             {
                 // 通常のトレイ通知を使用（ShowNotificationで連続通知が改善される）
                 // Hotkey-driven profile changes should emit typed ProfileChanged event instead of raw tray log.
@@ -1330,7 +1330,7 @@ Suspend support not enabled.", true);
                                                     {
                                                         device.HaltReportingRunAction(() =>
                                                         {
-                                                            Global.LoadTempProfile(tdevice, strData[2], true, Program.rootHub);
+                                                            profileRepo.LoadTempProfile(tdevice, strData[2], true, controlService);
                                                         });
                                                     }
                                                 }).Wait();
@@ -1389,7 +1389,7 @@ Suspend support not enabled.", true);
                                             else if (propName == "outconttype")
                                                 propValue = outputSlotService.GetOutputDeviceType(tdevice).ToString();
                                             else if (propName == "activeoutdevtype")
-                                                propValue = Global.activeOutDevType[tdevice].ToString();
+                                                propValue = outputSlotService.ActiveOutDevType[tdevice].ToString();
                                             else if (propName == "usedinputonly")
                                                 propValue = Global.useDInputOnly[tdevice].ToString();
 

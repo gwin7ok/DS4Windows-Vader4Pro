@@ -37,5 +37,9 @@ namespace DS4Windows.DI
         int ControllerLinkedProfileColWidth { get; set; }
         int ControllerLinkProfIdColWidth { get; set; }
         int ControllerCustomColorColWidth { get; set; }
+
+        // ---- Phase5-Step13-7: 通知レベル・スワイプ操作設定 ----
+        int Notifications { get; set; }
+        bool SwipeProfiles { get; set; }
     }
 }

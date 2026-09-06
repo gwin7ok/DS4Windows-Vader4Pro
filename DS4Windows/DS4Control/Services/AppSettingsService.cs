@@ -257,5 +257,18 @@ namespace DS4Windows.Services
             get => Global.ControllerCustomColorColWidth;
             set { if (Global.ControllerCustomColorColWidth != value) { Global.ControllerCustomColorColWidth = value; NotifyChanged(nameof(ControllerCustomColorColWidth)); } }
         }
+
+        // ---- Phase5-Step13-7: 通知レベル・スワイプ操作設定 ----
+        public int Notifications
+        {
+            get => Global.Notifications;
+            set { if (Global.Notifications != value) { Global.Notifications = value; NotifyChanged(nameof(Notifications)); } }
+        }
+
+        public bool SwipeProfiles
+        {
+            get => Global.SwipeProfiles;
+            set { if (Global.SwipeProfiles != value) { Global.SwipeProfiles = value; NotifyChanged(nameof(SwipeProfiles)); } }
+        }
     }
 }

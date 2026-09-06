@@ -183,5 +183,8 @@ namespace DS4Windows
 
         // ---- Phase5-Step13-6: Profile Editor で選択中の未確定(Temp)出力デバイスタイプ ----
         public OutContType[] OutDevTypeTemp => Global.outDevTypeTemp;
+
+        // ---- Phase5-Step13-7: スロット別・現在稼働中の出力デバイスタイプ ----
+        public OutContType[] ActiveOutDevType => Global.activeOutDevType;
     }
 }

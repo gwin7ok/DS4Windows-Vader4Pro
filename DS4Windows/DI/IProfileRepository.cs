@@ -40,5 +40,8 @@ namespace DS4Windows.DI
 
         // ---- Phase5-Step13-6: プロファイルのカスタムフラグキャッシュ更新 ----
         void CacheProfileCustomsFlags(int deviceIndex);
+
+        // ---- Phase5-Step13-7: 一時プロファイル読込（スワイプ操作等での即時切替用） ----
+        bool LoadTempProfile(int deviceIndex, string profileName, bool launchProgram, ControlService control, bool xinputChange = true);
     }
 }

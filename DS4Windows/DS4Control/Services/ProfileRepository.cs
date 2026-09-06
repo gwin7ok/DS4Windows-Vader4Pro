@@ -217,5 +217,9 @@ namespace DS4Windows
 
         // ---- Phase5-Step13-6: プロファイルのカスタムフラグキャッシュ更新 ----
         public void CacheProfileCustomsFlags(int deviceIndex) => Global.CacheProfileCustomsFlags(deviceIndex);
+
+        // ---- Phase5-Step13-7: 一時プロファイル読込（スワイプ操作等での即時切替用） ----
+        public bool LoadTempProfile(int deviceIndex, string profileName, bool launchProgram, ControlService control, bool xinputChange = true)
+            => Global.LoadTempProfile(deviceIndex, profileName, launchProgram, control, xinputChange);
     }
 }
