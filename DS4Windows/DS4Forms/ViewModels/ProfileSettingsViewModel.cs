@@ -3028,7 +3028,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             tempBitmap.EndInit();
             lightbarImgBrush.ImageSource = tempBitmap.Clone();
 
-            presetMenuUtil = new PresetMenuHelper(device);
+            presetMenuUtil = new PresetMenuHelper(device, this.profileSettings);
             gyroMouseSmoothMethodIndex = FindGyroMouseSmoothMethodIndex();
             gyroMouseStickSmoothMethodIndex = FindGyroMouseStickSmoothMethodIndex();
 
@@ -3773,10 +3773,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
 
         private int deviceNum;
+        private readonly IProfileSettingsService profileSettings;
 
-        public PresetMenuHelper(int device)
+        public PresetMenuHelper(int device, IProfileSettingsService profileSettings = null)
         {
             deviceNum = device;
+            this.profileSettings = profileSettings ?? Global.ProfileSettingsServiceInstance;
         }
 
         public ControlSelection PresetTagIndex(DS4Controls control)
