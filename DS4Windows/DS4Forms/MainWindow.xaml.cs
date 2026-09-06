@@ -125,7 +125,7 @@ namespace DS4WinWPF.DS4Forms
             App root = Application.Current as App;
             settingsWrapVM = new SettingsViewModel();
             settingsTab.DataContext = settingsWrapVM;
-            logvm = new LogViewModel(App.rootHub);
+            logvm = new LogViewModel(controlService);
             //logListView.ItemsSource = logvm.LogItems;
             logListView.DataContext = logvm;
             lastMsgLb.DataContext = lastLogMsg;
@@ -134,10 +134,10 @@ namespace DS4WinWPF.DS4Forms
             profileListHolder.Refresh();
             profilesListBox.ItemsSource = profileListHolder.ProfileListCol;
 
-            StartStopBtn.Content = App.rootHub.running ? Translations.Strings.StopText :
+            StartStopBtn.Content = controlService.running ? Translations.Strings.StopText :
                 Translations.Strings.StartText;
 
-            conLvViewModel = new ControllerListViewModel(App.rootHub, profileListHolder,
+            conLvViewModel = new ControllerListViewModel(controlService, profileListHolder,
                 DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>());
             controllerLV.DataContext = conLvViewModel;
             controllerLV.ItemsSource = conLvViewModel.ControllerCol;
@@ -149,7 +149,7 @@ namespace DS4WinWPF.DS4Forms
             view.SortDescriptions.Add(new SortDescription("DevIndex", ListSortDirection.Ascending));
             view.Refresh();
 
-            trayIconVM = new TrayIconViewModel(App.rootHub, profileListHolder);
+            trayIconVM = new TrayIconViewModel(controlService, profileListHolder);
 
             // Need to define before calling TaskbarIcon.ForceCreate
             notifyIcon.DataContext = trayIconVM;
@@ -192,8 +192,8 @@ namespace DS4WinWPF.DS4Forms
 
             autoprofileChecker = new AutoProfileChecker(autoProfileHolder, profileSettingsService);
 
-            slotManControl.SetupDataContext(controlService: App.rootHub,
-                App.rootHub.OutputslotMan);
+            slotManControl.SetupDataContext(controlService: controlService,
+                controlService.OutputslotMan);
 
             SetupEvents();
 
@@ -227,7 +227,7 @@ namespace DS4WinWPF.DS4Forms
                         StartStopBtn.IsEnabled = false;
                     }));
                     Thread.Sleep(1000);
-                    App.rootHub.Start();
+                    controlService.Start();
                     //root.rootHubtest.Start();
                 }
             });
@@ -404,9 +404,9 @@ namespace DS4WinWPF.DS4Forms
         private void SetupEvents()
         {
             App root = Application.Current as App;
-            App.rootHub.ServiceStarted += ControlServiceStarted;
-            App.rootHub.RunningChanged += ControlServiceChanged;
-            App.rootHub.PreServiceStop += PrepareForServiceStop;
+            controlService.ServiceStarted += ControlServiceStarted;
+            controlService.RunningChanged += ControlServiceChanged;
+            controlService.PreServiceStop += PrepareForServiceStop;
             //root.rootHubtest.RunningChanged += ControlServiceChanged;
             conLvViewModel.ControllerCol.CollectionChanged += ControllerCol_CollectionChanged;
             AppLogger.TrayIconLog += ShowNotification;
@@ -416,7 +416,7 @@ namespace DS4WinWPF.DS4Forms
 
             AppLogger.GuiLog += UpdateLastStatusMessage;
             logvm.LogItems.CollectionChanged += LogItems_CollectionChanged;
-            App.rootHub.Debug += UpdateLastStatusMessage;
+            controlService.Debug += UpdateLastStatusMessage;
             trayIconVM.RequestShutdown += TrayIconVM_RequestShutdown;
             trayIconVM.ProfileSelected += TrayIconVM_ProfileSelected;
             trayIconVM.RequestMinimize += TrayIconVM_RequestMinimize;
@@ -554,7 +554,7 @@ Suspend support not enabled.", true);
                 case POWER_RESUME:
                     {
                         DS4LightBar.shuttingdown = false;
-                        App.rootHub.suspending = false;
+                        controlService.suspending = false;
 
                         if (wasrunning)
                         {
@@ -564,16 +564,16 @@ Suspend support not enabled.", true);
                                 StartStopBtn.IsEnabled = false;
                             });
 
-                            Program.rootHub.LogDebug(DS4WinWPF.Translations.Strings.WakeupFromSuspend);
-                            //Program.rootHub.LogDebug($"{Thread.CurrentThread.ManagedThreadId}");
+                            controlService.LogDebug(DS4WinWPF.Translations.Strings.WakeupFromSuspend);
+                            //controlService.LogDebug($"{Thread.CurrentThread.ManagedThreadId}");
 
                             //Thread.Sleep(60000);
-                            //App.rootHub.Start();
+                            //controlService.Start();
 
                             //Task startupTask = Task.Run(() =>
                             Task startupTask = Task.Delay(5000).ContinueWith(t =>
                             {
-                                App.rootHub.Start();
+                                controlService.Start();
                             });
 
                             // Log exceptions that might occur
@@ -586,16 +586,16 @@ Suspend support not enabled.", true);
                 case POWER_SUSPEND:
                     {
                         DS4LightBar.shuttingdown = true;
-                        Program.rootHub.suspending = true;
+                        controlService.suspending = true;
 
-                        if (App.rootHub.running)
+                        if (controlService.running)
                         {
                             //Dispatcher.Invoke(() =>
                             //{
                             //    StartStopBtn.IsEnabled = false;
                             //});
 
-                            App.rootHub.Stop(immediateUnplug: true);
+                            controlService.Stop(immediateUnplug: true);
                             wasrunning = true;
 
                             Thread.Sleep(1000);
@@ -631,7 +631,7 @@ Suspend support not enabled.", true);
                 foreach (CompositeDeviceModel item in conLvViewModel.ControllerCol)
                 //for (int i = 0; i < 4; i++)
                 {
-                    string slide = App.rootHub.TouchpadSlide(item.DevIndex);
+                    string slide = controlService.TouchpadSlide(item.DevIndex);
                     if (slide == "left")
                     {
                         //int ind = i;
@@ -841,7 +841,7 @@ Suspend support not enabled.", true);
                     }
                 }
 
-                if (App.rootHub.running)
+                if (controlService.running)
                     trayIconVM.PopulateContextMenu();
             }));
         }
@@ -903,7 +903,7 @@ Suspend support not enabled.", true);
             StartStopBtn.IsEnabled = false;
             App root = Application.Current as App;
             //Tester service = root.rootHubtest;
-            ControlService service = App.rootHub;
+            ControlService service = controlService;
             Task serviceTask = Task.Run(() =>
             {
                 if (service.running)
@@ -1228,12 +1228,12 @@ Suspend support not enabled.", true);
 
                                     if (strData[0] == "start")
                                     {
-                                        if (!Program.rootHub.running)
+                                        if (!controlService.running)
                                             ChangeService();
                                     }
                                     else if (strData[0] == "stop")
                                     {
-                                        if (Program.rootHub.running)
+                                        if (controlService.running)
                                             ChangeService();
                                     }
                                     else if (strData[0] == "cycle")
@@ -1243,7 +1243,7 @@ Suspend support not enabled.", true);
                                     else if (strData[0] == "shutdown")
                                     {
                                         // Force disconnect all gamepads before closing the app to avoid "Are you sure you want to close the app" messagebox
-                                        if (Program.rootHub.running)
+                                        if (controlService.running)
                                             ChangeService();
 
                                         // Call closing method and let it to close editor wnd (if it is open) before proceeding to the actual "app closed" handler
@@ -1318,7 +1318,7 @@ Suspend support not enabled.", true);
                                                 {
                                                     // Preset profile name for later loading
                                                     profileRepo.ProfilePath[tdevice] = strData[2];
-                                                    //Global.LoadProfile(tdevice, true, Program.rootHub);
+                                                    //Global.LoadProfile(tdevice, true, controlService);
                                                 }
                                             }
                                             else
@@ -1340,7 +1340,7 @@ Suspend support not enabled.", true);
                                             if (device != null)
                                             {
                                                 string prolog = string.Format(Properties.Resources.UsingProfile, (tdevice + 1).ToString(), strData[2], $"{device.Battery}");
-                                                Program.rootHub.LogDebug(prolog);
+                                                controlService.LogDebug(prolog);
                                             }
                                         }
                                     }
@@ -1356,13 +1356,13 @@ Suspend support not enabled.", true);
                                         if (tdevice >= 0 && tdevice < ControlService.MAX_DS4_CONTROLLER_COUNT)
                                         {
                                             strData[2] = strData[2].ToLower();
-                                            DS4Control.OutSlotDevice slotDevice = Program.rootHub.OutputslotMan.OutputSlots[tdevice];
+                                            DS4Control.OutSlotDevice slotDevice = controlService.OutputslotMan.OutputSlots[tdevice];
                                             if (strData[2] == "unplug")
-                                                Program.rootHub.DetachUnboundOutDev(slotDevice);
+                                                controlService.DetachUnboundOutDev(slotDevice);
                                             else if (strData[2] == "plugds4")
-                                                Program.rootHub.AttachUnboundOutDev(slotDevice, OutContType.DS4);
+                                                controlService.AttachUnboundOutDev(slotDevice, OutContType.DS4);
                                             else if (strData[2] == "plugx360")
-                                                Program.rootHub.AttachUnboundOutDev(slotDevice, OutContType.X360);
+                                                controlService.AttachUnboundOutDev(slotDevice, OutContType.X360);
                                         }
                                     }
                                     else if (strData[0] == "query" && strData.Length >= 3)
@@ -1393,33 +1393,33 @@ Suspend support not enabled.", true);
                                             else if (propName == "usedinputonly")
                                                 propValue = Global.useDInputOnly[tdevice].ToString();
 
-                                            else if (propName == "devicevidpid" && App.rootHub.DS4Controllers[tdevice] != null)
-                                                propValue = $"VID={App.rootHub.DS4Controllers[tdevice].HidDevice.Attributes.VendorHexId}, PID={App.rootHub.DS4Controllers[tdevice].HidDevice.Attributes.ProductHexId}";
-                                            else if (propName == "devicepath" && App.rootHub.DS4Controllers[tdevice] != null)
-                                                propValue = App.rootHub.DS4Controllers[tdevice].HidDevice.DevicePath;
-                                            else if (propName == "macaddress" && App.rootHub.DS4Controllers[tdevice] != null)
-                                                propValue = App.rootHub.DS4Controllers[tdevice].MacAddress;
-                                            else if (propName == "displayname" && App.rootHub.DS4Controllers[tdevice] != null)
-                                                propValue = App.rootHub.DS4Controllers[tdevice].DisplayName;
-                                            else if (propName == "conntype" && App.rootHub.DS4Controllers[tdevice] != null)
-                                                propValue = App.rootHub.DS4Controllers[tdevice].ConnectionType.ToString();
-                                            else if (propName == "exclusivestatus" && App.rootHub.DS4Controllers[tdevice] != null)
-                                                propValue = App.rootHub.DS4Controllers[tdevice].CurrentExclusiveStatus.ToString();
-                                            else if (propName == "battery" && App.rootHub.DS4Controllers[tdevice] != null)
-                                                propValue = App.rootHub.DS4Controllers[tdevice].Battery.ToString();
-                                            else if (propName == "charging" && App.rootHub.DS4Controllers[tdevice] != null)
-                                                propValue = App.rootHub.DS4Controllers[tdevice].Charging.ToString();
+                                            else if (propName == "devicevidpid" && controlService.DS4Controllers[tdevice] != null)
+                                                propValue = $"VID={controlService.DS4Controllers[tdevice].HidDevice.Attributes.VendorHexId}, PID={controlService.DS4Controllers[tdevice].HidDevice.Attributes.ProductHexId}";
+                                            else if (propName == "devicepath" && controlService.DS4Controllers[tdevice] != null)
+                                                propValue = controlService.DS4Controllers[tdevice].HidDevice.DevicePath;
+                                            else if (propName == "macaddress" && controlService.DS4Controllers[tdevice] != null)
+                                                propValue = controlService.DS4Controllers[tdevice].MacAddress;
+                                            else if (propName == "displayname" && controlService.DS4Controllers[tdevice] != null)
+                                                propValue = controlService.DS4Controllers[tdevice].DisplayName;
+                                            else if (propName == "conntype" && controlService.DS4Controllers[tdevice] != null)
+                                                propValue = controlService.DS4Controllers[tdevice].ConnectionType.ToString();
+                                            else if (propName == "exclusivestatus" && controlService.DS4Controllers[tdevice] != null)
+                                                propValue = controlService.DS4Controllers[tdevice].CurrentExclusiveStatus.ToString();
+                                            else if (propName == "battery" && controlService.DS4Controllers[tdevice] != null)
+                                                propValue = controlService.DS4Controllers[tdevice].Battery.ToString();
+                                            else if (propName == "charging" && controlService.DS4Controllers[tdevice] != null)
+                                                propValue = controlService.DS4Controllers[tdevice].Charging.ToString();
                                             else if (propName == "outputslottype")
-                                                propValue = App.rootHub.OutputslotMan.OutputSlots[tdevice].CurrentType.ToString();
+                                                propValue = controlService.OutputslotMan.OutputSlots[tdevice].CurrentType.ToString();
                                             else if (propName == "outputslotpermanenttype")
-                                                propValue = App.rootHub.OutputslotMan.OutputSlots[tdevice].PermanentType.ToString();
+                                                propValue = controlService.OutputslotMan.OutputSlots[tdevice].PermanentType.ToString();
                                             else if (propName == "outputslotattachedstatus")
-                                                propValue = App.rootHub.OutputslotMan.OutputSlots[tdevice].CurrentAttachedStatus.ToString();
+                                                propValue = controlService.OutputslotMan.OutputSlots[tdevice].CurrentAttachedStatus.ToString();
                                             else if (propName == "outputslotinputbound")
-                                                propValue = App.rootHub.OutputslotMan.OutputSlots[tdevice].CurrentInputBound.ToString();
+                                                propValue = controlService.OutputslotMan.OutputSlots[tdevice].CurrentInputBound.ToString();
 
                                             else if (propName == "apprunning")
-                                                propValue = App.rootHub.running.ToString(); // Controller idx value is ignored, but it still needs to be in 1..4 range in a cmdline call
+                                                propValue = controlService.running.ToString(); // Controller idx value is ignored, but it still needs to be in 1..4 range in a cmdline call
                                         }
 
                                         // Write out the property value to MMF result data file and notify a client process that the data is available
@@ -1452,11 +1452,11 @@ Suspend support not enabled.", true);
                 hotplugCounter = 0;
             }
 
-            Program.rootHub.UpdateHidHiddenAttributes();
+            controlService.UpdateHidHiddenAttributes();
             while (loopHotplug == true)
             {
                 Thread.Sleep(HOTPLUG_CHECK_DELAY);
-                Program.rootHub.HotPlug();
+                controlService.HotPlug();
 
                 lock (hotplugCounterLock)
                 {
@@ -1512,8 +1512,8 @@ Suspend support not enabled.", true);
             hideDS4ContCk.IsEnabled = false;
             Task serviceTask = Task.Run(() =>
             {
-                App.rootHub.Stop();
-                App.rootHub.Start();
+                controlService.Stop();
+                controlService.Start();
             });
 
             // Log exceptions that might occur
@@ -1527,13 +1527,13 @@ Suspend support not enabled.", true);
         private void UseOscServerCk_Click(object sender, RoutedEventArgs e)
         {
             bool status = useOscServerCk.IsChecked == true;
-            App.rootHub.ChangeOSCListenerStatus(status);
+            controlService.ChangeOSCListenerStatus(status);
         }
 
         private void UseOscSenderCk_Click(object sender, RoutedEventArgs e)
         {
             bool status = useOscSenderCk.IsChecked == true;
-            App.rootHub.ChangeOSCSenderStatus(status);
+            controlService.ChangeOSCSenderStatus(status);
         }
 
         private async void UseUdpServerCk_Click(object sender, RoutedEventArgs e)
@@ -1541,18 +1541,18 @@ Suspend support not enabled.", true);
             bool status = useUdpServerCk.IsChecked == true;
             if (!status)
             {
-                App.rootHub.ChangeMotionEventStatus(status);
+                controlService.ChangeMotionEventStatus(status);
                 await Task.Delay(200).ContinueWith((t) =>
                 {
-                    App.rootHub.ChangeUDPStatus(status);
+                    controlService.ChangeUDPStatus(status);
                 });
             }
             else
             {
-                Program.rootHub.ChangeUDPStatus(status);
+                controlService.ChangeUDPStatus(status);
                 await Task.Delay(200).ContinueWith((t) =>
                 {
-                    App.rootHub.ChangeMotionEventStatus(status);
+                    controlService.ChangeMotionEventStatus(status);
                 });
             }
         }
@@ -1580,8 +1580,8 @@ Suspend support not enabled.", true);
             StartStopBtn.IsEnabled = false;
             await Task.Run(() =>
             {
-                if (App.rootHub.running)
-                    App.rootHub.Stop();
+                if (controlService.running)
+                    controlService.Stop();
             });
 
             StartStopBtn.IsEnabled = true;
@@ -2027,7 +2027,7 @@ Suspend support not enabled.", true);
         private void DeviceOptionSettingsBtn_Click(object sender, RoutedEventArgs e)
         {
             ControllerRegisterOptionsWindow optsWindow =
-                new ControllerRegisterOptionsWindow(Program.rootHub.DeviceOptions, Program.rootHub);
+                new ControllerRegisterOptionsWindow(controlService.DeviceOptions, controlService);
 
             optsWindow.Owner = this;
             optsWindow.Show();
