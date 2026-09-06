@@ -451,4 +451,10 @@
 	  </ItemGroup>
 	  <WriteLinesToFile File="$(GeneratedMSBuildEditorConfigFile)" Lines="@(_MergedLines)" Overwrite="true" Encoding="utf-8" />
 	</Target>
+	<!-- Cursor / VS Code の言語サーバーが WPF 自動生成ファイルを見失う問題への対策 -->
+	<ItemGroup Condition="'$(BuildingInsideVisualStudio)' != 'true'">
+		<Compile Include="$(IntermediateOutputPath)**\*.g.i.cs" 
+		         Condition="Exists('$(IntermediateOutputPath)')" 
+		         Visible="false" />
+	</ItemGroup>
 </Project>
