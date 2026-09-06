@@ -21,5 +21,21 @@ namespace DS4Windows.DI
         string UdpServerListenAddress { get; set; }
         bool UseExclusiveMode { get; set; }
         bool AutoProfileRevertDefaultProfile { get; set; }
+
+        // ---- Phase5-Step13-7: ウィンドウ位置・サイズ、コントローラー一覧列幅の永続化 ----
+        int FormWidth { get; set; }
+        int FormHeight { get; set; }
+        int FormLocationX { get; set; }
+        int FormLocationY { get; set; }
+        int ControllerIndexColWidth { get; set; }
+        int ControllerIdColWidth { get; set; }
+        int ControllerStatusColWidth { get; set; }
+        int ControllerExclusiveColWidth { get; set; }
+        int ControllerBatteryColWidth { get; set; }
+        int ControllerSelectProfileColWidth { get; set; }
+        int ControllerEditColWidth { get; set; }
+        int ControllerLinkedProfileColWidth { get; set; }
+        int ControllerLinkProfIdColWidth { get; set; }
+        int ControllerCustomColorColWidth { get; set; }
     }
 }

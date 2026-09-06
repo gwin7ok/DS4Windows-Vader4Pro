@@ -70,6 +70,12 @@ namespace DS4WinWPF.DS4Forms
         private NonFormTimer autoProfilesTimer;
         private AutoProfileChecker autoprofileChecker;
         private readonly DS4Windows.DI.IProfileSettingsService profileSettingsService;
+        private readonly DS4Windows.DI.IAppSettingsService appSettingsService;
+        private readonly DS4Windows.DI.IPathService pathService;
+        private readonly DS4Windows.DI.IProfileApplicationService profileAppService;
+        private readonly DS4Windows.DI.IOutputSlotService outputSlotService;
+        private readonly DS4Windows.DI.IProfileRepository profileRepo;
+        private readonly ControlService controlService;
         private ProfileEditor editor;
         private int previousTabIndex = 0;
 #pragma warning disable CS0414 // preserveSize kept for behavior compatibility with older logic
@@ -97,6 +103,12 @@ namespace DS4WinWPF.DS4Forms
 
             InitializeComponent();
             profileSettingsService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
+            appSettingsService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IAppSettingsService>();
+            pathService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IPathService>() ?? Global.PathServiceInstance;
+            profileAppService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileApplicationService>();
+            outputSlotService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IOutputSlotService>() ?? Global.OutputSlotServiceInstance;
+            profileRepo = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>() ?? Global.ProfileRepositoryInstance;
+            controlService = Program.rootHub;
 
             // Initialize log settings ComboBox
             logMinLevelComboBox.ItemsSource = new string[] { "Trace", "Debug", "Info", "Warn", "Error", "Fatal" };
@@ -164,7 +176,7 @@ namespace DS4WinWPF.DS4Forms
                 }
             }
 
-            startMinimized = Global.StartMinimized || parser.Mini;
+            startMinimized = appSettingsService.StartMinimized || parser.Mini;
 
             bool isElevated = Global.IsAdministrator();
             if (isElevated)
@@ -278,7 +290,7 @@ namespace DS4WinWPF.DS4Forms
         {
             string version = Global.exeversion;
             string newversion = string.Empty;
-            string versionFilePath = Path.Combine(Global.appdatapath, "version.txt");
+            string versionFilePath = Path.Combine(pathService.AppDataPath, "version.txt");
             ulong lastVersionNum = Global.LastVersionCheckedNum;
             //ulong lastVersion = Global.CompileVersionNumberFromString("2.1.1");
 
@@ -340,14 +352,10 @@ namespace DS4WinWPF.DS4Forms
             CompositeDeviceModel devitem = conLvViewModel.ControllerDict[idx];
             if (devitem != null && devitem.Device != null)
             {
-                devitem.Device.HaltReportingRunAction(() =>
-                {
-                    string prolog = string.Format(Properties.Resources.UsingProfile,
-                        (idx + 1).ToString(), profile, $"{devitem.Device.Battery}");
-                    bool display = Global.ProfileChangedNotification;
-                    Global.ApplyProfile(idx, profile, false, true, App.rootHub,
-                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                });
+                string prolog = string.Format(Properties.Resources.UsingProfile,
+                    (idx + 1).ToString(), profile, $"{devitem.Device.Battery}");
+                profileAppService.ApplyProfile(idx, profile, false, true,
+                    DS4Windows.ProfileChangeSource.Manual, prolog);
             }
         }
 
@@ -977,7 +985,7 @@ Suspend support not enabled.", true);
             dialog.Filter = "Text Documents (*.txt)|*.txt";
             dialog.Title = "Select Export File";
             // TODO: Expose config dir
-            dialog.InitialDirectory = Global.appdatapath;
+            dialog.InitialDirectory = pathService.AppDataPath;
             if (dialog.ShowDialog() == true)
             {
                 LogWriter logWriter = new LogWriter(dialog.FileName, logvm.LogItems.ToList());
@@ -1020,7 +1028,7 @@ Suspend support not enabled.", true);
 
                     // 既に同じプロファイルが適用されていればスキップ
                     // （Global_SelectedProfileChangedから呼ばれた場合など）
-                    if (DS4Windows.Global.SelectedProfile[idx] == prof)
+                    if (profileRepo.SelectedProfile[idx] == prof)
                     {
                         DS4Windows.AppLogger.LogDebug($"SelectProfCombo_SelectionChanged: Profile '{prof}' already applied for device {idx}, skipping");
                         return;
@@ -1032,14 +1040,9 @@ Suspend support not enabled.", true);
                     DS4Device device = item.Device;
                     if (device != null)
                     {
-                        device.HaltReportingRunAction(() =>
-                        {
-                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (idx + 1).ToString(), prof, $"{device.Battery}");
-                            bool display = DS4Windows.Global.ProfileChangedNotification;
-
-                            DS4Windows.Global.ApplyProfile(idx, prof, false, true, App.rootHub,
-                                DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                        });
+                        string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (idx + 1).ToString(), prof, $"{device.Battery}");
+                        profileAppService.ApplyProfile(idx, prof, false, true,
+                            DS4Windows.ProfileChangeSource.Manual, prolog);
                     }
 
                     trayIconVM.PopulateContextMenu();
@@ -1089,7 +1092,7 @@ Suspend support not enabled.", true);
             {
                 return;
             }
-            else if (Global.CloseMini)
+            else if (appSettingsService.CloseMinimizes)
             {
                 WindowState = WindowState.Minimized;
                 e.Cancel = true;
@@ -1293,7 +1296,7 @@ Suspend support not enabled.", true);
                                         if (int.TryParse(strData[1], out tdevice)) tdevice--;
 
                                         if (tdevice >= 0 && tdevice < ControlService.MAX_DS4_CONTROLLER_COUNT &&
-                                                File.Exists(Global.appdatapath + "\\Profiles\\" + strData[2] + ".xml"))
+                                                File.Exists(pathService.AppDataPath + "\\Profiles\\" + strData[2] + ".xml"))
                                         {
                                             if (strData[0] == "loadprofile")
                                             {
@@ -1305,20 +1308,16 @@ Suspend support not enabled.", true);
                                                     CompositeDeviceModel devitem = conLvViewModel.ControllerCol[tdevice];
                                                     if (devitem?.Device != null)
                                                     {
-                                                        devitem.Device.HaltReportingRunAction(() =>
-                                                        {
-                                                            string prolog = string.Format(Properties.Resources.UsingProfile,
-                                                                (tdevice + 1).ToString(), strData[2], $"{devitem.Device.Battery}");
-                                                            bool display = Global.ProfileChangedNotification;
-                                                            Global.ApplyProfile(tdevice, strData[2], false, true, App.rootHub,
-                                                                DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                                                        });
+                                                        string prolog = string.Format(Properties.Resources.UsingProfile,
+                                                            (tdevice + 1).ToString(), strData[2], $"{devitem.Device.Battery}");
+                                                        profileAppService.ApplyProfile(tdevice, strData[2], false, true,
+                                                            DS4Windows.ProfileChangeSource.Manual, prolog);
                                                     }
                                                 }
                                                 else
                                                 {
                                                     // Preset profile name for later loading
-                                                    Global.ProfilePath[tdevice] = strData[2];
+                                                    profileRepo.ProfilePath[tdevice] = strData[2];
                                                     //Global.LoadProfile(tdevice, true, Program.rootHub);
                                                 }
                                             }
@@ -1385,10 +1384,10 @@ Suspend support not enabled.", true);
                                                 if (profileSettingsService.GetUseTempProfile(tdevice))
                                                     propValue = profileSettingsService.GetTempProfileName(tdevice);
                                                 else
-                                                    propValue = Global.ProfilePath[tdevice];
+                                                    propValue = profileRepo.ProfilePath[tdevice];
                                             }
                                             else if (propName == "outconttype")
-                                                propValue = Global.OutContType[tdevice].ToString();
+                                                propValue = outputSlotService.GetOutputDeviceType(tdevice).ToString();
                                             else if (propName == "activeoutdevtype")
                                                 propValue = Global.activeOutDevType[tdevice].ToString();
                                             else if (propName == "usedinputonly")
@@ -1560,7 +1559,7 @@ Suspend support not enabled.", true);
 
         private void ProfFolderBtn_Click(object sender, RoutedEventArgs e)
         {
-            ProcessStartInfo startInfo = new ProcessStartInfo(Global.appdatapath + "\\Profiles");
+            ProcessStartInfo startInfo = new ProcessStartInfo(pathService.AppDataPath + "\\Profiles");
             startInfo.UseShellExecute = true;
             try
             {
@@ -1633,7 +1632,7 @@ Suspend support not enabled.", true);
             dialog.DefaultExt = ".xml";
             dialog.Filter = "DS4Windows Profile (*.xml)|*.xml";
             dialog.Title = "Select Profile to Import File";
-            if (Global.appdatapath != Global.exedirpath)
+            if (pathService.AppDataPath != Global.exedirpath)
                 dialog.InitialDirectory = Path.Combine(Global.appDataPpath, "Profiles");
             else
                 dialog.InitialDirectory = Global.exedirpath + @"\Profiles\";
@@ -1645,7 +1644,7 @@ Suspend support not enabled.", true);
                 {
                     string profilename = System.IO.Path.GetFileName(files[i]);
                     string basename = System.IO.Path.GetFileNameWithoutExtension(files[i]);
-                    File.Copy(dialog.FileNames[i], Global.appdatapath + "\\Profiles\\" + profilename, true);
+                    File.Copy(dialog.FileNames[i], pathService.AppDataPath + "\\Profiles\\" + profilename, true);
                     profileListHolder.AddProfileSort(basename);
                 }
             }
@@ -1662,7 +1661,7 @@ Suspend support not enabled.", true);
                 dialog.Title = "Select Profile to Export File";
                 Stream stream;
                 int idx = profilesListBox.SelectedIndex;
-                Stream profile = new StreamReader(Global.appdatapath + "\\Profiles\\" + profileListHolder.ProfileListCol[idx].Name + ".xml").BaseStream;
+                Stream profile = new StreamReader(pathService.AppDataPath + "\\Profiles\\" + profileListHolder.ProfileListCol[idx].Name + ".xml").BaseStream;
                 if (dialog.ShowDialog() == true)
                 {
                     if ((stream = dialog.OpenFile()) != null)
@@ -1731,7 +1730,7 @@ Suspend support not enabled.", true);
 
         public void CheckMinStatus()
         {
-            bool minToTask = Global.MinToTaskbar;
+            bool minToTask = appSettingsService.MinimizeToTaskbar;
             if (WindowState == WindowState.Minimized && !minToTask)
             {
                 Hide();
@@ -1750,17 +1749,17 @@ Suspend support not enabled.", true);
             if (WindowState != WindowState.Minimized && editor != null && editor.Keepsize && !IsInitialShow)
             {
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
-                Global.FormWidth = logical.LogicalWidth;
-                Global.FormHeight = logical.LogicalHeight;
-                AppLogger.LogTrace($"MainWindow.SizeChanged: Saved Logical Width={Global.FormWidth} Height={Global.FormHeight}");
+                appSettingsService.FormWidth = logical.LogicalWidth;
+                appSettingsService.FormHeight = logical.LogicalHeight;
+                AppLogger.LogTrace($"MainWindow.SizeChanged: Saved Logical Width={appSettingsService.FormWidth} Height={appSettingsService.FormHeight}");
             }
             // 編集画面が開いていない場合は常に保存
             else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
             {
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
-                Global.FormWidth = logical.LogicalWidth;
-                Global.FormHeight = logical.LogicalHeight;
-                AppLogger.LogTrace($"MainWindow.SizeChanged: Saved Logical Width={Global.FormWidth} Height={Global.FormHeight}");
+                appSettingsService.FormWidth = logical.LogicalWidth;
+                appSettingsService.FormHeight = logical.LogicalHeight;
+                AppLogger.LogTrace($"MainWindow.SizeChanged: Saved Logical Width={appSettingsService.FormWidth} Height={appSettingsService.FormHeight}");
             }
         }
 
@@ -1770,17 +1769,17 @@ Suspend support not enabled.", true);
             if (WindowState != WindowState.Minimized && editor != null && editor.Keepsize && !IsInitialShow)
             {
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
-                Global.FormLocationX = logical.LogicalX;
-                Global.FormLocationY = logical.LogicalY;
-                AppLogger.LogTrace($"MainWindow.LocationChanged: Saved Logical X={Global.FormLocationX} Y={Global.FormLocationY}");
+                appSettingsService.FormLocationX = logical.LogicalX;
+                appSettingsService.FormLocationY = logical.LogicalY;
+                AppLogger.LogTrace($"MainWindow.LocationChanged: Saved Logical X={appSettingsService.FormLocationX} Y={appSettingsService.FormLocationY}");
             }
             // 編集画面が開いていない場合は常に保存
             else if (WindowState != WindowState.Minimized && editor == null && !IsInitialShow)
             {
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
-                Global.FormLocationX = logical.LogicalX;
-                Global.FormLocationY = logical.LogicalY;
-                AppLogger.LogTrace($"MainWindow.LocationChanged: Saved Logical X={Global.FormLocationX} Y={Global.FormLocationY}");
+                appSettingsService.FormLocationX = logical.LogicalX;
+                appSettingsService.FormLocationY = logical.LogicalY;
+                AppLogger.LogTrace($"MainWindow.LocationChanged: Saved Logical X={appSettingsService.FormLocationX} Y={appSettingsService.FormLocationY}");
             }
         }
 
@@ -1820,11 +1819,11 @@ Suspend support not enabled.", true);
             {
                 oldSize = new Size(Width, Height);
                 var logical = WindowPlacementHelper.GetLogicalPlacement(this);
-                Global.FormWidth = logical.LogicalWidth;
-                Global.FormHeight = logical.LogicalHeight;
-                Global.FormLocationX = logical.LogicalX;
-                Global.FormLocationY = logical.LogicalY;
-                AppLogger.LogTrace($"MainWindow.ProfileEditor_Closed: Saved Logical Rect X={Global.FormLocationX} Y={Global.FormLocationY} W={Global.FormWidth} H={Global.FormHeight}");
+                appSettingsService.FormWidth = logical.LogicalWidth;
+                appSettingsService.FormHeight = logical.LogicalHeight;
+                appSettingsService.FormLocationX = logical.LogicalX;
+                appSettingsService.FormLocationY = logical.LogicalY;
+                AppLogger.LogTrace($"MainWindow.ProfileEditor_Closed: Saved Logical Rect X={appSettingsService.FormLocationX} Y={appSettingsService.FormLocationY} W={appSettingsService.FormWidth} H={appSettingsService.FormHeight}");
             }
             editor = null;
             // Restore the tab that was active before opening the profile editor
@@ -1908,14 +1907,10 @@ Suspend support not enabled.", true);
                 CompositeDeviceModel devitem = conLvViewModel.ControllerCol[devnum];
                 if (devitem?.Device != null)
                 {
-                    devitem.Device.HaltReportingRunAction(() =>
-                    {
-                        string prolog = string.Format(Properties.Resources.UsingProfile,
-                            (devnum + 1).ToString(), profile, $"{devitem.Device.Battery}");
-                        bool display = Global.ProfileChangedNotification;
-                        Global.ApplyProfile(devnum, profile, false, true, App.rootHub,
-                            DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                    });
+                    string prolog = string.Format(Properties.Resources.UsingProfile,
+                        (devnum + 1).ToString(), profile, $"{devitem.Device.Battery}");
+                    profileAppService.ApplyProfile(devnum, profile, false, true,
+                        DS4Windows.ProfileChangeSource.Manual, prolog);
                 }
             }
         }
@@ -1931,16 +1926,16 @@ Suspend support not enabled.", true);
             var gridView = controllerLV.View as GridView;
             if (gridView != null && gridView.Columns.Count >= 10)
             {
-                Global.ControllerIndexColWidth = (int)gridView.Columns[0].Width;
-                Global.ControllerIdColWidth = (int)gridView.Columns[1].Width;
-                Global.ControllerStatusColWidth = (int)gridView.Columns[2].Width;
-                Global.ControllerExclusiveColWidth = (int)gridView.Columns[3].Width;
-                Global.ControllerBatteryColWidth = (int)gridView.Columns[4].Width;
-                Global.ControllerSelectProfileColWidth = (int)gridView.Columns[5].Width;
-                Global.ControllerEditColWidth = (int)gridView.Columns[6].Width;
-                Global.ControllerLinkedProfileColWidth = (int)gridView.Columns[7].Width;
-                Global.ControllerLinkProfIdColWidth = (int)gridView.Columns[8].Width;
-                Global.ControllerCustomColorColWidth = (int)gridView.Columns[9].Width;
+                appSettingsService.ControllerIndexColWidth = (int)gridView.Columns[0].Width;
+                appSettingsService.ControllerIdColWidth = (int)gridView.Columns[1].Width;
+                appSettingsService.ControllerStatusColWidth = (int)gridView.Columns[2].Width;
+                appSettingsService.ControllerExclusiveColWidth = (int)gridView.Columns[3].Width;
+                appSettingsService.ControllerBatteryColWidth = (int)gridView.Columns[4].Width;
+                appSettingsService.ControllerSelectProfileColWidth = (int)gridView.Columns[5].Width;
+                appSettingsService.ControllerEditColWidth = (int)gridView.Columns[6].Width;
+                appSettingsService.ControllerLinkedProfileColWidth = (int)gridView.Columns[7].Width;
+                appSettingsService.ControllerLinkProfIdColWidth = (int)gridView.Columns[8].Width;
+                appSettingsService.ControllerCustomColorColWidth = (int)gridView.Columns[9].Width;
             }
         }
 
@@ -1949,16 +1944,16 @@ Suspend support not enabled.", true);
             var gridView = controllerLV.View as GridView;
             if (gridView != null && gridView.Columns.Count >= 10)
             {
-                gridView.Columns[0].Width = Global.ControllerIndexColWidth;
-                gridView.Columns[1].Width = Global.ControllerIdColWidth;
-                gridView.Columns[2].Width = Global.ControllerStatusColWidth;
-                gridView.Columns[3].Width = Global.ControllerExclusiveColWidth;
-                gridView.Columns[4].Width = Global.ControllerBatteryColWidth;
-                gridView.Columns[5].Width = Global.ControllerSelectProfileColWidth;
-                gridView.Columns[6].Width = Global.ControllerEditColWidth;
-                gridView.Columns[7].Width = Global.ControllerLinkedProfileColWidth;
-                gridView.Columns[8].Width = Global.ControllerLinkProfIdColWidth;
-                gridView.Columns[9].Width = Global.ControllerCustomColorColWidth;
+                gridView.Columns[0].Width = appSettingsService.ControllerIndexColWidth;
+                gridView.Columns[1].Width = appSettingsService.ControllerIdColWidth;
+                gridView.Columns[2].Width = appSettingsService.ControllerStatusColWidth;
+                gridView.Columns[3].Width = appSettingsService.ControllerExclusiveColWidth;
+                gridView.Columns[4].Width = appSettingsService.ControllerBatteryColWidth;
+                gridView.Columns[5].Width = appSettingsService.ControllerSelectProfileColWidth;
+                gridView.Columns[6].Width = appSettingsService.ControllerEditColWidth;
+                gridView.Columns[7].Width = appSettingsService.ControllerLinkedProfileColWidth;
+                gridView.Columns[8].Width = appSettingsService.ControllerLinkProfIdColWidth;
+                gridView.Columns[9].Width = appSettingsService.ControllerCustomColorColWidth;
             }
         }
 
@@ -2044,7 +2039,7 @@ Suspend support not enabled.", true);
             {
                 int idx = profilesListBox.SelectedIndex;
                 ProfileEntity entity = profileListHolder.ProfileListCol[idx];
-                string filename = Path.Combine(Global.appdatapath,
+                string filename = Path.Combine(pathService.AppDataPath,
                     "Profiles", $"{entity.Name}.xml");
 
                 // Disallow renaming Default profile

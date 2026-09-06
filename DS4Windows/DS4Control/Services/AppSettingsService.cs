@@ -8,14 +8,14 @@ namespace DS4Windows.Services
         private readonly IProfileXmlStore _xmlStore;
         private readonly IPathService _pathService;
 
-        private bool _startMinimized;
-        private bool _minimizeToTaskbar;
-        private bool _closeMinimizes;
+        // Phase5-Step13-7根本修正: StartMinimized等はGlobal(m_Config/BackingStore)への
+        // 正規シムとし、UI層(MainWindow.xaml.cs等)からGlobal直参照した場合と完全に同一の実体を
+        // 参照するようにする。従来はここに独立したprivateフィールドを持ち、Global側と非連動という
+        // 「孤立した重複状態」バグがあった(Step13投入時に発覚)。
+        // CheckWhenのみ、対応するGlobal側の概念が既に撤廃されている(コメント "Legacy CheckWhen
+        // removed. Use explicit CheckEveryValue/CheckEveryUnit instead." 参照)ため、
+        // 単体テストのみで参照される非連動プロパティとして現状維持する。
         private int _checkWhen;
-        private bool _useUdpServer;
-        private int _udpServerPort = 26760;
-        private string _udpServerListenAddress = "127.0.0.1";
-        private bool _useExclusiveMode;
 
         public event EventHandler<string> SettingChanged;
 
@@ -57,12 +57,12 @@ namespace DS4Windows.Services
 
         public bool StartMinimized
         {
-            get => _startMinimized;
+            get => Global.StartMinimized;
             set
             {
-                if (_startMinimized != value)
+                if (Global.StartMinimized != value)
                 {
-                    _startMinimized = value;
+                    Global.StartMinimized = value;
                     NotifyChanged(nameof(StartMinimized));
                 }
             }
@@ -70,12 +70,12 @@ namespace DS4Windows.Services
 
         public bool MinimizeToTaskbar
         {
-            get => _minimizeToTaskbar;
+            get => Global.MinToTaskbar;
             set
             {
-                if (_minimizeToTaskbar != value)
+                if (Global.MinToTaskbar != value)
                 {
-                    _minimizeToTaskbar = value;
+                    Global.MinToTaskbar = value;
                     NotifyChanged(nameof(MinimizeToTaskbar));
                 }
             }
@@ -83,12 +83,12 @@ namespace DS4Windows.Services
 
         public bool CloseMinimizes
         {
-            get => _closeMinimizes;
+            get => Global.CloseMini;
             set
             {
-                if (_closeMinimizes != value)
+                if (Global.CloseMini != value)
                 {
-                    _closeMinimizes = value;
+                    Global.CloseMini = value;
                     NotifyChanged(nameof(CloseMinimizes));
                 }
             }
@@ -109,12 +109,12 @@ namespace DS4Windows.Services
 
         public bool UseUdpServer
         {
-            get => _useUdpServer;
+            get => Global.isUsingUDPServer();
             set
             {
-                if (_useUdpServer != value)
+                if (Global.isUsingUDPServer() != value)
                 {
-                    _useUdpServer = value;
+                    Global.setUsingUDPServer(value);
                     NotifyChanged(nameof(UseUdpServer));
                 }
             }
@@ -122,12 +122,12 @@ namespace DS4Windows.Services
 
         public int UdpServerPort
         {
-            get => _udpServerPort;
+            get => Global.getUDPServerPortNum();
             set
             {
-                if (_udpServerPort != value)
+                if (Global.getUDPServerPortNum() != value)
                 {
-                    _udpServerPort = value;
+                    Global.setUDPServerPort(value);
                     NotifyChanged(nameof(UdpServerPort));
                 }
             }
@@ -135,12 +135,12 @@ namespace DS4Windows.Services
 
         public string UdpServerListenAddress
         {
-            get => _udpServerListenAddress;
+            get => Global.getUDPServerListenAddress();
             set
             {
-                if (_udpServerListenAddress != value)
+                if (Global.getUDPServerListenAddress() != value)
                 {
-                    _udpServerListenAddress = value;
+                    Global.setUDPServerListenAddress(value);
                     NotifyChanged(nameof(UdpServerListenAddress));
                 }
             }
@@ -148,12 +148,12 @@ namespace DS4Windows.Services
 
         public bool UseExclusiveMode
         {
-            get => _useExclusiveMode;
+            get => Global.UseExclusiveMode;
             set
             {
-                if (_useExclusiveMode != value)
+                if (Global.UseExclusiveMode != value)
                 {
-                    _useExclusiveMode = value;
+                    Global.UseExclusiveMode = value;
                     NotifyChanged(nameof(UseExclusiveMode));
                 }
             }
@@ -170,6 +170,92 @@ namespace DS4Windows.Services
                     NotifyChanged(nameof(AutoProfileRevertDefaultProfile));
                 }
             }
+        }
+
+        // ---- Phase5-Step13-7: ウィンドウ位置・サイズ、コントローラー一覧列幅の永続化 ----
+        // いずれも m_Config(BackingStore) への薄い公開アクセサ(Global.X)への正規シム。
+        public int FormWidth
+        {
+            get => Global.FormWidth;
+            set { if (Global.FormWidth != value) { Global.FormWidth = value; NotifyChanged(nameof(FormWidth)); } }
+        }
+
+        public int FormHeight
+        {
+            get => Global.FormHeight;
+            set { if (Global.FormHeight != value) { Global.FormHeight = value; NotifyChanged(nameof(FormHeight)); } }
+        }
+
+        public int FormLocationX
+        {
+            get => Global.FormLocationX;
+            set { if (Global.FormLocationX != value) { Global.FormLocationX = value; NotifyChanged(nameof(FormLocationX)); } }
+        }
+
+        public int FormLocationY
+        {
+            get => Global.FormLocationY;
+            set { if (Global.FormLocationY != value) { Global.FormLocationY = value; NotifyChanged(nameof(FormLocationY)); } }
+        }
+
+        public int ControllerIndexColWidth
+        {
+            get => Global.ControllerIndexColWidth;
+            set { if (Global.ControllerIndexColWidth != value) { Global.ControllerIndexColWidth = value; NotifyChanged(nameof(ControllerIndexColWidth)); } }
+        }
+
+        public int ControllerIdColWidth
+        {
+            get => Global.ControllerIdColWidth;
+            set { if (Global.ControllerIdColWidth != value) { Global.ControllerIdColWidth = value; NotifyChanged(nameof(ControllerIdColWidth)); } }
+        }
+
+        public int ControllerStatusColWidth
+        {
+            get => Global.ControllerStatusColWidth;
+            set { if (Global.ControllerStatusColWidth != value) { Global.ControllerStatusColWidth = value; NotifyChanged(nameof(ControllerStatusColWidth)); } }
+        }
+
+        public int ControllerExclusiveColWidth
+        {
+            get => Global.ControllerExclusiveColWidth;
+            set { if (Global.ControllerExclusiveColWidth != value) { Global.ControllerExclusiveColWidth = value; NotifyChanged(nameof(ControllerExclusiveColWidth)); } }
+        }
+
+        public int ControllerBatteryColWidth
+        {
+            get => Global.ControllerBatteryColWidth;
+            set { if (Global.ControllerBatteryColWidth != value) { Global.ControllerBatteryColWidth = value; NotifyChanged(nameof(ControllerBatteryColWidth)); } }
+        }
+
+        public int ControllerSelectProfileColWidth
+        {
+            get => Global.ControllerSelectProfileColWidth;
+            set { if (Global.ControllerSelectProfileColWidth != value) { Global.ControllerSelectProfileColWidth = value; NotifyChanged(nameof(ControllerSelectProfileColWidth)); } }
+        }
+
+        public int ControllerEditColWidth
+        {
+            get => Global.ControllerEditColWidth;
+            set { if (Global.ControllerEditColWidth != value) { Global.ControllerEditColWidth = value; NotifyChanged(nameof(ControllerEditColWidth)); } }
+        }
+
+        public int ControllerLinkedProfileColWidth
+        {
+            get => Global.ControllerLinkedProfileColWidth;
+            set { if (Global.ControllerLinkedProfileColWidth != value) { Global.ControllerLinkedProfileColWidth = value; NotifyChanged(nameof(ControllerLinkedProfileColWidth)); } }
+        }
+
+        public int ControllerLinkProfIdColWidth
+        {
+            get => Global.ControllerLinkProfIdColWidth;
+            set { if (Global.ControllerLinkProfIdColWidth != value) { Global.ControllerLinkProfIdColWidth = value; NotifyChanged(nameof(ControllerLinkProfIdColWidth)); } }
+        }
+
+        public int ControllerCustomColorColWidth
+        {
+            get => Global.ControllerCustomColorColWidth;
+            set { if (Global.ControllerCustomColorColWidth != value) { Global.ControllerCustomColorColWidth = value; NotifyChanged(nameof(ControllerCustomColorColWidth)); } }
         }
     }
 }

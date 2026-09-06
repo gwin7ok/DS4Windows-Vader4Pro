@@ -1,6 +1,6 @@
 # フェーズ5-Step13 計画書: UI層（ViewModels および MainWindow）のDIサービス接続・残存静的参照の撲滅
 
-作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映／2026-09-06第4版: Step13-5実装に伴いIProfileRepository再拡張とGlobal.RemoveAction自動保存機能欠落の是正を反映／2026-09-06第5版: Step13-6実装（RecordBoxViewModel・ProfileSettingsViewModel）に伴いIOutputSlotService拡張を反映）
+作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映／2026-09-06第4版: Step13-5実装に伴いIProfileRepository再拡張とGlobal.RemoveAction自動保存機能欠落の是正を反映／2026-09-06第5版: Step13-6実装（RecordBoxViewModel・ProfileSettingsViewModel）に伴いIOutputSlotService拡張を反映／2026-09-06第6版: Step13-7着手・IAppSettingsService孤立プロパティ根本修正とIAppSettingsService/IProfileRepository再拡張を反映（MainWindow.xaml.cs Tier1・Tier2一部完了、残り継続中））
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
@@ -183,7 +183,9 @@ public class ViewModelFactory : IViewModelFactory
 | コアVM改修 | `DS4Windows/DS4Forms/ViewModels/SpecialActionsListViewModel.cs` | `ISpecialActionRepository`／`IProfileRepository`／`IOutputSlotService`／`IManagedActionManager` 接続 |
 | インターフェース再拡張 | `DS4Windows/DI/IProfileRepository.cs` | `ProfileActions`・`CacheExtraProfileInfo` を追加（Step13-5実装に伴う拡張） |
 | 実装改修 | `DS4Windows/DS4Control/Services/ProfileRepository.cs` | 上記拡張メンバーを実装 |
-| View改修 | `DS4Windows/DS4Forms/MainWindow.xaml.cs` | `Program.rootHub` / `Global` 直参照の排除、DIサービス経由化 |
+| View改修 | `DS4Windows/DS4Forms/MainWindow.xaml.cs` | `Program.rootHub` / `Global` 直参照の排除、DIサービス経由化（※2026-09-06 Tier1全件＋Tier2一部完了、継続中） |
+| 🔴根本修正 | `DS4Windows/DI/IAppSettingsService.cs` | `StartMinimized`／`MinimizeToTaskbar`／`CloseMinimizes`／`UseUdpServer`／`UdpServerPort`／`UdpServerListenAddress`／`UseExclusiveMode`が独立private fieldで`Global`と非連動だった「孤立重複状態」バグを是正。ウィンドウ位置・サイズ・列幅10種を追加 |
+| 実装改修 | `DS4Windows/DS4Control/Services/AppSettingsService.cs` | 上記の根本修正および拡張メンバーを実装 |
 | クリーンアップ | `DS4Windows/App.xaml.cs` | 不要となった `rootHub` シムプロパティの完全削除 |
 | サブVM改修 | `DS4Windows/DS4Forms/ViewModels/RecordBoxViewModel.cs` | `IProfileSettingsService`／`ControlService` 接続 |
 | サブVM改修 | `DS4Windows/DS4Forms/ViewModels/ProfileSettingsViewModel.cs` | `ControlService`／`IOutputSlotService`／`IProfileRepository` 接続、残存静的参照22箇所を置換 |
@@ -233,8 +235,13 @@ public class ViewModelFactory : IViewModelFactory
 4. `RefreshActionAlias`・`IsUsingMinViGEm117333`・`defaultButtonMapping`・`exedirpath`は個別調査のうえ、状態を持たない／既存DI実装との挙動差異が排除できないことを理由に対象外として維持（詳細は§1.3参照）。
 5. `ProfileEditor.xaml.cs`・`RecordBox.xaml.cs`の呼び出し元は無修正（オプショナル引数フォールバックにより互換性維持）。
 
-### タスク Step13-7: `MainWindow.xaml.cs` の静的参照排除
-1. `MainWindow.xaml.cs` を精査し、`Program.rootHub` や `Global` への直アクセスを DI サービス経由へピンポイント置換する（§1.4）。
+### タスク Step13-7: `MainWindow.xaml.cs` の静的参照排除（※2026-09-06着手、Tier1・Tier2一部完了・継続中）
+1. **事前調査の結果、166件（`Global.`102・`Program.rootHub`17・`App.rootHub`53、`ImageLocationPaths`内定数除く）という広範囲であることが判明**。リスクに応じ以下の3層に分類し、段階的に対応する。
+   - **Tier1（低リスク・完了）**: `Global.appdatapath`→`IPathService.AppDataPath`、`Global.Form*`（4種）・`Global.Controller*ColWidth`（10種）→`IAppSettingsService`新設プロパティ、`Global.RESOURCES_PREFIX`は定数のため対象外。
+   - **Tier2（中リスク・一部完了）**: `Global.ApplyProfile`呼び出し4箇所を、Halt保護・通知自動解決を内包する`IProfileApplicationService.ApplyProfile`へ簡略化（手動`HaltReportingRunAction`・手動通知読み取りが不要になり計16行削減）。`Global.StartMinimized`／`MinToTaskbar`／`CloseMini`→根本修正後の`IAppSettingsService`、`Global.ProfilePath`／`SelectedProfile`→既存`IProfileRepository`、`Global.OutContType`→既存`IOutputSlotService`を適用済み。`Global.Notifications`／`SwipeProfiles`／`LoadProfile`／`LoadTempProfile`／`activeOutDevType`および`CheckUpdateStartupEnabled`系（SettingsViewModel Step13-3と同様、対応するDIサービスが無いため据え置き）は次のマイクロステップで継続。
+   - **🔴重大発見と根本修正**: `IAppSettingsService.StartMinimized`等7プロパティが独立privateフィールドを持ち`Global`側の実体と一切連動しない「孤立重複状態」バグを発見（Step13-3調査時の`ProfileSettingsService`類似問題と同種）。`AppSettingsService.cs`を修正し、全て`Global`への正規シムに統一。
+   - **Tier3（高リスク・未着手）**: `Start`/`Stop`/`running`/`suspending`（サービスライフサイクル）、`OutputslotMan`/`AttachUnboundOutDev`/`DetachUnboundOutDev`（ViGEm §5.5ガードレール対象）、`DS4Controllers`（17件）は別マイクロステップに切り出し。
+   - **Tier4（個別要調査・未着手）**: `IsAdministrator`・`firstRun`・`useDInputOnly`・`runHotPlug`・`store`・`UseIconChoice`・`UseCurrentTheme`・`RefreshHidHideInfo`・`RefreshFakerInputInfo`・`TEST_PROFILE_INDEX`・`LastChecked`・`LastVersionCheckedNum`・`CompileVersionNumberFromString`・`exeversion`・`exedirpath`／`exelocation`（`IPathService.ExecutableDirectory`との挙動差異未検証のため保留）等、雑多な単発参照。
 
 ### タスク Step13-8: `App.xaml.cs` の `rootHub` シム完全削除
 1. 全画面からの参照消滅を確認後、`App.xaml.cs` の `rootHub` プロパティを削除する。
