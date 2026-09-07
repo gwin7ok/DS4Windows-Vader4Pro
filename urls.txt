@@ -810,7 +810,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/newes
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/omnisharp.json
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/proposed_patches/remove_profileeditor_local_helpers.patch
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/DS4W_DIMG_getURL.ps1
-https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/Remove bin.bat
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/Remove-bin.bat
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/post-build.ps1
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/publish-win-x64.ps1
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/scripts/release-and-publish.ps1
