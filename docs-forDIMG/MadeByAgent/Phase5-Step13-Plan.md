@@ -281,6 +281,11 @@ public class ViewModelFactory : IViewModelFactory
 4. コードベース全体を再検索し、`App.rootHub`の参照が0件であることを確認。
 
 ### タスク Step13-9: ViewModel 単体テストの拡充と自動テスト実行
+    * **Watchpoint 2 の確認（UIスレッド安全性・イベント購読解除の点検・テスト）**:
+      * **スレッド安全性（Cross-thread UI 操作）**:
+        * `AutoProfilesViewModel` や `ControllerListViewModel` がバックグラウンドスレッド発火のイベント（`AutoProfileSystemChange`, デバイス着脱等）を受信した際、`Dispatcher` を介して UI/コレクション（`ObservableCollection`）を安全に更新しているかのコード点検および単体テスト。
+      * **イベント購読解除（Unsubscribe / メモリリーク防止）**:
+        * `MainWindow` または各 ViewModel の破棄・終了時（`Closed` / `Unloaded` 等）に、Singleton DI サービス（`IAutoProfileService`, `IDs4DeviceRegistry` 等）に対するイベント購読（`+=`）が確実に解除（`-=`）されていることの点検とテスト。
 1. 各 ViewModel のモックテストを実行し、全画面が DI 経由で正常に初期化・バインドできることを検証。
 2. `dotnet test` で全テストパスを確認。
 
