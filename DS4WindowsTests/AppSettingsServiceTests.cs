@@ -304,9 +304,11 @@ namespace DS4WindowsTests
             bool originalSwipe = Global.SwipeProfiles;
             try
             {
-                service.Notifications = 2;
+                // デフォルト値(2)と衝突しないよう、元の値と異なる値を明示的に選ぶ
+                int newNotif = originalNotif == 1 ? 0 : 1;
+                service.Notifications = newNotif;
                 Assert.Equal(nameof(service.Notifications), changedProperty);
-                Assert.Equal(2, Global.Notifications);
+                Assert.Equal(newNotif, Global.Notifications);
 
                 changedProperty = null;
                 service.SwipeProfiles = !originalSwipe;

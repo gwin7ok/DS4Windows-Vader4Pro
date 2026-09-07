@@ -205,8 +205,6 @@ namespace DS4WindowsTests
         {
             var repository = new ProfileRepository(new ProfileSettingsService());
             const string testSerial = "00:11:22:33:44:99"; // テスト専用の架空シリアル
-            string originalValue = null;
-            bool hadOriginal = false;
 
             try
             {
