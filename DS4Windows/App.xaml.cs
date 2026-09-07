@@ -64,11 +64,6 @@ namespace DS4WinWPF
         }
 
         private Thread controlThread;
-        public static DS4Windows.ControlService rootHub
-        {
-            get => Program.rootHub;
-            set => Program.rootHub = value;
-        }
         public static HttpClient requestClient;
         private bool skipSave;
         private bool runShutdown;
@@ -364,7 +359,7 @@ namespace DS4WinWPF
                 DS4Windows.Global.Save();
             }
 
-            logHolder = new LoggerHolder(rootHub);
+            logHolder = new LoggerHolder(DS4Windows.Program.rootHub);
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             string version = DS4Windows.Global.exeversion;
@@ -482,14 +477,14 @@ namespace DS4WinWPF
             window.CheckMinStatus();
 
             bool runningAsAdmin = DS4Windows.Global.IsAdministrator();
-            rootHub.LogDebug($"Running as {(runningAsAdmin ? "Admin" : "User")}");
+            DS4Windows.Program.rootHub.LogDebug($"Running as {(runningAsAdmin ? "Admin" : "User")}");
 
             if (DS4Windows.Global.hidHideInstalled)
             {
-                rootHub.CheckHidHidePresence();
+                DS4Windows.Program.rootHub.CheckHidHidePresence();
             }
 
-            rootHub.LoadPermanentSlotsConfig();
+            DS4Windows.Program.rootHub.LoadPermanentSlotsConfig();
             window.LateChecks(parser);
         }
 
@@ -506,7 +501,7 @@ namespace DS4WinWPF
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        rootHub?.PrepareAbort();
+                        DS4Windows.Program.rootHub?.PrepareAbort();
                         CleanShutdown();
                     });
                 }
@@ -519,7 +514,7 @@ namespace DS4WinWPF
                     AppLogger.LogError($"Thread Crashed with message {exp.Message}");
                     AppLogger.LogError(exp.ToString());
 
-                    rootHub?.PrepareAbort();
+                    DS4Windows.Program.rootHub?.PrepareAbort();
                     CleanShutdown();
                 }
             }
@@ -723,11 +718,10 @@ namespace DS4WinWPF
                 // is called, so GetService should not be null; the null-coalesce is a
                 // startup-order safety net only, and 'new Ds4DeviceRegistryAdapter()' here
                 // is the same adapter class already registered, not a second implementation.
-                rootHub = AppHost.GetService<DS4Windows.ControlService>();
-                if (rootHub == null)
+                DS4Windows.Program.rootHub = AppHost.GetService<DS4Windows.ControlService>();
+                if (DS4Windows.Program.rootHub == null)
                     throw new InvalidOperationException("ControlService could not be resolved from AppHost.");
 
-                DS4Windows.Program.rootHub = rootHub;
                 requestClient = new HttpClient();
                 requestClient.DefaultRequestHeaders.Add("User-Agent", "DS4Windows");
                 collectTimer = new Timer(GarbageTask, null, 30000, 30000);
@@ -744,7 +738,6 @@ namespace DS4WinWPF
         {
             controlThread = new Thread(() =>
             {
-                DS4Windows.Program.rootHub = rootHub;
                 requestClient = new HttpClient();
                 requestClient.DefaultRequestHeaders.Add("User-Agent", "DS4Windows");
                 collectTimer = new Timer(GarbageTask, null, 30000, 30000);
@@ -986,14 +979,14 @@ namespace DS4WinWPF
         {
             if (runShutdown)
             {
-                if (rootHub != null)
+                if (DS4Windows.Program.rootHub != null)
                 {
                     Task.Run(() =>
                     {
-                        if (rootHub.running)
+                        if (DS4Windows.Program.rootHub.running)
                         {
-                            rootHub.Stop(immediateUnplug: true);
-                            rootHub.ShutDown();
+                            DS4Windows.Program.rootHub.Stop(immediateUnplug: true);
+                            DS4Windows.Program.rootHub.ShutDown();
                         }
                     }).Wait();
                 }

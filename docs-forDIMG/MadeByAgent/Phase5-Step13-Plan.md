@@ -1,6 +1,6 @@
 # フェーズ5-Step13 計画書: UI層（ViewModels および MainWindow）のDIサービス接続・残存静的参照の撲滅
 
-作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映／2026-09-06第4版: Step13-5実装に伴いIProfileRepository再拡張とGlobal.RemoveAction自動保存機能欠落の是正を反映／2026-09-06第5版: Step13-6実装（RecordBoxViewModel・ProfileSettingsViewModel）に伴いIOutputSlotService拡張を反映／2026-09-06第6版: Step13-7着手・IAppSettingsService孤立プロパティ根本修正とIAppSettingsService/IProfileRepository再拡張を反映（MainWindow.xaml.cs Tier1・Tier2一部完了、残り継続中）／第7版: Step13-7 Tier1・Tier2全件完了（Notifications/SwipeProfiles/LoadTempProfile/activeOutDevType対応）を反映。Tier3・Tier4は次マイクロステップへ）／第8版: Step13-7 Tier3完了（App.rootHub/Program.rootHub全67箇所をcontrolService注入済みフィールド参照に置換、ViGEmドライバ通信順序・サービスライフサイクルは無変更のためガードレール§5.5完全準拠）を反映。Tier4のみ残存）／第9版: Step13-7 Tier4精査完了（`useDInputOnly`→既存`IProfileSettingsService`、`Global.store.EmitMissingActionLogsForDevice`→`IProfileRepository`新設メソッドに置換。残り約20件は個別調査のうえ理由付きで対象外に確定）を反映。MainWindow.xaml.cs改修は`App.rootHub`他ファイル対応（Step13-8前提）を除き完了）／2026-09-07第10版: Step13-7完全完了を反映。残存6ファイルの`App.rootHub`対応完了、および`.csproj`のビルド阻害要因（WPF自動生成コード二重コンパイル）の発見・是正を追記）
+作成日: 2026-09-03（改訂日: 2026-09-05・実コード検証に基づき対象ファイルとスコープを修正／同日第2版: Step13-2実装に伴いIProfileRepository拡張を反映／同日第3版: Step13-4実装に伴いIAutoProfileService拡張とAutoProfileHolder二重インスタンス問題の是正を反映／2026-09-06第4版: Step13-5実装に伴いIProfileRepository再拡張とGlobal.RemoveAction自動保存機能欠落の是正を反映／2026-09-06第5版: Step13-6実装（RecordBoxViewModel・ProfileSettingsViewModel）に伴いIOutputSlotService拡張を反映／2026-09-06第6版: Step13-7着手・IAppSettingsService孤立プロパティ根本修正とIAppSettingsService/IProfileRepository再拡張を反映（MainWindow.xaml.cs Tier1・Tier2一部完了、残り継続中）／第7版: Step13-7 Tier1・Tier2全件完了（Notifications/SwipeProfiles/LoadTempProfile/activeOutDevType対応）を反映。Tier3・Tier4は次マイクロステップへ）／第8版: Step13-7 Tier3完了（App.rootHub/Program.rootHub全67箇所をcontrolService注入済みフィールド参照に置換、ViGEmドライバ通信順序・サービスライフサイクルは無変更のためガードレール§5.5完全準拠）を反映。Tier4のみ残存）／第9版: Step13-7 Tier4精査完了（`useDInputOnly`→既存`IProfileSettingsService`、`Global.store.EmitMissingActionLogsForDevice`→`IProfileRepository`新設メソッドに置換。残り約20件は個別調査のうえ理由付きで対象外に確定）を反映。MainWindow.xaml.cs改修は`App.rootHub`他ファイル対応（Step13-8前提）を除き完了）／2026-09-07第10版: Step13-7完全完了を反映。残存6ファイルの`App.rootHub`対応完了、および`.csproj`のビルド阻害要因（WPF自動生成コード二重コンパイル）の発見・是正を追記）／2026-09-07第11版: Step13-8完了（`App.xaml.cs`の`rootHub`シムプロパティ完全削除、内部12箇所を`DS4Windows.Program.rootHub`直参照に置換、常にno-opだった冗長な再代入2箇所を削除）を反映
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント:
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体計画書・全体4層モデル定義）
@@ -274,8 +274,11 @@ public class ViewModelFactory : IViewModelFactory
      ```
      このItemGroupは以前のセッションでVSCode/CursorのIntelliSense向けに追加されたものだが、WPF SDKが自動生成・自動コンパイル対象化する実ビルド用`*.g.cs`と、ここで手動追加されたデザイン時専用`*.g.i.cs`が**同一の`InitializeComponent`等を二重定義**することになり、コマンドラインビルド（`BuildingInsideVisualStudio != true`）のたびに全WPF画面でビルドエラーとなっていた。`obj`/`bin`削除では`obj`再生成のたびに再発するため、これまでの複数回のビルド失敗の根本原因はこれだった。ユーザーの判断によりこのItemGroupを削除し、ビルド・テストビルド・テスト実行・リリースビルド全て成功を確認済み。IntelliSense側の見失い問題は「.NET: Restart Language Server」等のエディタ再起動で個別対応する方針とした。
 
-### タスク Step13-8: `App.xaml.cs` の `rootHub` シム完全削除
-1. 全画面からの参照消滅を確認後、`App.xaml.cs` の `rootHub` プロパティを削除する。
+### タスク Step13-8: `App.xaml.cs` の `rootHub` シム完全削除（※実施済み 2026-09-07）
+1. 全画面（Step13-7完了により`App.rootHub`の外部参照は全コードベースでゼロ）を確認後、`App.xaml.cs`の`rootHub`シムプロパティ（`Program.rootHub`への薄い委譲）を削除。
+2. `App.xaml.cs`内部で`rootHub`（裸の識別子、クラス内メンバーとして参照）を使用していた12箇所を`DS4Windows.Program.rootHub`への直接参照に置換。`App.xaml.cs`は`using DS4Windows;`を持たないため、既存の記述スタイルに合わせて完全修飾名で統一。
+3. `CreateControlService`/`CreateBaseThread`内にあった`DS4Windows.Program.rootHub = rootHub;`（プロパティのgetter/setterが同じ実体を指すため、常に自己代入＝no-opだった行）を2箇所削除。
+4. コードベース全体を再検索し、`App.rootHub`の参照が0件であることを確認。
 
 ### タスク Step13-9: ViewModel 単体テストの拡充と自動テスト実行
 1. 各 ViewModel のモックテストを実行し、全画面が DI 経由で正常に初期化・バインドできることを検証。
