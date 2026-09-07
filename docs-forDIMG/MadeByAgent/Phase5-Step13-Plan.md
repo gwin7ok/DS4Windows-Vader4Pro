@@ -280,14 +280,36 @@ public class ViewModelFactory : IViewModelFactory
 3. `CreateControlService`/`CreateBaseThread`内にあった`DS4Windows.Program.rootHub = rootHub;`（プロパティのgetter/setterが同じ実体を指すため、常に自己代入＝no-opだった行）を2箇所削除。
 4. コードベース全体を再検索し、`App.rootHub`の参照が0件であることを確認。
 
-### タスク Step13-9: ViewModel 単体テストの拡充と自動テスト実行
-    * **Watchpoint 2 の確認（UIスレッド安全性・イベント購読解除の点検・テスト）**:
-      * **スレッド安全性（Cross-thread UI 操作）**:
-        * `AutoProfilesViewModel` や `ControllerListViewModel` がバックグラウンドスレッド発火のイベント（`AutoProfileSystemChange`, デバイス着脱等）を受信した際、`Dispatcher` を介して UI/コレクション（`ObservableCollection`）を安全に更新しているかのコード点検および単体テスト。
-      * **イベント購読解除（Unsubscribe / メモリリーク防止）**:
-        * `MainWindow` または各 ViewModel の破棄・終了時（`Closed` / `Unloaded` 等）に、Singleton DI サービス（`IAutoProfileService`, `IDs4DeviceRegistry` 等）に対するイベント購読（`+=`）が確実に解除（`-=`）されていることの点検とテスト。
-1. 各 ViewModel のモックテストを実行し、全画面が DI 経由で正常に初期化・バインドできることを検証。
-2. `dotnet test` で全テストパスを確認。
+### タスク Step 13-9: ViewModel 単体テスト拡充 ＆ スレッド安全・購読解除検証（Watchpoint 2 対応）
+* **主目的**:
+  DI 化した ViewModel 群に対する単体テストを追加・更新するとともに、`Phase5-Watchpoints-Investigation-Report.md` で策定された **Watchpoint 2（UIスレッド安全性およびイベント購読解除）の推奨案 2-A** に基づき、実機・非UIスレッド動作時のクラッシュおよびメモリリークを排除する。
+
+* **対象ファイル・クラス**:
+  * `DS4Windows/DS4Forms/ViewModels/AutoProfilesViewModel.cs`
+  * `DS4Windows/DS4Forms/ViewModels/ControllerListViewModel.cs`
+  * `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs`
+  * `DS4Windows/DS4Forms/ViewModels/SpecialActionsListViewModel.cs`
+  * `DS4Windows/DS4Forms/MainWindow.xaml.cs`
+  * `DS4WindowsTests/AutoProfilesViewModelTests.cs` (テスト拡充)
+  * `DS4WindowsTests/ControllerListViewModelTests.cs` (テスト拡充)
+
+* **具体的作業手順**:
+  1. **バックグラウンドイベント受信ハンドラのスレッド安全性点検・是正 (推奨案 2-A)**:
+     * `IAutoProfileService.AutoProfileSystemChange` や `IDs4DeviceRegistry` のデバイス着脱イベントなど、ワーカースレッドから発火するイベントのハンドラを点検。
+     * UI コレクション（`ObservableCollection`）やプロパティの更新が、`Application.Current?.Dispatcher?.Invoke / BeginInvoke` または `BindingOperations.EnableCollectionSynchronization` を通じて UI スレッド上で実行されていることを確認・是正する。
+  2. **ウィンドウおよび ViewModel のイベント購読解除（Unsubscribe）の点検・実装**:
+     * `MainWindow.xaml.cs` の `MainWindow_Closed` イベントハンドラにおいて、Singleton DI サービス（`_autoProfileService`, `_deviceRegistry`, `_outputSlotService` 等）へのイベントリスナー（`+=`）がすべて明示的に `-=` で解除されていることを確認・補完する。
+     * ViewModel 側のライフサイクルにおいて、不要な強参照が Singleton サービス側に残存しないクリーンアップ機構（Dispose または Detach）の適用確認。
+  3. **コア ViewModel 単体テストの実装 (`DS4WindowsTests`)**:
+     * `Mock<IProfileRepository>`, `Mock<IAppSettingsService>`, `Mock<IAutoProfileService>`, `Mock<ISpecialActionRepository>`, `Mock<IDs4DeviceRegistry>`, `Mock<IOutputSlotService>` を用いた純粋単体テストを整備。
+     * **Watchpoint 2 検証テスト**:
+       * ワーカースレッド（別スレッド）からイベントを発火させた際に、UI スレッド同期を経て正常にコレクションが更新されることの振る舞いテスト。
+       * 購読解除後にイベントを発火させても、破棄済みインスタンスのハンドラが呼び出されないこと（メモリリーク・ゴースト発火抑止）の検証テスト。
+  4. **自動テスト全件実行**:
+     * `dotnet test DS4WindowsTests\DS4Windows.Actions.Tests.csproj`
+     * `dotnet test StandaloneTests\StandaloneTests.csproj`
+     * 全テストケースが 100% グリーンであることを確認。
+
 
 ### タスク Step13-10: ビルド検証、進捗更新、完了報告書の作成
 1. Debug / Release ビルド成功を確認。

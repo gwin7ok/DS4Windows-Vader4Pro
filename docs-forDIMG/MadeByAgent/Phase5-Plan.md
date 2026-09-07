@@ -149,8 +149,30 @@ DI登録済み23サービスおよびコード全体を精査し、全残存Lega
 #### Phase5-Step14: 自動テストと実機検証
 - **内容**: 各ステップ完了時にビルド、Actions／Standalone 単体テスト、結合テストを実行する。自動テストで代替できない HID、ドライバ、長時間安定性は実機検証チェックリストで確認する。
 
-#### Phase5-Step15: Legacy shim の削除判断
-- **内容**: すべてのDIサービスおよびViewModelが新契約へ移行したことを確認したうえで、残存する `Global` / `Mapping` の不要となった静的シムメソッドの削除・非推奨化を判断する。
+#### Phase5-Step15: Legacy shim の削除判断・第一次神クラスダウンサイズ
+* **主目的**:
+  Step 13 で UI 層からの旧静的アクセスが DI サービスへ移行したことを受け、`Phase5-Watchpoints-Investigation-Report.md` の **推奨案 1-B（プロファイル判定移譲）** および **推奨案 3-A ＋ 3-C（SSOT 透過委譲 ＆ Obsolete 化）** を実施し、呼出元が途絶えた不要シムを物理削除して **神クラスの第一次ダウンサイズ** を達成する。
+
+* **対象ファイル・クラス**:
+  * `DS4Windows/DS4Forms/MainWindow.xaml.cs`
+  * `DS4Windows/DS4Control/ScpUtil.cs` (`Global` クラス、`ProfileListHolder` 等)
+  * `DS4Windows/DS4Control/Services/ProfileRepository.cs` (`IProfileRepository`)
+  * `DS4Windows/DS4Control/ControlService.cs`
+
+* **具体的作業手順**:
+  1. **[Watchpoint 1] MainWindow 残存プロファイル存在判定の `IProfileRepository` 移譲 (推奨案 1-B)**:
+     * `IProfileRepository` / `ProfileRepository` に `ProfileExists(string profileName)` および `FindValidProfileName(string baseName)` 相当のドメイン判定メソッドを追加・確認。
+     * `MainWindow.xaml.cs` 内に残存する `Global.FindValidProfile(...)` や `Global.ProfileExists(...)` の呼び出しを、注入済み `_profileRepository` のメソッドへ切り替え。
+     * ※定数参照（`Global.blMacro` 等）や外観ユーティリティ（`Global.RefreshTheme()`、`WindowPlacementHelper` 等）は UI 固有として維持する。
+  2. **[Watchpoint 3] 旧静的ホルダーの透過委譲化（SSOT担保）と `[Obsolete]` 属性付与 (推奨案 3-A ＋ 3-C)**:
+     * `Global.ProfileListHolder` 等の旧静的ホルダーの実体を自前コレクションではなく、DI サービス（`IProfileRepository.ProfileList` 等）への透過的 Getter に一本化し、UI とバックエンドの状態解離（ゴースト更新）を防止。
+     * 旧静的プロパティ・メソッドに `[Obsolete("Use IProfileRepository instead. Scheduled for removal in Phase 6.", false)]` 属性を付与し、新規利用をコンパイル警告で抑止。
+  3. **[神クラス第一次ダウンサイズ] 呼出元 0 件となった不要シムメソッドの物理削除**:
+     * Step 13 で MainWindow や各 ViewModel からの呼び出しが完全に消滅した `ControlService.cs` および `ScpUtil.cs (Global)` 内の後方互換シムを特定。
+     * 呼出元が 0 件であることを静的解析で確認した上で物理削除し、巨大クラスのコード量を削減。
+  4. **単体テスト・リグレッション検証**:
+     * シム削除および透過委譲化後に、既存の全自動テスト（`DS4WindowsTests` / `StandaloneTests`）を実行し、ビルドエラーや回帰障害が一切ないことを確認。
+
 
 ---
 
