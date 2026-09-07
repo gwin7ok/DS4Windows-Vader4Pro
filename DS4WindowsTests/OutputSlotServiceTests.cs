@@ -119,5 +119,21 @@ namespace DS4WindowsTests
             Assert.NotNull(slots);
             Assert.Equal(8, slots.Count); // OutputSlotManager の既定スロット数は 8
         }
+
+        // Phase5-Step13-6/7で追加: いずれもGlobal(m_Config)への薄い公開アクセサであり、
+        // 同一配列の参照であることを検証する(状態複製がないことの確認)。
+        [Fact]
+        public void OutDevTypeTemp_ShouldReferenceSameArrayAsGlobal()
+        {
+            var service = new OutputSlotService();
+            Assert.Same(Global.outDevTypeTemp, service.OutDevTypeTemp);
+        }
+
+        [Fact]
+        public void ActiveOutDevType_ShouldReferenceSameArrayAsGlobal()
+        {
+            var service = new OutputSlotService();
+            Assert.Same(Global.activeOutDevType, service.ActiveOutDevType);
+        }
     }
 }

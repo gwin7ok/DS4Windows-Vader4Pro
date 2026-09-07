@@ -154,5 +154,31 @@ namespace DS4WindowsTests
             Assert.Equal(ProfileChangeSource.AutoProfile, mockAppService.ApplyCalls[1].Source);
             Assert.Null(mockAppService.ApplyCalls[1].DisplayNotification);
         }
+
+        // Phase5-Step13-4で追加: Global.autoProfileSwitchNotifyChoiceへの薄い委譲であることを検証。
+        [Fact]
+        public void AutoProfileSwitchNotifyChoice_ShouldReadWriteSameEntityAsGlobal()
+        {
+            var holder = new AutoProfileHolder();
+            var settings = new ProfileSettingsService();
+            var mockInspector = new MockProcessInspector();
+            var mockAppService = new MockProfileAppService();
+            var service = new AutoProfileService(holder, mockAppService, settings, mockInspector);
+
+            var original = Global.autoProfileSwitchNotifyChoice;
+            try
+            {
+                var newValue = original == AutoProfileDisplayProfileSwitchChoices.LogAndNotification
+                    ? AutoProfileDisplayProfileSwitchChoices.None
+                    : AutoProfileDisplayProfileSwitchChoices.LogAndNotification;
+
+                service.AutoProfileSwitchNotifyChoice = newValue;
+                Assert.Equal(newValue, Global.autoProfileSwitchNotifyChoice);
+            }
+            finally
+            {
+                Global.autoProfileSwitchNotifyChoice = original;
+            }
+        }
     }
 }

@@ -162,5 +162,94 @@ namespace DS4WindowsTests
             bool result2 = repository.SaveProfile(0, "Phase5Step2_SaveProfileTest");
             Assert.False(result2);
         }
+
+        // Phase5-Step13-2で追加: ProfilePath等はGlobal(m_Config)への薄い公開アクセサであり、
+        // 同一配列の参照であることを検証する(状態複製がないことの確認)。
+        [Fact]
+        public void ProfilePath_ShouldReferenceSameArrayAsGlobal()
+        {
+            var repository = new ProfileRepository(new ProfileSettingsService());
+            Assert.Same(Global.ProfilePath, repository.ProfilePath);
+            Assert.Same(Global.OlderProfilePath, repository.OlderProfilePath);
+            Assert.Same(Global.SelectedProfile, repository.SelectedProfile);
+            Assert.Same(Global.LinkedProfileUI, repository.LinkedProfileUI);
+        }
+
+        [Fact]
+        public void SelectedProfileChanged_ShouldFireOnRaise()
+        {
+            var repository = new ProfileRepository(new ProfileSettingsService());
+            int? receivedDevice = null;
+            string receivedProfile = null;
+            EventHandler<SelectedProfileChangedEventArgs> handler = (s, e) =>
+            {
+                receivedDevice = e.DeviceIndex;
+                receivedProfile = e.ProfileName;
+            };
+
+            repository.SelectedProfileChanged += handler;
+            try
+            {
+                repository.RaiseSelectedProfileChanged(7, "Phase5Step13-9_Test");
+                Assert.Equal(7, receivedDevice);
+                Assert.Equal("Phase5Step13-9_Test", receivedProfile);
+            }
+            finally
+            {
+                repository.SelectedProfileChanged -= handler;
+            }
+        }
+
+        [Fact]
+        public void LinkedProfile_ChangeAndRemove_ShouldNotThrowAndShouldPersist()
+        {
+            var repository = new ProfileRepository(new ProfileSettingsService());
+            const string testSerial = "00:11:22:33:44:99"; // テスト専用の架空シリアル
+            string originalValue = null;
+            bool hadOriginal = false;
+
+            try
+            {
+                var changeEx = Record.Exception(() => repository.ChangeLinkedProfile(testSerial, "Phase5Step13-9_LinkedProfile"));
+                Assert.Null(changeEx);
+
+                var saveEx = Record.Exception(() => repository.SaveLinkedProfiles());
+                Assert.Null(saveEx);
+            }
+            finally
+            {
+                // テスト用シリアルの紐付けを確実に除去してテスト環境を汚さない
+                Record.Exception(() => repository.RemoveLinkedProfile(testSerial));
+                Record.Exception(() => repository.SaveLinkedProfiles());
+            }
+        }
+
+        [Fact]
+        public void ProfileActions_ShouldReferenceSameArrayAsGlobal()
+        {
+            var repository = new ProfileRepository(new ProfileSettingsService());
+            Assert.Same(Global.ProfileActions, repository.ProfileActions);
+        }
+
+        [Fact]
+        public void CacheExtraProfileInfo_And_CacheProfileCustomsFlags_ShouldNotThrow()
+        {
+            var repository = new ProfileRepository(new ProfileSettingsService());
+
+            var ex1 = Record.Exception(() => repository.CacheExtraProfileInfo(7));
+            Assert.Null(ex1);
+
+            var ex2 = Record.Exception(() => repository.CacheProfileCustomsFlags(7));
+            Assert.Null(ex2);
+        }
+
+        [Fact]
+        public void EmitMissingActionLogsForDevice_ShouldNotThrow()
+        {
+            var repository = new ProfileRepository(new ProfileSettingsService());
+
+            var ex = Record.Exception(() => repository.EmitMissingActionLogsForDevice(7, forceEmit: true, overrideProfileName: "Phase5Step13-9_Test"));
+            Assert.Null(ex);
+        }
     }
 }
