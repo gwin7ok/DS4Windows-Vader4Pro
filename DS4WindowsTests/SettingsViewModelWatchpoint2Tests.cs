@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
 using DS4Windows;
@@ -27,7 +26,7 @@ namespace DS4WindowsTests
         [Fact]
         public async Task Watchpoint2_WorkerThread_EventFiring_HandlesThreadSafetyWithoutCrash()
         {
-            // Arrange: AppHost から解決
+            // Arrange: AppHost から実サービスと ViewModel を解決
             DS4WinWPF.AppHost.CreateHost();
             var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
             var vm = DS4WinWPF.AppHost.GetService<SettingsViewModel>();
@@ -49,38 +48,34 @@ namespace DS4WindowsTests
         [Fact]
         public void Watchpoint2_Dispose_UnsubscribesFromEvents_PreventsGhostFiring()
         {
-            // Arrange: AppHost から解決
+            // Arrange
             DS4WinWPF.AppHost.CreateHost();
             var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
+            settingsService.UseExclusiveMode = false;
+
             var vm = DS4WinWPF.AppHost.GetService<SettingsViewModel>();
             Assert.NotNull(vm);
 
-            // Dispose 前の検証: settingsService.SettingChanged に vm のハンドラが登録されていることを確認
-            var eventField = settingsService.GetType().GetField("SettingChanged",
-                BindingFlags.Instance | BindingFlags.NonPublic);
+            int eventNotificationCount = 0;
+            vm.HideDS4ControllerChanged += (sender, args) =>
+            {
+                eventNotificationCount++;
+            };
 
-            var delegateBefore = eventField?.GetValue(settingsService) as Delegate;
-            Assert.NotNull(delegateBefore);
-            var listBefore = delegateBefore.GetInvocationList();
-            bool containsVmBefore = Array.Exists(listBefore, d => ReferenceEquals(d.Target, vm));
-            Assert.True(containsVmBefore, "事前検証: Dispose 前は settingsService に ViewModel のハンドラが登録されていること");
+            // 事前検証: Dispose 前はサービス値変更により vm.HideDS4ControllerChanged が発火すること
+            settingsService.UseExclusiveMode = true;
+            Assert.True(eventNotificationCount > 0, "事前検証: Dispose 前はイベント受信により UI 通知イベントが発火すること");
 
-            // Act: ViewModel を破棄 (Dispose して SettingChanged イベントをアンフック)
+            // Act: ViewModel を破棄 (Dispose してアンフック)
             vm.Dispose();
 
-            // Assert: Dispose 後は settingsService の購読リストから vm のハンドラがアンフックされていること (ゴースト発火抑止)
-            var delegateAfter = eventField?.GetValue(settingsService) as Delegate;
-            if (delegateAfter != null)
-            {
-                var listAfter = delegateAfter.GetInvocationList();
-                bool containsVmAfter = Array.Exists(listAfter, d => ReferenceEquals(d.Target, vm));
-                Assert.False(containsVmAfter, "検証成功: Dispose 後は settingsService から ViewModel のハンドラが完全にアンフックされていること");
-            }
-            else
-            {
-                // 全購読が解除されて null になった場合も正常
-                Assert.Null(delegateAfter);
-            }
+            int countAtDispose = eventNotificationCount;
+
+            // 破棄後にサービス側の値を変更（サービス側イベントは発火するが vm は購読解除済み）
+            settingsService.UseExclusiveMode = false;
+
+            // Assert: Dispose 済みのため、通知イベントカウントが増加しないこと (ゴースト発火抑止)
+            Assert.Equal(countAtDispose, eventNotificationCount);
         }
     }
 }
