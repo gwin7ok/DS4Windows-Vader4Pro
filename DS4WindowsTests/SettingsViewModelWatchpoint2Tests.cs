@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Xunit;
 using DS4Windows;
 using DS4Windows.DI;
+using DS4WinWPF;
 using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4WindowsTests
@@ -11,7 +12,7 @@ namespace DS4WindowsTests
     /// Phase 5 Step 13-9 / Watchpoint 2 核心振る舞いテスト:
     /// ① ワーカースレッドからのイベント発火に対するスレッド安全性
     /// ② Dispose 呼び出しによるイベント購読解除 (Unsubscribe) とゴースト発火抑止
-    /// を外部モックライブラリ非依存の Fake サービスを用いて厳密に検証する。
+    /// AppHost 経由の実サービスを用いて厳密に検証する。
     /// </summary>
     public class SettingsViewModelWatchpoint2Tests
     {
@@ -23,65 +24,23 @@ namespace DS4WindowsTests
             }
         }
 
-        #region Fake Services
-        private class FakeAppSettingsService : IAppSettingsService
-        {
-            public event Action<string> SettingChanged;
-
-            public bool UseExclusiveMode { get; set; }
-            public bool StartMinimized { get; set; }
-            public bool MinimizeToTaskbar { get; set; }
-            public bool CloseMinimizes { get; set; }
-            public bool QuickCharge { get; set; }
-            public int CustomSteamFolder { get; set; }
-            public bool AutoProfileRevertDefaultProfile { get; set; }
-            public bool DeviceOptionsAutoOpen { get; set; }
-            public int FormWidth { get; set; }
-            public int FormHeight { get; set; }
-            public int FormLocationX { get; set; }
-            public int FormLocationY { get; set; }
-
-            public void RaiseSettingChanged(string settingName)
-            {
-                SettingChanged?.Invoke(settingName);
-            }
-
-            public bool Load(IProfileXmlStore xmlStore = null) => true;
-            public bool Save(IProfileXmlStore xmlStore = null) => true;
-        }
-
-        private class FakeOutputSlotService : IOutputSlotService
-        {
-            public event Action<int, OutSlotDevice> OutputSlotChanged;
-            public OutSlotDevice[] OutputSlots => Array.Empty<OutSlotDevice>();
-
-            public void SetOutputDeviceType(int slotNum, OutContType devType) { }
-            public OutContType FindExistEventSlotDevType(int slotNum) => OutContType.None;
-            public bool Load(IOutputSlotStore store = null) => true;
-            public bool Save(IOutputSlotStore store = null) => true;
-            public void RaiseSlotChanged(int slotNum, OutSlotDevice dev)
-            {
-                OutputSlotChanged?.Invoke(slotNum, dev);
-            }
-        }
-        #endregion
-
         [Fact]
         public async Task Watchpoint2_WorkerThread_EventFiring_HandlesThreadSafetyWithoutCrash()
         {
-            // Arrange
-            var fakeSettings = new FakeAppSettingsService();
-            var fakeSlots = new FakeOutputSlotService();
-            var vm = new SettingsViewModel(fakeSettings, fakeSlots);
+            // Arrange: AppHost から実サービスを解決して ViewModel を生成
+            DS4WinWPF.AppHost.CreateHost();
+            var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
+            var outputSlotService = DS4WinWPF.AppHost.GetService<IOutputSlotService>();
+            var vm = new SettingsViewModel(settingsService, outputSlotService);
 
-            // Act: ワーカースレッド（非UIスレッド）から SettingChanged イベントを発火
+            // Act: ワーカースレッド（非UIスレッド）からプロパティを変更し、SettingChanged イベントを発火
             var exception = await Record.ExceptionAsync(() => Task.Run(() =>
             {
-                fakeSettings.RaiseSettingChanged(nameof(IAppSettingsService.UseExclusiveMode));
-                fakeSettings.RaiseSettingChanged(nameof(IAppSettingsService.StartMinimized));
+                settingsService.UseExclusiveMode = !settingsService.UseExclusiveMode;
+                settingsService.StartMinimized = !settingsService.StartMinimized;
             }));
 
-            // Assert: スレッド違反例外等が発生せず、安全に処理されること
+            // Assert: クロススレッド違反例外等が発生せず、安全に完了すること
             Assert.Null(exception);
 
             vm.Dispose();
@@ -91,25 +50,25 @@ namespace DS4WindowsTests
         public void Watchpoint2_Dispose_UnsubscribesFromEvents_PreventsGhostFiring()
         {
             // Arrange
-            var fakeSettings = new FakeAppSettingsService();
-            var fakeSlots = new FakeOutputSlotService();
-            fakeSettings.UseExclusiveMode = false;
+            DS4WinWPF.AppHost.CreateHost();
+            var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
+            var outputSlotService = DS4WinWPF.AppHost.GetService<IOutputSlotService>();
 
-            var vm = new SettingsViewModel(fakeSettings, fakeSlots);
+            // 初期値を確実にセット
+            settingsService.UseExclusiveMode = false;
+            var vm = new SettingsViewModel(settingsService, outputSlotService);
 
-            // 初期状態の同期確認: サービス側の値を変更してイベント発火
-            fakeSettings.UseExclusiveMode = true;
-            fakeSettings.RaiseSettingChanged(nameof(IAppSettingsService.UseExclusiveMode));
-            Assert.True(vm.UseExclusiveMode, "事前検証: Dispose 前はイベント受信により ViewModel が更新されるべき");
+            // 事前検証: Dispose 前はイベント受信により ViewModel が更新される
+            settingsService.UseExclusiveMode = true;
+            Assert.True(vm.UseExclusiveMode, "事前検証: Dispose 前はイベント受信により ViewModel が更新されること");
 
-            // Act: ViewModel を破棄 (Dispose)
+            // Act: ViewModel を破棄 (Dispose して SettingChanged イベントをアンフック)
             vm.Dispose();
 
-            // 破棄後にサービス側の値を変更してイベント再発火
-            fakeSettings.UseExclusiveMode = false;
-            fakeSettings.RaiseSettingChanged(nameof(IAppSettingsService.UseExclusiveMode));
+            // 破棄後にサービス側の値を変更（サービス側イベントは発火するが vm は購読解除済み）
+            settingsService.UseExclusiveMode = false;
 
-            // Assert: Dispose 済みのためハンドラがアンフックされており、ViewModel のプロパティが更新されないこと (ゴースト発火抑止)
+            // Assert: Dispose 済みのためハンドラが呼ばれず、vm のプロパティは更新されない（ゴースト発火抑止）
             Assert.True(vm.UseExclusiveMode, "検証成功: Dispose 後はイベント購読が解除されているため、プロパティが更新されてはならない");
         }
     }
