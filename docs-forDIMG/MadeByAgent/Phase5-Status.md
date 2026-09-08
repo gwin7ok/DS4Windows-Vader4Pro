@@ -29,8 +29,8 @@ Step1監査レポート: `docs-forDIMG/MadeByAgent/Phase5-Step1-legacy-delegatio
 | Step 11 | デバイス検出・列挙の静的委譲分離 | **完了** | 2026-09-05 | `Phase5-Step11-Completion-Report.md`。`IDs4DeviceRegistry`契約強化、`Ds4DeviceRegistryAdapter`完全実装、`DS4Devices`境界化完了。 |
 | Step 12 | 出力スロット層（OutputSlot）の整理 | **完了** | 2026-09-05 | `Phase5-Step12-Completion-Report.md`。`IOutputSlotStore`新設、`OutputSlotService`実体実配線化、ViGEmドライバ保護(§5.5)完了。【ドメイン3全完了】 |
 | **【ドメイン4】** | **UI統合・検証・クリーンアップ（最終章）** | | | |
-| Step 13 | UI層（ViewModels）のDIサービス接続・残存静的参照撲滅 | **個別計画書完成** | - | `Phase5-Step13-Plan.md`。Pure DI 堅持、コア4大ViewModel優先順次改修による静的直参照一掃。 |
-| Step 14 | 自動テストと実機検証 | **基準検証完了・Phase5検証未着手** | - | Debugビルド、Actions(85件)、Standalone(13件)成功済み。実装完了後の全件テスト。 |
+| Step 13 | 完了 (Completed)| **個別計画書完成** | - | `Phase5-Step13-Plan.md`。Pure DI 堅持、コア4大ViewModel優先順次改修による静的直参照一掃。 |
+| Step 14 | 次期着手 (Next)| **基準検証完了・Phase5検証未着手** | - | Debugビルド、Actions(85件)、Standalone(13件)成功済み。実装完了後の全件テスト。 |
 | Step 15 | Legacy shim の削除判断 | **未着手** | - | 全呼び出し元のDI移行完了後に不要shimの削除・非推奨化を判断。 |
 | **実機CP4** | **Phase5 総合E2E実機検証** | **未着手** | - | 実機コントローラーを用いた全系統（XML、切替、通知、Action、AutoProfile、安定性）検証。 |
 
