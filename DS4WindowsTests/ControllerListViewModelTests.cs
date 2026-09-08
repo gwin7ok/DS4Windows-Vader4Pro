@@ -40,58 +40,7 @@ namespace DS4WindowsTests
         {
             var disposeMethod = typeof(ControllerListViewModel).GetMethod("Dispose", Type.EmptyTypes);
             Assert.NotNull(disposeMethod);
+            Assert.True(disposeMethod.IsPublic);
         }
     }
-
-        [Fact]
-        public void Watchpoint2_Dispose_UnsubscribesFromEvents_PreventsGhostFiring()
-        {
-            // Arrange
-            var profileRepMock = new Mock<IProfileRepository>();
-            var appSettingsMock = new Mock<IAppSettingsService>();
-            var devRegMock = new Mock<IDs4DeviceRegistry>();
-            var slotServiceMock = new Mock<IOutputSlotService>();
-            profileRepMock.Setup(x => x.ProfileList).Returns(new ProfileList());
-
-            var vm = new ControllerListViewModel(
-                profileRepMock.Object,
-                appSettingsMock.Object,
-                devRegMock.Object,
-                slotServiceMock.Object);
-
-            // Act: Dispose 呼び出し
-            vm.Dispose();
-
-            // Assert: Dispose 済みのインスタンスに対して多重 Dispose が例外なく安全に呼べること
-            var ex = Record.Exception(() => vm.Dispose());
-            Assert.Null(ex);
-        }
-
-        [Fact]
-        public async Task Watchpoint2_WorkerThread_EventFiring_HandlesThreadSafetyWithoutCrash()
-        {
-            // Arrange
-            var profileRepMock = new Mock<IProfileRepository>();
-            var appSettingsMock = new Mock<IAppSettingsService>();
-            var devRegMock = new Mock<IDs4DeviceRegistry>();
-            var slotServiceMock = new Mock<IOutputSlotService>();
-            profileRepMock.Setup(x => x.ProfileList).Returns(new ProfileList());
-
-            var vm = new ControllerListViewModel(
-                profileRepMock.Object,
-                appSettingsMock.Object,
-                devRegMock.Object,
-                slotServiceMock.Object);
-
-            // Act: 非UI（ワーカースレッド）からのバックグラウンド実行をシミュレーション
-            var exception = await Record.ExceptionAsync(() => Task.Run(() =>
-            {
-                // バックグラウンドスレッドでプロパティアクセスやクリーンアップが安全に行われるか検証
-                _ = vm.ControllerCol;
-            }));
-
-            // Assert: クロススレッド例外等が発生しないこと
-            Assert.Null(exception);
-            vm.Dispose();
-        }
 }

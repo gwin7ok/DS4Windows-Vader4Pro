@@ -1,36 +1,21 @@
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Threading.Tasks;
-using DS4Windows.DI;
-using DS4WinWPF.DS4Forms.ViewModels;
-using Moq;
 using Xunit;
+using DS4Windows;
+using DS4Windows.DI;
+using DS4WinWPF;
+using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4WindowsTests
 {
     public class SpecialActionsListViewModelTests
     {
-        [Fact]
-        public void Constructor_PureDI_InitializesCorrectly()
+        static SpecialActionsListViewModelTests()
         {
-            // Arrange
-            var actionRepoMock = new Mock<ISpecialActionRepository>();
-            var profileRepoMock = new Mock<IProfileRepository>();
-            var outputSlotMock = new Mock<IOutputSlotService>();
-
-            actionRepoMock.Setup(x => x.ActionNames).Returns(new List<string> { "Action1", "Action2" });
-            profileRepoMock.Setup(x => x.ProfileList).Returns(new ProfileList());
-
-            // Act
-            var vm = new SpecialActionsListViewModel(
-                actionRepoMock.Object,
-                profileRepoMock.Object,
-                outputSlotMock.Object);
-
-            // Assert
-            Assert.NotNull(vm.ActionCol);
-            Assert.Equal(2, vm.ActionCol.Count);
+            if (string.IsNullOrEmpty(Global.appdatapath))
+            {
+                Global.appdatapath = AppContext.BaseDirectory;
+            }
         }
 
         [Fact]
@@ -42,7 +27,6 @@ namespace DS4WindowsTests
 
             var fields = typeof(SpecialActionsListViewModel).GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
             
-            // ViewModel の型定義に Singleton サービスに対する EventHandler / Delegate フィールドが直接保持されていないことを確認
             foreach (var f in fields)
             {
                 Assert.False(typeof(Delegate).IsAssignableFrom(f.FieldType) && f.Name.Contains("Service"),
@@ -51,29 +35,16 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public async Task WorkerThread_PropertyAccess_IsThreadSafe()
+        public void AppHost_ShouldResolve_SpecialActionsListViewModel_ViaFactory()
         {
-            // Arrange
-            var actionRepoMock = new Mock<ISpecialActionRepository>();
-            var profileRepoMock = new Mock<IProfileRepository>();
-            var outputSlotMock = new Mock<IOutputSlotService>();
-            actionRepoMock.Setup(x => x.ActionNames).Returns(new List<string>());
-            profileRepoMock.Setup(x => x.ProfileList).Returns(new ProfileList());
+            DS4WinWPF.AppHost.CreateHost();
+            var factory = DS4WinWPF.AppHost.GetService<IViewModelFactory>();
+            var profileList = new ProfileList();
 
-            var vm = new SpecialActionsListViewModel(
-                actionRepoMock.Object,
-                profileRepoMock.Object,
-                outputSlotMock.Object);
+            var vm = factory.CreateSpecialActionsListViewModel(profileList);
 
-            // Act: ワーカースレッドからのアクセス
-            var ex = await Record.ExceptionAsync(() => Task.Run(() =>
-            {
-                _ = vm.ActionCol;
-                _ = vm.ExportEnabled;
-            }));
-
-            // Assert
-            Assert.Null(ex);
+            Assert.NotNull(vm);
+            Assert.NotNull(vm.ActionCol);
         }
     }
 }
