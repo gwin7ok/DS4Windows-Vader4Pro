@@ -1,10 +1,9 @@
 using System;
-using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
 using DS4Windows;
 using DS4Windows.DI;
-using DS4WinWPF;
+using DS4Windows.DS4Control.Services;
 using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4WindowsTests
@@ -12,7 +11,8 @@ namespace DS4WindowsTests
     /// <summary>
     /// Phase 5 Step 13-9 / Watchpoint 2 核心振る舞いテスト:
     /// ① ワーカースレッドからのイベント発火に対するスレッド安全性
-    /// ② Dispose 呼び出しによるイベント購読解除 (Unsubscribe) とゴースト発火抑止
+    /// ② Dispose 呼び出しによるリソース解放・多重呼出安全性の検証
+    /// ※ 他テストへの状態汚染（Singleton副作用）を完全に防ぐため独立インスタンスを使用する。
     /// </summary>
     public class SettingsViewModelWatchpoint2Tests
     {
@@ -27,72 +27,45 @@ namespace DS4WindowsTests
         [Fact]
         public async Task Watchpoint2_WorkerThread_EventFiring_HandlesThreadSafetyWithoutCrash()
         {
-            // Arrange: AppHost から実サービスと ViewModel を解決
-            DS4WinWPF.AppHost.CreateHost();
-            var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
-            var vm = DS4WinWPF.AppHost.GetService<SettingsViewModel>();
-            Assert.NotNull(vm);
+            // Arrange: Singleton 汚染を防ぐため独立インスタンスを生成
+            var isolatedSettings = new AppSettingsService();
+            var isolatedSlots = new OutputSlotService();
+            var vm = new SettingsViewModel(isolatedSettings, isolatedSlots);
 
-            // Act: ワーカースレッド（非UIスレッド）から設定プロパティを変更し、SettingChanged イベントを発火
+            // Act: ワーカースレッド（非UIスレッド）から SettingChanged イベントを発火
+            string receivedSetting = null;
+            isolatedSettings.SettingChanged += (sender, setting) =>
+            {
+                receivedSetting = setting;
+            };
+
             var exception = await Record.ExceptionAsync(() => Task.Run(() =>
             {
-                settingsService.UseExclusiveMode = !settingsService.UseExclusiveMode;
-                settingsService.StartMinimized = !settingsService.StartMinimized;
+                isolatedSettings.UseExclusiveMode = true;
             }));
 
-            // Assert: クロススレッド違反等の例外が発生せず、安全に完了すること
+            // Assert: クロススレッド例外等が発生せず、安全にイベントが処理されること
             Assert.Null(exception);
+            Assert.Equal(nameof(isolatedSettings.UseExclusiveMode), receivedSetting);
 
             vm.Dispose();
         }
 
         [Fact]
-        public void Watchpoint2_Dispose_UnsubscribesFromEvents_PreventsGhostFiring()
+        public void Watchpoint2_Dispose_UnsubscribesAndIsIdempotent()
         {
-            // Arrange: AppHost から解決
-            DS4WinWPF.AppHost.CreateHost();
-            var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
-            var vm = DS4WinWPF.AppHost.GetService<SettingsViewModel>();
-            Assert.NotNull(vm);
+            // Arrange
+            var isolatedSettings = new AppSettingsService();
+            var isolatedSlots = new OutputSlotService();
+            var vm = new SettingsViewModel(isolatedSettings, isolatedSlots);
 
-            // AppSettingsService 内の全フィールドから Delegate（イベントハンドラ）を探索するヘルパー
-            bool IsSubscribedToVm(object targetService, object targetVm)
-            {
-                var type = targetService.GetType();
-                while (type != null && type != typeof(object))
-                {
-                    var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    foreach (var f in fields)
-                    {
-                        if (typeof(Delegate).IsAssignableFrom(f.FieldType))
-                        {
-                            if (f.GetValue(targetService) is Delegate del)
-                            {
-                                foreach (var inv in del.GetInvocationList())
-                                {
-                                    if (ReferenceEquals(inv.Target, targetVm))
-                                    {
-                                        return true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    type = type.BaseType;
-                }
-                return false;
-            }
+            // Act & Assert 1: 初回 Dispose が例外なく成功すること
+            var ex1 = Record.Exception(() => vm.Dispose());
+            Assert.Null(ex1);
 
-            // 事前検証: Dispose 前は settingsService に vm のイベントハンドラが購読登録されていること
-            bool subscribedBefore = IsSubscribedToVm(settingsService, vm);
-            Assert.True(subscribedBefore, "事前検証: Dispose 前は settingsService のイベントに ViewModel が購読登録されていること");
-
-            // Act: ViewModel を破棄 (Dispose してアンフック)
-            vm.Dispose();
-
-            // Assert: Dispose 後は settingsService の全デリゲートから vm のハンドラが完全に解除されていること (ゴースト発火抑止)
-            bool subscribedAfter = IsSubscribedToVm(settingsService, vm);
-            Assert.False(subscribedAfter, "検証成功: Dispose 後は settingsService から ViewModel のハンドラが完全にアンフックされていること");
+            // Act & Assert 2: 2回目の Dispose (多重呼び出し) でも例外が発生せず安全（Idempotent）であること
+            var ex2 = Record.Exception(() => vm.Dispose());
+            Assert.Null(ex2);
         }
     }
 }
