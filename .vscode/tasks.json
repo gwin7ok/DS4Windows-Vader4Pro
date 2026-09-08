@@ -131,7 +131,8 @@
                 "./DS4WindowsTests/DS4Windows.Actions.Tests.csproj",
                 "-c",
                 "Debug",
-                "/p:platform=x64"
+                "/p:platform=x64",
+                "--no-dependencies"
             ],
             "group": "build",
             "presentation": {
@@ -147,7 +148,8 @@
                 "./StandaloneTests/StandaloneTests.csproj",
                 "-c",
                 "Debug",
-                "/p:platform=x64"
+                "/p:platform=x64",
+                "--no-dependencies"
             ],
             "group": "build",
             "presentation": {
