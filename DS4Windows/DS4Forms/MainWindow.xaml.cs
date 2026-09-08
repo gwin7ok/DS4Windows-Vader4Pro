@@ -1,3 +1,4 @@
+using DS4Windows.DI;
 /*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
@@ -69,6 +70,7 @@ namespace DS4WinWPF.DS4Forms
         private NonFormTimer hotkeysTimer;
         private NonFormTimer autoProfilesTimer;
         // [Phase 5 Step 13-9] 廃止: DIコンテナ注入の _autoProfileService を直接利用
+        private readonly IAutoProfileService _autoProfileService;
         private readonly DS4Windows.DI.IProfileSettingsService profileSettingsService;
         private readonly DS4Windows.DI.IAppSettingsService appSettingsService;
         private readonly DS4Windows.DI.IPathService pathService;
@@ -95,7 +97,7 @@ namespace DS4WinWPF.DS4Forms
             ProcessPriorityClass.High, ProcessPriorityClass.RealTime
         ];
 
-        public MainWindow(ArgumentParser parser)
+        public MainWindow(ArgumentParser parser, IAutoProfileService autoProfileService = null)
         {
             // XAML初期化前にウィンドウサイズを設定（WindowLayoutDefaults から）
             Width = WindowLayoutDefaults.MAIN_WINDOW_WIDTH;
@@ -191,6 +193,7 @@ namespace DS4WinWPF.DS4Forms
             autoProfControl.SetupDataContext(profileListHolder);
 
             // [Phase 5 Step 13-9] 二重実体化防止: 注入済み _autoProfileService を直接利用するため撤去
+            _autoProfileService = autoProfileService ?? DS4WinWPF.AppHost.GetService<IAutoProfileService>();
 
             slotManControl.SetupDataContext(controlService: controlService,
                 controlService.OutputslotMan);
