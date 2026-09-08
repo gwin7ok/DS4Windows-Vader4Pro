@@ -280,7 +280,7 @@ public class ViewModelFactory : IViewModelFactory
 3. `CreateControlService`/`CreateBaseThread`内にあった`DS4Windows.Program.rootHub = rootHub;`（プロパティのgetter/setterが同じ実体を指すため、常に自己代入＝no-opだった行）を2箇所削除。
 4. コードベース全体を再検索し、`App.rootHub`の参照が0件であることを確認。
 
-### タスク Step 13-9: ViewModel 単体テスト拡充 ＆ スレッド安全・購読解除検証（Watchpoint 2 対応）
+### タスク Step 13-9: [完了] ViewModel 単体テスト拡充 ＆ スレッド安全・購読解除検証（Watchpoint 2 対応）
 * **主目的**:
   DI 化した ViewModel 群に対する単体テストを追加・更新するとともに、`Phase5-Watchpoints-Investigation-Report.md` で策定された **Watchpoint 2（UIスレッド安全性およびイベント購読解除）の推奨案 2-A** に基づき、実機・非UIスレッド動作時のクラッシュおよびメモリリークを排除する。
 
@@ -309,6 +309,15 @@ public class ViewModelFactory : IViewModelFactory
      * `dotnet test DS4WindowsTests\DS4Windows.Actions.Tests.csproj`
      * `dotnet test StandaloneTests\StandaloneTests.csproj`
      * 全テストケースが 100% グリーンであることを確認。
+
+
+
+* **【Step 13-9 実施完了実績】**:
+  1. `MainWindow.xaml.cs` における重大発見（`AutoProfileChecker` 二重実体問題）の是正を完了し、注入済み `_autoProfileService` 直結へ一本化。
+  2. `ControllerListViewModel` および `SettingsViewModel` に `IDisposable` を実装し、イベント購読解除（Unsubscribe）を配備。
+  3. `SpecialActionsListViewModelTests.cs` を新規作成し、Singleton 外部イベント未購読（メモリリークゼロ）の監査テストを配備。
+  4. `SettingsViewModelWatchpoint2Tests.cs` を新規作成し、ワーカースレッドからのイベント発火耐性（スレッド安全性）および Dispose 多重呼出安全性を実証。
+  5. 全自動テスト 169 件（Actions: 156件, Standalone: 13件）が 100% グリーンを達成。
 
 
 ### タスク Step13-10: ビルド検証、進捗更新、完了報告書の作成
