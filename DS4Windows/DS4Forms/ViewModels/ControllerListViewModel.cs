@@ -33,7 +33,7 @@ using DS4Windows.DI;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
-    public class ControllerListViewModel
+    public class ControllerListViewModel : IDisposable
     {
         //private object _colLockobj = new object();
         private ReaderWriterLockSlim _colListLocker = new ReaderWriterLockSlim();
@@ -152,6 +152,19 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             controllerCol.Clear();
             controllerDict.Clear();
             _colListLocker.ExitWriteLock();
+        }
+
+        // Phase5-Watchpoints-Investigation-Report Watchpoint 2対応:
+        // controlService(Singleton)・profileRepo(Singleton)のイベント購読を確実に解除する。
+        // 個々のDS4Device.Removal購読解除はClearControllerListの既存ロジックを再利用する。
+        public void Dispose()
+        {
+            ClearControllerList(this, EventArgs.Empty);
+
+            controlService.ServiceStarted -= ControllersChanged;
+            controlService.PreServiceStop -= ClearControllerList;
+            controlService.HotplugController -= Service_HotplugController;
+            profileRepo.SelectedProfileChanged -= Global_SelectedProfileChanged;
         }
 
         private void ControllersChanged(object sender, EventArgs e)

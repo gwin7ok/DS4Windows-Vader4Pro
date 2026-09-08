@@ -1119,6 +1119,12 @@ Suspend support not enabled.", true);
             //autoProfileHolder.Save();
             Util.UnregisterNotify(regHandle);
 
+            // Phase5-Watchpoints-Investigation-Report Watchpoint 2対応:
+            // Singletonサービス(controlService/profileRepo, SystemEvents)へのイベント購読を
+            // 確実に解除する。二重呼び出しされる経路(1251行目)があるため冪等性を確保している。
+            conLvViewModel?.Dispose();
+            settingsWrapVM?.Dispose();
+
             // Attempt to dispose of notify icon early
             if (notifyIcon != null)
             {

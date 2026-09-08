@@ -36,7 +36,7 @@ using Microsoft.Win32;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
-    public class SettingsViewModel
+    public class SettingsViewModel : IDisposable
     {
         private readonly IAppSettingsService _appSettings;
 
@@ -529,6 +529,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
             //CheckForUpdatesChanged += SettingsViewModel_CheckForUpdatesChanged;
+        }
+
+        // Phase5-Watchpoints-Investigation-Report Watchpoint 2対応:
+        // SystemEvents(Microsoft.Win32)はアプリ生存期間の静的イベントであり、
+        // 本ViewModelがTransientとして再生成されるたびに購読解除しないと、
+        // 古いインスタンスがGCされずメモリリークする。他の自己所有イベント
+        // (RunAtStartupChanged等)は本クラス自身が購読側かつ発行側のため対象外。
+        public void Dispose()
+        {
+            SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
         }
 
         private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
