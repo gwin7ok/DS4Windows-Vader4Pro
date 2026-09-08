@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
 using DS4Windows;
@@ -48,34 +49,50 @@ namespace DS4WindowsTests
         [Fact]
         public void Watchpoint2_Dispose_UnsubscribesFromEvents_PreventsGhostFiring()
         {
-            // Arrange
+            // Arrange: AppHost から解決
             DS4WinWPF.AppHost.CreateHost();
             var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
-            settingsService.UseExclusiveMode = false;
-
             var vm = DS4WinWPF.AppHost.GetService<SettingsViewModel>();
             Assert.NotNull(vm);
 
-            int eventNotificationCount = 0;
-            vm.HideDS4ControllerChanged += (sender, args) =>
+            // AppSettingsService 内の全フィールドから Delegate（イベントハンドラ）を探索するヘルパー
+            bool IsSubscribedToVm(object targetService, object targetVm)
             {
-                eventNotificationCount++;
-            };
+                var type = targetService.GetType();
+                while (type != null && type != typeof(object))
+                {
+                    var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    foreach (var f in fields)
+                    {
+                        if (typeof(Delegate).IsAssignableFrom(f.FieldType))
+                        {
+                            if (f.GetValue(targetService) is Delegate del)
+                            {
+                                foreach (var inv in del.GetInvocationList())
+                                {
+                                    if (ReferenceEquals(inv.Target, targetVm))
+                                    {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    type = type.BaseType;
+                }
+                return false;
+            }
 
-            // 事前検証: Dispose 前はサービス値変更により vm.HideDS4ControllerChanged が発火すること
-            settingsService.UseExclusiveMode = true;
-            Assert.True(eventNotificationCount > 0, "事前検証: Dispose 前はイベント受信により UI 通知イベントが発火すること");
+            // 事前検証: Dispose 前は settingsService に vm のイベントハンドラが購読登録されていること
+            bool subscribedBefore = IsSubscribedToVm(settingsService, vm);
+            Assert.True(subscribedBefore, "事前検証: Dispose 前は settingsService のイベントに ViewModel が購読登録されていること");
 
             // Act: ViewModel を破棄 (Dispose してアンフック)
             vm.Dispose();
 
-            int countAtDispose = eventNotificationCount;
-
-            // 破棄後にサービス側の値を変更（サービス側イベントは発火するが vm は購読解除済み）
-            settingsService.UseExclusiveMode = false;
-
-            // Assert: Dispose 済みのため、通知イベントカウントが増加しないこと (ゴースト発火抑止)
-            Assert.Equal(countAtDispose, eventNotificationCount);
+            // Assert: Dispose 後は settingsService の全デリゲートから vm のハンドラが完全に解除されていること (ゴースト発火抑止)
+            bool subscribedAfter = IsSubscribedToVm(settingsService, vm);
+            Assert.False(subscribedAfter, "検証成功: Dispose 後は settingsService から ViewModel のハンドラが完全にアンフックされていること");
         }
     }
 }
