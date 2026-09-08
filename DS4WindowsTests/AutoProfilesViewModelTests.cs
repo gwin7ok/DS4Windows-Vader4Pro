@@ -2,6 +2,7 @@ using System;
 using Xunit;
 using DS4Windows;
 using DS4Windows.DI;
+using DS4WinWPF;
 using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4WindowsTests
