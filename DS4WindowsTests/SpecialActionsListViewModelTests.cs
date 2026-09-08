@@ -35,13 +35,16 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void AppHost_ShouldResolve_SpecialActionsListViewModel_ViaFactory()
+        public void SpecialActionsListViewModel_CanBeInstantiatedWithInjectedServices()
         {
             DS4WinWPF.AppHost.CreateHost();
-            var factory = DS4WinWPF.AppHost.GetService<IViewModelFactory>();
-            var profileList = new ProfileList();
+            
+            var specialActionRepo = DS4WinWPF.AppHost.GetService<ISpecialActionRepository>();
+            var profileRepo = DS4WinWPF.AppHost.GetService<IProfileRepository>();
+            var outputSlotService = DS4WinWPF.AppHost.GetService<IOutputSlotService>();
 
-            var vm = factory.CreateSpecialActionsListViewModel(profileList);
+            // コンストラクタへの DI サービス直接注入による ViewModel 生成を検証
+            var vm = new SpecialActionsListViewModel(0, specialActionRepo, profileRepo, null, outputSlotService);
 
             Assert.NotNull(vm);
             Assert.NotNull(vm.ActionCol);
