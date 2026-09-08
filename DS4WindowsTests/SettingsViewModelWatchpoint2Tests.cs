@@ -3,7 +3,8 @@ using System.Threading.Tasks;
 using Xunit;
 using DS4Windows;
 using DS4Windows.DI;
-using DS4Windows.DS4Control.Services;
+using DS4WinWPF;
+using DS4WinWPF.DS4Control.Services;
 using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4WindowsTests
