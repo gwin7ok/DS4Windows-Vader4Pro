@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -68,7 +68,7 @@ namespace DS4WinWPF.DS4Forms
         private AutoProfileHolder autoProfileHolder;
         private NonFormTimer hotkeysTimer;
         private NonFormTimer autoProfilesTimer;
-        private AutoProfileChecker autoprofileChecker;
+        // [Phase 5 Step 13-9] 廃止: DIコンテナ注入の _autoProfileService を直接利用
         private readonly DS4Windows.DI.IProfileSettingsService profileSettingsService;
         private readonly DS4Windows.DI.IAppSettingsService appSettingsService;
         private readonly DS4Windows.DI.IPathService pathService;
@@ -190,7 +190,7 @@ namespace DS4WinWPF.DS4Forms
             autoProfileHolder = autoProfControl.AutoProfileHolder;
             autoProfControl.SetupDataContext(profileListHolder);
 
-            autoprofileChecker = new AutoProfileChecker(autoProfileHolder, profileSettingsService);
+            // [Phase 5 Step 13-9] 二重実体化防止: 注入済み _autoProfileService を直接利用するため撤去
 
             slotManControl.SetupDataContext(controlService: controlService,
                 controlService.OutputslotMan);
@@ -426,7 +426,7 @@ namespace DS4WinWPF.DS4Forms
             settingsWrapVM.AppChoiceIndexChanged += SettingsWrapVM_AppChoiceIndexChanged;
 
             autoProfControl.AutoDebugChanged += AutoProfControl_AutoDebugChanged;
-            autoprofileChecker.RequestServiceChange += AutoprofileChecker_RequestServiceChange;
+            _autoProfileService.RequestServiceChange += AutoprofileChecker_RequestServiceChange;
             autoProfileHolder.AutoProfileColl.CollectionChanged += AutoProfileColl_CollectionChanged;
             //autoProfControl.AutoProfVM.AutoProfileSystemChange += AutoProfVM_AutoProfileSystemChange;
             mainWinVM.FullTabsEnabledChanged += MainWinVM_FullTabsEnabledChanged;
@@ -542,7 +542,7 @@ Suspend support not enabled.", true);
 
         private void AutoProfControl_AutoDebugChanged(object sender, EventArgs e)
         {
-            autoprofileChecker.AutoProfileDebugLogLevel = autoProfControl.AutoDebug == true ? 1 : 0;
+            _autoProfileService.AutoProfileDebugLogLevel = autoProfControl.AutoDebug == true ? 1 : 0;
         }
 
         private void PowerEventArrive(object sender, EventArrivedEventArgs e)
@@ -785,20 +785,20 @@ Suspend support not enabled.", true);
             {
                 autoProfilesTimer.Elapsed += AutoProfilesTimer_Elapsed;
                 autoProfilesTimer.Start();
-                autoprofileChecker.Running = true;
+                _autoProfileService.Running = true;
             }
             else
             {
                 autoProfilesTimer.Stop();
                 autoProfilesTimer.Elapsed -= AutoProfilesTimer_Elapsed;
-                autoprofileChecker.Running = false;
+                _autoProfileService.Running = false;
             }
         }
 
         private void CheckAutoProfileStatus()
         {
             int pathCount = autoProfileHolder.AutoProfileColl.Count;
-            bool timerEnabled = autoprofileChecker.Running;
+            bool timerEnabled = _autoProfileService.Running;
             if (pathCount > 0 && !timerEnabled)
             {
                 ChangeAutoProfilesStatus(true);
@@ -813,9 +813,9 @@ Suspend support not enabled.", true);
         {
             autoProfilesTimer.Stop();
             //Console.WriteLine("Event triggered");
-            autoprofileChecker.Process();
+            _autoProfileService.CheckProfiles();
 
-            if (autoprofileChecker.Running)
+            if (_autoProfileService.Running)
             {
                 autoProfilesTimer.Start();
             }
