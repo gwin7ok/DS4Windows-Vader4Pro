@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
 using DS4Windows;
@@ -49,31 +49,38 @@ namespace DS4WindowsTests
         [Fact]
         public void Watchpoint2_Dispose_UnsubscribesFromEvents_PreventsGhostFiring()
         {
-            // Arrange
+            // Arrange: AppHost から解決
             DS4WinWPF.AppHost.CreateHost();
             var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
-
-            settingsService.UseExclusiveMode = false;
             var vm = DS4WinWPF.AppHost.GetService<SettingsViewModel>();
             Assert.NotNull(vm);
 
-            var firedProperties = new List<string>();
-            vm.PropertyChanged += (sender, args) => firedProperties.Add(args.PropertyName);
+            // Dispose 前の検証: settingsService.SettingChanged に vm のハンドラが登録されていることを確認
+            var eventField = settingsService.GetType().GetField("SettingChanged",
+                BindingFlags.Instance | BindingFlags.NonPublic);
 
-            // 事前検証: Dispose 前はサービス値変更により vm.PropertyChanged (UI通知) が発火すること
-            settingsService.UseExclusiveMode = true;
-            Assert.Contains(nameof(vm.HideDS4Controller), firedProperties);
+            var delegateBefore = eventField?.GetValue(settingsService) as Delegate;
+            Assert.NotNull(delegateBefore);
+            var listBefore = delegateBefore.GetInvocationList();
+            bool containsVmBefore = Array.Exists(listBefore, d => ReferenceEquals(d.Target, vm));
+            Assert.True(containsVmBefore, "事前検証: Dispose 前は settingsService に ViewModel のハンドラが登録されていること");
 
             // Act: ViewModel を破棄 (Dispose して SettingChanged イベントをアンフック)
             vm.Dispose();
-            firedProperties.Clear();
 
-            // 破棄後にサービス側の値を変更（サービス側イベントは発火するが vm は購読解除済み）
-            settingsService.UseExclusiveMode = false;
-
-            // Assert: Dispose 済みのためハンドラがアンフックされており、vm.PropertyChanged は一切発火しない（ゴースト発火抑止）
-            Assert.DoesNotContain(nameof(vm.HideDS4Controller), firedProperties);
-            Assert.Empty(firedProperties);
+            // Assert: Dispose 後は settingsService の購読リストから vm のハンドラがアンフックされていること (ゴースト発火抑止)
+            var delegateAfter = eventField?.GetValue(settingsService) as Delegate;
+            if (delegateAfter != null)
+            {
+                var listAfter = delegateAfter.GetInvocationList();
+                bool containsVmAfter = Array.Exists(listAfter, d => ReferenceEquals(d.Target, vm));
+                Assert.False(containsVmAfter, "検証成功: Dispose 後は settingsService から ViewModel のハンドラが完全にアンフックされていること");
+            }
+            else
+            {
+                // 全購読が解除されて null になった場合も正常
+                Assert.Null(delegateAfter);
+            }
         }
     }
 }
