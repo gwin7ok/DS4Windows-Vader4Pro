@@ -515,6 +515,15 @@ Suspend support not enabled.", true);
             CheckAutoProfileStatus();
         }
 
+        private void AutoprofileChecker_RequestServiceChange(bool state)
+
+        {
+
+            AutoprofileChecker_RequestServiceChange(null, state);
+
+        }
+
+
         private void AutoprofileChecker_RequestServiceChange(AutoProfileChecker sender, bool state)
         {
             Dispatcher.BeginInvoke((Action)(() =>
