@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 using DS4Windows;
@@ -52,23 +53,27 @@ namespace DS4WindowsTests
             DS4WinWPF.AppHost.CreateHost();
             var settingsService = DS4WinWPF.AppHost.GetService<IAppSettingsService>();
 
-            // 初期値をセット
             settingsService.UseExclusiveMode = false;
             var vm = DS4WinWPF.AppHost.GetService<SettingsViewModel>();
             Assert.NotNull(vm);
 
-            // 事前検証: Dispose 前はイベント受信により ViewModel (HideDS4Controller) が更新される
+            var firedProperties = new List<string>();
+            vm.PropertyChanged += (sender, args) => firedProperties.Add(args.PropertyName);
+
+            // 事前検証: Dispose 前はサービス値変更により vm.PropertyChanged (UI通知) が発火すること
             settingsService.UseExclusiveMode = true;
-            Assert.True(vm.HideDS4Controller, "事前検証: Dispose 前はイベント受信により ViewModel が更新されること");
+            Assert.Contains(nameof(vm.HideDS4Controller), firedProperties);
 
             // Act: ViewModel を破棄 (Dispose して SettingChanged イベントをアンフック)
             vm.Dispose();
+            firedProperties.Clear();
 
             // 破棄後にサービス側の値を変更（サービス側イベントは発火するが vm は購読解除済み）
             settingsService.UseExclusiveMode = false;
 
-            // Assert: Dispose 済みのためハンドラが呼ばれず、vm の HideDS4Controller は更新されない（ゴースト発火抑止）
-            Assert.True(vm.HideDS4Controller, "検証成功: Dispose 後はイベント購読が解除されているため、プロパティが更新されてはならない");
+            // Assert: Dispose 済みのためハンドラがアンフックされており、vm.PropertyChanged は一切発火しない（ゴースト発火抑止）
+            Assert.DoesNotContain(nameof(vm.HideDS4Controller), firedProperties);
+            Assert.Empty(firedProperties);
         }
     }
 }
