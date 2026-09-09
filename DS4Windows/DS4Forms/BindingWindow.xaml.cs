@@ -64,7 +64,7 @@ namespace DS4WinWPF.DS4Forms
         {
             InitializeComponent();
 
-            controlService = DS4Windows.Program.rootHub;
+            controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? DS4Windows.Program.rootHub;
             this.expose = expose;
             bindingVM = new BindingWindowViewModel(deviceNum, settings);
 

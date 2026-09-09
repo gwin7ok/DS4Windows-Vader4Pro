@@ -34,6 +34,12 @@ namespace DS4Windows
 
         public string ExecutableDirectory => AppContext.BaseDirectory;
 
+        /// <summary>
+        /// 実行ファイルのフルパスを取得します。Scoop等のジャンクションシンボリックリンク解決ロジックを
+        /// 含む Global.exelocation への薄い委譲です（Phase5-Step14前クリーンアップ）。
+        /// </summary>
+        public string ExecutablePath => Global.exelocation;
+
         public string ProfilesPath
         {
             get

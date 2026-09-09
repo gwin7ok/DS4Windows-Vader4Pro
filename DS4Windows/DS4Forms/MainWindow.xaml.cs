@@ -74,6 +74,8 @@ namespace DS4WinWPF.DS4Forms
         private readonly DS4Windows.DI.IProfileSettingsService profileSettingsService;
         private readonly DS4Windows.DI.IAppSettingsService appSettingsService;
         private readonly DS4Windows.DI.IPathService pathService;
+        private readonly DS4Windows.DI.IEnvironmentService environmentService;
+        private readonly DS4Windows.DI.IAppearanceSettingsService appearanceSettingsService;
         private readonly DS4Windows.DI.IProfileApplicationService profileAppService;
         private readonly DS4Windows.DI.IOutputSlotService outputSlotService;
         private readonly DS4Windows.DI.IProfileRepository profileRepo;
@@ -107,14 +109,16 @@ namespace DS4WinWPF.DS4Forms
             profileSettingsService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
             appSettingsService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IAppSettingsService>();
             pathService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IPathService>() ?? Global.PathServiceInstance;
+            environmentService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IEnvironmentService>() ?? Global.EnvironmentServiceInstance;
+            appearanceSettingsService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IAppearanceSettingsService>() ?? new DS4Windows.Services.AppearanceSettingsService();
             profileAppService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileApplicationService>();
             outputSlotService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IOutputSlotService>() ?? Global.OutputSlotServiceInstance;
             profileRepo = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>() ?? Global.ProfileRepositoryInstance;
-            controlService = Program.rootHub;
+            controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? Program.rootHub;
 
             // Initialize log settings ComboBox
             logMinLevelComboBox.ItemsSource = new string[] { "Trace", "Debug", "Info", "Warn", "Error", "Fatal" };
-            logMinLevelComboBox.SelectedValue = Global.LogMinLevel;
+            logMinLevelComboBox.SelectedValue = appSettingsService.LogMinLevel;
 
             mainWinVM = DS4WinWPF.AppHost.GetService<DS4WinWPF.DS4Forms.ViewModels.MainWindowsViewModel>();
             if (mainWinVM == null)
@@ -155,7 +159,7 @@ namespace DS4WinWPF.DS4Forms
 
             // Need to define before calling TaskbarIcon.ForceCreate
             notifyIcon.DataContext = trayIconVM;
-            notifyIcon.CustomName = Global.exelocation;
+            notifyIcon.CustomName = pathService.ExecutablePath;
 
             // Remove TaskbarIcon from visual tree so Loaded and Unloaded events
             // are not fired for TaskbarIcon instance. Ignores early Dispose calls
@@ -180,7 +184,7 @@ namespace DS4WinWPF.DS4Forms
 
             startMinimized = appSettingsService.StartMinimized || parser.Mini;
 
-            bool isElevated = Global.IsAdministrator();
+            bool isElevated = environmentService.IsAdministrator();
             if (isElevated)
             {
                 uacImg.Visibility = Visibility.Collapsed;
@@ -241,13 +245,13 @@ namespace DS4WinWPF.DS4Forms
             tempTask = Task.Delay(100).ContinueWith(_ =>
             {
                 // Use explicit startup-check settings persisted in Profiles.xml
-                if (Global.CheckUpdateStartupEnabled)
+                if (appSettingsService.CheckUpdateStartupEnabled)
                 {
-                    int everyVal = Global.CheckEveryValue;
-                    int everyUnit = Global.CheckEveryUnit; // 0=hours, 1=days
+                    int everyVal = appSettingsService.CheckEveryValue;
+                    int everyUnit = appSettingsService.CheckEveryUnit; // 0=hours, 1=days
                     double hoursToWait = (everyUnit == 0) ? everyVal : everyVal * 24.0;
 
-                    if (everyVal == 0 || DateTime.Now >= Global.LastChecked + TimeSpan.FromHours(hoursToWait))
+                    if (everyVal == 0 || DateTime.Now >= appSettingsService.LastChecked + TimeSpan.FromHours(hoursToWait))
                     {
                         try
                         {
@@ -263,7 +267,7 @@ namespace DS4WinWPF.DS4Forms
                             throw;
                         }
 
-                        Global.LastChecked = DateTime.Now;
+                        appSettingsService.LastChecked = DateTime.Now;
                     }
                 }
 
@@ -291,10 +295,10 @@ namespace DS4WinWPF.DS4Forms
 
         private void Check_Version(bool showstatus = false)
         {
-            string version = Global.exeversion;
+            string version = environmentService.ApplicationVersion;
             string newversion = string.Empty;
             string versionFilePath = Path.Combine(pathService.AppDataPath, "version.txt");
-            ulong lastVersionNum = Global.LastVersionCheckedNum;
+            ulong lastVersionNum = appSettingsService.LastVersionCheckedNum;
             //ulong lastVersion = Global.CompileVersionNumberFromString("2.1.1");
 
             bool versionFileExists = File.Exists(versionFilePath);
@@ -468,7 +472,7 @@ Suspend support not enabled.", true);
 
         private void SettingsWrapVM_AppChoiceIndexChanged(object sender, EventArgs e)
         {
-            AppThemeChoice choice = Global.UseCurrentTheme;
+            AppThemeChoice choice = appearanceSettingsService.UseCurrentTheme;
             App current = App.Current as App;
             current.ChangeTheme(choice);
             trayIconVM.PopulateContextMenu();
@@ -476,7 +480,7 @@ Suspend support not enabled.", true);
 
         private void SettingsWrapVM_IconChoiceIndexChanged(object sender, EventArgs e)
         {
-            trayIconVM.IconSource = Global.iconChoiceResources[Global.UseIconChoice];
+            trayIconVM.IconSource = appearanceSettingsService.GetIconResourcePath(appearanceSettingsService.UseIconChoice);
         }
 
         private void MainWinVM_FullTabsEnabledChanged(object sender, EventArgs e)
@@ -1151,7 +1155,7 @@ Suspend support not enabled.", true);
         {
             base.OnSourceInitialized(e);
 
-            if (!Global.firstRun)
+            if (!appSettingsService.FirstRun)
             {
                 WindowPlacementHelper.ApplyPlacement(this, startMinimized);
 
@@ -1204,7 +1208,7 @@ Suspend support not enabled.", true);
             {
                 case Util.WM_DEVICECHANGE:
                     {
-                        if (Global.runHotPlug)
+                        if (appSettingsService.RunHotPlug)
                         {
                             Int32 Type = wParam.ToInt32();
                             if (Type == DBT_DEVICEARRIVAL ||
@@ -1604,7 +1608,7 @@ Suspend support not enabled.", true);
 
             StartStopBtn.IsEnabled = true;
             ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.FileName = Global.exelocation;
+            startInfo.FileName = pathService.ExecutablePath;
             startInfo.Arguments = "-driverinstall";
             startInfo.Verb = "runas";
             startInfo.UseShellExecute = true;
@@ -1613,8 +1617,8 @@ Suspend support not enabled.", true);
                 using (Process temp = Process.Start(startInfo))
                 {
                     temp.WaitForExit();
-                    Global.RefreshHidHideInfo();
-                    Global.RefreshFakerInputInfo();
+                    environmentService.RefreshHidHideInfo();
+                    environmentService.RefreshFakerInputInfo();
 
                     settingsWrapVM.DriverCheckRefresh();
                 }
@@ -1650,10 +1654,10 @@ Suspend support not enabled.", true);
             dialog.DefaultExt = ".xml";
             dialog.Filter = "DS4Windows Profile (*.xml)|*.xml";
             dialog.Title = "Select Profile to Import File";
-            if (pathService.AppDataPath != Global.exedirpath)
-                dialog.InitialDirectory = Path.Combine(Global.appDataPpath, "Profiles");
+            if (pathService.AppDataPath != pathService.ExecutableDirectory)
+                dialog.InitialDirectory = Path.Combine(pathService.AppDataPath, "Profiles");
             else
-                dialog.InitialDirectory = Global.exedirpath + @"\Profiles\";
+                dialog.InitialDirectory = pathService.ExecutableDirectory + @"\Profiles\";
 
             if (dialog.ShowDialog() == true)
             {
@@ -2023,7 +2027,7 @@ Suspend support not enabled.", true);
 
         private void XinputCheckerBtn_Click(object sender, RoutedEventArgs e)
         {
-            string path = System.IO.Path.Combine(Global.exedirpath, "Tools",
+            string path = System.IO.Path.Combine(pathService.ExecutableDirectory, "Tools",
                 "XInputChecker", "XInputChecker.exe");
 
             if (File.Exists(path))
@@ -2081,7 +2085,7 @@ Suspend support not enabled.", true);
             using var process = Process.GetCurrentProcess();
             var s = (ComboBox)sender;
             var selectedPriority = (ProcessPriorityClass)s.SelectedItem;
-            if (!Global.IsAdministrator() && selectedPriority == ProcessPriorityClass.RealTime)
+            if (!environmentService.IsAdministrator() && selectedPriority == ProcessPriorityClass.RealTime)
             {
                 MessageBox.Show(Strings.RealTimeNoAdmin);
                 selectedPriority = ProcessPriorityClass.High;

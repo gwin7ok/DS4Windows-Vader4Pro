@@ -276,7 +276,7 @@ namespace DS4WinWPF.DS4Forms
                 ?? new DS4Windows.ProfileRepository();
             profileSwitcher = DS4WinWPF.AppHost.GetService<DS4Windows.Actions.IProfileSwitcher>()
                 ?? new DS4Windows.Actions.DefaultProfileSwitcher();
-            controlService = DS4Windows.Program.rootHub;
+            controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? DS4Windows.Program.rootHub;
 
             // SpecialActionsリスト表示前にカルチャを明示的に再設定
             var lang = DS4Windows.Global.UseLang;

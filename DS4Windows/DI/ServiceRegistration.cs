@@ -18,6 +18,7 @@ namespace DS4Windows.DI
             services.AddSingleton<IPathService, PathService>();
             services.AddSingleton<IDeviceStateService, DeviceStateService>();
             services.AddSingleton<IEnvironmentService, EnvironmentService>();
+            services.AddSingleton<IAppearanceSettingsService, AppearanceSettingsService>();
             services.AddSingleton<INotificationService, AppNotificationService>();
 
             // Phase 5 Step 12: 出力スロット永続化・管理サービス

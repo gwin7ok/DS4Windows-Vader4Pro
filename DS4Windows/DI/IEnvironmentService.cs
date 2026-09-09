@@ -15,5 +15,11 @@ namespace DS4Windows.DI
         int FormLocationY { get; set; }
 
         event EventHandler EnvironmentSettingChanged;
+
+        // ---- Phase5-Step14前クリーンアップ: MainWindow.xaml.cs残存Global参照の解消 ----
+        bool IsAdministrator();
+        string ApplicationVersion { get; }
+        void RefreshHidHideInfo();
+        void RefreshFakerInputInfo();
     }
 }

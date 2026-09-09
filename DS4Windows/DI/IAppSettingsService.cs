@@ -22,6 +22,16 @@ namespace DS4Windows.DI
         bool UseExclusiveMode { get; set; }
         bool AutoProfileRevertDefaultProfile { get; set; }
 
+        // ---- Phase5-Step14前クリーンアップ: MainWindow.xaml.cs残存Global参照の解消 ----
+        string LogMinLevel { get; set; }
+        bool CheckUpdateStartupEnabled { get; set; }
+        int CheckEveryValue { get; set; }
+        int CheckEveryUnit { get; set; }
+        DateTime LastChecked { get; set; }
+        ulong LastVersionCheckedNum { get; }
+        bool FirstRun { get; set; }
+        bool RunHotPlug { get; set; }
+
         // ---- Phase5-Step13-7: ウィンドウ位置・サイズ、コントローラー一覧列幅の永続化 ----
         int FormWidth { get; set; }
         int FormHeight { get; set; }

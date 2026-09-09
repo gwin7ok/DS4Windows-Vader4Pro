@@ -17,7 +17,7 @@ public partial class StickCalibrationWindow : Window
         _stick = stick;
         _device = device;
         _profileSettingsVM = profileSettingsVm;
-        _controlService = Program.rootHub;
+        _controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? Program.rootHub;
         InitializeComponent();
     }
 

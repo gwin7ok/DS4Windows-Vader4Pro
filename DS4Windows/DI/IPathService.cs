@@ -6,6 +6,7 @@ namespace DS4Windows.DI
     {
         string AppDataPath { get; set; }
         string ExecutableDirectory { get; }
+        string ExecutablePath { get; }
         string ProfilesPath { get; }
         string ActionsPath { get; }
 

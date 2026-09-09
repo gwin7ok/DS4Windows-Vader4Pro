@@ -71,5 +71,16 @@ namespace DS4Windows
         {
             EnvironmentSettingChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        // ---- Phase5-Step14前クリーンアップ: MainWindow.xaml.cs残存Global参照の解消 ----
+        // 読み取り専用のシステム状態プローブ／実行時操作であり、永続化設定ではないため、
+        // 独自フィールドを持たずGlobalへ直接委譲する。
+        public bool IsAdministrator() => Global.IsAdministrator();
+
+        public string ApplicationVersion => Global.exeversion;
+
+        public void RefreshHidHideInfo() => Global.RefreshHidHideInfo();
+
+        public void RefreshFakerInputInfo() => Global.RefreshFakerInputInfo();
     }
 }
