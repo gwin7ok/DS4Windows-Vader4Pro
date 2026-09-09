@@ -2,6 +2,7 @@
 
 正式名称: `docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Verification-Checklist.md`  
 作成日: 2026-09-07  
+最終更新: 2026-09-09（Step14前クリーンアップ実装分の確認項目を新設セクション10として追加）
 対象ブランチ: `For-DI-migration-work`  
 対象: Phase5-Step14（自動テストと実機検証）  
 前提ドキュメント:
@@ -11,6 +12,8 @@
 - `docs-forDIMG/MadeByAgent/Phase5-Step13-Plan.md`（Step13-1〜13-8 完了状態）
 - `docs-forDIMG/MadeByAgent/Phase4-Step10-2-C-3-RealDevice-Verification-Checklist.md`（フォーマット参照）
 - `docs-forDIMG/MadeByAgent/Phase3-Step5-RealDevice-Verification-Checklist.md`（Phase3積み残し参照）
+- `docs-forDIMG/MadeByAgent/Phase5-Step14-pretest-cleanup-plan.md`（Step14前クリーンアップ計画書）
+- `docs-forDIMG/MadeByAgent/Phase5-Step14-Pretest-Cleanup-Completion-Report.md`（同完了報告書）
 
 ---
 
@@ -22,6 +25,7 @@
 - 本リストには、**実機コントローラ・ドライバ・UI操作・長時間動作がなければ検証できない項目**を中心に記載する。
 - 確認後は、結果（`○`: 正常動作、`△`: 一部制限あり、`×`: 不具合あり、`未実施`）およびメモを記入すること。
 - 特に、`[DI]` ログ経路、`HaltReportingRunAction`、一時プロファイル復帰、AutoProfile、ViGEm スロット着脱、UI からの静的参照排除後の挙動を重点確認する。
+- **2026-09-09追加**: Step14前クリーンアップ（`MainWindow.xaml.cs`の`Global.*`残存参照解消、`Program.rootHub`直接代入統一）で新設・拡張した `IAppSettingsService` / `IPathService` / `IEnvironmentService` / `IAppearanceSettingsService`（新設）経由の挙動は、セクション10で重点確認する。
 
 ---
 
@@ -206,31 +210,68 @@
 
 ---
 
-## 10. 長時間・ストレステスト
+## 10. Step14前クリーンアップ確認（`Global.*`残存参照解消・新サービス、2026-09-09追加）
+
+`Phase5-Step14-pretest-cleanup-plan.md`（PR-A〜PR-E）の実装により、`MainWindow.xaml.cs`等の
+`Global.*`直接参照が`IAppSettingsService` / `IPathService` / `IEnvironmentService` / 新設
+`IAppearanceSettingsService`経由に置き換わった。自動テストでは検知しにくいUI表示・実行時挙動を
+中心に確認する。
 
 | # | 確認内容 | 確認手順 | 結果 | メモ |
 |---|---|---|---|---|
-| 10-1 | 連続入力の安定性 | 10〜30分程度の連続操作で落ちない | [] | |
-| 10-2 | 繰り返し切替 | プロファイル切替を多数回繰り返しても安定 | [] | |
-| 10-3 | AutoProfile 連続発火 | 対象アプリの起動終了を繰り返しても安定 | [] | |
-| 10-4 | 接続切断繰り返し | 接続／切断を複数回繰り返してもリークや二重登録がない | [] | |
-| 10-5 | メモリ・ハンドル異常なし | 長時間後に明らかなメモリ増加やハンドルリークがない（概観で可） | [] | |
+| 10-1 | ログレベル設定（`LogMinLevel`）の保持 | Settings画面でログレベルComboBoxを変更→アプリ再起動→変更値が保持されている | [] | PR-B |
+| 10-2 | 起動時アップデートチェック設定 | 「起動時に確認」を有効化し、チェック間隔（時間／日）設定後、再起動しても値が保持される | [] | PR-B（`CheckUpdateStartupEnabled`/`CheckEveryValue`/`CheckEveryUnit`） |
+| 10-3 | 前回チェック日時の記録 | 手動アップデートチェック実行後、`LastChecked`基準で次回起動時チェックが期待通りスキップ／実行される | [] | PR-B（`LastChecked`） |
+| 10-4 | 前回チェック済みバージョン番号 | アップデート確認画面で「最新です」判定が正しく出る（`LastVersionCheckedNum`） | [] | PR-B |
+| 10-5 | 初回起動時のウィンドウ配置 | 設定ファイルを一旦削除して初回起動相当にし、`WindowPlacementHelper.ApplyPlacement`が適用される。2回目以降の起動では保存済み位置が使われる | [] | PR-B（`FirstRun`） |
+| 10-6 | ホットプラグ検知の有効／無効 | 「実行中のUSB差し替えを検知」設定をオフにし、デバイス着脱イベントが無視されることを確認（オンでは従来通り検知） | [] | PR-B（`RunHotPlug`） |
+| 10-7 | 管理者権限バッジ表示 | 管理者権限で起動した場合とそうでない場合で、起動画面のUACアイコン表示が正しく切り替わる | [] | PR-D（`IsAdministrator()`） |
+| 10-8 | RealTime優先度設定時の管理者チェック | 非管理者起動でプロセス優先度をRealTimeに変更しようとした際、警告メッセージが出て High に戻る | [] | PR-D（`IsAdministrator()`、2箇所目） |
+| 10-9 | アプリバージョン表示 | アップデート確認処理で参照されるバージョン文字列が実際のビルドバージョンと一致する | [] | PR-D（`ApplicationVersion`） |
+| 10-10 | トレイアイコンのCustomName | タスクトレイアイコンを右クリック等でツールチップ／識別名を確認し、実行ファイルパスが正しく表示される | [] | PR-C（`ExecutablePath`） |
+| 10-11 | ドライバインストール起動 | 「ドライバをインストール」操作で、正しい実行ファイルから`-driverinstall`引数で再起動される | [] | PR-C（`ExecutablePath`） |
+| 10-12 | HidHide/FakerInput情報リフレッシュ | ドライバインストール完了後、HidHide／FakerInputの状態表示（対応状況）が画面に正しく反映される | [] | PR-D（`RefreshHidHideInfo`/`RefreshFakerInputInfo`） |
+| 10-13 | XInputCheckerツール起動 | 「XInputChecker」ボタンからツールが正しく起動する | [] | PR-C（`ExecutableDirectory`経由のパス解決） |
+| 10-14 | プロファイルインポートダイアログの初期ディレクトリ（通常インストール） | 「プロファイルをインポート」でダイアログを開き、初期ディレクトリが想定通り（AppDataPath配下 or 実行ファイル配下のProfilesフォルダ）になっている | [] | PR-C |
+| 10-15 | プロファイルインポートダイアログの初期ディレクトリ（Scoop等ジャンクション配置環境） | **該当環境がある場合のみ**: Scoopでジャンクションシンボリックリンク配置された環境で10-14と同じ確認を行い、旧挙動（`Global.exedirpath`のジャンクション解決込み）と差異がないか確認する | [] | 完了報告書§5で明記した既知の軽微な挙動差異。該当環境がなければ「対象外」と記入 |
+| 10-16 | テーマ切替（新設 `IAppearanceSettingsService`） | 設定画面でテーマをDefault／Light／Darkの順に切り替え、都度即座に画面配色が変わる。再起動後も選択したテーマが維持される | [] | PR-E（`UseCurrentTheme`）※新設サービスのため重点確認 |
+| 10-17 | トレイアイコン種別切替（新設 `IAppearanceSettingsService`） | 設定画面でトレイアイコンをDefault／Colored／White／Black／Batteryの順に切り替え、都度タスクトレイのアイコン画像が正しく変わる | [] | PR-E（`UseIconChoice`/`GetIconResourcePath`）※新設サービスのため重点確認 |
+| 10-18 | `IAppearanceSettingsService`のDI解決失敗時フォールバック | （余裕があれば）DIコンテナ未構成相当の状態でも`new AppearanceSettingsService()`フォールバックにより例外が起きないことをログで確認 | [] | PR-E、任意項目 |
+
+### ログ確認
+
+- `IAppearanceSettingsService`解決時に、Legacy側フォールバック（`new AppearanceSettingsService()`）が
+  通常起動時に使われていない（＝`AppHost`からの正規解決が使われている）こと。
+- 10-1〜10-18のいずれも、`Global.*`直接呼び出し当時と比較して出力・挙動に差異がないこと
+  （10-15のみ既知の差異として許容）。
 
 ---
 
-## 11. Phase3/4 からの積み残し再確認（任意だが推奨）
+## 11. 長時間・ストレステスト
 
 | # | 確認内容 | 確認手順 | 結果 | メモ |
 |---|---|---|---|---|
-| 11-1 | LaunchProgram の起動 | プロファイルの LaunchProgram 設定で外部アプリが起動する | [] | Phase3で×だった項目 |
-| 11-2 | LaunchProgram の多重起動防止 | 既に起動中なら二重起動しない | [] | |
-| 11-3 | 通知無効時の抑制 | プロファイル変更通知オフ時に不要通知が出ない | [] | Phase4で×だった項目 |
-| 11-4 | 切替の単発性 | 1操作1回適用が安定している | [] | Phase4で不安定報告あり |
-| 11-5 | Bluetooth 切断再接続 | Windows 側 Bluetooth オフ／オン後の再認識 | [] | 環境依存の可能性あり |
+| 11-1 | 連続入力の安定性 | 10〜30分程度の連続操作で落ちない | [] | |
+| 11-2 | 繰り返し切替 | プロファイル切替を多数回繰り返しても安定 | [] | |
+| 11-3 | AutoProfile 連続発火 | 対象アプリの起動終了を繰り返しても安定 | [] | |
+| 11-4 | 接続切断繰り返し | 接続／切断を複数回繰り返してもリークや二重登録がない | [] | |
+| 11-5 | メモリ・ハンドル異常なし | 長時間後に明らかなメモリ増加やハンドルリークがない（概観で可） | [] | |
 
 ---
 
-## 12. 総合判定
+## 12. Phase3/4 からの積み残し再確認（任意だが推奨）
+
+| # | 確認内容 | 確認手順 | 結果 | メモ |
+|---|---|---|---|---|
+| 12-1 | LaunchProgram の起動 | プロファイルの LaunchProgram 設定で外部アプリが起動する | [] | Phase3で×だった項目 |
+| 12-2 | LaunchProgram の多重起動防止 | 既に起動中なら二重起動しない | [] | |
+| 12-3 | 通知無効時の抑制 | プロファイル変更通知オフ時に不要通知が出ない | [] | Phase4で×だった項目 |
+| 12-4 | 切替の単発性 | 1操作1回適用が安定している | [] | Phase4で不安定報告あり |
+| 12-5 | Bluetooth 切断再接続 | Windows 側 Bluetooth オフ／オン後の再認識 | [] | 環境依存の可能性あり |
+
+---
+
+## 13. 総合判定
 
 Phase5-Step14 の完了条件は、単に「動く」ことではなく、次をすべて満たすことである。
 
@@ -245,10 +286,11 @@ Phase5-Step14 の完了条件は、単に「動く」ことではなく、次を
 - [ ] 出力スロット（ViGEm）着脱・終了時に異常がない
 - [ ] Step13 後の UI 操作で機能欠落がない
 - [ ] 6大ガードレール起因の実機不具合が新規に出ていない
+- [ ] **Step14前クリーンアップ（セクション10）の項目に回帰がない（新設 `IAppearanceSettingsService` を含む）**
 
 ---
 
-## 13. 実施記録
+## 14. 実施記録
 
 | 実施日 | 確認者 | 使用デバイス | ビルド | 結果概要 |
 |---|---|---|---|---|
@@ -256,11 +298,12 @@ Phase5-Step14 の完了条件は、単に「動く」ことではなく、次を
 
 ---
 
-## 14. 次のアクション
+## 15. 次のアクション
 
 1. 本リストに基づき、自動テストを先に実行し結果を記録する。
-2. 実機でセクション 1〜10 を順に実施し、`○` / `△` / `×` / `未実施` を記入する。
-3. 特に Halt、一時プロファイル復帰、AutoProfile、ViGEm、UI DI 接続後の回帰を重点確認する。
+2. 実機でセクション 1〜11 を順に実施し、`○` / `△` / `×` / `未実施` を記入する。
+3. 特に Halt、一時プロファイル復帰、AutoProfile、ViGEm、UI DI 接続後の回帰、および
+   セクション10（Step14前クリーンアップ）のテーマ・トレイアイコン切替を重点確認する。
 4. `△` / `×` は再現手順・ログ・想定原因をメモし、修正 or Step15 前の課題として振り分ける。
 5. 結果を `Phase5-Status.md` および Step14 完了報告に反映する。
 6. 重大回帰がなければ Step15（Legacy shim 削除判断・神クラス第一次ダウンサイズ）へ進む。
