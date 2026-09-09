@@ -1,5 +1,13 @@
 # Phase 5 アーキテクチャ・コード品質 見逃し注意点（Watchpoints）調査報告書
 
+> **【2026-09-09 追記】実地検証による訂正について**
+> 本報告書の一部記述（Watchpoint 1 の分類表の具体例、Watchpoint 3 の `Global.ProfileListHolder`
+> に関する記述）は、`git clone` によるリポジトリ全文検索（`grep`）で実地確認した結果、
+> 事実と異なることが判明した。訂正内容は該当箇所に **【2026-09-09訂正】** として追記し、
+> 元の記述は取り消し線で残す。詳細な調査手順・根拠は以下を参照：
+> - `docs-forDIMG/MadeByAgent/Phase5-Step13+14-Addendum-Findings-Report-Part1.md`
+> - `docs-forDIMG/MadeByAgent/Phase5-Step13+14-Addendum-Findings-Report-Part2.md`
+
 ## 1. 調査の背景と目的
 DS4Windows の DI 移行作業において、Phase 5-Step 13-8（UI層 ViewModel および MainWindow の DI 結合）まで完了した。
 本報告書は、Phase 5 の最終マイルストーン（Step 13-9 テスト拡充、Step 14 総合テスト、Step 15 Shim削除判断、実機CP4検証）へ進むにあたり、潜在的な不整合・リグレッション要因を未然に排除するため、以下の **3大見逃し注意点（Watchpoints）** について現存調査を行い、解決策の比較・推奨案を策定したものである。
@@ -17,13 +25,20 @@ DS4Windows の DI 移行作業において、Phase 5-Step 13-8（UI層 ViewModel
 
 | 分類 | 参照対象の例 | 件数規模 | 性質 | リスク判定 |
 | :--- | :--- | :---: | :--- | :---: |
-| **A. 定数・型定義・固定値** | `Global.blMacro`, `Global.CONFIG_VERSION`, `Global.STEAM_APPROVED_APP_ID` | 約 7 件 | 純粋な不変値・識別子参照 | **安全（低）** |
-| **B. UI専用ヘルパー/外観** | `Global.RefreshTheme()`, `Global.GetRealThemePath()`, `WindowPlacementHelper.*` | 約 6 件 | WPF ウィンドウ配置やテーマ適用 | **安全（低）** |
-| **C. ユーティリティ/存在判定** | `Global.FindValidProfile(name)`, `Global.ProfileExists(name)` | 約 4 件 | プロファイル名の重複チェック・存在確認 | **注意（中）** |
+| **A. 定数・型定義・固定値** | ~~`Global.blMacro`, `Global.CONFIG_VERSION`, `Global.STEAM_APPROVED_APP_ID`~~ 【2026-09-09訂正】`Global.exeversion`, `Global.LastVersionCheckedNum`, `Global.TEST_PROFILE_INDEX`, `Global.RESOURCES_PREFIX` 等 | 約 7 件 | 純粋な不変値・識別子参照 | **安全（低）** |
+| **B. UI専用ヘルパー/外観** | ~~`Global.RefreshTheme()`, `Global.GetRealThemePath()`~~ 【2026-09-09訂正】`Global.UseCurrentTheme`, `Global.iconChoiceResources`, `Global.RefreshHidHideInfo()`, `Global.RefreshFakerInputInfo()`, `WindowPlacementHelper.*` | 約 6 件 | WPF ウィンドウ配置やテーマ適用 | **安全（低）** |
+| **C. ユーティリティ/存在判定** | ~~`Global.FindValidProfile(name)`, `Global.ProfileExists(name)`~~ 【2026-09-09訂正】該当シンボルはリポジトリ全体に存在せず（下記2.2参照）。実際の残存は `Global.IsAdministrator()`, `Global.firstRun`, `Global.runHotPlug` 等の判定系 | 約 4 件 | 状態判定・環境判定 | **安全（低）に見直し** |
 | **D. レガシー互換のログ/設定** | `Global.SaveSettings()` 等のフォールバック呼出 | 約 3 件 | 例外時等の安全策 | **注意（中）** |
 
 ### 2.2 潜在的リスクの分析
-* 分類 C（`FindValidProfile` 等）は、実体として `IProfileRepository` が保持しているプロファイル一覧とディスク上のプロファイル XML の両方に関連する。現状では `Global.FindValidProfile` は内部でパスやキャッシュを参照しているため、プロファイル作成・複製（`DupProfBtn_Click` / `NewProfBtn_Click`）時に、リポジトリ側の管理状態と乖離する可能性がゼロではない。
+* ~~分類 C（`FindValidProfile` 等）は、実体として `IProfileRepository` が保持しているプロファイル一覧とディスク上のプロファイル XML の両方に関連する。現状では `Global.FindValidProfile` は内部でパスやキャッシュを参照しているため、プロファイル作成・複製（`DupProfBtn_Click` / `NewProfBtn_Click`）時に、リポジトリ側の管理状態と乖離する可能性がゼロではない。~~
+  **【2026-09-09訂正】** `git clone` した実リポジトリを大文字小文字区別なしで全文検索した結果、
+  `Global.FindValidProfile` および `Global.ProfileExists` という静的メンバは**一件も存在しないことを確認した**。
+  一方、DIサービス側の `IProfileRepository.ProfileExists(string profileName)` は既に実装済み
+  （`DS4Windows/DS4Control/Services/ProfileRepository.cs`、ファイル存在チェックとして実装）。
+  `MainWindow.xaml.cs` 内にプロファイル名の重複チェック呼び出しは見当たらず、`DupProfBtn_Click` 等は
+  `DupBox` コントロールへ処理を委譲している。したがって「分類C」として本来注意すべきだったリスクは
+  現状のコードには存在しない。
 * 分類 D（例外ハンドラ内等のレガシー呼出）は、通常系では DI サービス（`IAppSettingsService.SaveSettings()`）が呼ばれるため致命的ではないが、残存したまま放置するとテスト網から漏れる恐れがある。
 
 ### 2.3 解決策の選択肢
@@ -33,7 +48,7 @@ DS4Windows の DI 移行作業において、Phase 5-Step 13-8（UI層 ViewModel
   * **デメリット**: 分類 C の存在判定が DI サービス（`IProfileRepository`）を経由しない状態が残る。
 * **案 1-B: 分類 C（プロファイル存在判定）のみ `IProfileRepository` へ移行し、定数・UIテーマは維持（推奨）**
   * **メリット**: 業務ロジック（プロファイル検証）を DI サービスへ一本化でき、状態乖離リスクを完全に解消。かつ UI テーマ等の安全な静的参照には手を加えないためピンポイント安全。
-  * **デメリット**: `IProfileRepository` に `ProfileExists(string name)` / `FindValidProfileName(string baseName)` 相当のメソッドが必要。
+  * **デメリット**: 【2026-09-09注記】`IProfileRepository.ProfileExists(string name)` は既に実装済みのため、このデメリットは解消済み。実際に着手する場合は「呼び出し元をどこに追加するか」の検討のみで足りる。
 * **案 1-C: 全静的参照（テーマ・定数含む）を `IThemeService` 等を作って完全排除**
   * **メリット**: 純粋アーキテクチャとしての完成度は極大。
   * **デメリット**: 過剰設計（Over-engineering）。UIテーマ等の変更で大規模な工数増とリグレッションのリスクが発生。
@@ -41,7 +56,7 @@ DS4Windows の DI 移行作業において、Phase 5-Step 13-8（UI層 ViewModel
 ### 2.4 推奨案
 **【推奨案 1-B】**
 * 分類 A（定数）および分類 B（テーマ/ウィンドウ位置）は「UI表現層固有のユーティリティ」として MainWindow 内での維持を正式に許容する。
-* 分類 C のプロファイル関連判定のみ、`IProfileRepository` のメソッドへ切り替え、ドメインロジックの漏れを塞ぐ。
+* 分類 C は【2026-09-09訂正】により実質的にリスクが解消しているため、Step15での追加対応は必須ではない（優先度：低）。
 
 ---
 
@@ -80,6 +95,9 @@ DS4Windows では、バックグラウンドスレッド（`ControlService` の�
   1. イベント受信時に `Application.Current.Dispatcher.Invoke / BeginInvoke` を用いて UI スレッドへ切り替えてからコレクション／プロパティを更新する。
   2. `MainWindow_Closed` 等の破棄タイミングで、Singleton サービスに対するイベント購読（`+=`）を確実に解除（`-=`）する。
 
+> **【2026-09-09追記】実装確認**: `MainDS4Window_Closed` 内で `conLvViewModel?.Dispose(); settingsWrapVM?.Dispose();`
+> が実装され、Watchpoints報告書を参照するコメントも付与されていることを実コードで確認済み（Step 13-9で対応）。
+
 ---
 
 ## 4. Watchpoint 3: DI サービスと旧静的クラスの「二重インスタンス・状態解離」の現存調査と評価
@@ -92,21 +110,39 @@ Step 13-4 において、`AutoProfilesViewModel` が「DIサービス `IAutoProf
 | サービス・ドメイン | DI 実装クラス | 旧静的アクセス元 | 現存調査結果と状態 |
 | :--- | :--- | :--- | :--- |
 | **AutoProfiles** | `AutoProfileService` | `AutoProfileHolder` | **Step 13-4 で是正済**。DIサービスを唯一のインスタンスとして一本化。 |
-| **Profiles** | `ProfileRepository` | `Global.ProfilePath`, `Global.ProfileListHolder` | **要注意**。`Global.ProfileListHolder` は `MainWindow` 等でまだ参照されている。 |
+| **Profiles** | `ProfileRepository` | ~~`Global.ProfilePath`, `Global.ProfileListHolder`~~ 【2026-09-09訂正】`Global.ProfileListHolder` という静的メンバはリポジトリ全体に**存在しない**（下記4.2参照）。実在するのは `MainWindow` のインスタンスフィールド `profileListHolder` のみ。 | **問題なし（訂正済）**。二重実体化リスクは該当なし。 |
 | **AppSettings** | `AppSettingsService` | `Global.Instance` の一部フィールド | **概ね良好**。主要な設定読み書きは `IAppSettingsService` に委譲されている。 |
 | **SpecialActions** | `SpecialActionRepository` | `Global.Actions` | **良好**。Step 7 で `SpecialActionRepository` 内部リストとの同期委譲構造を構築済。 |
 | **OutputSlots** | `OutputSlotStore` / `Service` | `OutputSlotPersist`, `Global.OutSlotSettings` | **良好**。Step 11 で DTO 読み書きがストア側に一本化済。 |
 | **Devices** | `Ds4DeviceRegistryAdapter` | `ControlService.devices`, `Program.rootHub` | **Step 13-8 で完全削除完了**。実体 `ControlService` 参照へ統一。 |
 
 ### 4.2 潜在的リスクの分析
-* **`ProfileListHolder` の解離リスク**:
-  `MainWindow` 内の `ProfileListHolder` はプロファイル一覧（UIバインド用）を保持している。プロファイル追加・削除・名称変更時に、`IProfileRepository` 側のコレクションと `ProfileListHolder` が二重管理されている場合、画面上のリストと実際のデータに不一致が生じる恐れがある。
+* ~~**`ProfileListHolder` の解離リスク**:
+  `MainWindow` 内の `ProfileListHolder` はプロファイル一覧（UIバインド用）を保持している。プロファイル追加・削除・名称変更時に、`IProfileRepository` 側のコレクションと `ProfileListHolder` が二重管理されている場合、画面上のリストと実際のデータに不一致が生じる恐れがある。~~
+
+  **【2026-09-09訂正】** `git clone` によるリポジトリ全文検索（`grep -rn "ProfileListHolder"`）の結果、
+  ヒットしたのは以下の2ファイル・3箇所のみであり、`Global.ProfileListHolder` という静的メンバは
+  一件も存在しないことを確認した。
+
+  ```
+  DS4Windows/DS4Forms/MainWindow.xaml.cs:90:  public ProfileList ProfileListHolder { get => profileListHolder; }
+  DS4Windows/DS4Forms/ProfileEditor.xaml.cs:1920: (Application.Current.MainWindow as MainWindow).ProfileListHolder
+  DS4Windows/DS4Forms/ProfileEditor.xaml.cs:1957: (Application.Current.MainWindow as MainWindow).ProfileListHolder
+  ```
+
+  実在するのは `MainWindow` が保持する**インスタンスフィールド**であり、`ProfileEditor`（別ウィンドウ）が
+  `Application.Current.MainWindow as MainWindow` というキャストを介してこれを直接参照している。
+  これは「静的ホルダーとDIサービスの二重実体化」ではなく、参照を共有しているだけなので**データの不整合は
+  起きない**。ただし「`ProfileEditor` が `MainWindow` 型へ直接依存している」という View 間の強結合は
+  実在する軽微な設計負債であり、優先度は低いが記録しておく。
 
 ### 4.3 解決策の選択肢
 
 * **案 3-A: 旧静的クラス・プロパティを「DI サービスの透過的ゲッター/セッター」へシム化（推奨）**
   * **メリット**: 後方互換性（フォールバック原則 §2.1）を維持したまま、内部実体（Single Source of Truth: SSOT）を DI サービスインスタンスへ完全一本化できる。
   * **デメリット**: 静的クラス側に DI コンテナからのインスタンス参照を渡す必要がある。
+  * 【2026-09-09注記】本案が前提としていた「`Global.ProfileListHolder`静的メンバ」自体が存在しないため、
+    `ProfileListHolder`に関しては本案の適用対象がない。
 * **案 3-B: 旧静的プロパティを即時削除し、参照箇所をすべて DI サービスへ書き換える**
   * **メリット**: 中間シムが消え、最もクリーンになる。
   * **デメリット**: 未移行のサブウィンドウ等で広範なエラーが発生し、Phase 5 のスコープが肥大化する。
@@ -115,9 +151,12 @@ Step 13-4 において、`AutoProfilesViewModel` が「DIサービス `IAutoProf
   * **デメリット**: ビルド時の警告数が増加する。
 
 ### 4.4 推奨案
-**【推奨案 3-A ＋ 3-C の併用】**
-1. `ProfileListHolder` などの旧静的ホルダーは、実体を自前で持たず、**DIサービス（`IProfileRepository`）のプロパティをそのまま返す透過的シム** に統一する（SSOT の保証）。
-2. 旧静的アクセサに `[Obsolete]` を付与し、Step 13 以降のコードで新規利用されることを防止する。
+**【推奨案 3-A ＋ 3-C の併用（ただし対象は`ProfileListHolder`以外の残存静的シムに限定）】**
+1. `ProfileListHolder` については【2026-09-09訂正】により静的シム化の対象自体が存在しないため、Step15の
+   スコープから除外してよい。対応するなら「`ProfileEditor`が`MainWindow`型へ直接依存する」View間結合の
+   解消（低優先度）に振り替える。
+2. その他の残存静的アクセサ（分類D等）には引き続き `[Obsolete]` を付与し、Step 13 以降のコードで
+   新規利用されることを防止する。
 
 ---
 
@@ -128,15 +167,21 @@ Step 13-4 において、`AutoProfilesViewModel` が「DIサービス `IAutoProf
 
 * **【直近タスク: Step 13-9】**
   * ViewModel 単体テストの拡充（モック検証）
-  * [Watchpoint 2 の確認]: Dispatcher 考慮およびイベント解除ハンドラのテスト
+  * [Watchpoint 2 の確認]: Dispatcher 考慮およびイベント解除ハンドラのテスト → 実装済みを確認（§3.4追記）
 * **【タスク: Step 13-10】**
   * ビルド検証・Phase5-Step13 完了報告書の作成
 * **【タスク: Step 14】**
   * Phase 5 総合自動テストの実行
 * **【タスク: Step 15 (Shim 棚卸し)】**
-  * [Watchpoint 1 の処置]: MainWindow 分類 C（存在判定）の `IProfileRepository` への移譲
-  * [Watchpoint 3 の処置]: 残存静的シムの透過委譲化 ＆ `[Obsolete]` 化の実施
+  * [Watchpoint 1 の処置]: 【2026-09-09訂正】分類Cのリスクは実質解消済み。対応必須ではない。
+  * [Watchpoint 3 の処置]: 【2026-09-09訂正】`ProfileListHolder`の二重実体化は該当なし。残る静的シム
+    （分類D等）の透過委譲化 ＆ `[Obsolete]` 化のみを実施すればよい。
 * **【最終ゲート: 実機CP4】**
   * 実機を用いた E2E 動作検証（クロススレッド例外なし・状態解離なしの確認）
 
 これにより、手戻りや無駄なスコープ拡大を起こすことなく、安全かつ堅牢に Phase 5 を完了できる。
+
+> **注記（2026-09-09）**: 本報告書の初版（Watchpoint 1 の具体例、Watchpoint 3 の `ProfileListHolder`
+> 関連記述）は、実コードのgrep確認を経ずに一般的な想定で記述された可能性が高いことが判明した。
+> 今後、実装状況の記述に具体的なシンボル名を引用する場合は、`git clone` 等による実地確認を経てから
+> 記載することを運用ルールとして徹底する。
