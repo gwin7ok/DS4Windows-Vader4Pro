@@ -141,3 +141,37 @@
   * Issue 6 (c): 実際にウィンドウをリサイズ・移動した状態での再現ログ取得と実機再検証（(a)(b) 是正の適用後に実施）。
   * `MainWindow.xaml.cs` の `IsInitialShow` プロパティ（`SizeChanged`/`LocationChanged` の早期ガード条件として存在するが、一度も `true` に設定されず常時無効というデッドコード状態）の要否整理・除去判断。
   * （※ 新たな不具合が確認された場合に順次追記）
+
+---
+
+## 6. 2026-09-10 追記: Issue 6 進捗監査と新規孤立バグの発見（タスク(a)完了・(b)着手前調査）
+
+### 6.1 `Phase5-Step14-FormSettings-Unification-Plan.md` §4 マイクロタスクの実施状況監査
+
+Issue 6是正（`Phase5-Step14-FormSettings-Unification-Plan.md`）の実装再開にあたり、計画書§4のマイクロタスクが実コード上どこまで反映済みかをソースコード監査で確認した。結果は以下のとおりで、タスク(a)系（`EnvironmentService`重複排除）は完了、タスク(b)系（`Global`直参照のDI置換）とタスク-4（ドキュメント更新）は未着手であることを確認した。
+
+| タスク | 内容 | 状態 | 根拠 |
+|---|---|---|---|
+| (a)-1 | `IEnvironmentService` インターフェース縮小 | ✅ 完了 | `DS4Windows/DI/IEnvironmentService.cs` から8プロパティが削除済み、`IsAdministrator()`等4メンバのみ残存 |
+| (a)-2 | `EnvironmentService` 実装の純化 | ✅ 完了 | `DS4Windows/DS4Control/Services/EnvironmentService.cs` の孤立private field・`OnSettingChanged`が削除済み |
+| (a)-3 | `EnvironmentServiceTests.cs` 是正 | ✅ 完了 | `DS4WindowsTests/EnvironmentServiceTests.cs` が残存メンバ向けに書き換え済み、`dotnet test`全156件成功を確認済み |
+| (b)-1 | `SettingsViewModel.cs` の `Global` 直参照置換 | ❌ 未着手 | `StartMinimize`/`CloseMinimizes`が依然`DS4Windows.Global.StartMinimized`/`Global.CloseMini`を直接参照。コンストラクタで`IAppSettingsService _appSettings`は既に注入済みだが、実際には一度も使われていない（配線待ちの状態） |
+| (b)-2 | `ProfileEditor.xaml.cs` の `Global` 直参照置換 | ❌ 未着手 | 該当5プロパティ（`ProfileEditorLeftWidth`等）が依然`Global.Xxx`を直接参照 |
+| (b)-3 | ビルド・テスト確認 | ❌ 未着手（(b)未完のため対象外） | - |
+| タスク-4 | ドキュメント更新 | ❌ 未着手 | 計画書§7の完了条件チェックボックス7件すべて未チェックのまま。本報告書側もIssue 6ステータスが「対応中」のまま |
+
+### 6.2 新規発見: `IProfileSettingsService` にも同一パターンの孤立バグが存在
+
+タスク(b)-2着手前の事前調査として、`ProfileEditor.xaml.cs`が参照する`Global.ProfileEditorLeftWidth`等の置換先を検討する過程で、**計画書に未記載の、Issue 6と同一パターンの孤立バグ**を新たに発見した。
+
+* **発見内容**:
+  `DS4Windows/DS4Control/Services/ProfileSettingsService.cs`（`IProfileSettingsService`）に、以下5つの「ウィンドウ・カラムレイアウト」系プロパティが、`Global`/`m_Config`（`BackingStore`）と一切連動しない**独自のprivate field**として実装されている。
+  * `ProfileEditorLeftWidth` / `ProfileEditorRightWidth`（`_profileEditorLeftWidth = 0`等で初期化。`Global`側の既定値である`BackingStore.DEFAULT_PROFILE_EDITOR_LEFT_WIDTH`等とも不一致）
+  * `ControllerSelectProfileColWidth` / `ControllerLinkedProfileColWidth` / `ControllerLinkProfIdColWidth`
+* **正規のSSOTは既に別に存在する**:
+  * `ProfileEditorLeftWidth`/`RightWidth`: `Global.ProfileEditorLeftWidth`等（`DS4Windows/DS4Control/ScpUtil.cs`）が`m_Config`への正規シムとして存在し、現在`ProfileEditor.xaml.cs`が直接参照している。
+  * `ControllerSelectProfileColWidth`等3件: `IAppSettingsService`/`AppSettingsService.cs`（Phase5-Step13-7で追加済み）に、`Global.Xxx`への正規委譲実装が**既に存在し、実運用中**（`MainWindow.xaml.cs`が消費）。
+* **実害の有無**: `grep`によるコードベース全体検索の結果、`IProfileSettingsService`側のこの5プロパティは**どこからも呼び出されていない完全な死コード**であることを確認した。したがって二重管理による実際の保存不整合は発生していないが、`EnvironmentService`の件と同様、将来の誤接続を誘発する地雷として残存している。
+* **原因分析としての位置づけ**: `Phase5-Step13-Plan.md`で是正された「`IAppSettingsService` 7プロパティ孤立バグ」、および本報告書§3.6の「`EnvironmentService`」の孤立バグと**全く同一のパターンの再発**であり、単発の不具合ではなく、DIサービスへの機械的委譲実装時に発生しやすい共通の型のミスであることが伺える。
+* **対応方針**: 過去の是正実績を精査した結果、本リポジトリには孤立バグへの対処方針として (i) 実装をGlobal委譲に修正して残す（Step13-7の`AppSettingsService`方式）、(ii) 概念的な置き場所が誤っている場合はインターフェースごと削除し正しい置き場所に一本化する（本Step(a)の`EnvironmentService`方式）の2パターンが存在することを確認した。今回の5プロパティは概念的に`IProfileSettingsService`（プロファイル値ドメイン）ではなく`IAppSettingsService`（アプリ設定ドメイン）に属すべき性質であり、かつ`ControllerSelectProfileColWidth`等3件は既に`IAppSettingsService`側で完成・稼働中であるため、(ii)方式（`IAppSettingsService`側へ追加・一本化し、`IProfileSettingsService`側の孤立5プロパティは削除）を採用することとした。具体的な作業内容は`Phase5-Step14-FormSettings-Unification-Plan.md`に追記済み（§9 タスク(a)-4/(b)-2改訂として反映）。
+* **状態**: **調査完了・方針確定**（実装は次のマイクロタスクとして着手予定）。

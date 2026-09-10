@@ -133,3 +133,78 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 - 本計画書の承認後、マイクロタスク単位（§4のタスク単位）で実装・コミットを行う。
 - 各マイクロタスク完了ごとに `dotnet test` を実行しグリーンを確認する。
 - `Global`静的経路は本Stepでは削除せず、`EnvironmentService`側の重複解消および呼び出し元のDI化のみを行う（Strangler Figパターン継続、Legacy shim即時削除の禁止）。
+
+---
+
+## 9. 2026-09-10 追記: 実装再開に伴う進捗監査と追加スコープ（選択肢A採用）
+
+### 9.1 §4マイクロタスクの実施状況（再開時点）
+
+タスク(a)-1〜(a)-3は完了済み、タスク(b)-1〜(b)-3およびタスク-4は未着手であることをソースコード監査で確認した（詳細は `Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` §6.1）。
+
+| タスク | 状態 |
+|---|---|
+| (a)-1 `IEnvironmentService` 縮小 | ✅ 完了 |
+| (a)-2 `EnvironmentService` 純化 | ✅ 完了 |
+| (a)-3 `EnvironmentServiceTests.cs` 是正 | ✅ 完了 |
+| (b)-1 `SettingsViewModel.cs` 置換 | ❌ 未着手 |
+| (b)-2 `ProfileEditor.xaml.cs` 置換 | ❌ 未着手 |
+| (b)-3 テスト・ビルド確認 | ❌ 未着手 |
+| タスク-4 ドキュメント更新 | ❌ 未着手 |
+
+### 9.2 新規発見: `IProfileSettingsService` の孤立5プロパティ
+
+タスク(b)-2の着手前調査として、`ProfileEditor.xaml.cs` が参照する `Global.ProfileEditorLeftWidth` 等の置換先を検討した結果、`DS4Windows/DS4Control/Services/ProfileSettingsService.cs`（`IProfileSettingsService`）に、`EnvironmentService`と同一パターンの孤立プロパティが5件存在することを新たに発見した（詳細は `Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` §6.2）。
+
+- `ProfileEditorLeftWidth` / `ProfileEditorRightWidth`（独自 private field。`Global.ProfileEditorLeftWidth`等という正規SSOTが既に別に存在）
+- `ControllerSelectProfileColWidth` / `ControllerLinkedProfileColWidth` / `ControllerLinkProfIdColWidth`（独自 private field。`IAppSettingsService`側に同名プロパティが既にPhase5-Step13-7で実装・実運用済み）
+
+これら5件はコードベース全体を検索しても呼び出し箇所ゼロの死コードであり、実害はないが将来の誤接続を誘発する地雷である点も`EnvironmentService`のケースと同一である。
+
+### 9.3 採用する対応方針（選択肢A）
+
+過去の孤立バグ是正実績を精査した結果、本リポジトリには (i) 実装を`Global`委譲に修正して残す方式（Step13-7の`AppSettingsService`）と、(ii) 概念的な置き場所が誤っている場合はインターフェースごと削除し正しい置き場所に一本化する方式（本Step(a)の`EnvironmentService`）の2パターンが存在する。今回の5プロパティは意味的に「ウィンドウ・カラムレイアウト」であり`IProfileSettingsService`（プロファイル値ドメイン）には属さないこと、かつ`ControllerSelectProfileColWidth`等3件は既に`IAppSettingsService`側で完成・稼働中であることから、**方式(ii)を選択肢A**として採用する。
+
+- `IAppSettingsService`/`AppSettingsService`に、未実装の`ProfileEditorLeftWidth`/`ProfileEditorRightWidth`/`SpecialActionNameColWidth`/`SpecialActionTriggerColWidth`/`SpecialActionDetailColWidth`を追加する（既存の`FormWidth`等と同じ「`Global.Xxx`への薄い委譲＋`NotifyChanged`」パターンを踏襲）。
+- `IProfileSettingsService`/`ProfileSettingsService`から、死コードである5プロパティ（`ProfileEditorLeftWidth`/`ProfileEditorRightWidth`/`ControllerSelectProfileColWidth`/`ControllerLinkedProfileColWidth`/`ControllerLinkProfIdColWidth`）を削除する。
+
+不採用とした選択肢:
+- **選択肢B**（`IProfileSettingsService`側を方式(i)で「修正して残す」）: 同一設定に`IAppSettingsService`と`IProfileSettingsService`という2つの正当な経路が並立し、Issue 6が問題視する「アクセス経路の不統一」を新規に作り出すため不採用。
+- **選択肢C**（`IProfileSettingsService`側の削除を見送り、`ProfileEditor.xaml.cs`の置換のみ実施）: 死コードとはいえ孤立プロパティを地雷として残置することになり、`EnvironmentService`是正で採用した「実害ゼロでも将来の誤接続防止のため撤去する」方針から逸脱するため不採用。
+
+### 9.4 §3 作業対象ファイル棚卸しへの追加
+
+| ファイル | 現状 | 変更内容 |
+|---|---|---|
+| `DS4Windows/DI/IAppSettingsService.cs` / `AppSettingsService.cs` | `ProfileEditorLeftWidth`等5プロパティ未定義 | `Global.Xxx`への薄い委譲として5プロパティを新設（既存`FormWidth`等と同一パターン） |
+| `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` / `DS4Windows/DI/IProfileSettingsService.cs` | `ProfileEditorLeftWidth`/`ProfileEditorRightWidth`/`ControllerSelectProfileColWidth`/`ControllerLinkedProfileColWidth`/`ControllerLinkProfIdColWidth`を独自private fieldとして孤立実装（呼び出し箇所ゼロの死コード） | 上記5プロパティの宣言・実装・privateフィールドを削除 |
+
+### 9.5 マイクロタスク breakdown（追加分）
+
+#### タスク(a)-4: `IAppSettingsService`/`AppSettingsService` への5プロパティ追加
+- `IAppSettingsService`に`ProfileEditorLeftWidth`/`ProfileEditorRightWidth`/`SpecialActionNameColWidth`/`SpecialActionTriggerColWidth`/`SpecialActionDetailColWidth`を追加。
+- `AppSettingsService`に、既存の`FormWidth`等と同一パターン（`get => Global.Xxx; set { if (Global.Xxx != value) { Global.Xxx = value; NotifyChanged(nameof(Xxx)); } }`）で実装。
+
+#### タスク(a)-5: `IProfileSettingsService`/`ProfileSettingsService` の孤立5プロパティ削除
+- `IProfileSettingsService`から`ProfileEditorLeftWidth`/`ProfileEditorRightWidth`/`ControllerSelectProfileColWidth`/`ControllerLinkedProfileColWidth`/`ControllerLinkProfIdColWidth`の宣言を削除。
+- `ProfileSettingsService`から対応する private field・getter/setter・`OnProfileSettingChanged`呼び出しを削除。
+- ビルドし、参照箇所がゼロであることを機械的に再確認する（事前grep調査ではゼロ件を確認済み）。
+
+#### タスク(b)-1: `SettingsViewModel.cs` の `Global` 直参照置換（既存タスクを継続、変更なし）
+- `StartMinimize`/`CloseMinimizes` プロパティの実装を `appSettingsService.StartMinimized`/`appSettingsService.CloseMinimizes` に置換。
+- 依存取得は既存ViewModel群のコンストラクタパターンに厳密に合わせる（本ファイルは`_appSettings`フィールドが既にコンストラクタで注入済みのため、これを使用する）。
+- UI（設定画面のチェックボックス等）の見た目・保存挙動に差異がないことを確認する。
+
+#### タスク(b)-2改訂: `ProfileEditor.xaml.cs` の `Global` 直参照置換
+- タスク(a)-4完了後、`Global.ProfileEditorLeftWidth`/`Global.ProfileEditorRightWidth`/`Global.SpecialActionNameColWidth`/`Global.SpecialActionTriggerColWidth`/`Global.SpecialActionDetailColWidth`の読み書き箇所（338, 339, 377, 378, 385, 401, 402行付近）を、新設した`appSettingsService.Xxx`（`IAppSettingsService`経由）に置換する。
+- `SaveSplitterAndColumnWidths`相当の処理・ログ出力（`[SaveSplitterAndColumnWidths] Saved left=...`）の内容は変更しない（文言・タイミングを維持）。
+
+#### タスク(b)-3: 単体テスト・ビルド確認（既存タスクを継続、変更なし）
+- `dotnet build` でエラー・警告増加がないことを確認。
+- `dotnet test`（`DS4WindowsTests`/`StandaloneTests`）が全件成功することを確認。
+
+### 9.6 §7 完了条件への追加項目
+
+- [ ] `IAppSettingsService`/`AppSettingsService`に`ProfileEditorLeftWidth`等5プロパティが`Global`への薄い委譲として追加されている。
+- [ ] `IProfileSettingsService`/`ProfileSettingsService`から孤立していた5プロパティ（`ProfileEditorLeftWidth`/`ProfileEditorRightWidth`/`ControllerSelectProfileColWidth`/`ControllerLinkedProfileColWidth`/`ControllerLinkProfIdColWidth`）が削除されている。
+- [ ] `ProfileEditor.xaml.cs`が新設された`appSettingsService.Xxx`経由でこれらの設定にアクセスしている。
