@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -146,9 +146,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public bool DisconnectBTStop { get => DS4Windows.Global.DCBTatStop; set => DS4Windows.Global.DCBTatStop = value; }
         public bool FlashHighLatency { get => DS4Windows.Global.FlashWhenLate; set => DS4Windows.Global.FlashWhenLate = value; }
         public int FlashHighLatencyAt { get => DS4Windows.Global.FlashWhenLateAt; set => DS4Windows.Global.FlashWhenLateAt = value; }
-        public bool StartMinimize { get => DS4Windows.Global.StartMinimized; set => DS4Windows.Global.StartMinimized = value; }
-        public bool MinimizeToTaskbar { get => DS4Windows.Global.MinToTaskbar; set => DS4Windows.Global.MinToTaskbar = value; }
-        public bool CloseMinimizes { get => DS4Windows.Global.CloseMini; set => DS4Windows.Global.CloseMini = value; }
+        public bool StartMinimize { get => _appSettings.StartMinimized; set => _appSettings.StartMinimized = value; }
+        public bool MinimizeToTaskbar { get => _appSettings.MinimizeToTaskbar; set => _appSettings.MinimizeToTaskbar = value; }
+        public bool CloseMinimizes { get => _appSettings.CloseMinimizes; set => _appSettings.CloseMinimizes = value; }
         public bool QuickCharge { get => DS4Windows.Global.QuickCharge; set => DS4Windows.Global.QuickCharge = value; }
 
         public int IconChoiceIndex
