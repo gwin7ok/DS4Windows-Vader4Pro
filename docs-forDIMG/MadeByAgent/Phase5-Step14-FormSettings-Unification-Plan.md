@@ -89,7 +89,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
     - `int SpecialActionDetailColWidth { get; set; }`
   - `AppSettingsService.cs` に `Global`（`BackingStore`）委譲として上記5プロパティを実装。
 
-- [ ] **タスク(a)-5: `IProfileSettingsService` / `ProfileSettingsService` の孤立5プロパティ削除**
+- [x] **タスク(a)-5: `IProfileSettingsService` / `ProfileSettingsService` の孤立5プロパティ削除**
   - `IProfileSettingsService` から上記5プロパティの宣言を削除。
   - `ProfileSettingsService.cs` から孤立 private field およびアクセサを完全削除。
 
