@@ -257,7 +257,6 @@ namespace DS4Windows.Services
             get => Global.ControllerCustomColorColWidth;
             set { if (Global.ControllerCustomColorColWidth != value) { Global.ControllerCustomColorColWidth = value; NotifyChanged(nameof(ControllerCustomColorColWidth)); } }
         }
-
         // ---- Phase5-Step14: プロファイル編集画面・SpecialAction カラム幅の永続化 ----
         public int ProfileEditorLeftWidth
         {
@@ -287,70 +286,6 @@ namespace DS4Windows.Services
         {
             get => Global.SpecialActionDetailColWidth;
             set => Global.SpecialActionDetailColWidth = value;
-        }
-            set { lock (_syncLock) { Global.SpecialActionDetailColWidth = value; } }
-        }
-
-        // ---- Phase5-Step13-7: 通知レベル・スワイプ操作設定 ----
-        public int Notifications
-        {
-            get => Global.Notifications;
-            set { if (Global.Notifications != value) { Global.Notifications = value; NotifyChanged(nameof(Notifications)); } }
-        }
-
-        public bool SwipeProfiles
-        {
-            get => Global.SwipeProfiles;
-            set { if (Global.SwipeProfiles != value) { Global.SwipeProfiles = value; NotifyChanged(nameof(SwipeProfiles)); } }
-        }
-
-        // ---- Phase5-Step14前クリーンアップ: MainWindow.xaml.cs残存Global参照の解消 ----
-        // いずれも Global(m_Config/BackingStore) への薄い公開アクセサへの正規シム。
-        // Notifications 等と同一パターン（独立フィールドを持たない）。
-        public string LogMinLevel
-        {
-            get => Global.LogMinLevel;
-            set { if (Global.LogMinLevel != value) { Global.LogMinLevel = value; NotifyChanged(nameof(LogMinLevel)); } }
-        }
-
-        public bool CheckUpdateStartupEnabled
-        {
-            get => Global.CheckUpdateStartupEnabled;
-            set { if (Global.CheckUpdateStartupEnabled != value) { Global.CheckUpdateStartupEnabled = value; NotifyChanged(nameof(CheckUpdateStartupEnabled)); } }
-        }
-
-        public int CheckEveryValue
-        {
-            get => Global.CheckEveryValue;
-            set { if (Global.CheckEveryValue != value) { Global.CheckEveryValue = value; NotifyChanged(nameof(CheckEveryValue)); } }
-        }
-
-        public int CheckEveryUnit
-        {
-            get => Global.CheckEveryUnit;
-            set { if (Global.CheckEveryUnit != value) { Global.CheckEveryUnit = value; NotifyChanged(nameof(CheckEveryUnit)); } }
-        }
-
-        public DateTime LastChecked
-        {
-            get => Global.LastChecked;
-            set { if (Global.LastChecked != value) { Global.LastChecked = value; NotifyChanged(nameof(LastChecked)); } }
-        }
-
-        // Global.LastVersionCheckedNum は読み取り専用（LastVersionChecked代入時に自動算出）のため、
-        // 本シムも読み取り専用として公開する。
-        public ulong LastVersionCheckedNum => Global.LastVersionCheckedNum;
-
-        public bool FirstRun
-        {
-            get => Global.firstRun;
-            set { if (Global.firstRun != value) { Global.firstRun = value; NotifyChanged(nameof(FirstRun)); } }
-        }
-
-        public bool RunHotPlug
-        {
-            get => Global.runHotPlug;
-            set { if (Global.runHotPlug != value) { Global.runHotPlug = value; NotifyChanged(nameof(RunHotPlug)); } }
         }
     }
 }
