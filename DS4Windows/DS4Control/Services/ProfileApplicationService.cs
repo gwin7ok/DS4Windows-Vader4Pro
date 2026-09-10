@@ -1,25 +1,30 @@
 using System;
 using System.Threading.Tasks;
+using DS4Windows;
 using DS4Windows.DI;
 
-namespace DS4Windows
+namespace DS4Windows.DS4Control.Services
 {
     public class ProfileApplicationService : IProfileApplicationService
     {
-        private readonly Services.IDeviceStateAccessor _deviceState;
         private readonly IProfileSettingsService _profileSettings;
         private readonly IProfileActionChainService _actionChain;
+        private readonly IDeviceStateService _deviceState;
         private readonly ControlService _control;
+        private readonly IProfileRepository _profileRepo;
 
-        public ProfileApplicationService(Services.IDeviceStateAccessor deviceState,
-            IProfileSettingsService profileSettings,
-            IProfileActionChainService actionChain,
-            ControlService control)
+        public ProfileApplicationService(
+            IProfileSettingsService profileSettings = null,
+            IProfileActionChainService actionChain = null,
+            IDeviceStateService deviceState = null,
+            ControlService control = null,
+            IProfileRepository profileRepo = null)
         {
-            _deviceState = deviceState;
-            _profileSettings = profileSettings;
-            _actionChain = actionChain;
-            _control = control;
+            _profileSettings = profileSettings ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>();
+            _actionChain = actionChain ?? DS4WinWPF.AppHost.GetService<IProfileActionChainService>();
+            _deviceState = deviceState ?? DS4WinWPF.AppHost.GetService<IDeviceStateService>();
+            _control = control ?? DS4WinWPF.AppHost.GetService<ControlService>();
+            _profileRepo = profileRepo ?? DS4WinWPF.AppHost.GetService<IProfileRepository>();
         }
 
         public void ApplyFromAction(int deviceIndex, SpecialAction action)
@@ -44,78 +49,63 @@ namespace DS4Windows
                     _actionChain.DispatchNextActions(deviceIndex, action);
                 });
             });
-
-            if (AppLogger.IsTraceEnabled)
-                AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyFromAction: Slot {deviceIndex}, Profile '{action.details}'");
         }
 
-        public bool RestoreFromAction(int deviceIndex)
+        public void RestoreFromAction(int deviceIndex, SpecialAction action)
+        {
+            if (deviceIndex < 0 || deviceIndex >= 4 || action == null)
+                return;
+
+            DS4Device device = _deviceState?.GetController(deviceIndex);
+            if (device == null)
+                return;
+
+            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
+                (deviceIndex + 1).ToString(), action.details, $"{device.Battery}");
+            bool display = _profileSettings.ProfileChangedNotification;
+
+            Task.Run(() =>
+            {
+                device.HaltReportingRunAction(() =>
+                {
+                    Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
+                        ProfileChangeSource.RestoreFromAction, prolog, display);
+                    _actionChain.DispatchNextActions(deviceIndex, action);
+                });
+            });
+        }
+
+        public void ClearPendingRestore(int deviceIndex)
         {
             if (deviceIndex < 0 || deviceIndex >= 4)
-                return false;
+                return;
 
-            bool previousProfileWasTemporary;
-            string profileName = Mapping.TakePendingRestoreProfileName(deviceIndex, out previousProfileWasTemporary);
-            if (profileName == null)
-                return false;
-
-            DS4Device device = _deviceState?.GetController(deviceIndex);
-            bool loaded = false;
-
-            Action restoreAction = () =>
-            {
-                if (previousProfileWasTemporary)
-                    loaded = Global.LoadTempProfile(deviceIndex, profileName, true, _control);
-                else
-                {
-                    Global.ProfilePath[deviceIndex] = profileName;
-                    loaded = Global.LoadProfile(deviceIndex, false, _control);
-                }
-
-                if (loaded)
-                {
-                    Global.CompleteProfileApplication(deviceIndex, profileName, previousProfileWasTemporary,
-                        _control, ProfileChangeSource.MappingAction, null,
-                        _profileSettings.ProfileChangedNotification);
-                }
-            };
-
-            if (device != null)
-            {
-                device.HaltReportingRunAction(restoreAction);
-            }
-            else
-            {
-                restoreAction();
-            }
-
-            if (!loaded)
-                return false;
-
-            if (AppLogger.IsTraceEnabled)
-                AppLogger.LogTrace($"[DI] ProfileApplicationService.RestoreFromAction: Slot {deviceIndex}, Profile '{profileName}'");
-
-            return true;
+            Global.ClearPendingRestore(deviceIndex);
         }
 
-        /// <summary>
-        /// 指定されたスロットに対してプロファイルを適用します。
-        /// デバイスが接続されている場合は HaltReportingRunAction により入力ループを安全に一時停止します（§5.2 ガードレール）。
-        /// displayNotification が null の場合は _profileSettings.ProfileChangedNotification を自動解決します（Phase5-Step4）。
-        /// </summary>
-        public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false, bool launchProgram = false,
-            ProfileChangeSource source = ProfileChangeSource.Manual,
-            string prolog = null, bool? displayNotification = null)
+        public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
+            bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Default,
+            string prolog = "", bool? displayNotification = null)
         {
-            if (deviceIndex < 0 || deviceIndex >= 4 || string.IsNullOrWhiteSpace(profileName))
+            if (string.IsNullOrWhiteSpace(profileName))
+            {
+                AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile FAILED: profileName is null or whitespace for slot {deviceIndex}");
                 return false;
+            }
 
-            DS4Device device = _deviceState?.GetController(deviceIndex);
+            if (deviceIndex < 0 || deviceIndex >= ControlService.MAX_SLOTS)
+            {
+                AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile FAILED: deviceIndex {deviceIndex} is out of bounds");
+                return false;
+            }
+
             bool success = false;
-            bool shouldDisplay = displayNotification ?? (_profileSettings?.ProfileChangedNotification ?? true);
-
             try
             {
+                DS4Device device = _deviceState?.GetController(deviceIndex);
+
+                bool shouldDisplay = displayNotification ?? _profileSettings?.ProfileChangedNotification ?? false;
+
                 Action applyAction = () =>
                 {
                     Global.ApplyProfile(deviceIndex, profileName, isTemp, launchProgram,
@@ -123,10 +113,10 @@ namespace DS4Windows
                     success = true;
                 };
 
-                                                if (device != null)
+                if (device != null)
                 {
                     // SpecialAction (MappingAction) からの呼び出し時は、入力スレッド自身が実行しているため、
-                    // HaltReportingRunAction を呼ぶと自己待機タイムアウトを起こす。
+                    // HaltReportingRunAction を呼ぶと自己待機タイムアウト（デッドロック回避）を起こす。
                     // そのため直接 applyAction を実行し、UI/手動操作時のみ Halt 待機を行う。
                     if (source == ProfileChangeSource.MappingAction)
                     {
@@ -141,46 +131,29 @@ namespace DS4Windows
                 {
                     applyAction();
                 }
-                    else
-                    {
-                        device.HaltReportingRunAction(applyAction);
-                    }
-                }
-                else
-                {
-                    applyAction();
-                }
 
-                if (AppLogger.IsTraceEnabled)
-                    AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyProfile: Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, displayNotification={shouldDisplay}, success={success}");
-            if (!success)
-            {
-                AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile Result: FAILED for Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, source={source}");
-            }
+                AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyProfile: Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, displayNotification={shouldDisplay}, success={success}");
+                if (!success)
+                {
+                    AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile Result: FAILED for Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, source={source}");
+                }
             }
             catch (Exception ex)
             {
-                try { AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyProfile failed: {ex}"); } catch { }
+                AppLogger.LogError($"[DI] ProfileApplicationService.ApplyProfile failed: {ex}");
                 success = false;
             }
 
             return success;
         }
 
-        /// <summary>
-        /// 切断時等に指定スロットの一時プロファイル復帰予約状態をクリアします（§5.6 ガードレール）。
-        /// </summary>
-        public void ClearPendingRestore(int deviceIndex)
+        public void ApplyDefaultProfile(int deviceIndex)
         {
             if (deviceIndex < 0 || deviceIndex >= 4)
                 return;
 
-            while (Mapping.TakePendingRestoreProfileName(deviceIndex, out _) != null)
-            {
-            }
-
-            if (AppLogger.IsTraceEnabled)
-                AppLogger.LogTrace($"[DI] ProfileApplicationService.ClearPendingRestore: Cleared slot {deviceIndex}");
+            string defaultProfile = _profileRepo?.GetProfileName(deviceIndex) ?? "Default";
+            ApplyProfile(deviceIndex, defaultProfile, false, false, ProfileChangeSource.Default);
         }
     }
 }
