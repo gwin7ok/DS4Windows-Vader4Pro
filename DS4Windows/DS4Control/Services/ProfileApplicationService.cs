@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using DS4Windows;
 using DS4Windows.DI;
 
-namespace DS4Windows.DS4Control.Services
+namespace DS4Windows
 {
     public class ProfileApplicationService : IProfileApplicationService
     {
@@ -32,47 +32,45 @@ namespace DS4Windows.DS4Control.Services
             if (deviceIndex < 0 || deviceIndex >= 4 || action == null)
                 return;
 
-            DS4Device device = _deviceState?.GetController(deviceIndex);
-            if (device == null)
-                return;
+            DS4Device device = _control?.DS4Controllers?[deviceIndex];
 
             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
-                (deviceIndex + 1).ToString(), action.details, $"{device.Battery}");
-            bool display = _profileSettings.ProfileChangedNotification;
+                (deviceIndex + 1).ToString(), action.details, device != null ? $"{device.Battery}" : "N/A");
+            bool display = _profileSettings?.ProfileChangedNotification ?? false;
 
             Task.Run(() =>
             {
-                device.HaltReportingRunAction(() =>
+                if (device != null)
+                {
+                    device.HaltReportingRunAction(() =>
+                    {
+                        Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
+                            ProfileChangeSource.MappingAction, prolog, display);
+                        _actionChain?.DispatchNextActions(deviceIndex, action);
+                    });
+                }
+                else
                 {
                     Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
                         ProfileChangeSource.MappingAction, prolog, display);
-                    _actionChain.DispatchNextActions(deviceIndex, action);
-                });
+                    _actionChain?.DispatchNextActions(deviceIndex, action);
+                }
             });
         }
 
-        public void RestoreFromAction(int deviceIndex, SpecialAction action)
+        public bool RestoreFromAction(int deviceIndex)
         {
-            if (deviceIndex < 0 || deviceIndex >= 4 || action == null)
-                return;
+            if (deviceIndex < 0 || deviceIndex >= 4)
+                return false;
 
-            DS4Device device = _deviceState?.GetController(deviceIndex);
-            if (device == null)
-                return;
-
-            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
-                (deviceIndex + 1).ToString(), action.details, $"{device.Battery}");
-            bool display = _profileSettings.ProfileChangedNotification;
-
-            Task.Run(() =>
+            string previousProfile = Global.OlderProfilePath?[deviceIndex];
+            if (string.IsNullOrWhiteSpace(previousProfile))
             {
-                device.HaltReportingRunAction(() =>
-                {
-                    Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
-                        ProfileChangeSource.RestoreFromAction, prolog, display);
-                    _actionChain.DispatchNextActions(deviceIndex, action);
-                });
-            });
+                AppLogger.LogWarn($"[DI] ProfileApplicationService.RestoreFromAction: No OlderProfilePath for device {deviceIndex}");
+                return false;
+            }
+
+            return ApplyProfile(deviceIndex, previousProfile, false, false, ProfileChangeSource.MappingAction);
         }
 
         public void ClearPendingRestore(int deviceIndex)
@@ -80,21 +78,23 @@ namespace DS4Windows.DS4Control.Services
             if (deviceIndex < 0 || deviceIndex >= 4)
                 return;
 
-            Global.ClearPendingRestore(deviceIndex);
+            if (Global.OlderProfilePath != null && deviceIndex < Global.OlderProfilePath.Length)
+            {
+                Global.OlderProfilePath[deviceIndex] = string.Empty;
+            }
         }
 
         public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
-            bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Default,
-            string prolog = "", bool? displayNotification = null)
+            bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Manual,
+            string prolog = null, bool? displayNotification = null)
         {
             if (string.IsNullOrWhiteSpace(profileName))
             {
                 AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile FAILED: profileName is null or whitespace for slot {deviceIndex}");
-                AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile FAILED: profileName is null or whitespace for slot {deviceIndex}");
                 return false;
             }
 
-            if (deviceIndex < 0 || deviceIndex >= ControlService.MAX_SLOTS)
+            if (deviceIndex < 0 || deviceIndex >= 4)
             {
                 AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile FAILED: deviceIndex {deviceIndex} is out of bounds");
                 return false;
@@ -103,8 +103,7 @@ namespace DS4Windows.DS4Control.Services
             bool success = false;
             try
             {
-                DS4Device device = _deviceState?.GetController(deviceIndex);
-
+                DS4Device device = _control?.DS4Controllers?[deviceIndex];
                 bool shouldDisplay = displayNotification ?? _profileSettings?.ProfileChangedNotification ?? false;
 
                 Action applyAction = () =>
@@ -116,7 +115,10 @@ namespace DS4Windows.DS4Control.Services
 
                 if (device != null)
                 {
-                    // SpecialAction (MappingAction) 縺九ｉ縺ｮ蜻ｼ縺ｳ蜃ｺ縺玲凾縺ｯ縲∝・蜉帙せ繝ｬ繝・ラ閾ｪ霄ｫ縺悟ｮ溯｡後＠縺ｦ縺・ｋ縺溘ａ縲・                    // HaltReportingRunAction 繧貞他縺ｶ縺ｨ閾ｪ蟾ｱ蠕・ｩ溘ち繧､繝繧｢繧ｦ繝茨ｼ医ョ繝・ラ繝ｭ繝・け蝗樣∩・峨ｒ襍ｷ縺薙☆縲・                    // 縺昴・縺溘ａ逶ｴ謗･ applyAction 繧貞ｮ溯｡後＠縲ゞI/謇句虚謫堺ｽ懈凾縺ｮ縺ｿ Halt 蠕・ｩ溘ｒ陦後≧縲・                    if (source == ProfileChangeSource.MappingAction)
+                    // SpecialAction (MappingAction) からの呼び出し時は、入力スレッド自身が実行しているため、
+                    // HaltReportingRunAction を呼ぶと自己待機タイムアウトを起こす。
+                    // そのため直接 applyAction を実行し、UI/手動操作時のみ Halt 待機を行う。
+                    if (source == ProfileChangeSource.MappingAction)
                     {
                         applyAction();
                     }
@@ -143,15 +145,6 @@ namespace DS4Windows.DS4Control.Services
             }
 
             return success;
-        }
-
-        public void ApplyDefaultProfile(int deviceIndex)
-        {
-            if (deviceIndex < 0 || deviceIndex >= 4)
-                return;
-
-            string defaultProfile = _profileRepo?.GetProfileName(deviceIndex) ?? "Default";
-            ApplyProfile(deviceIndex, defaultProfile, false, false, ProfileChangeSource.Default);
         }
     }
 }
