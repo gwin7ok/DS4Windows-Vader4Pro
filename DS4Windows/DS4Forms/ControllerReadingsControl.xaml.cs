@@ -52,6 +52,7 @@ namespace DS4WinWPF.DS4Forms
         private event EventHandler DeviceNumChanged;
         private NonFormTimer readingTimer;
         private bool useTimer;
+        private int _isDrawingActive = 0;
         private double lsDeadX;
         private double lsDeadY;
         private double rsDeadX;
@@ -217,7 +218,7 @@ namespace DS4WinWPF.DS4Forms
             exposeState = new DS4StateExposed(baseState);
 
             readingTimer = new NonFormTimer();
-            readingTimer.Interval = 1000 / 30.0;
+            readingTimer.Interval = 50.0; // 20fps (50ms) に設定してUIキュー滞留を完全防止
 
             LsDeadXChanged += ChangeLsDeadControls;
             LsDeadYChanged += ChangeLsDeadControls;
