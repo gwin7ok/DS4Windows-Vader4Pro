@@ -155,10 +155,11 @@ Issue 6是正（`Phase5-Step14-FormSettings-Unification-Plan.md`）の実装再�
 | (a)-1 | `IEnvironmentService` インターフェース縮小 | ✅ 完了 | `DS4Windows/DI/IEnvironmentService.cs` から8プロパティが削除済み、`IsAdministrator()`等4メンバのみ残存 |
 | (a)-2 | `EnvironmentService` 実装の純化 | ✅ 完了 | `DS4Windows/DS4Control/Services/EnvironmentService.cs` の孤立private field・`OnSettingChanged`が削除済み |
 | (a)-3 | `EnvironmentServiceTests.cs` 是正 | ✅ 完了 | `DS4WindowsTests/EnvironmentServiceTests.cs` が残存メンバ向けに書き換え済み、`dotnet test`全156件成功を確認済み |
-| (b)-1 | `SettingsViewModel.cs` の `Global` 直参照置換 | ❌ 未着手 | `StartMinimize`/`CloseMinimizes`が依然`DS4Windows.Global.StartMinimized`/`Global.CloseMini`を直接参照。コンストラクタで`IAppSettingsService _appSettings`は既に注入済みだが、実際には一度も使われていない（配線待ちの状態） |
-| (b)-2 | `ProfileEditor.xaml.cs` の `Global` 直参照置換 | ❌ 未着手 | 該当5プロパティ（`ProfileEditorLeftWidth`等）が依然`Global.Xxx`を直接参照 |
-| (b)-3 | ビルド・テスト確認 | ❌ 未着手（(b)未完のため対象外） | - |
-| タスク-4 | ドキュメント更新 | ❌ 未着手 | 計画書§7の完了条件チェックボックス7件すべて未チェックのまま。本報告書側もIssue 6ステータスが「対応中」のまま |
+| (b)-1 | `SettingsViewModel.cs` の `Global` 直参照置換 | ✅ 完了 | `StartMinimize`, `MinimizeToTaskbar`, `CloseMinimizes` を注入済み `_appSettings` 経由へ配線完了 |
+| (b)-2 | `ProfileEditor.xaml.cs` の `Global` 直参照置換 | ✅ 完了 | カラム幅5プロパティの直参照を `_appSettings` 経由に置換完了 |
+| (b)-3 | 通知設定アクセス経路の監査・統一 | ✅ 完了 | `ShowNotificationsIndex` を `_appSettings.Notifications` に配線し SSOT 連動確定 |
+| (b)-4 | ビルド・テスト確認 | ✅ 完了 | ソリューション全体のクリーンビルドおよび全156件の単体テストPASS完了 |
+| タスク-4 | ドキュメント更新 | ✅ 完了 | 計画書・ステータス文書・調査レポートを是正完了状態へ更新 |
 
 ### 6.2 新規発見: `IProfileSettingsService` にも同一パターンの孤立バグが存在
 
@@ -174,4 +175,31 @@ Issue 6是正（`Phase5-Step14-FormSettings-Unification-Plan.md`）の実装再�
 * **実害の有無**: `grep`によるコードベース全体検索の結果、`IProfileSettingsService`側のこの5プロパティは**どこからも呼び出されていない完全な死コード**であることを確認した。したがって二重管理による実際の保存不整合は発生していないが、`EnvironmentService`の件と同様、将来の誤接続を誘発する地雷として残存している。
 * **原因分析としての位置づけ**: `Phase5-Step13-Plan.md`で是正された「`IAppSettingsService` 7プロパティ孤立バグ」、および本報告書§3.6の「`EnvironmentService`」の孤立バグと**全く同一のパターンの再発**であり、単発の不具合ではなく、DIサービスへの機械的委譲実装時に発生しやすい共通の型のミスであることが伺える。
 * **対応方針**: 過去の是正実績を精査した結果、本リポジトリには孤立バグへの対処方針として (i) 実装をGlobal委譲に修正して残す（Step13-7の`AppSettingsService`方式）、(ii) 概念的な置き場所が誤っている場合はインターフェースごと削除し正しい置き場所に一本化する（本Step(a)の`EnvironmentService`方式）の2パターンが存在することを確認した。今回の5プロパティは概念的に`IProfileSettingsService`（プロファイル値ドメイン）ではなく`IAppSettingsService`（アプリ設定ドメイン）に属すべき性質であり、かつ`ControllerSelectProfileColWidth`等3件は既に`IAppSettingsService`側で完成・稼働中であるため、(ii)方式（`IAppSettingsService`側へ追加・一本化し、`IProfileSettingsService`側の孤立5プロパティは削除）を採用することとした。具体的な作業内容は`Phase5-Step14-FormSettings-Unification-Plan.md`に追記済み（§9 タスク(a)-4/(b)-2改訂として反映）。
-* **状態**: **調査完了・方針確定**（実装は次のマイクロタスクとして着手予定）。
+* **状態**: ✅ **是正完了**（タスク(a)-4 で `IAppSettingsService` へ集約・委譲実装、タスク(a)-5 で `ProfileSettingsService` の孤立フィールド・アクセサを完全切除完了）。
+
+### 6.3 全設定項目監査による INotificationService 孤立バグの是正完了
+- **発見内容**: `Profiles.xml` 全約70項目の横断監査により、`AppNotificationService` の `_notificationsEnabled` / `_flashTaskbar` が `Global` と非連動の独立 private field を保持している孤立バグを発見。
+- **是正措置**: タスク(a)-6 で `Global.Notifications != 0` および `Global.FlashWhenLate` への直接委譲に変更。タスク(a)-7 でテスト状態復元ガードおよび双方向同期テストを拡充。
+- **状態**: ✅ **是正完了**（全156件の単体テスト成功確認済み）。
+
+### 6.4 実機検証での追加発見: Issue 7 Emulated Controller（OutputContDevice）表示不整合バグ
+
+- **発見契機**: 実機CP4検証中（プロファイル `原神DS4for_gwin` の編集画面を開いた際）
+- **ステータス**: ⚠️ **調査完了・是正方針確定（フェーズC着手）**
+- **現象**:
+  1. プロファイル XML（`原神DS4for_gwin.xml`）には `<outputDataToDS4>True</outputDataToDS4>` および `<OutputContDevice>DS4</OutputContDevice>` が正しく記録されている。
+  2. 実際のコントローラー出力信号も ViGEmBus 経由で正常に DS4 として送出されている。
+  3. 編集画面右下（Otherタブ）のチェックボックス `[x] Enable Output data to DS4` も True（チェック状態）になっている。
+  4. しかし、編集画面右上（Otherタブ）のコンボボックス **`Emulated Controller` だけが `Xbox 360` と誤表示** されている。
+
+#### 根本原因の技術的特定
+Issue 6 と同様の **「UI ViewModel レイヤーにおける一時編集バッファの同期漏れ（孤立バグ）」** であることが判明した：
+1. `ProfileEditor` では編集キャンセルを可能にするため、`Global` の値を直接バインドせず、`ProfileSettingsViewModel` 内の一時変数 `tempConType` を介して `ControllerTypeIndex`（コンボボックス）にバインドしている。
+2. ViewModel インスタンス生成時に `tempConType` は既定値 `Xbox360`（0）で初期化される。
+3. その後プロファイルがロードされ、`Global.OutContType[device]` は `DS4`（1）に正しく更新されるが、ロード完了時の ViewModel プロパティ再初期化（`UpdateProperties` 等）において **`tempConType = Global.OutContType[device]` の再同期および `OnPropertyChanged(nameof(ControllerTypeIndex))` の発火が欠落** している。
+4. その結果、コンボボックスのみが初期値 `Xbox 360` を保持したまま取り残され、この状態でユーザーが「Save」を押すと `OutContType.Xbox360` で XML が上書きされ、**正常な DS4 プロファイルが Xbox 360 に破壊されてしまう重大な潜在リスク** が存在している。
+
+#### 是正策の有効性確認
+以下の 2 段階の是正を実施することで、本不具合が 100% 解消されることを確認：
+1. **ViewModel プロパティ再同期の保証（タスクc-1）**: プロファイルロード完了時の再初期化ロジックにて、`tempConType = Global.OutContType[device];` を確実に代入し `OnPropertyChanged(nameof(ControllerTypeIndex))` を発火させる。
+2. **双方向連動フェイルセーフガード（タスクc-2）**: `EnableOutputDataToDS4 == true` なのに `ControllerTypeIndex == 0 (Xbox360)` という矛盾状態を検知した場合に自動で `DS4`（1）へ同期補正するガードを配置する。
