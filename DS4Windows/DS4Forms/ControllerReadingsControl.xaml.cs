@@ -52,7 +52,6 @@ namespace DS4WinWPF.DS4Forms
         private event EventHandler DeviceNumChanged;
         private NonFormTimer readingTimer;
         private bool useTimer;
-        private int _isDrawingActive = 0;
         private double lsDeadX;
         private double lsDeadY;
         private double rsDeadX;
