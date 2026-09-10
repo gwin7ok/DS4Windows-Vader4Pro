@@ -10,22 +10,6 @@ namespace DS4WindowsTests
 {
     public class ProfileApplicationServiceTests
     {
-        private class FakeDeviceAccessor : IDeviceStateAccessor
-        {
-            private readonly DS4Device[] _devices = new DS4Device[4];
-
-            public void SetController(int index, DS4Device device)
-            {
-                _devices[index] = device;
-            }
-
-            public DS4Device GetController(int index)
-            {
-                if (index < 0 || index >= 4) return null;
-                return _devices[index];
-            }
-        }
-
         private class FakeActionChainService : IProfileActionChainService
         {
             public List<int> DispatchedSlots { get; } = new List<int>();
@@ -86,7 +70,7 @@ namespace DS4WindowsTests
         public void ApplyProfile_InvalidDeviceIndex_ReturnsFalse()
         {
             var settings = new ProfileSettingsService();
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
+            var service = new ProfileApplicationService(settings, new FakeActionChainService(), null, null);
 
             bool resNegative = service.ApplyProfile(-1, "Default");
             bool resTooHigh = service.ApplyProfile(4, "Default");
@@ -99,7 +83,7 @@ namespace DS4WindowsTests
         public void ApplyProfile_NullOrWhitespaceProfile_ReturnsFalse()
         {
             var settings = new ProfileSettingsService();
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
+            var service = new ProfileApplicationService(settings, new FakeActionChainService(), null, null);
 
             bool resNull = service.ApplyProfile(0, null);
             bool resEmpty = service.ApplyProfile(0, "");
@@ -124,7 +108,7 @@ namespace DS4WindowsTests
 
             var settings = new ProfileSettingsService();
             settings.ProfileChangedNotification = false;
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), control);
+            var service = new ProfileApplicationService(settings, new FakeActionChainService(), null, control);
 
             // displayNotification を省略（null）した状態で呼び出す
             bool result = service.ApplyProfile(0, "Default");
@@ -146,7 +130,7 @@ namespace DS4WindowsTests
 
             var settings = new ProfileSettingsService();
             settings.ProfileChangedNotification = false;
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), control);
+            var service = new ProfileApplicationService(settings, new FakeActionChainService(), null, control);
 
             // 明示的に true を渡す
             bool result = service.ApplyProfile(0, "Default", displayNotification: true);
@@ -158,7 +142,7 @@ namespace DS4WindowsTests
         public void RestoreFromAction_InvalidDeviceIndex_ReturnsFalse()
         {
             var settings = new ProfileSettingsService();
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
+            var service = new ProfileApplicationService(settings, new FakeActionChainService(), null, null);
 
             Assert.False(service.RestoreFromAction(-1));
             Assert.False(service.RestoreFromAction(4));
@@ -168,7 +152,7 @@ namespace DS4WindowsTests
         public void ClearPendingRestore_ExecutesWithoutException()
         {
             var settings = new ProfileSettingsService();
-            var service = new ProfileApplicationService(new FakeDeviceAccessor(), settings, new FakeActionChainService(), null);
+            var service = new ProfileApplicationService(settings, new FakeActionChainService(), null, null);
 
             var ex = Record.Exception(() => service.ClearPendingRestore(0));
             Assert.Null(ex);

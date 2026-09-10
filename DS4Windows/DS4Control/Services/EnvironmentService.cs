@@ -1,78 +1,20 @@
-﻿using System;
-using DS4Windows.DI;
+﻿using DS4Windows.DI;
 
 namespace DS4Windows
 {
+    /// <summary>
+    /// <see cref="IEnvironmentService"/> の実装。
+    ///
+    /// 【Phase5-Step14 FormSettings統一】
+    /// 以前は本クラスが RunAtStartup / StartMinimized / CloseMinimizes / UseLang /
+    /// FormWidth / FormHeight / FormLocationX / FormLocationY を、Global/m_Config(BackingStore)
+    /// と一切連動しない独自の private field として孤立保持していた。これは
+    /// <see cref="Services.AppSettingsService"/> が正規に保持する同名設定と意味的に重複しており、
+    /// 実害はなかったものの将来の誤接続を誘発する地雷であったため撤去した。
+    /// 永続設定は必ず <see cref="IAppSettingsService"/> 経由でアクセスすること。
+    /// </summary>
     public class EnvironmentService : IEnvironmentService
     {
-        private readonly object _syncLock = new object();
-
-        private bool _runAtStartup = false;
-        private bool _startMinimized = false;
-        private bool _closeMinimizes = false;
-        private string _useLang = string.Empty;
-
-        private int _formWidth = 782;
-        private int _formHeight = 550;
-        private int _formLocationX = 0;
-        private int _formLocationY = 0;
-
-        public event EventHandler EnvironmentSettingChanged;
-
-        public bool RunAtStartup
-        {
-            get => _runAtStartup;
-            set { lock (_syncLock) { _runAtStartup = value; OnSettingChanged(); } }
-        }
-
-        public bool StartMinimized
-        {
-            get => _startMinimized;
-            set { lock (_syncLock) { _startMinimized = value; OnSettingChanged(); } }
-        }
-
-        public bool CloseMinimizes
-        {
-            get => _closeMinimizes;
-            set { lock (_syncLock) { _closeMinimizes = value; OnSettingChanged(); } }
-        }
-
-        public string UseLang
-        {
-            get => _useLang;
-            set { lock (_syncLock) { _useLang = value ?? string.Empty; OnSettingChanged(); } }
-        }
-
-        public int FormWidth
-        {
-            get => _formWidth;
-            set { lock (_syncLock) { _formWidth = value; OnSettingChanged(); } }
-        }
-
-        public int FormHeight
-        {
-            get => _formHeight;
-            set { lock (_syncLock) { _formHeight = value; OnSettingChanged(); } }
-        }
-
-        public int FormLocationX
-        {
-            get => _formLocationX;
-            set { lock (_syncLock) { _formLocationX = value; OnSettingChanged(); } }
-        }
-
-        public int FormLocationY
-        {
-            get => _formLocationY;
-            set { lock (_syncLock) { _formLocationY = value; OnSettingChanged(); } }
-        }
-
-        protected virtual void OnSettingChanged()
-        {
-            EnvironmentSettingChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        // ---- Phase5-Step14前クリーンアップ: MainWindow.xaml.cs残存Global参照の解消 ----
         // 読み取り専用のシステム状態プローブ／実行時操作であり、永続化設定ではないため、
         // 独自フィールドを持たずGlobalへ直接委譲する。
         public bool IsAdministrator() => Global.IsAdministrator();
