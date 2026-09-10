@@ -1,8 +1,8 @@
 # Phase 5 - Step 14 フォーム/カラム幅設定 SSOT 統一 進捗管理ステータス
 
 作成日: 2026-09-11
-改訂日: 2026-09-11（タスク(b)-1 完了 / 次回: タスク(b)-2）
-現在ステータス: **進行中（タスク(b)-1 完了 / 次回: タスク(b)-2）**
+改訂日: 2026-09-11（タスク(b)-2 完了 / 次回: タスク(b)-3）
+現在ステータス: **進行中（タスク(b)-2 完了 / 次回: タスク(b)-3）**
 対象ブランチ: `For-DI-migration-work`
 関連ドキュメント:
 - 個別計画書: `docs-forDIMG/MadeByAgent/Phase5-Step14-FormSettings-Unification-Plan.md`
@@ -21,11 +21,11 @@
 ### 1.2 現在地サマリ（2026-09-11 時点）
 * **完了タスク**:
   - フェーズA 全タスク完了（(a)-1, (a)-2, (a)-3, (a)-4, (a)-5, (a)-6, (a)-7）
-  - **フェーズB タスク(b)-1 完了**
+  - **フェーズB タスク(b)-1, (b)-2 完了**（コード修正対象ファイル全件是正完了）
 * **ビルド / テスト状況**:
   - `dotnet build ./DS4Windows/DS4WinWPF.csproj` : ✅ **成功（警告 0 / エラー 0）**
   - `dotnet test`（全156件の単体テスト実行） : ✅ **全156件 PASS（オールグリーン）**
-* **次回着手予定**: **フェーズB タスク(b)-2: `ProfileEditor.xaml.cs` の Global 直参照置換**
+* **次回着手予定**: **フェーズB タスク(b)-3: 通知設定アクセス経路の監査・統一**
 
 ---
 
@@ -50,8 +50,8 @@
 | タスクID | タスク概要 | 対象ファイル | 状態 | 備考 |
 |---|---|---|:---:|---|
 | **(b)-1** | `SettingsViewModel.cs` の Global 直参照置換 | `SettingsViewModel.cs` | ✅ 完了 | `StartMinimize`, `MinimizeToTaskbar`, `CloseMinimizes` を注入済み `_appSettings` 経由へ配線 |
-| **(b)-2** | `ProfileEditor.xaml.cs` の Global 直参照置換 | `ProfileEditor.xaml.cs` | ⏳ **次回着手** | カラム幅5プロパティの直参照を `appSettingsService.Xxx` に置換 |
-| **(b)-3** | 通知設定アクセス経路の監査・統一 | `SettingsViewModel.cs` 等 | ⏳ 未着手 | `IAppSettingsService` / `INotificationService` の SSOT 連動確認 |
+| **(b)-2** | `ProfileEditor.xaml.cs` の Global 直参照置換 | `ProfileEditor.xaml.cs` | ✅ 完了 | `SaveSplitterAndColumnWidths` / `RestoreSplitterAndColumnWidths` のカラム幅を DI 経由に置換 |
+| **(b)-3** | 通知設定アクセス経路の監査・統一 | `SettingsViewModel.cs` 等 | ⏳ **次回着手** | `IAppSettingsService` / `INotificationService` の SSOT 連動確認 |
 | **(b)-4** | 全単体テスト・クリーンビルド確認 | ソリューション全体 | ⏳ 未着手 | 全テスト PASS 維持を確認 |
 
 ---
@@ -65,7 +65,7 @@
 
 ---
 
-## 3. 作業対象ファイル棚卸しマトリクス
+## 3. 作業対象ファイル棚卸しマトリクス（全13件改修完了）
 
 | ファイルパス | 役割 | 変更内容 | 進捗状況 |
 |---|---|---|:---:|
@@ -79,7 +79,7 @@
 | `DS4Windows/DS4Control/Services/AppNotificationService.cs` | サービス実装 | `_notificationsEnabled`, `_flashTaskbar` 独自フィールド撤去、`Global` 委譲化 | ✅ **完了** |
 | `DS4WindowsTests/NotificationServiceTests.cs` | 単体テスト | `Global` 連動・テスト間状態汚染防止・双方向同期テストへ是正 | ✅ **完了** |
 | `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | UI ViewModel | `StartMinimize` 等の直参照を注入済み `_appSettings` 経由に置換 | ✅ **完了** |
-| `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | UI View Code-behind | `Global.ProfileEditorLeftWidth` 等の直参照を `appSettingsService` 経由に置換 | ⏳ **次回 (b)-2** |
+| `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | UI View Code-behind | `Global.ProfileEditorLeftWidth` 等の直参照を `appSettingsService` 経由に置換 | ✅ **完了** |
 
 ---
 
@@ -102,28 +102,28 @@
 ---
 
 ## 7. (b)-1 完了実績の詳細記録
+- **内容**: `SettingsViewModel.cs` の `StartMinimize`, `MinimizeToTaskbar`, `CloseMinimizes` の 3 プロパティにおいて、完全修飾名 `DS4Windows.Global.` 直参照を注入済み `_appSettings` 経由へ配線。
+- **検証**: ビルド・全単体テスト 100% 成功。
 
-### 7.1 改修内容
-`SettingsViewModel.cs` の以下の 3 プロパティにおいて、完全修飾名 `DS4Windows.Global.` を用いた静的直参照を、コンストラクタ注入済みの `_appSettings`（`IAppSettingsService`）経由へ配線：
-* `StartMinimize`: `DS4Windows.Global.StartMinimized` → `_appSettings.StartMinimized`
-* `MinimizeToTaskbar`: `DS4Windows.Global.MinToTaskbar` → `_appSettings.MinimizeToTaskbar`
-* `CloseMinimizes`: `DS4Windows.Global.CloseMini` → `_appSettings.CloseMinimizes`
+---
 
-### 7.2 検証エビデンス
+## 8. (b)-2 完了実績の詳細記録
+
+### 8.1 改修内容
+`ProfileEditor.xaml.cs` において、スプリッター幅およびアクション一覧列幅の保存・復元処理を Pure DI 原則およびフォールバック・シム維持原則（§2.1, §3.1）に基づき改修：
+1. **DI 注入の追加**: フィールド `private readonly IAppSettingsService _appSettings;` を追加し、コンストラクタ引数に `IAppSettingsService appSettings = null`（オプショナル引数）を追加して内部解決。
+2. **`SaveSplitterAndColumnWidths()`**: 5 プロパティの書き込みを `_appSettings` 経由に置換。
+3. **`RestoreSplitterAndColumnWidths()`**: 5 プロパティの読み込みを `_appSettings` 経由に置換。
+4. 万が一の null フォールバックを維持し、例外安全性を確保。
+
+### 8.2 検証エビデンス
 - **ビルド結果**: `dotnet build ./DS4Windows/DS4WinWPF.csproj` → 警告 0 / エラー 0
 - **単体テスト結果**: 全 156 件実行 → 全件 PASS
 - **コミット ＆ プッシュ**: リモートリポジトリ（`For-DI-migration-work`）に正常反映済み。
 
 ---
 
-## 8. 次回着手タスク（タスク(b)-2）の作業概要
+## 9. 次回着手タスク（タスク(b)-3）の作業概要
 
 * **目的**:
-  プロファイル編集画面（`ProfileEditor.xaml.cs`）に残存する以下のカラム幅・スプリッター幅の `Global.Xxx` 直参照を、`IAppSettingsService`（`appSettingsService`）経由に置換する。
-* **改修対象**:
-  `DS4Windows/DS4Forms/ProfileEditor.xaml.cs`（361〜430行付近: `SaveSplitterAndColumnWidths`, `RestoreSplitterAndColumnWidths` 等）
-  - `Global.ProfileEditorLeftWidth` → `appSettingsService.ProfileEditorLeftWidth`
-  - `Global.ProfileEditorRightWidth` → `appSettingsService.ProfileEditorRightWidth`
-  - `Global.SpecialActionNameColWidth` → `appSettingsService.SpecialActionNameColWidth`
-  - `Global.SpecialActionTriggerColWidth` → `appSettingsService.SpecialActionTriggerColWidth`
-  - `Global.SpecialActionDetailColWidth` → `appSettingsService.SpecialActionDetailColWidth`
+  UI 層（`SettingsViewModel.cs` 等）における通知関連設定（`ShowNotificationsIndex` / `FlashTaskbar` 等）のアクセス経路を監査し、`IAppSettingsService`（設定永続化）と `INotificationService`（通知実行）の間で SSOT（`BackingStore`）が完全に同期・一貫していることを確認・保証する。
