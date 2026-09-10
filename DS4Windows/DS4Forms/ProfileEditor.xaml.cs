@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -1783,6 +1783,9 @@ namespace DS4WinWPF.DS4Forms
 
         private void FrictionUD_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
+            if (profileSettingsVM == null)
+                return;
+
             if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
                 controlService.touchPad[deviceNum]?.ResetTrackAccel(frictionUD.Value.GetValueOrDefault());
