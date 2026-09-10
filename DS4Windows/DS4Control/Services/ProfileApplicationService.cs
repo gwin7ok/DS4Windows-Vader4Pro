@@ -38,7 +38,7 @@ namespace DS4Windows.DS4Control.Services
 
             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                 (deviceIndex + 1).ToString(), action.details, $"{device.Battery}");
-            bool display = _profileSettings.ProfileChangedNotification;
+            bool display = _profileSettings?.ProfileChangedNotification ?? false;
 
             Task.Run(() =>
             {
@@ -62,7 +62,7 @@ namespace DS4Windows.DS4Control.Services
 
             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                 (deviceIndex + 1).ToString(), action.details, $"{device.Battery}");
-            bool display = _profileSettings.ProfileChangedNotification;
+            bool display = _profileSettings?.ProfileChangedNotification ?? false;
 
             Task.Run(() =>
             {
@@ -75,6 +75,24 @@ namespace DS4Windows.DS4Control.Services
             });
         }
 
+        public bool RestoreFromAction(int deviceIndex)
+        {
+            if (deviceIndex < 0 || deviceIndex >= ControlService.MAX_SLOTS)
+            {
+                AppLogger.LogWarn($"[DI] ProfileApplicationService.RestoreFromAction FAILED: deviceIndex {deviceIndex} is out of bounds");
+                return false;
+            }
+
+            string previousProfile = Global.OlderProfilePath[deviceIndex];
+            if (string.IsNullOrWhiteSpace(previousProfile))
+            {
+                AppLogger.LogWarn($"[DI] ProfileApplicationService.RestoreFromAction: No OlderProfilePath for device {deviceIndex}");
+                return false;
+            }
+
+            return ApplyProfile(deviceIndex, previousProfile, false, false, ProfileChangeSource.RestoreFromAction);
+        }
+
         public void ClearPendingRestore(int deviceIndex)
         {
             if (deviceIndex < 0 || deviceIndex >= 4)
@@ -84,7 +102,7 @@ namespace DS4Windows.DS4Control.Services
         }
 
         public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
-            bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Default,
+            bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.ControlService,
             string prolog = "", bool? displayNotification = null)
         {
             if (string.IsNullOrWhiteSpace(profileName))
@@ -115,10 +133,10 @@ namespace DS4Windows.DS4Control.Services
 
                 if (device != null)
                 {
-                    // SpecialAction (MappingAction) からの呼び出し時は、入力スレッド自身が実行しているため、
-                    // HaltReportingRunAction を呼ぶと自己待機タイムアウト（デッドロック回避）を起こす。
-                    // そのため直接 applyAction を実行し、UI/手動操作時のみ Halt 待機を行う。
-                    if (source == ProfileChangeSource.MappingAction)
+                    // SpecialAction（入力スレッド自身）からの呼び出し時は、HaltReportingRunAction を呼ぶと
+                    // 入力スレッドが自分自身の停止を待機して自己待機タイムアウトを起こす。
+                    // そのため直接 applyAction を実行し、UI/手動/外部操作時のみ Halt 待機を行う。
+                    if (source == ProfileChangeSource.MappingAction || source == ProfileChangeSource.ProfileSwitchAction || source == ProfileChangeSource.RestoreFromAction)
                     {
                         applyAction();
                     }
@@ -153,7 +171,7 @@ namespace DS4Windows.DS4Control.Services
                 return;
 
             string defaultProfile = _profileRepo?.GetProfileName(deviceIndex) ?? "Default";
-            ApplyProfile(deviceIndex, defaultProfile, false, false, ProfileChangeSource.Default);
+            ApplyProfile(deviceIndex, defaultProfile, false, false, ProfileChangeSource.ControlService);
         }
     }
 }
