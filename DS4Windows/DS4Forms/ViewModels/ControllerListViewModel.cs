@@ -36,7 +36,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels
     public class ControllerListViewModel : IDisposable
     {
         //private object _colLockobj = new object();
-        private ReaderWriterLockSlim _colListLocker = new ReaderWriterLockSlim();
+        // 終了時のLockRecursionException対策:
+        // WriteLock保持中にcontrollerCol.Clear()を呼ぶと、WPFのCollectionChanged通知経由で
+        // ColLockCallbackが同一スレッドから再入的にReadLockを取得しようとする(ListCollectionView.RefreshOverride)。
+        // 既定のNoRecursionポリシーではこれが例外(LockRecursionException)となり、
+        // MainDS4Window_Closed内のDispose()が中断してApplication.Current.Shutdown()まで
+        // 到達できず、終了処理が完了しない不具合が発生していた。SupportsRecursionを指定し、
+        // 同一スレッドからのWrite→Read再入を許可することで解消する。
+        private ReaderWriterLockSlim _colListLocker = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         private ObservableCollection<CompositeDeviceModel> controllerCol =
             new ObservableCollection<CompositeDeviceModel>();
         private Dictionary<int, CompositeDeviceModel> controllerDict =
@@ -142,29 +149,56 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private void ClearControllerList(object sender, EventArgs e)
         {
             _colListLocker.EnterReadLock();
-            foreach (CompositeDeviceModel temp in controllerCol)
+            try
             {
-                temp.Device.Removal -= Controller_Removal;
+                foreach (CompositeDeviceModel temp in controllerCol)
+                {
+                    temp.Device.Removal -= Controller_Removal;
+                }
             }
-            _colListLocker.ExitReadLock();
+            finally
+            {
+                _colListLocker.ExitReadLock();
+            }
 
             _colListLocker.EnterWriteLock();
-            controllerCol.Clear();
-            controllerDict.Clear();
-            _colListLocker.ExitWriteLock();
+            try
+            {
+                controllerCol.Clear();
+                controllerDict.Clear();
+            }
+            finally
+            {
+                _colListLocker.ExitWriteLock();
+            }
         }
 
         // Phase5-Watchpoints-Investigation-Report Watchpoint 2対応:
         // controlService(Singleton)・profileRepo(Singleton)のイベント購読を確実に解除する。
         // 個々のDS4Device.Removal購読解除はClearControllerListの既存ロジックを再利用する。
+        //
+        // 終了時のLockRecursionException対策(2026-09-10調査):
+        // ClearControllerList()がWPFのバインディング同期経由で例外を投げた場合でも、
+        // MainDS4Window_Closed側の後続シャットダウン処理(トレイアイコン破棄・
+        // Application.Current.Shutdown())が必ず継続されるよう、イベント購読解除を
+        // try/finallyで保護する。
         public void Dispose()
         {
-            ClearControllerList(this, EventArgs.Empty);
-
-            controlService.ServiceStarted -= ControllersChanged;
-            controlService.PreServiceStop -= ClearControllerList;
-            controlService.HotplugController -= Service_HotplugController;
-            profileRepo.SelectedProfileChanged -= Global_SelectedProfileChanged;
+            try
+            {
+                ClearControllerList(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"ControllerListViewModel.Dispose: ClearControllerList failed: {ex}", true);
+            }
+            finally
+            {
+                controlService.ServiceStarted -= ControllersChanged;
+                controlService.PreServiceStop -= ClearControllerList;
+                controlService.HotplugController -= Service_HotplugController;
+                profileRepo.SelectedProfileChanged -= Global_SelectedProfileChanged;
+            }
         }
 
         private void ControllersChanged(object sender, EventArgs e)
