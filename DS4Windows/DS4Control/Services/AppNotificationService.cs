@@ -1,27 +1,22 @@
-﻿using System;
+using System;
 using DS4Windows.DI;
 
 namespace DS4Windows
 {
     public class AppNotificationService : INotificationService
     {
-        private readonly object _syncLock = new object();
-
-        private bool _notificationsEnabled = true;
-        private bool _flashTaskbar = false;
-
         public event EventHandler<NotificationEventArgs> NotificationTriggered;
 
         public bool NotificationsEnabled
         {
-            get => _notificationsEnabled;
-            set { lock (_syncLock) { _notificationsEnabled = value; } }
+            get => Global.Notifications != 0;
+            set => Global.Notifications = value ? (Global.Notifications != 0 ? Global.Notifications : 1) : 0;
         }
 
         public bool FlashTaskbar
         {
-            get => _flashTaskbar;
-            set { lock (_syncLock) { _flashTaskbar = value; } }
+            get => Global.FlashWhenLate;
+            set => Global.FlashWhenLate = value;
         }
 
         public void SendNotification(string title, string message, bool isToast = true)
