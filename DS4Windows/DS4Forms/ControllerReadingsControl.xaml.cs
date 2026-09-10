@@ -43,6 +43,7 @@ namespace DS4WinWPF.DS4Forms
         private long _lastReadingTick = 0;
         private int _isReadingUpdating = 0;
         private const long READING_INTERVAL_TICKS = System.TimeSpan.TicksPerMillisecond * 33; // 約30fps (33ms)
+        private const long READING_INTERVAL_TICKS = System.TimeSpan.TicksPerMillisecond * 33; // 約30fps (33ms)
         private enum LatencyWarnMode : uint
         {
             None,
