@@ -82,14 +82,14 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 - [x] **タスク(a)-4: `IAppSettingsService` / `AppSettingsService` への5プロパティ追加**
   - `IAppSettingsService` にカラム幅5プロパティを追加宣言：
-    - `double ProfileEditorLeftWidth { get; set; }`
-    - `double ProfileEditorRightWidth { get; set; }`
-    - `double SpecialActionNameColWidth { get; set; }`
-    - `double SpecialActionTriggerColWidth { get; set; }`
-    - `double SpecialActionDetailColWidth { get; set; }`
+    - `int ProfileEditorLeftWidth { get; set; }`
+    - `int ProfileEditorRightWidth { get; set; }`
+    - `int SpecialActionNameColWidth { get; set; }`
+    - `int SpecialActionTriggerColWidth { get; set; }`
+    - `int SpecialActionDetailColWidth { get; set; }`
   - `AppSettingsService.cs` に `Global`（`BackingStore`）委譲として上記5プロパティを実装。
 
-- [x] **タスク(a)-5: `IProfileSettingsService` / `ProfileSettingsService` の孤立5プロパティ削除**
+- [ ] **タスク(a)-5: `IProfileSettingsService` / `ProfileSettingsService` の孤立5プロパティ削除**
   - `IProfileSettingsService` から上記5プロパティの宣言を削除。
   - `ProfileSettingsService.cs` から孤立 private field およびアクセサを完全削除。
 

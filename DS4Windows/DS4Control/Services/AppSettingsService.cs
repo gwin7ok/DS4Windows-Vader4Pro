@@ -258,6 +258,37 @@ namespace DS4Windows.Services
             set { if (Global.ControllerCustomColorColWidth != value) { Global.ControllerCustomColorColWidth = value; NotifyChanged(nameof(ControllerCustomColorColWidth)); } }
         }
 
+        // ---- Phase5-Step14: プロファイル編集画面・SpecialAction カラム幅の永続化 ----
+        public int ProfileEditorLeftWidth
+        {
+            get { lock (_syncLock) { return Global.ProfileEditorLeftWidth; } }
+            set { lock (_syncLock) { Global.ProfileEditorLeftWidth = value; } }
+        }
+
+        public int ProfileEditorRightWidth
+        {
+            get { lock (_syncLock) { return Global.ProfileEditorRightWidth; } }
+            set { lock (_syncLock) { Global.ProfileEditorRightWidth = value; } }
+        }
+
+        public int SpecialActionNameColWidth
+        {
+            get { lock (_syncLock) { return Global.SpecialActionNameColWidth; } }
+            set { lock (_syncLock) { Global.SpecialActionNameColWidth = value; } }
+        }
+
+        public int SpecialActionTriggerColWidth
+        {
+            get { lock (_syncLock) { return Global.SpecialActionTriggerColWidth; } }
+            set { lock (_syncLock) { Global.SpecialActionTriggerColWidth = value; } }
+        }
+
+        public int SpecialActionDetailColWidth
+        {
+            get { lock (_syncLock) { return Global.SpecialActionDetailColWidth; } }
+            set { lock (_syncLock) { Global.SpecialActionDetailColWidth = value; } }
+        }
+
         // ---- Phase5-Step13-7: 通知レベル・スワイプ操作設定 ----
         public int Notifications
         {
