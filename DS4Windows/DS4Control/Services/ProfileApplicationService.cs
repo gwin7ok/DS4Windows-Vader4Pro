@@ -38,7 +38,7 @@ namespace DS4Windows.DS4Control.Services
 
             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                 (deviceIndex + 1).ToString(), action.details, $"{device.Battery}");
-            bool display = _profileSettings?.ProfileChangedNotification ?? false;
+            bool display = _profileSettings.ProfileChangedNotification;
 
             Task.Run(() =>
             {
@@ -62,7 +62,7 @@ namespace DS4Windows.DS4Control.Services
 
             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                 (deviceIndex + 1).ToString(), action.details, $"{device.Battery}");
-            bool display = _profileSettings?.ProfileChangedNotification ?? false;
+            bool display = _profileSettings.ProfileChangedNotification;
 
             Task.Run(() =>
             {
@@ -75,24 +75,6 @@ namespace DS4Windows.DS4Control.Services
             });
         }
 
-        public bool RestoreFromAction(int deviceIndex)
-        {
-            if (deviceIndex < 0 || deviceIndex >= ControlService.MAX_SLOTS)
-            {
-                AppLogger.LogWarn($"[DI] ProfileApplicationService.RestoreFromAction FAILED: deviceIndex {deviceIndex} is out of bounds");
-                return false;
-            }
-
-            string previousProfile = Global.OlderProfilePath[deviceIndex];
-            if (string.IsNullOrWhiteSpace(previousProfile))
-            {
-                AppLogger.LogWarn($"[DI] ProfileApplicationService.RestoreFromAction: No OlderProfilePath for device {deviceIndex}");
-                return false;
-            }
-
-            return ApplyProfile(deviceIndex, previousProfile, false, false, ProfileChangeSource.RestoreFromAction);
-        }
-
         public void ClearPendingRestore(int deviceIndex)
         {
             if (deviceIndex < 0 || deviceIndex >= 4)
@@ -102,11 +84,12 @@ namespace DS4Windows.DS4Control.Services
         }
 
         public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
-            bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.ControlService,
+            bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Default,
             string prolog = "", bool? displayNotification = null)
         {
             if (string.IsNullOrWhiteSpace(profileName))
             {
+                AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile FAILED: profileName is null or whitespace for slot {deviceIndex}");
                 AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile FAILED: profileName is null or whitespace for slot {deviceIndex}");
                 return false;
             }
@@ -133,10 +116,7 @@ namespace DS4Windows.DS4Control.Services
 
                 if (device != null)
                 {
-                    // SpecialAction（入力スレッド自身）からの呼び出し時は、HaltReportingRunAction を呼ぶと
-                    // 入力スレッドが自分自身の停止を待機して自己待機タイムアウトを起こす。
-                    // そのため直接 applyAction を実行し、UI/手動/外部操作時のみ Halt 待機を行う。
-                    if (source == ProfileChangeSource.MappingAction || source == ProfileChangeSource.ProfileSwitchAction || source == ProfileChangeSource.RestoreFromAction)
+                    // SpecialAction (MappingAction) 縺九ｉ縺ｮ蜻ｼ縺ｳ蜃ｺ縺玲凾縺ｯ縲∝・蜉帙せ繝ｬ繝・ラ閾ｪ霄ｫ縺悟ｮ溯｡後＠縺ｦ縺・ｋ縺溘ａ縲・                    // HaltReportingRunAction 繧貞他縺ｶ縺ｨ閾ｪ蟾ｱ蠕・ｩ溘ち繧､繝繧｢繧ｦ繝茨ｼ医ョ繝・ラ繝ｭ繝・け蝗樣∩・峨ｒ襍ｷ縺薙☆縲・                    // 縺昴・縺溘ａ逶ｴ謗･ applyAction 繧貞ｮ溯｡後＠縲ゞI/謇句虚謫堺ｽ懈凾縺ｮ縺ｿ Halt 蠕・ｩ溘ｒ陦後≧縲・                    if (source == ProfileChangeSource.MappingAction)
                     {
                         applyAction();
                     }
@@ -171,7 +151,7 @@ namespace DS4Windows.DS4Control.Services
                 return;
 
             string defaultProfile = _profileRepo?.GetProfileName(deviceIndex) ?? "Default";
-            ApplyProfile(deviceIndex, defaultProfile, false, false, ProfileChangeSource.ControlService);
+            ApplyProfile(deviceIndex, defaultProfile, false, false, ProfileChangeSource.Default);
         }
     }
 }
