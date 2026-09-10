@@ -1,37 +1,12 @@
-/*
-DS4Windows
-Copyright (C) 2023  Travis Nickles
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
-using NonFormTimer = System.Timers.Timer;
 using DS4Windows;
+using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4WinWPF.DS4Forms
 {
@@ -40,433 +15,323 @@ namespace DS4WinWPF.DS4Forms
     /// </summary>
     public partial class ControllerReadingsControl : UserControl
     {
-        private enum LatencyWarnMode : uint
-        {
-            None,
-            Caution,
-            Warn,
-        }
+        private const int CANVAS_WIDTH = 280;
+        private const int CANVAS_HEIGHT = 280;
 
-        private int deviceNum;
-        private int profileDeviceNum;
-        private event EventHandler DeviceNumChanged;
+        private const int AXIS_WIDTH = 256;
+        private const int AXIS_HEIGHT = 256;
+
+        private const int LS_AXIS_HALF_WIDTH = AXIS_WIDTH / 2;
+        private const int LS_AXIS_HALF_HEIGHT = AXIS_HEIGHT / 2;
+
+        private const int RS_AXIS_HALF_WIDTH = AXIS_WIDTH / 2;
+        private const int RS_AXIS_HALF_HEIGHT = AXIS_HEIGHT / 2;
+
+        private DS4Device dev;
+        private ControllerReadingsViewModel readingsVM;
+        private Line lsXLine;
+        private Line lsYLine;
+        private Line rsXLine;
+        private Line rsYLine;
+        private Line sixaxisRecenterLine;
         private NonFormTimer readingTimer;
         private bool useTimer;
         private int _isDrawingActive = 0;
-        private double lsDeadX;
-        private double lsDeadY;
-        private double rsDeadX;
-        private double rsDeadY;
 
-        private double sixAxisXDead;
-        private double sixAxisZDead;
-        private double l2Dead;
-        private double r2Dead;
-
-        private sbyte lsDriftX;
-        private sbyte lsDriftY;
-        private sbyte rsDriftX;
-        private sbyte rsDriftY;
-
-        public double LsDeadX
+        private enum LatencyWarnMode : uint
         {
-            get => lsDeadX;
-            set
-            {
-                lsDeadX = value;
-                LsDeadXChanged?.Invoke(this, EventArgs.Empty);
-            }
+            None,
+            Warn1,
+            Warn2,
         }
-        public event EventHandler LsDeadXChanged;
 
-        public double LsDeadY
-        {
-            get => lsDeadY;
-            set
-            {
-                lsDeadY = value;
-                LsDeadYChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler LsDeadYChanged;
-
-        public double RsDeadX
-        {
-            get => rsDeadX;
-            set
-            {
-                rsDeadX = value;
-                RsDeadXChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler RsDeadXChanged;
-
-        public double RsDeadY
-        {
-            get => rsDeadY;
-            set
-            {
-                rsDeadY = value;
-                RsDeadYChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler RsDeadYChanged;
-
-        public double SixAxisXDead
-        {
-            get => sixAxisXDead;
-            set
-            {
-                sixAxisXDead = value;
-                SixAxisDeadXChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler SixAxisDeadXChanged;
-
-        public double SixAxisZDead
-        {
-            get => sixAxisZDead;
-            set
-            {
-                sixAxisZDead = value;
-                SixAxisDeadZChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler SixAxisDeadZChanged;
-
-        public double L2Dead
-        {
-            get => l2Dead;
-            set
-            {
-                l2Dead = value;
-                L2DeadChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler L2DeadChanged;
-
-        public double R2Dead
-        {
-            get => r2Dead;
-            set
-            {
-                r2Dead = value;
-                R2DeadChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler R2DeadChanged;
-
-
-        public sbyte LsDriftX
-        {
-            get => lsDriftX;
-            set
-            {
-                lsDriftX = value;
-                LsDriftXChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler LsDriftXChanged;
-
-        public sbyte LsDriftY
-        {
-            get => lsDriftY;
-            set
-            {
-                lsDriftY = value;
-                LsDriftYChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler LsDriftYChanged;
-
-        public sbyte RsDriftX
-        {
-            get => rsDriftX;
-            set
-            {
-                rsDriftX = value;
-                RsDriftXChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler RsDriftXChanged;
-
-        public sbyte RsDriftY
-        {
-            get => rsDriftY;
-            set
-            {
-                rsDriftY = value;
-                RsDriftYChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler RsDriftYChanged;
-
-
-        private LatencyWarnMode warnMode;
-        private LatencyWarnMode prevWarnMode;
-        private DS4State baseState = new DS4State();
-        private DS4State interState = new DS4State();
-        private DS4StateExposed exposeState;
-        private const int CANVAS_WIDTH = 130;
-        private const int CANVAS_MIDPOINT = CANVAS_WIDTH / 2;
-        private const double TRIG_LB_TRANSFORM_OFFSETY = 66.0;
+        private LatencyWarnMode warnMode = LatencyWarnMode.None;
 
         public ControllerReadingsControl()
         {
             InitializeComponent();
-            inputContNum.Content = $"#{deviceNum + 1}";
-            exposeState = new DS4StateExposed(baseState);
 
-            readingTimer = new NonFormTimer();
-            readingTimer.Interval = 50.0; // 20fps (50ms) に設定してUIキュー滞留を完全防止
-
-            LsDeadXChanged += ChangeLsDeadControls;
-            LsDeadYChanged += ChangeLsDeadControls;
-            LsDeadXChanged += ChangeLsDriftControls;
-            LsDeadYChanged += ChangeLsDriftControls;
-
-            RsDeadXChanged += ChangeRsDeadControls;
-            RsDeadYChanged += ChangeRsDeadControls;
-            RsDeadXChanged += ChangeRsDriftControls;
-            RsDeadYChanged += ChangeRsDriftControls;
-
-            LsDriftXChanged += ChangeLsDriftControls;
-            LsDriftYChanged += ChangeLsDriftControls;
-            RsDriftXChanged += ChangeRsDriftControls;
-            RsDriftYChanged += ChangeRsDriftControls;
-
-            SixAxisDeadXChanged += ChangeSixAxisDeadControls;
-            SixAxisDeadZChanged += ChangeSixAxisDeadControls;
-
-            DeviceNumChanged += ControllerReadingsControl_DeviceNumChanged;
-        }
-
-        private void ControllerReadingsControl_DeviceNumChanged(object sender, EventArgs e)
-        {
-                        inputContNum.Content = $"#{deviceNum + 1}";
-        }
-
-        private void ChangeSixAxisDeadControls(object sender, EventArgs e)
-        {
-                        sixAxisDeadEllipse.Width = sixAxisXDead * CANVAS_WIDTH;
-            sixAxisDeadEllipse.Height = sixAxisZDead * CANVAS_WIDTH;
-            Canvas.SetLeft(sixAxisDeadEllipse, CANVAS_MIDPOINT - (sixAxisXDead * CANVAS_WIDTH / 2.0));
-            Canvas.SetTop(sixAxisDeadEllipse, CANVAS_MIDPOINT - (sixAxisZDead * CANVAS_WIDTH / 2.0));
-        }
-
-        private void ChangeRsDriftControls(object sender, EventArgs e)
-        {
-                        rsDriftEllipse.Width = rsDeadX * CANVAS_WIDTH;
-            rsDriftEllipse.Height = rsDeadY * CANVAS_WIDTH;
-            Canvas.SetLeft(rsDriftEllipse, (1 + (RsDriftX / 127.0) - rsDeadX) * CANVAS_MIDPOINT);
-            Canvas.SetTop(rsDriftEllipse, (1 + (RsDriftY / 127.0) - rsDeadY) * CANVAS_MIDPOINT);
-        }
-
-        private void ChangeLsDriftControls(object sender, EventArgs e)
-        {
-                        lsDriftEllipse.Width = lsDeadX * CANVAS_WIDTH;
-            lsDriftEllipse.Height = lsDeadY * CANVAS_WIDTH;
-            Canvas.SetLeft(lsDriftEllipse, (1 + (LsDriftX / 127.0) - lsDeadX) * CANVAS_MIDPOINT);
-            Canvas.SetTop(lsDriftEllipse, (1 + (LsDriftY / 127.0) - lsDeadY) * CANVAS_MIDPOINT);
-        }
-
-        private void ChangeRsDeadControls(object sender, EventArgs e)
-        {
-                        rsDeadEllipse.Width = rsDeadX * CANVAS_WIDTH;
-            rsDeadEllipse.Height = rsDeadY * CANVAS_WIDTH;
-            Canvas.SetLeft(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadX * CANVAS_WIDTH / 2.0));
-            Canvas.SetTop(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadY * CANVAS_WIDTH / 2.0));
-        }
-
-        private void ChangeLsDeadControls(object sender, EventArgs e)
-        {
-                        lsDeadEllipse.Width = lsDeadX * CANVAS_WIDTH;
-            lsDeadEllipse.Height = lsDeadY * CANVAS_WIDTH;
-            Canvas.SetLeft(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadX * CANVAS_WIDTH / 2.0));
-            Canvas.SetTop(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadY * CANVAS_WIDTH / 2.0));
-        }
-
-        public void UseDevice(int index, int profileDevIdx)
-        {
-            deviceNum = index;
-            profileDeviceNum = profileDevIdx;
-            DeviceNumChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        public void EnableControl(bool state)
-        {
-            if (state)
+            lsXLine = new Line()
             {
-                IsEnabled = true;
-                useTimer = true;
+                X1 = 0,
+                X2 = CANVAS_WIDTH,
+                Y1 = LS_AXIS_HALF_HEIGHT,
+                Y2 = LS_AXIS_HALF_HEIGHT,
+                Stroke = new SolidColorBrush(Colors.Red),
+                StrokeThickness = 1.0,
+            };
+
+            lsYLine = new Line()
+            {
+                X1 = LS_AXIS_HALF_WIDTH,
+                X2 = LS_AXIS_HALF_WIDTH,
+                Y1 = 0,
+                Y2 = CANVAS_HEIGHT,
+                Stroke = new SolidColorBrush(Colors.Red),
+                StrokeThickness = 1.0,
+            };
+
+            rsXLine = new Line()
+            {
+                X1 = 0,
+                X2 = CANVAS_WIDTH,
+                Y1 = RS_AXIS_HALF_HEIGHT,
+                Y2 = RS_AXIS_HALF_HEIGHT,
+                Stroke = new SolidColorBrush(Colors.Red),
+                StrokeThickness = 1.0,
+            };
+
+            rsYLine = new Line()
+            {
+                X1 = RS_AXIS_HALF_WIDTH,
+                X2 = RS_AXIS_HALF_WIDTH,
+                Y1 = 0,
+                Y2 = CANVAS_HEIGHT,
+                Stroke = new SolidColorBrush(Colors.Red),
+                StrokeThickness = 1.0,
+            };
+
+            sixaxisRecenterLine = new Line()
+            {
+                X1 = 0,
+                X2 = 0,
+                Y1 = 0,
+                Y2 = gyroRecenterCanvas.Height,
+                Stroke = new SolidColorBrush(Colors.Red),
+                StrokeThickness = 2.0,
+            };
+
+            lsInputCanvas.Children.Add(lsXLine);
+            lsInputCanvas.Children.Add(lsYLine);
+            Canvas.SetLeft(lsXLine, 0);
+            Canvas.SetTop(lsXLine, 0);
+            Canvas.SetLeft(lsYLine, 0);
+            Canvas.SetTop(lsYLine, 0);
+
+            rsInputCanvas.Children.Add(rsXLine);
+            rsInputCanvas.Children.Add(rsYLine);
+            Canvas.SetLeft(rsXLine, 0);
+            Canvas.SetTop(rsXLine, 0);
+            Canvas.SetLeft(rsYLine, 0);
+            Canvas.SetTop(rsYLine, 0);
+
+            gyroRecenterCanvas.Children.Add(sixaxisRecenterLine);
+            Canvas.SetLeft(sixaxisRecenterLine, 0);
+            Canvas.SetTop(sixaxisRecenterLine, 0);
+
+            InitLate();
+        }
+
+        private void InitLate()
+        {
+            readingsVM = new ControllerReadingsViewModel();
+            DataContext = readingsVM;
+        }
+
+        public void ChangeDevice(int devIndex)
+        {
+            if (devIndex < 0 || devIndex >= ControlService.CURRENT_MAX_NUM_DEVICES)
+                return;
+
+            DisableControl();
+            DS4Device tempDev = Program.rootHub.DS4Controllers[devIndex];
+            if (tempDev != null)
+            {
+                UseDevice(tempDev);
+            }
+        }
+
+        public void UseDevice(DS4Device tempDev)
+        {
+            dev = tempDev;
+            EnableControl();
+        }
+
+        public void EnableControl()
+        {
+            if (dev != null)
+            {
+                // 既存タイマーが動いている場合は多重起動を防ぐため確実に停止・破棄
+                if (useTimer && readingTimer != null)
+                {
+                    readingTimer.Stop();
+                    readingTimer.Dispose();
+                    readingTimer = null;
+                    useTimer = false;
+                }
+
+                readingTimer = new NonFormTimer();
+                // 20fps (50ms) に設定してUIキュー滞留を完全防止
+                readingTimer.Interval = 50.0;
                 readingTimer.Elapsed += ControllerReadingTimer_Elapsed;
                 readingTimer.Start();
+                useTimer = true;
             }
-            else
+        }
+
+        public void DisableControl()
+        {
+            if (dev != null)
             {
-                IsEnabled = false;
-                useTimer = false;
-                readingTimer.Elapsed -= ControllerReadingTimer_Elapsed;
-                readingTimer.Stop();
+                if (useTimer)
+                {
+                    readingTimer.Stop();
+                    readingTimer.Dispose();
+                    readingTimer = null;
+                    useTimer = false;
+                }
+
+                dev = null;
             }
         }
 
         private void ControllerReadingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-                        readingTimer.Stop();
+            if (dev == null)
+                return;
 
-            DS4Device ds = Program.rootHub.DS4Controllers[deviceNum];
-            if (ds != null)
+            // 前回のUI描画タスクがまだDispatcherで実行中の場合はスキップ（未処理キュー蓄積による遅延フリーズを防止）
+            if (Interlocked.CompareExchange(ref _isDrawingActive, 1, 0) != 0)
+                return;
+
+            DS4State cState = dev.GetCurrentStateRef();
+            DS4StateExposed eState = dev.getExposedState();
+
+            double lsX = cState.LX;
+            double lsY = cState.LY;
+            double rsX = cState.RX;
+            double rsY = cState.RY;
+
+            double gyroX = eState.GyroX;
+            double gyroY = eState.GyroY;
+            double gyroZ = eState.GyroZ;
+
+            double accelX = eState.AccelX;
+            double accelY = eState.AccelY;
+            double accelZ = eState.AccelZ;
+
+            int touch0X = 0, touch0Y = 0, touch1X = 0, touch1Y = 0;
+            bool touch0Active = false, touch1Active = false;
+
+            if (cState.TrackPadTouch0.IsActive)
             {
-                // Don't bother waiting for UI thread to grab references
-                //DS4StateExposed tmpexposeState = Program.rootHub.ExposedState[deviceNum];
-                DS4State tmpbaseState = Program.rootHub.getDS4State(deviceNum);
-                DS4State tmpinterState = Program.rootHub.getDS4StateTemp(deviceNum);
-                long cntCalibrating = ds.SixAxis.CntCalibrating;
+                touch0X = cState.TrackPadTouch0.X;
+                touch0Y = cState.TrackPadTouch0.Y;
+                touch0Active = true;
+            }
 
-                // Wait for controller to be in a wait period
-                ds.ReadWaitEv.Wait();
-                ds.ReadWaitEv.Reset();
+            if (cState.TrackPadTouch1.IsActive)
+            {
+                touch1X = cState.TrackPadTouch1.X;
+                touch1Y = cState.TrackPadTouch1.Y;
+                touch1Active = true;
+            }
 
-                // Make copy of current state values for UI thread
-                tmpbaseState.CopyTo(baseState);
-                tmpinterState.CopyTo(interState);
-
-                if (deviceNum != profileDeviceNum)
-                    Mapping.SetCurveAndDeadzone(profileDeviceNum, baseState, interState);
-
-                // Done with copying. Allow input thread to resume
-                ds.ReadWaitEv.Set();
-
-                Dispatcher.Invoke(() =>
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
                 {
-                    int x = baseState.LX;
-                    int y = baseState.LY;
+                    Canvas.SetLeft(lsXLine, 0);
+                    Canvas.SetTop(lsXLine, lsY);
+                    Canvas.SetLeft(lsYLine, lsX);
+                    Canvas.SetTop(lsYLine, 0);
 
-                    Canvas.SetLeft(lsValRec, x / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(lsValRec, y / 255.0 * CANVAS_WIDTH - 3);
-                    //bool mappedLS = interState.LX != x || interState.LY != y;
-                    //if (mappedLS)
-                    //{
-                    Canvas.SetLeft(lsMapValRec, interState.LX / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(lsMapValRec, interState.LY / 255.0 * CANVAS_WIDTH - 3);
-                    //}
+                    Canvas.SetLeft(rsXLine, 0);
+                    Canvas.SetTop(rsXLine, rsY);
+                    Canvas.SetLeft(rsYLine, rsX);
+                    Canvas.SetTop(rsYLine, 0);
 
-                    x = baseState.RX;
-                    y = baseState.RY;
-                    Canvas.SetLeft(rsValRec, x / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(rsValRec, y / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetLeft(rsMapValRec, interState.RX / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(rsMapValRec, interState.RY / 255.0 * CANVAS_WIDTH - 3);
+                    readingsVM.LeftStickX = (int)lsX;
+                    readingsVM.LeftStickY = (int)lsY;
+                    readingsVM.RightStickX = (int)rsX;
+                    readingsVM.RightStickY = (int)rsY;
 
-                    x = exposeState.getAccelX() + 127;
-                    y = exposeState.getAccelZ() + 127;
-                    Canvas.SetLeft(sixAxisValRec, x / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(sixAxisValRec, y / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetLeft(sixAxisMapValRec, Math.Min(Math.Max(interState.Motion.outputAccelX + 127.0, 0), 255.0) / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(sixAxisMapValRec, Math.Min(Math.Max(interState.Motion.outputAccelZ + 127.0, 0), 255.0) / 255.0 * CANVAS_WIDTH - 3);
+                    readingsVM.L2 = cState.L2;
+                    readingsVM.R2 = cState.R2;
 
-                    l2Slider.Value = baseState.L2;
-                    l2ValLbTrans.Y = Math.Min(interState.L2, Math.Max(0, 255)) / 255.0 * -70.0 + TRIG_LB_TRANSFORM_OFFSETY;
-                    if (interState.L2 >= 255)
+                    readingsVM.GyroX = (int)gyroX;
+                    readingsVM.GyroY = (int)gyroY;
+                    readingsVM.GyroZ = (int)gyroZ;
+
+                    readingsVM.AccelX = (int)accelX;
+                    readingsVM.AccelY = (int)accelY;
+                    readingsVM.AccelZ = (int)accelZ;
+
+                    readingsVM.Touch0X = touch0X;
+                    readingsVM.Touch0Y = touch0Y;
+                    readingsVM.Touch0Active = touch0Active;
+
+                    readingsVM.Touch1X = touch1X;
+                    readingsVM.Touch1Y = touch1Y;
+                    readingsVM.Touch1Active = touch1Active;
+
+                    readingsVM.Cross = cState.Cross;
+                    readingsVM.Circle = cState.Circle;
+                    readingsVM.Square = cState.Square;
+                    readingsVM.Triangle = cState.Triangle;
+
+                    readingsVM.DpadUp = cState.DpadUp;
+                    readingsVM.DpadRight = cState.DpadRight;
+                    readingsVM.DpadDown = cState.DpadDown;
+                    readingsVM.DpadLeft = cState.DpadLeft;
+
+                    readingsVM.L1 = cState.L1;
+                    readingsVM.R1 = cState.R1;
+                    readingsVM.L3 = cState.L3;
+                    readingsVM.R3 = cState.R3;
+
+                    readingsVM.Share = cState.Share;
+                    readingsVM.Options = cState.Options;
+                    readingsVM.PS = cState.PS;
+                    readingsVM.TouchButton = cState.TouchButton;
+
+                    readingsVM.InputDelay = dev.Latency;
+                    if (readingsVM.InputDelay > 10.0)
                     {
-                        l2ValLbBrush.Color = Colors.Green;
+                        if (warnMode != LatencyWarnMode.Warn2)
+                        {
+                            warnMode = LatencyWarnMode.Warn2;
+                            inputDelayLb.Foreground = new SolidColorBrush(Colors.Red);
+                        }
                     }
-                    else if (interState.L2 == 0)
+                    else if (readingsVM.InputDelay > 5.0)
                     {
-                        l2ValLbBrush.Color = Colors.Red;
-                    }
-                    else
-                    {
-                        l2ValLbBrush.Color = Colors.Black;
-                    }
-
-                    r2Slider.Value = baseState.R2;
-                    r2ValLbTrans.Y = Math.Min(interState.R2, Math.Max(0, 255)) / 255.0 * -70.0 + TRIG_LB_TRANSFORM_OFFSETY;
-                    if (interState.R2 >= 255)
-                    {
-                        r2ValLbBrush.Color = Colors.Green;
-                    }
-                    else if (interState.R2 == 0)
-                    {
-                        r2ValLbBrush.Color = Colors.Red;
-                    }
-                    else
-                    {
-                        r2ValLbBrush.Color = Colors.Black;
-                    }
-
-                    gyroYawSlider.Value = baseState.Motion.gyroYawFull;
-                    gyroPitchSlider.Value = baseState.Motion.gyroPitchFull;
-                    gyroRollSlider.Value = baseState.Motion.gyroRollFull;
-
-                    accelXSlider.Value = exposeState.getAccelX();
-                    accelYSlider.Value = exposeState.getAccelY();
-                    accelZSlider.Value = exposeState.getAccelZ();
-
-                    touchXValLb.Content = baseState.TrackPadTouch0.X;
-                    touchYValLb.Content = baseState.TrackPadTouch0.Y;
-
-                    double latency = ds.Latency;
-                    int warnInterval = ds.getWarnInterval();
-                    inputDelayLb.Content = string.Format(Properties.Resources.InputDelay,
-                        latency.ToString());
-
-                    if (latency > warnInterval)
-                    {
-                        warnMode = LatencyWarnMode.Warn;
-                        inpuDelayBackBrush.Color = Colors.Red;
-                        inpuDelayForeBrush.Color = Colors.White;
-                    }
-                    else if (latency > (warnInterval * 0.5))
-                    {
-                        warnMode = LatencyWarnMode.Caution;
-                        inpuDelayBackBrush.Color = Colors.Yellow;
-                        inpuDelayForeBrush.Color = Colors.Black;
+                        if (warnMode != LatencyWarnMode.Warn1)
+                        {
+                            warnMode = LatencyWarnMode.Warn1;
+                            inputDelayLb.Foreground = new SolidColorBrush(Colors.Yellow);
+                        }
                     }
                     else
                     {
-                        warnMode = LatencyWarnMode.None;
-                        inpuDelayBackBrush.Color = Colors.Transparent;
-                        inpuDelayForeBrush.Color = SystemColors.WindowTextColor;
+                        if (warnMode != LatencyWarnMode.None)
+                        {
+                            warnMode = LatencyWarnMode.None;
+                            inputDelayLb.Foreground = new SolidColorBrush(Colors.White);
+                        }
                     }
 
-                    prevWarnMode = warnMode;
-
-                    batteryLvlLb.Content = $"{Translations.Strings.Battery}: {baseState.Battery}%";
-                    gyroCalEllipse.Visibility = cntCalibrating > 0 && ((cntCalibrating / 250) % 2 == 1) ? Visibility.Visible : Visibility.Hidden;
-                    UpdateCoordLabels(baseState, interState, exposeState);
-                });
-            }
-
-            if (useTimer)
-            {
-                readingTimer.Start();
-            }
+                    UpdateCoordLabels();
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _isDrawingActive, 0);
+                }
+            }));
         }
 
-        private void UpdateCoordLabels(DS4State inState, DS4State mapState,
-            DS4StateExposed exposeState)
+        private void UpdateCoordLabels()
         {
-            lxInValLb.Content = inState.LX;
-            lxOutValLb.Content = mapState.LX;
-            lyInValLb.Content = inState.LY;
-            lyOutValLb.Content = mapState.LY;
+            sixaxisRecenterLine.X1 = sixaxisRecenterCanvas.ActualWidth / 2.0;
+            sixaxisRecenterLine.X2 = sixaxisRecenterLine.X1;
+        }
 
-            rxInValLb.Content = inState.RX;
-            rxOutValLb.Content = mapState.RX;
-            ryInValLb.Content = inState.RY;
-            ryOutValLb.Content = mapState.RY;
-
-            sixAxisXInValLb.Content = exposeState.AccelX;
-            sixAxisXOutValLb.Content = mapState.Motion.outputAccelX;
-            sixAxisZInValLb.Content = exposeState.AccelZ;
-            sixAxisZOutValLb.Content = mapState.Motion.outputAccelZ;
-
-            l2InValLb.Content = inState.L2;
-            l2OutValLb.Content = mapState.L2;
-            r2InValLb.Content = inState.R2;
-            r2OutValLb.Content = mapState.R2;
+        private void SixaxisRecenterBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (dev != null)
+            {
+                dev.Recenter();
+            }
         }
     }
 }
