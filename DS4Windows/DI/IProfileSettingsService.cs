@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using DS4Windows.DS4Control;
@@ -34,11 +34,6 @@ namespace DS4Windows.DI
         bool[] UseDInputOnlyArray { get; set; }
         bool[] LinkedProfileCheckArray { get; set; }
 
-        int ProfileEditorLeftWidth { get; set; }
-        int ProfileEditorRightWidth { get; set; }
-        int ControllerSelectProfileColWidth { get; set; }
-        int ControllerLinkedProfileColWidth { get; set; }
-        int ControllerLinkProfIdColWidth { get; set; }
 
         bool GetTouchpadActive(int deviceIndex);
         void SetTouchpadActive(int deviceIndex, bool value);
