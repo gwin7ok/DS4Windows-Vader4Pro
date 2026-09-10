@@ -1,4 +1,4 @@
-# Phase6-Step8 計画書: 残りの小型UIファイル群の解消
+# Phase6-Step6 計画書: `ProfileEditor.xaml.cs` のGlobal直参照解消
 
 作成日: 2026-09-09
 対象ブランチ: `For-DI-migration-work`
@@ -9,90 +9,92 @@
 
 ## 0. 前提の明記
 
-本計画書は、Phase6-Plan.md §0.2記載の暫定値（`WelcomeDialog.xaml.cs`9件、`PresetOption.cs`10件、
-`SaveWhere.xaml.cs`5件、`BindingWindow.xaml.cs`5件、合計29件）を基に、**作業方針を先行して定義**する
-ものである。対象の確定件数・個別のメンバ名・移行先サービス名は、Step1の成果物を待って本計画書に反映する。
+本計画書は、Phase6-Plan.md §0.2記載の暫定値（`ProfileEditor.xaml.cs`内18件）を基に、**作業方針・
+既存パターンの再利用方針を先行して定義**するものである。対象の確定件数・個別のメンバ名・移行先サービス名は、
+Step1の成果物を待って本計画書に反映する。
 
-ドメイン3（起動・UI層）の最終Stepであり、Phase6-Plan.mdでも「件数が少なく個別ファイルの複雑度も低いため、
-1PRでまとめて対応可能な見込み」と位置づけられている。Step2〜7で確立された置換パターンの総仕上げとして、
-機械的に処理することを想定する。
-
-### `BindingWindow.xaml.cs`に関する既知の前提
-
-`BindingWindow.xaml.cs`は、Phase5-Step14前クリーンアップ（PR-A）にて`Program.rootHub`の無条件直接代入
-（`controlService`取得部分）を`AppHost.GetService<ControlService>() ?? Program.rootHub`形式へ**既に
-統一済み**である。本Step8で扱う5件は、それとは別の`Global.*`メンバ参照（`ControlService`取得とは無関係の
-設定値等）であることを確認した上で着手する。
+`ProfileEditor.xaml.cs`は、Phase5-Step13（`MainWindow.xaml.cs`のUI層DI接続）完了時点で**対象漏れに
+なっていたファイル**である（Phase5-Step13+14-Addendum-Findings-Report、2026-09-09実地調査で判明）。
+Step6は、Phase5-Step13および同Step14前クリーンアップで確立された置換パターンを、本ファイルへ
+横展開する作業と位置づけられる。
 
 ---
 
 ## 1. 目的
 
-`WelcomeDialog.xaml.cs`, `PresetOption.cs`, `SaveWhere.xaml.cs`, `BindingWindow.xaml.cs`内の
-`Global.*`直接参照（Step1確定値、暫定29件）を、既存または軽微拡張したDIサービス経由の呼び出しへ置換する。
+`ProfileEditor.xaml.cs`内の`Global.*`直接参照（Step1確定値、暫定18件）を、既存のDIサービス経由の
+呼び出しへ置換し、UI層（プロファイル編集画面）のGlobal依存を解消する。
 
 ---
 
-## 2. 各ファイルの性質と想定される移行先
+## 2. 作業方針
 
-| ファイル | 想定される参照内容 | 想定移行先 |
-|---|---|---|
-| `WelcomeDialog.xaml.cs` | 初回起動時のウェルカム画面。`firstRun`関連、言語/テーマ初期表示 | `IAppSettingsService`（`FirstRun`、Phase5-Step14前クリーンアップで既に追加済み）、`IAppearanceSettingsService` |
-| `PresetOption.cs` | プリセット選択UIの補助クラス。プロファイル関連の定数・設定値 | `IProfileSettingsService`または`IProfileRepository` |
-| `SaveWhere.xaml.cs` | 保存先選択ダイアログ。パス関連 | `IPathService` |
-| `BindingWindow.xaml.cs` | ボタン割り当て画面。`ControlService`取得は解消済み（上記参照）、残りは設定値参照と推測 | `IProfileSettingsService`等 |
+### 2.1 既存パターンの踏襲（新規設計を避ける）
 
-Step1監査で上記推測が正しいか確定させ、実際の移行先を確定する。
+`MainWindow.xaml.cs`は既にPhase5-Step13およびStep14前クリーンアップ（PR-A〜E）で同種の作業を完了している。
+`ProfileEditor.xaml.cs`の18件は、性質上`MainWindow.xaml.cs`で既に解消済みの参照と重複・類似している
+可能性が高い（例: パス関連、環境情報、アプリ設定関連）。Step6では新規設計を最小限にとどめ、以下の
+既存パターンをそのまま適用することを基本方針とする。
+
+```csharp
+// 既存パターン（MainWindow.xaml.cs, Phase5-Step13/Step14前クリーンアップで確立）
+private readonly DS4Windows.DI.IPathService pathService;
+// ...
+pathService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IPathService>() ?? Global.PathServiceInstance;
+```
+
+`ProfileEditor.xaml.cs`にコンストラクタでDIサービスを受け取るフィールドが未整備の場合は、上記と同一の
+命名・フォールバックパターンで新設する。
+
+### 2.2 `ProfileListHolder`への参照に関する特記事項
+
+Phase5-Step13+14-Addendum-Findings-Report-Part2（2026-09-09）の調査により、`ProfileEditor.xaml.cs`は
+`(Application.Current.MainWindow as MainWindow).ProfileListHolder`という形で`MainWindow`のインスタンス
+プロパティへ直接アクセスしていることが判明している。これは`Global.*`静的参照ではなくView間の直接結合
+であり、**本Stepのスコープ（Global直接参照の解消）には含まれない**。当該箇所の解消要否は、Step6の
+成果物内で「別種の技術的負債」として記録するにとどめ、対応するかどうかはPhase6完了後の判断とする。
+
+### 2.3 分類ごとの対応方針
+
+Step2〜5と同様、既存DIサービスへの単純リダイレクト(a)を優先し、軽微拡張(b)、新規設計(c)の順で
+対応する。`MainWindow.xaml.cs`側で既に同名メンバがDIサービスに存在する場合は、(a)に分類される
+可能性が高い。
 
 ---
 
-## 3. 作業方針
-
-### 3.1 まとめて1PRで対応する方針の妥当性確認
-
-Phase6-Plan.mdの想定通り、4ファイル合計29件・個別ファイルあたり平均7件程度と少数であるため、
-Step1監査の結果、各ファイルの参照が全て分類(a)（単純リダイレクト）であることが確認できれば、
-1PRでまとめて対応する。ただし、いずれかのファイルで分類(b)(c)に該当する項目が見つかった場合は、
-該当ファイルのみ別PRに切り出す。
-
-### 3.2 `PresetOption.cs`の性質確認
-
-`PresetOption.cs`はUI要素そのもの（Window/UserControl）ではなく、ヘルパークラスである可能性がある。
-全体計画書§4.5カテゴリDまたはEに該当する「データの入れ物」「動的ドメインオブジェクト」でないかを
-Step1監査で確認し、該当する場合はカテゴリ除外対象として扱う（無理にDI化しない）。
-
----
-
-## 4. PR粒度・実施順序
+## 3. PR粒度・実施順序
 
 | PR | 内容 |
 |---|---|
-| PR-1（基本方針） | 4ファイル全ての分類(a)をまとめて1PRで対応 |
-| PR-2（該当時のみ） | 分類(b)(c)に該当する項目がある場合、該当ファイルのみ個別対応 |
+| PR-1 | `MainWindow.xaml.cs`で既に解消済みのメンバと重複するもの（分類(a)、最低リスク） |
+| PR-2 | `ProfileEditor.xaml.cs`固有の分類(a)(b) |
+| PR-3（該当時のみ） | 分類(c)（新規インターフェース設計・実装・配線） |
 
 ---
 
-## 5. 完了判定基準
+## 4. 完了判定基準
 
-- [ ] 4ファイル内の`Global.`直接参照（Step1確定分）が0件になっていること。
-- [ ] `PresetOption.cs`がUI要素かヘルパークラスかの性質確認が完了し、カテゴリ除外の要否が判断されていること。
-- [ ] 初回起動時のウェルカム画面、プリセット選択、保存先選択、ボタン割り当て画面が、置換前と同等に動作すること。
+- [ ] `ProfileEditor.xaml.cs`内の`Global.`直接参照（Step1確定分）が0件になっていること。
+- [ ] 新設したフィールド・初期化コードが、`MainWindow.xaml.cs`の既存パターンと命名・構造ともに一貫していること。
+- [ ] プロファイル編集画面（新規作成・複製・削除・各種設定タブ）の操作が、置換前と同等に動作すること。
+- [ ] `ProfileListHolder`へのView間直接参照について、対応要否の判断が記録されていること（対応自体は任意）。
 - [ ] 既存自動テストが全件成功を維持していること。
 
 ---
 
-## 6. リスクと対応
+## 5. リスクと対応
 
 | リスク | 対応 |
 |---|---|
-| `WelcomeDialog.xaml.cs`は初回起動時のみ表示されるため、通常のテスト手順では見落とされやすい | Step9の実機検証項目に「設定ファイル削除後の初回起動確認」を明示的に含める（Phase5-Step14前クリーンアップでも同様の考慮を実施済み） |
-| `PresetOption.cs`がカテゴリD/Eに該当し、実質的な対応不要と判明する可能性 | その場合は「対応不要」を正式な結論として記録し、無理に対応を作らない |
-| `BindingWindow.xaml.cs`の残り5件が、Phase5-Step14前クリーンアップで解消済みの`Program.rootHub`関連と誤って重複対応される | 着手前に該当ファイルの現在のコードを確認し、`controlService`取得部分には触れないことを確認する |
+| `ProfileEditor.xaml.cs`はUIタブ数が多く、影響範囲の見落としが発生しやすい | Step1監査で全18件の行番号・呼び出し箇所を事前に一覧化し、タブ単位で網羅的に確認する |
+| `MainWindow.xaml.cs`との重複パターンに気づかず、独自の異なる実装をしてしまう | PR-1で明示的に「MainWindow.xaml.cs重複分」を切り出し、実装を先に確認してからコードを揃える |
+| `ProfileListHolder`のView間結合に誤って手を出し、スコープが拡大する | §2.2の通り本Stepのスコープ外と明記し、着手しない |
 
 ---
 
-## 7. 次のアクション
+## 6. 次のアクション
 
-1. Phase6-Step1の完了後、4ファイル分の確定件数・分類・`PresetOption.cs`の性質を確認する。
-2. 承認後、PR-1（4ファイル一括対応）から着手する。
-3. 完了後、`Phase6-Status.md`のStep8欄を更新し、Step9（自動テスト・実機検証）の計画書作成へ進む。
+1. Phase6-Step1の完了後、`ProfileEditor.xaml.cs`分の確定件数・分類・`MainWindow.xaml.cs`との重複有無を確認する。
+2. 承認後、PR-1（`MainWindow.xaml.cs`重複分）から着手する。
+3. 完了後、`Phase6-Status.md`のStep6欄を更新し、Step7（`SettingsViewModel.cs`他 主要ViewModel群の解消）の
+   計画書作成へ進む。

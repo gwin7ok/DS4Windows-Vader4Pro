@@ -1,115 +1,98 @@
-# Phase6-Step10 計画書: 呼出元0件シムの物理削除判断
+# Phase6-Step8 計画書: 残りの小型UIファイル群の解消
 
 作成日: 2026-09-09
 対象ブランチ: `For-DI-migration-work`
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
-着手前提: Phase6-Step9（自動テスト・実機検証）の完了
+着手前提: Phase6-Step1（詳細監査と対象確定）の完了、および`Phase6-Step1-Global-Usage-Classification-Report.md`の承認
 
 ---
 
 ## 0. 前提の明記
 
-Step10はPhase6の最終ステップであり、Step2〜8で対象とした呼び出し元側の置換が完了した結果、
-`Global`（`ScpUtil.cs`）内で**呼出元0件となったメンバ**を特定し、`[Obsolete]`付与および削除候補リスト化を
-行う。Phase5-Step15（Legacy shim削除判断）と同種の作業であり、安全側に倒す方針（即時物理削除は行わない）
-を踏襲する。
+本計画書は、Phase6-Plan.md §0.2記載の暫定値（`WelcomeDialog.xaml.cs`9件、`PresetOption.cs`10件、
+`SaveWhere.xaml.cs`5件、`BindingWindow.xaml.cs`5件、合計29件）を基に、**作業方針を先行して定義**する
+ものである。対象の確定件数・個別のメンバ名・移行先サービス名は、Step1の成果物を待って本計画書に反映する。
 
-Phase5-Step15と本Stepの関係が重複しないよう、対象範囲を明確に区別する。
+ドメイン3（起動・UI層）の最終Stepであり、Phase6-Plan.mdでも「件数が少なく個別ファイルの複雑度も低いため、
+1PRでまとめて対応可能な見込み」と位置づけられている。Step2〜7で確立された置換パターンの総仕上げとして、
+機械的に処理することを想定する。
 
-| Step | 対象 |
-|---|---|
-| Phase5-Step15 | Phase5（DIサービス内部のLegacy再委譲監査）の結果、呼出元0件となったシム |
-| **Phase6-Step10（本Step）** | **Phase6（Step2〜8の呼び出し元側置換）の結果、新たに呼出元0件となった`Global`メンバ** |
+### `BindingWindow.xaml.cs`に関する既知の前提
 
-Phase5-Step15が本Stepより先に完了している前提のため、両者の削除候補リストは最終的に統合する。
+`BindingWindow.xaml.cs`は、Phase5-Step14前クリーンアップ（PR-A）にて`Program.rootHub`の無条件直接代入
+（`controlService`取得部分）を`AppHost.GetService<ControlService>() ?? Program.rootHub`形式へ**既に
+統一済み**である。本Step8で扱う5件は、それとは別の`Global.*`メンバ参照（`ControlService`取得とは無関係の
+設定値等）であることを確認した上で着手する。
 
 ---
 
 ## 1. 目的
 
-Phase6-Step2〜8完了後の`Global`（`ScpUtil.cs`）について、リポジトリ全体を対象とした実地grep調査により
-呼出元0件となったメンバを特定し、`[Obsolete]`属性を付与した上で、削除候補リストとして記録する。
+`WelcomeDialog.xaml.cs`, `PresetOption.cs`, `SaveWhere.xaml.cs`, `BindingWindow.xaml.cs`内の
+`Global.*`直接参照（Step1確定値、暫定29件）を、既存または軽微拡張したDIサービス経由の呼び出しへ置換する。
 
 ---
 
-## 2. 作業方針
+## 2. 各ファイルの性質と想定される移行先
 
-### 2.1 実地再監査（Step1調査の再実行）
+| ファイル | 想定される参照内容 | 想定移行先 |
+|---|---|---|
+| `WelcomeDialog.xaml.cs` | 初回起動時のウェルカム画面。`firstRun`関連、言語/テーマ初期表示 | `IAppSettingsService`（`FirstRun`、Phase5-Step14前クリーンアップで既に追加済み）、`IAppearanceSettingsService` |
+| `PresetOption.cs` | プリセット選択UIの補助クラス。プロファイル関連の定数・設定値 | `IProfileSettingsService`または`IProfileRepository` |
+| `SaveWhere.xaml.cs` | 保存先選択ダイアログ。パス関連 | `IPathService` |
+| `BindingWindow.xaml.cs` | ボタン割り当て画面。`ControlService`取得は解消済み（上記参照）、残りは設定値参照と推測 | `IProfileSettingsService`等 |
 
-Phase6-Step1で実施したのと同じ手法（`git clone`によるリポジトリ全文grep、`Global.`修飾形式と
-`using static`による無修飾形式の両方を検索）を、**Step2〜8完了後の最新コードに対して再実行**する。
-Step1時点の分類がStep2〜8の実装過程で変化している可能性があるため、Step1の結果をそのまま流用せず、
-必ず再監査する。
-
-### 2.2 `[Obsolete]`付与の基準
-
-以下の条件を全て満たすメンバにのみ`[Obsolete]`を付与する。
-
-1. リポジトリ全体（テストファイル含む）で、`Global.`修飾・無修飾形式のいずれでも呼出元が0件であること。
-2. 真の定数（カテゴリB）に該当しないこと（定数は呼出元が少なくても`[Obsolete]`化の対象ではない）。
-3. Phase5-Step15で既に`[Obsolete]`付与・削除判断済みの対象と重複していないこと。
-
-`[Obsolete]`のメッセージには、置換先のDIサービス名を明記する（例:
-`[Obsolete("IProfileSettingsService.GetLSDeadzoneを使用してください。Phase6-Step10で呼出元0件を確認済み")]`)。
-
-### 2.3 即時物理削除は行わない
-
-Phase5-Step15の方針を踏襲し、`[Obsolete]`付与にとどめ、**物理的な削除は別変更（次回リリースサイクル）
-として扱う**。理由は以下の通り。
-
-- 外部プラグインや今後のフォーク作業等で、想定していない参照経路が存在するリスクをゼロにできない。
-- `[Obsolete]`付与後、一定期間ビルド警告として可視化することで、見落としがあれば早期に発覚する。
+Step1監査で上記推測が正しいか確定させ、実際の移行先を確定する。
 
 ---
 
-## 3. 成果物
+## 3. 作業方針
 
-`docs-forDIMG/MadeByAgent/Phase6-Step10-Obsolete-Candidates-Report.md`として以下を含める。
+### 3.1 まとめて1PRで対応する方針の妥当性確認
 
-1. 呼出元0件が確定したメンバの一覧（メンバ名、行番号、`[Obsolete]`メッセージ内容）
-2. Phase5-Step15の削除候補リストとの統合結果
-3. `Global`（`ScpUtil.cs`）全体における、Phase6完了時点での呼出元0件メンバの累計件数と、
-   元のメンバ総数に対する割合
-4. Phase6完了後もなお呼出元が残っている`Global`メンバがあれば、その理由（カテゴリA〜Fに該当するのか、
-   Step2〜8で対応しきれなかった残課題なのか）を明記する
+Phase6-Plan.mdの想定通り、4ファイル合計29件・個別ファイルあたり平均7件程度と少数であるため、
+Step1監査の結果、各ファイルの参照が全て分類(a)（単純リダイレクト）であることが確認できれば、
+1PRでまとめて対応する。ただし、いずれかのファイルで分類(b)(c)に該当する項目が見つかった場合は、
+該当ファイルのみ別PRに切り出す。
+
+### 3.2 `PresetOption.cs`の性質確認
+
+`PresetOption.cs`はUI要素そのもの（Window/UserControl）ではなく、ヘルパークラスである可能性がある。
+全体計画書§4.5カテゴリDまたはEに該当する「データの入れ物」「動的ドメインオブジェクト」でないかを
+Step1監査で確認し、該当する場合はカテゴリ除外対象として扱う（無理にDI化しない）。
 
 ---
 
-## 4. 完了判定基準
+## 4. PR粒度・実施順序
 
-- [ ] Step2〜8完了後のコードに対する実地再監査が完了していること。
-- [ ] 呼出元0件が確定したメンバ全てに`[Obsolete]`が付与されていること。
-- [ ] `[Obsolete]`メッセージに置換先のDIサービス名が明記されていること。
-- [ ] Phase5-Step15の削除候補リストとの重複がないこと（統合済みであること）。
-- [ ] `[Obsolete]`付与後もビルドが成功すること（警告は許容するが、エラーは許容しない）。
+| PR | 内容 |
+|---|---|
+| PR-1（基本方針） | 4ファイル全ての分類(a)をまとめて1PRで対応 |
+| PR-2（該当時のみ） | 分類(b)(c)に該当する項目がある場合、該当ファイルのみ個別対応 |
+
+---
+
+## 5. 完了判定基準
+
+- [ ] 4ファイル内の`Global.`直接参照（Step1確定分）が0件になっていること。
+- [ ] `PresetOption.cs`がUI要素かヘルパークラスかの性質確認が完了し、カテゴリ除外の要否が判断されていること。
+- [ ] 初回起動時のウェルカム画面、プリセット選択、保存先選択、ボタン割り当て画面が、置換前と同等に動作すること。
 - [ ] 既存自動テストが全件成功を維持していること。
-- [ ] `Phase6-Step10-Obsolete-Candidates-Report.md`が作成され、Phase6完了時点での残存状況が
-      正確に記録されていること。
 
 ---
 
-## 5. リスクと対応
+## 6. リスクと対応
 
 | リスク | 対応 |
 |---|---|
-| `[Obsolete]`付与により、既存コード（Step2〜8で見落とした呼び出し元）でビルド警告が大量発生する | 警告が発生した場合は、当該箇所がStep2〜8で見落とされた実利用箇所であることを意味するため、`[Obsolete]`を取り消し、該当Stepへ差し戻して対応する |
-| Phase5-Step15との削除候補リスト統合時に、同一メンバに異なる`[Obsolete]`メッセージが重複して付与される | 統合作業時に重複チェックを行い、1メンバにつき1つの`[Obsolete]`属性のみを残す |
-| 実地再監査がStep1時点の分類と大きく異なり、Step2〜8で想定していた完了条件（193件解消）を満たしていないことが判明する | その場合はPhase6を「完了」とせず、残存分を新たなStepとして追加するか、Phase6-Plan.mdの完了条件自体を見直すかをユーザーに提示し判断を仰ぐ |
-
----
-
-## 6. Phase6完了後のアクション
-
-1. 本Stepの成果物（`Phase6-Step10-Obsolete-Candidates-Report.md`）を確認する。
-2. `Phase6-Status.md`の全Step欄を更新し、Phase6を完了扱いとする。
-3. `DI-App-Wide-Migration-Plan.md`のPhase6行を「完了」に更新し、§6.12の定量指標に実績値を反映する。
-4. Phase7（`Mapping.cs`完全instance化）の個別計画書（`Phase7-Plan.md`）を新規策定する。
+| `WelcomeDialog.xaml.cs`は初回起動時のみ表示されるため、通常のテスト手順では見落とされやすい | Step9の実機検証項目に「設定ファイル削除後の初回起動確認」を明示的に含める（Phase5-Step14前クリーンアップでも同様の考慮を実施済み） |
+| `PresetOption.cs`がカテゴリD/Eに該当し、実質的な対応不要と判明する可能性 | その場合は「対応不要」を正式な結論として記録し、無理に対応を作らない |
+| `BindingWindow.xaml.cs`の残り5件が、Phase5-Step14前クリーンアップで解消済みの`Program.rootHub`関連と誤って重複対応される | 着手前に該当ファイルの現在のコードを確認し、`controlService`取得部分には触れないことを確認する |
 
 ---
 
 ## 7. 次のアクション
 
-1. Phase6-Step9の完了後、本Stepに着手する。
-2. §2の実地再監査を実施し、`[Obsolete]`付与対象を確定する。
-3. `Phase6-Step10-Obsolete-Candidates-Report.md`を作成する。
-4. 完了後、上記§6の「Phase6完了後のアクション」へ進む。
+1. Phase6-Step1の完了後、4ファイル分の確定件数・分類・`PresetOption.cs`の性質を確認する。
+2. 承認後、PR-1（4ファイル一括対応）から着手する。
+3. 完了後、`Phase6-Status.md`のStep8欄を更新し、Step9（自動テスト・実機検証）の計画書作成へ進む。

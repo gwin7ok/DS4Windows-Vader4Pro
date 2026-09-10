@@ -1,4 +1,4 @@
-# Phase6-Step7 計画書: `SettingsViewModel.cs`他 主要ViewModel群の解消
+# Phase6-Step5 計画書: `App.xaml.cs` 起動シーケンスの整理
 
 作成日: 2026-09-09
 対象ブランチ: `For-DI-migration-work`
@@ -9,79 +9,72 @@
 
 ## 0. 前提の明記
 
-本計画書は、Phase6-Plan.md §0.2記載の暫定値（`SettingsViewModel.cs`23件、`MainWindowsViewModel.cs`8件、
-`TrayIconViewModel.cs`5件、`ProfileSettingsViewModel.cs`4件、合計39件）を基に、**作業方針を先行して
-定義**するものである。対象の確定件数・個別のメンバ名・移行先サービス名は、Step1の成果物を待って
-本計画書に反映する。
+本計画書は、Phase6-Plan.md §0.2記載の暫定値（`App.xaml.cs`内22件）を基に、**作業方針・
+Pre-Host/Post-Hostの境界確認手順を先行して定義**するものである。対象の確定件数・個別のメンバ名・
+移行先サービス名は、Step1の成果物を待って本計画書に反映する。
 
-### 重要な前提の区別
-
-全体計画書§4.3（2026-09-09注記）で明記した通り、**「ViewModelがDI/Factory化されていること」と
-「ViewModel内部のロジックがGlobalを直接呼んでいないこと」は別の問題**である。対象4ファイルは
-いずれもPhase4-Step9でDI/Factory化が完了済みだが、コンストラクタ注入とは別に、メソッド内部で
-`Global.*`を直接呼んでいる箇所が残存している。Step7はこの内部ロジックの残存参照を対象とする
-（ViewModelの生成方式自体には変更を加えない）。
+`App.xaml.cs`はドメイン3（起動・UI層）の最初のStepであり、かつ**アプリ全体のComposition Root**
+そのものである。他のStepと異なり、**変更が起動失敗という最も致命的な形で顕在化しうる**ため、
+慎重な事前分類と段階的検証を必須とする。
 
 ---
 
 ## 1. 目的
 
-`SettingsViewModel.cs`, `MainWindowsViewModel.cs`, `TrayIconViewModel.cs`, `ProfileSettingsViewModel.cs`
-内の`Global.*`直接参照（Step1確定値、暫定39件）を、コンストラクタで既に注入されているDIサービス、
-または軽微拡張したDIサービス経由の呼び出しへ置換する。
+`App.xaml.cs`内の`Global.*`直接参照（Step1確定値、暫定22件）のうち、DIコンテナ構築後に評価すべき
+ものをDIサービス経由の呼び出しへ置換する。全体計画書§5.2で定義したPre-Host/Host構築/アプリ初期化/
+UI起動の4フェーズ構造を崩さないことを最優先とする。
 
 ---
 
 ## 2. 作業方針
 
-### 2.1 ファイルごとの優先順位
+### 2.1 Pre-Host / Post-Host の分類（最重要）
 
-件数の多い順に着手する（Phase4/5の実績上、件数が多いファイルほど機械的な単純リダイレクトの割合が
-高い傾向があるため）。
+全体計画書§4.5カテゴリAで確定した通り、「DIコンテナ構築前のパス解決・ログ初期化」は**原理的にDI化
+対象外**である。Step5の最初の作業は、22件の参照それぞれについて以下を判定することである。
 
-1. `SettingsViewModel.cs`（23件）: アプリ全体設定画面。多岐にわたる設定項目のため、Step1での
-   分類がとりわけ重要。
-2. `MainWindowsViewModel.cs`（8件）: メインウィンドウの画面状態。
-3. `TrayIconViewModel.cs`（5件）: トレイアイコン関連。`MainWindow.xaml.cs`のトレイアイコンCustomName
-   対応（Phase5-Step14前クリーンアップPR-C）と重複領域がある可能性がある。
-4. `ProfileSettingsViewModel.cs`（4件）: パターンC（ファクトリ生成、実行時パラメータ`device`を受け取る）。
-   件数は最も少ないが、ファクトリ経由で注入されるサービスとの整合を個別に確認する。
+| 分類 | 定義 | 対応方針 |
+|---|---|---|
+| **Pre-Host該当（カテゴリA、対象外）** | `AppHost.CreateHost()`呼び出しより前に実行される、またはHost構築自体の前提となる処理（パス確定、多重起動チェックの初期段階等） | Step1監査時点でカテゴリAとして除外し、Step5では一切変更しない |
+| **Post-Host該当（Step5の対象）** | DIコンテナ構築後、`OnStartup`の後半や`CreateControlService()`等で評価される処理 | 既存DIサービス（`IPathService`, `IEnvironmentService`, `IAppSettingsService`等）経由へ置換する |
 
-### 2.2 既存コンストラクタ注入サービスの活用確認
+この判定を誤り、Pre-Host処理をDIサービス経由に置き換えてしまうと、「DIコンテナを構築するためにDI解決が
+必要」という自己矛盾（全体計画書§5.2フェーズ0の注記参照）が発生し、起動不能に陥るリスクがある。
 
-各ViewModelは既にPhase4-Step9でDI/Factory化されており、コンストラクタで複数のDIサービスを受け取って
-いる可能性が高い。Step7の作業の多くは、**新たな依存を注入するのではなく、既に注入済みのサービスの
-未使用メンバへのアクセスを追加する、または既存の`Global.*`呼び出しを既存フィールド経由に差し替える**
-だけで完了する可能性がある。着手前に各ViewModelのコンストラクタ・既存フィールド一覧を確認し、
-重複投資を避ける。
+### 2.2 On-Demandパス評価原則の継承
 
-### 2.3 `TrayIconViewModel.cs`と`MainWindow.xaml.cs`の重複確認
+Phase5-Step10で確立された「起動時キャッシュを持たず、都度Global/DIサービスから値を取得する」という
+原則を、`App.xaml.cs`の置換にも適用する。特にパス関連（`exelocation`, `appDataPpath`相当）は、
+Phase5-Step14前クリーンアップで`IPathService.ExecutablePath`等が既に整備されているため、その活用を
+優先する。
 
-Phase5-Step14前クリーンアップのPR-C・PR-Eで、`MainWindow.xaml.cs`側のトレイアイコン関連
-（`ExecutablePath`, `IAppearanceSettingsService.GetIconResourcePath`等）は既に解消済みである。
-`TrayIconViewModel.cs`側の5件が同様の内容であれば、新規実装は不要でMainWindow側の既存サービスを
-再利用するだけで済む可能性が高い。
+### 2.3 多重起動チェックとの関係
+
+`App.xaml.cs`には多重起動チェック処理が含まれる可能性がある（全体計画書§4.4分類⑥、
+`IProcessInspector`/`IProcessLauncher`が既存の移行先）。該当する参照があれば、既存の
+`IProcessInspector`との重複がないか確認し、重複があれば統合する。
 
 ---
 
 ## 3. PR粒度・実施順序
 
-| PR | 内容 |
-|---|---|
-| PR-1 | `SettingsViewModel.cs`の分類(a)（単純リダイレクト） |
-| PR-2 | `SettingsViewModel.cs`の分類(b)（既存サービス拡張を伴うもの） |
-| PR-3 | `MainWindowsViewModel.cs`の全件 |
-| PR-4 | `TrayIconViewModel.cs`の全件（`MainWindow.xaml.cs`との重複確認込み） |
-| PR-5 | `ProfileSettingsViewModel.cs`の全件（ファクトリ注入サービスとの整合確認込み） |
+1. **PR-1**: Pre-Host/Post-Hostの分類確定（実装を伴わない、Step1成果物のレビューと確定のみ）。
+2. **PR-2**: Post-Host該当項目のうち、分類(a)単純リダイレクト。
+3. **PR-3**: Post-Host該当項目のうち、分類(b)中程度作業。
+
+各PR完了ごとに、**アプリを実際に起動し、正常に起動・終了できることを確認する**（自動テストに加えて
+必須の手動確認項目とする）。
 
 ---
 
 ## 4. 完了判定基準
 
-- [ ] 対象4ファイル内の`Global.`直接参照（Step1確定分）が0件になっていること。
-- [ ] 各ViewModelの既存コンストラクタ注入パターンに変更が加えられていないこと（新規依存の追加は
-      既存サービスの拡張で対応し、コンストラクタシグネチャ自体の変更は最小限にとどめる）。
-- [ ] 設定画面・メインウィンドウ・トレイアイコン・プロファイル編集画面の操作が、置換前と同等に動作すること。
+- [ ] `App.xaml.cs`内の22件全てについて、Pre-Host/Post-Hostの分類が完了していること。
+- [ ] Post-Host該当項目の`Global.`直接参照が、DIサービス経由の呼び出しに置換されていること。
+- [ ] Pre-Host該当項目に一切変更が加えられていないこと。
+- [ ] 各PR適用後、アプリが正常に起動・終了できることを実機（開発環境）で確認済みであること。
+- [ ] 起動時間に体感可能な遅延が生じていないこと。
 - [ ] 既存自動テストが全件成功を維持していること。
 
 ---
@@ -90,14 +83,15 @@ Phase5-Step14前クリーンアップのPR-C・PR-Eで、`MainWindow.xaml.cs`側
 
 | リスク | 対応 |
 |---|---|
-| `SettingsViewModel.cs`の23件が多岐にわたる設定項目のため、分類作業が煩雑になる | Step1で機能グループ別（言語/テーマ、更新チェック、通知、デバイス関連等）に整理してもらい、PR-1/2をさらにサブPRへ分割してもよい |
-| `TrayIconViewModel.cs`と`MainWindow.xaml.cs`の重複箇所で実装がずれる | PR-4着手前に`MainWindow.xaml.cs`の該当実装を再確認し、同一のサービス呼び出しに揃える |
-| `ProfileSettingsViewModel.cs`はパターンC（ファクトリ生成）のため、ファクトリのシグネチャ変更が必要になる可能性 | ファクトリシグネチャの変更が必要と判明した場合は、着手前にユーザーへ影響範囲を提示し承認を得る |
+| Pre-Host/Post-Hostの分類を誤り、起動不能に陥る | §2.1の判定を必ずStep1成果物に基づいて行い、疑わしい項目は保守的にPre-Host（対象外）側に倒す。各PR後に必ず実起動確認を行う |
+| 多重起動チェックロジックとの重複・競合 | 既存`IProcessInspector`との重複確認を事前に行う（§2.3） |
+| 起動シーケンスの変更がインストーラー・初回起動時の挙動に影響する | 初回起動相当のテスト（設定ファイル削除後の起動）をStep9の実機検証に追加する |
 
 ---
 
 ## 6. 次のアクション
 
-1. Phase6-Step1の完了後、対象4ファイル分の確定件数・分類・既存コンストラクタ注入サービス一覧を確認する。
-2. 承認後、PR-1（`SettingsViewModel.cs`の単純リダイレクト）から着手する。
-3. 完了後、`Phase6-Status.md`のStep7欄を更新し、Step8（残りの小型UIファイル群の解消）の計画書作成へ進む。
+1. Phase6-Step1の完了後、`App.xaml.cs`分の確定件数・Pre-Host/Post-Host分類を確認する。
+2. 承認後、PR-1（分類確定のレビュー）→PR-2→PR-3の順に着手する。
+3. 完了後、`Phase6-Status.md`のStep5欄を更新し、Step6（`ProfileEditor.xaml.cs`のGlobal直参照解消）の
+   計画書作成へ進む。
