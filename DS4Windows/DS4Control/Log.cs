@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -54,6 +54,11 @@ namespace DS4Windows
         public static bool IsTraceEnabled => Logger.IsTraceEnabled;
 
         // Errorレベルログ専用メソッド（エラー情報用）
+                // Warnレベルログ専用メソッド（警告情報用）
+        public static void LogWarn(string data)
+        {
+            Logger.Warn(data);
+        }
         public static void LogError(string data)
         {
             Logger.Error(data);

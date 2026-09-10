@@ -123,9 +123,19 @@ namespace DS4Windows
                     success = true;
                 };
 
-                if (device != null)
+                                if (device != null)
                 {
-                    device.HaltReportingRunAction(applyAction);
+                    // SpecialAction（入力スレッド自身）からの呼び出し時の自己待機デッドロックを防止。
+                    // 入力スレッド自身が実行している場合は既に安全に停止中であるため直接実行する。
+                    bool isSelfThread = (System.Threading.Thread.CurrentThread == device.inputThread);
+                    if (isSelfThread)
+                    {
+                        applyAction();
+                    }
+                    else
+                    {
+                        device.HaltReportingRunAction(applyAction);
+                    }
                 }
                 else
                 {
