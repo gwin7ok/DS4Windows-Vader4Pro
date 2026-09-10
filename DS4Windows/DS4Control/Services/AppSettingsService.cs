@@ -261,31 +261,33 @@ namespace DS4Windows.Services
         // ---- Phase5-Step14: プロファイル編集画面・SpecialAction カラム幅の永続化 ----
         public int ProfileEditorLeftWidth
         {
-            get { lock (_syncLock) { return Global.ProfileEditorLeftWidth; } }
-            set { lock (_syncLock) { Global.ProfileEditorLeftWidth = value; } }
+            get => Global.ProfileEditorLeftWidth;
+            set => Global.ProfileEditorLeftWidth = value;
         }
 
         public int ProfileEditorRightWidth
         {
-            get { lock (_syncLock) { return Global.ProfileEditorRightWidth; } }
-            set { lock (_syncLock) { Global.ProfileEditorRightWidth = value; } }
+            get => Global.ProfileEditorRightWidth;
+            set => Global.ProfileEditorRightWidth = value;
         }
 
         public int SpecialActionNameColWidth
         {
-            get { lock (_syncLock) { return Global.SpecialActionNameColWidth; } }
-            set { lock (_syncLock) { Global.SpecialActionNameColWidth = value; } }
+            get => Global.SpecialActionNameColWidth;
+            set => Global.SpecialActionNameColWidth = value;
         }
 
         public int SpecialActionTriggerColWidth
         {
-            get { lock (_syncLock) { return Global.SpecialActionTriggerColWidth; } }
-            set { lock (_syncLock) { Global.SpecialActionTriggerColWidth = value; } }
+            get => Global.SpecialActionTriggerColWidth;
+            set => Global.SpecialActionTriggerColWidth = value;
         }
 
         public int SpecialActionDetailColWidth
         {
-            get { lock (_syncLock) { return Global.SpecialActionDetailColWidth; } }
+            get => Global.SpecialActionDetailColWidth;
+            set => Global.SpecialActionDetailColWidth = value;
+        }
             set { lock (_syncLock) { Global.SpecialActionDetailColWidth = value; } }
         }
 
