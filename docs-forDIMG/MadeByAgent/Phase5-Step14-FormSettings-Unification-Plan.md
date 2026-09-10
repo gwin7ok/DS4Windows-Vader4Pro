@@ -1,6 +1,7 @@
 # Phase 5 - Step 14 個別計画書: フォーム/カラム幅設定の SSOT 統一（EnvironmentService重複排除 ＆ Global直参照のDI化）
 
 作成日: 2026-09-10
+改訂日: 2026-09-11（全設定項目監査に伴う INotificationService 是正追記・IUdpServerService 見積もり反映）
 対象ブランチ: `For-DI-migration-work`
 関連ドキュメント:
 - `docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md`（§3.6 Issue 6）
@@ -17,6 +18,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 1. `Global.FormWidth` 等は単一の `BackingStore`（`m_Config`）への薄いラッパーであり、それ自体は二重化していない。
 2. しかし `EnvironmentService`（`IEnvironmentService`）に、`AppSettingsService`（`IAppSettingsService`）と同名・同意味の設定（`FormWidth`/`FormHeight`/`FormLocationX`/`FormLocationY`/`RunAtStartup`/`StartMinimized`/`CloseMinimizes`/`UseLang`）が、`Global`/`m_Config` と一切連動しない独自の private field として孤立実装されている。
 3. 同じ意味の設定に対し、呼び出し元ファイルによってアクセス経路（DIサービス経由 / `Global`静的直参照）が不統一である。
+4. 全設定項目（約70項目）の横断監査により、`INotificationService`（`AppNotificationService`）にも同様の孤立バグ（`_notificationsEnabled`/`_flashTaskbar` が `Global` と非連動の独立 private field を保持）が存在することが判明した。
 
 実機ログ（`ds4windows_log.txt`）解析の結果、保存処理の実行経路自体（`Global.Save()` → `AppSettingsService.Save()` → `IProfileXmlStore.SaveAppSettingsXml()` → `BackingStore.Save()`）は正常に完走していることを確認済みである。したがって本Stepは「保存が失敗している不具合の直接修正」ではなく、**再発防止・監査性確保のための構造是正**と位置づける。実際のリサイズ操作を伴う不具合再現テストは、本Step完了後に別途実施する（§6参照）。
 
@@ -39,11 +41,21 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 |---|---|---|
 | (a) | `EnvironmentService`／`IEnvironmentService` の重複プロパティ排除。永続設定は `IAppSettingsService` に一本化し、`IEnvironmentService` は実行時環境プローブ（`IsAdministrator`, `ApplicationVersion`, `RefreshHidHideInfo`, `RefreshFakerInputInfo` 等）専用インターフェースへ純化する | Issue 6 原因分析 2., 3. |
 | (b) | UI層（`SettingsViewModel.cs`, `ProfileEditor.xaml.cs`）に残存する `Global.Xxx` 直参照を、`MainWindow.xaml.cs` と同様のDIサービス経由（`appSettingsService.Xxx`）に置換 | Issue 6 原因分析 4. |
+| (a-2) | `AppNotificationService` の孤立 private フィールド（`_notificationsEnabled`, `_flashTaskbar`）を排除し、`Global`（`m_Config`）への委譲に是正 | 全項目監査 新規発見1 |
 
 以下は今回のスコープ外とし、`Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` §5 に残存課題として記録済みである。
 
 - (c) 実際のリサイズ・移動操作を伴う実機再現テスト（(a)(b) 適用後に実施）。
 - `IsInitialShow` デッドコードの要否整理・除去判断。
+3. 🟡 **IUdpServerService の ControlService への実接続（技術的負債の解消）**:
+   - **現状分析**: `ControlService.cs` は DI コンテナ登録済みの `IUdpServerService`（`UdpServerService`）を使わず、独自の生 `UdpServer` フィールド（`_udpServer`）を直接生成・起動・パケット送出している。設定値（Port/ListenAddress）は `Global` から正しく読んでおり実害（データ破壊等）はないが、DIサービスが未接続のまま死コード化している。
+   - **作業量・リスク見積もり**:
+     - 改修範囲: `ControlService.cs`（3000行超コア巨大ファイル）、`IUdpServerService.cs`、`UdpServerService.cs`、テスト
+     - 改修内容: コントローラー入力パケット送出・ライフサイクル委譲、Cemuhookプロトコル対応クライアント（Dolphin, Cemu等）によるジャイロ・遅延の実機検証
+     - 改修規模: 約 150〜250 行 / 推定工数: 約 2〜3 人日
+     - リスク: 通信 Hot Path 改変によるジャイロ入力レイテンシ・パケットドロップの回帰リスク
+   - **判定**: **本Step14のスコープとしては「過大」**
+   - **方針**: UI フォーム設定・カラム幅の SSOT 統一（Issue 6）と責務が大きく異なるため、本 Step 14 には含めず、独立した通信系リファクタリングタスクとして継続管理する。
 
 ---
 
@@ -58,6 +70,8 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 | `DS4WindowsTests/EnvironmentServiceTests.cs` | 孤立フィールドの既定値・非連動状態をテストで固定化している（`FormWidth==782`等の直接アサート、`GlobalShim_ShouldSynchronizeWithService`で`StartMinimized`のみ検証） | 削除対象プロパティに関するテストケースを削除し、`IsAdministrator`/`ApplicationVersion`等の残存メンバに対するテストへ絞り込む |
 | `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | `StartMinimize`/`CloseMinimizes` が `DS4Windows.Global.StartMinimized`/`Global.CloseMini` を直接参照 | コンストラクタで `IAppSettingsService` を受け取り（未受領の場合は `MainWindow.xaml.cs` の既存パターンに倣い `DS4WinWPF.AppHost.GetService<IAppSettingsService>()` フォールバック）、`appSettingsService.StartMinimized`/`appSettingsService.CloseMinimizes` に置換 |
 | `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | `Global.ProfileEditorLeftWidth`/`Global.ProfileEditorRightWidth`/`Global.SpecialActionNameColWidth`/`Global.SpecialActionTriggerColWidth`/`Global.SpecialActionDetailColWidth` を直接参照（338-402行付近） | `IAppSettingsService` をDI解決（既存パターンに倣う）し、`appSettingsService.Xxx` に置換 |
+| `DS4Windows/DS4Control/Services/AppNotificationService.cs` | `_notificationsEnabled`, `_flashTaskbar` を独自 private field で保持 | 独自フィールド撤去、`Global`（`m_Config`）への委譲実装に変更 |
+| `DS4WindowsTests/NotificationServiceTests.cs` | 孤立フィールド前提のテストコード | `Global` 連動を検証するテストへ是正・拡充 |
 
 > **重要（No Feature Drop）**: いずれの置換も「アクセス経路の変更」のみであり、`BackingStore`（`m_Config`）という実データの格納先・シリアライズ方法・ロック機構は一切変更しない。挙動（保存タイミング・既定値・XML構造）に変更が生じないことを各マイクロタスクで確認する。
 
@@ -204,6 +218,16 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 - `dotnet build` でエラー・警告増加がないことを確認。
 - `dotnet test`（`DS4WindowsTests`/`StandaloneTests`）が全件成功することを確認。
 
+#### タスク(a)-6: AppNotificationService の孤立フィールド排除と Global 委譲化
+- `AppNotificationService.cs` の `_notificationsEnabled`（独自フィールド）を削除し、`Global.Instance.Notifications != 0` へ委譲。
+- `_flashTaskbar`（独自フィールド）を削除し、`Global.Instance.FlashWhenLate` へ委譲。
+
+#### タスク(a)-7: NotificationServiceTests.cs の是正
+- 孤立フィールド前提のテストを改修し、`Global` との双方向同期・委譲が正しく機能することを検証する単体テストを追加。
+
+#### タスク(b)-4: 通知設定アクセス経路の監査・統一
+- UI層（`SettingsViewModel.cs` 等）における通知関連設定のアクセス経路を確認し、SSOT（`BackingStore`）と整合していることを確認。
+
 ### 9.6 §7 完了条件への追加項目
 
 - [ ] `IAppSettingsService`/`AppSettingsService`に`ProfileEditorLeftWidth`等5プロパティが`Global`への薄い委譲として追加されている。
@@ -212,6 +236,8 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 - [ ] §10「実機検証計画」に定義した全テスト項目が実機で実施され、いずれも合格している。
 
 ---
+
+- `AppNotificationService` の孤立フィールドが排除され、通知設定が `Global`（`BackingStore`）と完全に同期していること。
 
 ## 10. 実機検証計画（本Stepの完了条件に含める）
 
