@@ -34,6 +34,85 @@ namespace DS4Windows
         private bool[] _linkedProfileCheck = new bool[MAX_DS4_CONTROLLER_COUNT] { false, false, false, false, false, false, false, false };
 
 
+        public event EventHandler<ProfileSettingChangedEventArgs> ProfileSettingChanged;
+
+        public bool[] TouchpadActiveArray
+        {
+            get => _touchpadActive;
+            set
+            {
+                lock (_syncLock)
+                {
+                    _touchpadActive = value ?? new bool[TEST_PROFILE_ITEM_COUNT];
+                }
+            }
+        }
+
+        public bool[] UseTempProfileArray
+        {
+            get => _useTempProfile;
+            set
+            {
+                lock (_syncLock)
+                {
+                    _useTempProfile = value ?? new bool[TEST_PROFILE_ITEM_COUNT];
+                }
+            }
+        }
+
+        public string[] TempProfileNameArray
+        {
+            get => _tempProfileName;
+            set
+            {
+                lock (_syncLock)
+                {
+                    _tempProfileName = value ?? new string[TEST_PROFILE_ITEM_COUNT];
+                }
+            }
+        }
+
+        public bool[] TempProfileDistanceArray
+        {
+            get => _tempProfileDistance;
+            set
+            {
+                lock (_syncLock)
+                {
+                    _tempProfileDistance = value ?? new bool[TEST_PROFILE_ITEM_COUNT];
+                }
+            }
+        }
+
+        public bool[] UseDInputOnlyArray
+        {
+            get => _useDInputOnly;
+            set
+            {
+                lock (_syncLock)
+                {
+                    _useDInputOnly = value ?? new bool[TEST_PROFILE_ITEM_COUNT];
+                }
+            }
+        }
+
+        public bool[] LinkedProfileCheckArray
+        {
+            get => _linkedProfileCheck;
+            set
+            {
+                lock (_syncLock)
+                {
+                    _linkedProfileCheck = value ?? new bool[MAX_DS4_CONTROLLER_COUNT];
+                }
+            }
+        }
+
+
+
+
+
+
         public bool GetTouchpadActive(int deviceIndex)
         {
             if (deviceIndex >= 0 && deviceIndex < _touchpadActive.Length)
