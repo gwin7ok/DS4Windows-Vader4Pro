@@ -33,10 +33,10 @@
 
 | # | 確認内容 | 確認手順 | 結果 | メモ |
 |---|---|---|---|---|
-| 0-1 | Debug ビルドが成功する | `dotnet build`（または IDE ビルド）がエラーなく完了する | [] | |
-| 0-2 | Release ビルドが成功する | Release 構成でもビルドが成功する | [] | |
-| 0-3 | Actions テスト全件成功 (156件) | `dotnet test ./DS4WindowsTests/DS4Windows.Actions.Tests.csproj` が 156件 全て PASS | [ ] | 最新化済 |
-| 0-4 | Standalone テスト全件成功 (13件) | `dotnet test ./StandaloneTests/StandaloneTests.csproj` が 13件 全て PASS | [ ] | 最新化済 |
+| 0-1 | Debug ビルドが成功する | `dotnet build`（または IDE ビルド）がエラーなく完了する | [○] | |
+| 0-2 | Release ビルドが成功する | Release 構成でもビルドが成功する | [○] | |
+| 0-3 | Actions テスト全件成功 (156件) | `dotnet test ./DS4WindowsTests/DS4Windows.Actions.Tests.csproj` が 156件 全て PASS | [○] | 最新化済 |
+| 0-4 | Standalone テスト全件成功 (13件) | `dotnet test ./StandaloneTests/StandaloneTests.csproj` が 13件 全て PASS | [○] | 最新化済 |
 | 0-5 | Composition Root が正常 | 起動時に DI コンテナ構築が失敗せず、主要サービスが解決される | [] | |
 
 ### 自動テスト結果（Step14 必須）
