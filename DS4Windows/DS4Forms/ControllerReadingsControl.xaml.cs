@@ -40,10 +40,6 @@ namespace DS4WinWPF.DS4Forms
     /// </summary>
     public partial class ControllerReadingsControl : UserControl
     {
-        private long _lastReadingTick = 0;
-        private int _isReadingUpdating = 0;
-        private const long READING_INTERVAL_TICKS = System.TimeSpan.TicksPerMillisecond * 33; // 約30fps (33ms)
-        private const long READING_INTERVAL_TICKS = System.TimeSpan.TicksPerMillisecond * 33; // 約30fps (33ms)
         private enum LatencyWarnMode : uint
         {
             None,
@@ -221,7 +217,7 @@ namespace DS4WinWPF.DS4Forms
             exposeState = new DS4StateExposed(baseState);
 
             readingTimer = new NonFormTimer();
-            readingTimer.Interval = 1000 / 60.0;
+            readingTimer.Interval = 1000 / 30.0;
 
             LsDeadXChanged += ChangeLsDeadControls;
             LsDeadYChanged += ChangeLsDeadControls;
