@@ -1,7 +1,7 @@
 # Phase 5 - Step 14 個別計画書: フォーム/カラム幅設定の SSOT 統一（EnvironmentService重複排除 ＆ Global直参照のDI化）
 
 作成日: 2026-09-10
-改訂日: 2026-09-11（タスク一本化統合 ＆ 全設定項目監査に伴う INotificationService 是正追記・IUdpServerService 見積もり反映）
+改訂日: 2026-09-11（タスク一本化統合 ＆ 全設定項目監査に伴う INotificationService 是正追記・IUdpServerService 見積もり反映 ＆ 追加スコープ Issue 7 是正フェーズC新設・フェーズD繰り下げ）
 対象ブランチ: `For-DI-migration-work`
 関連ドキュメント:
 - `docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md`（§3.6 Issue 6）
@@ -19,6 +19,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 2. しかし `EnvironmentService`（`IEnvironmentService`）に、`AppSettingsService`（`IAppSettingsService`）と同名・同意味の設定（`FormWidth`/`FormHeight`/`FormLocationX`/`FormLocationY`/`RunAtStartup`/`StartMinimized`/`CloseMinimizes`/`UseLang`）が、`Global`/`m_Config` と一切連動しない独自の private field として孤立実装されている。
 3. 同じ意味の設定に対し、呼び出し元ファイルによってアクセス経路（DIサービス経由 / `Global`静的直参照）が不統一である。
 4. 全設定項目（約70項目）の横断監査により、`IProfileSettingsService`（カラム幅5プロパティ）および `INotificationService`（`_notificationsEnabled`/`_flashTaskbar`）にも同様の孤立バグ（実体 `BackingStore` と非連動の独立 private field を保持）が存在することが判明した。
+5. さらに実機検証において、プロファイル編集画面の `Emulated Controller` コンボボックスが、XML に `<OutputContDevice>DS4</OutputContDevice>` が存在し実際の信号出力も DS4 であるにもかかわらず `Xbox 360` と誤表示される同期漏れ（Issue 7）が確認された。
 
 実機ログ（`ds4windows_log.txt`）解析の結果、保存処理の実行経路自体（`Global.Save()` → `AppSettingsService.Save()` → `IProfileXmlStore.SaveAppSettingsXml()` → `BackingStore.Save()`）は正常に完走していることを確認済みである。したがって本Stepは「保存が失敗している不具合の直接修正」にとどまらず、**再発防止・監査性確保のための設定 SSOT 構造是正** と位置づける。
 
@@ -41,6 +42,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 |---|---|---|
 | (a) | DI サービス側の孤立 private field 排除と SSOT 委譲化（`IEnvironmentService`, `IProfileSettingsService`, `INotificationService`） | 孤立バグの根絶（Issue 6原因 2, 3 ＋ 監査新規発見） |
 | (b) | UI層（`SettingsViewModel.cs`, `ProfileEditor.xaml.cs`）に残存する `Global.Xxx` 直参照を、DIサービス経由（`appSettingsService.Xxx` 等）に置換 | アクセス経路統一（Issue 6原因 4） |
+| (c) | プロファイル編集画面の Emulated Controller（`OutContType`）表示・同期漏れ是正（フェーズC） | Issue 7 整合性是正 ＆ 設定破壊防止 |
 
 ---
 
@@ -59,6 +61,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 | `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` | 独自 private field 5個を保持 | 独自フィールド・アクセサを完全削除 | **完了** (タスクa-5) |
 | `DS4Windows/DS4Control/Services/AppNotificationService.cs` | `_notificationsEnabled`, `_flashTaskbar` を孤立保持 | 独自フィールド撤去、`Global`（`m_Config`）委譲へ変更 | **未着手** (タスクa-6) |
 | `DS4WindowsTests/NotificationServiceTests.cs` | 孤立フィールド前提のテストコード | `Global` 連動を検証するテストへ是正・拡充 | **未着手** (タスクa-7) |
+7. [ ] `ProfileEditor` において、`<OutputContDevice>DS4</OutputContDevice>` を持つプロファイルを読み込んだ際、`Emulated Controller` コンボボックスが正しく `DS4` を表示し、保存時にも設定が維持されること。（タスクc-1〜c-3対応）
 | `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | `Global.StartMinimized` 等を直参照 | コンストラクタ注入の `IAppSettingsService` 経由へ置換 | **未着手** (タスクb-1) |
 | `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | `Global.ProfileEditorLeftWidth` 等を直参照 | `IAppSettingsService` を解決し `appSettingsService.Xxx` に置換 | **未着手** (タスクb-2) |
 
@@ -128,14 +131,23 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ---
 
-### フェーズC: ドキュメント更新・実機検証
+### フェーズC: 追加スコープ: Issue 7 Emulated Controller 整合性是正
 
-- [x] **タスク-4: ドキュメント・進捗ステータス更新**
-  - `Phase5-Status.md`, `Phase5-Plan.md` を更新。
-  - `Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` §3.6 Issue 6 を完了（是正済み）に更新。
+- [ ] **タスク(c)-1: `ProfileSettingsViewModel.cs` におけるロード時 `tempConType` 再同期の是正**
+  - プロファイル読み込み時・初期化時（`UpdateProperties` 等）において、`tempConType = Global.OutContType[device];` を確実に同期させ、`OnPropertyChanged(nameof(ControllerTypeIndex))` を発火させる。
+- [ ] **タスク(c)-2: `ControllerTypeIndex` と `EnableOutputDataToDS4` の双方向連動ガードの実装**
+  - `EnableOutputDataToDS4` と `ControllerTypeIndex`（`OutContType`）の選択が相互に矛盾しない連動フェイルセーフガードを配置し、Save 時の設定破壊を防止する。
+- [ ] **タスク(c)-3: 単体テスト・クリーンビルド確認**
+  - ソリューション全体のビルドおよび全単体テスト（156件超）がクリーンに PASS することを確認。
 
 ---
 
+### フェーズD: ドキュメント更新・実機検証（繰り下げ）
+
+- [ ] **タスク(d)-1: ドキュメント・進捗ステータス更新（旧タスク-4）**
+  - `Phase5-Status.md`, `Phase5-Plan.md`, 調査レポート §3.6 / §3.7 を更新し、Issue 6 ＆ Issue 7 の是正完了を記録。
+- [ ] **実機CP4: 実機起動・終了時の設定永続化検証**
+  - ウィンドウ幾何情報・カラム幅・通知・Emulated Controller 設定の XML 保存・復元確認。
 ## 5. リスクと回避策
 
 1. **No Feature Drop の死守**:
