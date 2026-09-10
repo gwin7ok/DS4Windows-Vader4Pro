@@ -122,7 +122,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 - [x] **タスク(b)-3: 通知設定アクセス経路の監査・統一**
   - UI層（`SettingsViewModel.cs` 等）における通知関連設定のアクセス経路を確認し、`IAppSettingsService`（設定永続化）と `INotificationService`（通知実行）の間で SSOT（`BackingStore`）が整合していることを確認。
 
-- [ ] **タスク(b)-4: 単体テスト・クリーンビルド確認**
+- [x] **タスク(b)-4: 単体テスト・クリーンビルド確認**
   - 変更した全プロジェクトのビルド確認。
   - 全単体テスト（169件超）を実行し、全件 PASS を確認。
 
@@ -130,7 +130,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ### フェーズC: ドキュメント更新・実機検証
 
-- [ ] **タスク-4: ドキュメント・進捗ステータス更新**
+- [x] **タスク-4: ドキュメント・進捗ステータス更新**
   - `Phase5-Status.md`, `Phase5-Plan.md` を更新。
   - `Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` §3.6 Issue 6 を完了（是正済み）に更新。
 
@@ -168,7 +168,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 1. `IEnvironmentService`, `IProfileSettingsService`, `AppNotificationService` から孤立 private field が完全に排除されていること。
 2. 設定アクセスの窓口が `IAppSettingsService` および委譲型 `INotificationService` に一本化され、すべて単一の `BackingStore`（`m_Config`）と連動すること。
 3. `SettingsViewModel.cs` および `ProfileEditor.xaml.cs` から対象設定の `Global.Xxx` 直参照が排除され、DI サービス経由に統一されていること。
-4. 単体テストがすべてクリーンに PASS すること。
+4. [x] 単体テストがすべてクリーンに PASS すること。（全156件PASS確認完了）
 5. 実機起動・終了テストにおいて、ウィンドウサイズ・位置・カラム幅・通知設定が `Profiles.xml` に正常に保存・復元されること。
 6. `NotificationServiceTests.cs` がクリーンに PASS し、設定変更が `Global` へ正しく波及することがテストで証明されていること。
 
