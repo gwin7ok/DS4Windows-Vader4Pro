@@ -110,8 +110,8 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ## 6. 本計画書のスコープ外（別タスクとして継続管理）
 
-- **Issue 6 (c) 実機再現テスト**: 本計画書の(a)(b)適用後、実際にウィンドウのリサイズ・移動・カラム幅変更を行った状態でログを取得し、`MainWindow.SizeChanged`/`MainWindow.LocationChanged`/`ProfileEditor_Closed`のトレースが正しく出力され、`Profiles.xml`に反映されることを実機で確認する。`Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` §5に追跡事項として記録済み。
-- **`IsInitialShow` デッドコード整理**: `MainDS4Window_SizeChanged`/`MainDS4Window_LocationChanged`内の`!IsInitialShow`ガードが常時無効である点の要否判断（意図した初期表示保護ロジックとして復活させるか、単純に除去するか）は、(c)の実機検証結果を踏まえて別途判断する。
+- **Issue 6 (c) 網羅的な実機再現テスト**: 実際のセッション全体を通じたログ取得（`MainWindow.SizeChanged`/`MainWindow.LocationChanged`/`ProfileEditor_Closed`の完全なトレース採取・複数セッションにまたがる回帰確認等）による、より広範な実機再検証は引き続き別タスクとして継続管理する（`Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` §5に追跡事項として記録済み）。ただし、本計画書(a)(b)(a)-4(a)-5で実際に変更する機能そのものが実機で正常動作することの確認は、**本計画書のスコープ内**の完了条件として §10 に定義する（旧版では未記載だったため今回追加）。
+- **`IsInitialShow` デッドコード整理**: `MainDS4Window_SizeChanged`/`MainDS4Window_LocationChanged`内の`!IsInitialShow`ガードが常時無効である点の要否判断（意図した初期表示保護ロジックとして復活させるか、単純に除去するか）は、上記(c)の広範な実機検証結果を踏まえて別途判断する。
 - **案B（ドメイン完全分割・`BackingStore`/`Global`解体）**: Phase6以降の将来テーマとして引き継ぐ。
 
 ---
@@ -124,7 +124,8 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 - [ ] `EnvironmentServiceTests.cs` を含む既存の全自動テストが成功する。
 - [ ] `dotnet build` でエラー・警告の増加がない。
 - [ ] `Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` のIssue 6ステータスが更新されている。
-- [ ] Issue 6 (c)（実機再現テスト）が残存課題として明記され、次の作業に引き継がれている。
+- [ ] §10「実機検証計画」の各テスト項目（T1〜T10）が実施され、いずれも合格している（本計画書変更対象機能そのものの実機動作確認）。
+- [ ] §6に残る、より網羅的なセッション全体のログ再取得によるIssue 6 (c)再現テストは、残存課題として引き続き明記され、次の作業に引き継がれている。
 
 ---
 
@@ -208,3 +209,31 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 - [ ] `IAppSettingsService`/`AppSettingsService`に`ProfileEditorLeftWidth`等5プロパティが`Global`への薄い委譲として追加されている。
 - [ ] `IProfileSettingsService`/`ProfileSettingsService`から孤立していた5プロパティ（`ProfileEditorLeftWidth`/`ProfileEditorRightWidth`/`ControllerSelectProfileColWidth`/`ControllerLinkedProfileColWidth`/`ControllerLinkProfIdColWidth`）が削除されている。
 - [ ] `ProfileEditor.xaml.cs`が新設された`appSettingsService.Xxx`経由でこれらの設定にアクセスしている。
+- [ ] §10「実機検証計画」に定義した全テスト項目が実機で実施され、いずれも合格している。
+
+---
+
+## 10. 実機検証計画（本Stepの完了条件に含める）
+
+`dotnet test`によるユニットテストは、DIサービスの委譲実装が正しいことを検証できるが、「実際のWPF UIイベント発火順序」「XMLファイルへの実書き込み・再起動後の読み込み」「管理者権限昇格の実環境判定」等はユニットテストの対象外である。旧版の計画書では実機確認が(c)として本計画のスコープ外に切り出されていたが、**本計画書(a)〜(a)-5・(b)-1〜(b)-3で変更する機能そのものについては、以下の実機検証を本Stepの完了条件とする**。
+
+### 10.1 テスト項目
+
+| # | 対象 | 対応タスク | 手順 | 期待結果 |
+|---|---|---|---|---|
+| T1 | `IEnvironmentService.IsAdministrator()` | (a)-1/(a)-2 | DS4Windowsを通常権限・管理者権限それぞれで起動し、設定画面の「管理者権限」関連表示（プロセス優先度RealTime選択可否等）を確認する | 純化前と同じ判定結果が得られ、`RealTime`優先度選択時に非管理者では警告・拒否動作が変わらず維持されている |
+| T2 | `IEnvironmentService.ApplicationVersion` | (a)-1/(a)-2 | メイン画面のタイトルバー／バージョン表示欄を確認する | 純化前と同じバージョン文字列が表示される |
+| T3 | `IEnvironmentService.RefreshHidHideInfo`/`RefreshFakerInputInfo` | (a)-1/(a)-2 | 設定画面でHidHide/FakerInputのインストール状態表示箇所を開く、またはドライバ状態を変更した後に再取得操作を行う | 例外が発生せず、最新のインストール状態が正しく反映される |
+| T4 | `SettingsViewModel.StartMinimize` | (b)-1 | 設定画面で「起動時に最小化」をON/OFFに変更→アプリ終了→再起動 | 設定した状態が維持され、ON時は最小化した状態で起動する |
+| T5 | `SettingsViewModel.CloseMinimizes` | (b)-1 | 設定画面で「閉じるボタンでトレイに最小化」をON/OFFに変更→メインウィンドウを閉じる操作を行う | 設定どおりに「トレイに最小化」または「終了」が実行される |
+| T6 | `ProfileEditor` スプリッター位置（`ProfileEditorLeftWidth`/`RightWidth`） | (a)-4/(b)-2 | プロファイル編集ウィンドウを開き、左右ペインの境界（スプリッター）をドラッグして幅を変更→ウィンドウを閉じる→再度開く | 変更した幅で復元される |
+| T7 | `ProfileEditor` の SpecialAction 一覧カラム幅（Name/Trigger/Detail） | (a)-4/(b)-2 | プロファイル編集ウィンドウのSpecialAction一覧で各カラム境界をドラッグして幅を変更→ウィンドウを閉じる→再度開く | 変更したカラム幅で復元される |
+| T8 | `Profiles.xml`への永続化ラウンドトリップ | (a)-4/(a)-5/(b)-2 | T6/T7の操作後、DS4Windowsを完全終了→`Profiles.xml`を開き`profileEditorLeftWidth`等の値が更新されていることを確認→再起動して復元されることを確認 | XML上の値が変更後の値に更新されており、再起動後も同じ値で復元される（保存タイミング・XML構造に変化がないこと＝No Feature Drop確認） |
+| T9 | 回帰確認: コントローラー一覧カラム幅（`ControllerSelectProfileColWidth`等、既存Step13-7実装分） | (a)-5（削除の副作用確認） | `IProfileSettingsService`側の同名孤立プロパティ削除後、コントローラー一覧のカラム幅変更・保存・再起動復元が従来どおり動作することを確認する | Step13-7実装の`IAppSettingsService`経由の動作に影響がなく、正常に保存・復元される |
+| T10 | ビルド後の起動確認 | 全タスク | Release/Debug両方でビルドし、アプリを起動、上記T1〜T9の一連の操作をひととおり実施 | クラッシュ・例外ダイアログが発生しない |
+
+### 10.2 実施タイミングと記録
+
+- 実機検証は、本計画書のタスク(a)-4〜(a)-5・(b)-1〜(b)-3のコード実装完了後、かつ`dotnet test`グリーン確認後に実施する。
+- 検証結果（合格・不合格、発見した不具合があればその詳細）は `Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` に追記し、Issue 6のステータス更新（「対応中」→「解決」）はT1〜T10全件合格後に行う。
+- T1〜T10のいずれかが不合格の場合、Issue 6のステータスは「対応中」のまま維持し、原因調査・追加是正を行った上で再実施する。
