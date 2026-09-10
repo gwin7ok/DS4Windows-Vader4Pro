@@ -119,7 +119,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
     - `Global.SpecialActionDetailColWidth` → `appSettingsService.SpecialActionDetailColWidth`
   - インスタンスはコンストラクタ注入または `AppHost.GetService<IAppSettingsService>()` 経由で取得。
 
-- [ ] **タスク(b)-3: 通知設定アクセス経路の監査・統一**
+- [x] **タスク(b)-3: 通知設定アクセス経路の監査・統一**
   - UI層（`SettingsViewModel.cs` 等）における通知関連設定のアクセス経路を確認し、`IAppSettingsService`（設定永続化）と `INotificationService`（通知実行）の間で SSOT（`BackingStore`）が整合していることを確認。
 
 - [ ] **タスク(b)-4: 単体テスト・クリーンビルド確認**

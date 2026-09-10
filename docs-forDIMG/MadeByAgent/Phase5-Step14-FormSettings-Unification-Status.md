@@ -1,8 +1,8 @@
 # Phase 5 - Step 14 フォーム/カラム幅設定 SSOT 統一 進捗管理ステータス
 
 作成日: 2026-09-11
-改訂日: 2026-09-11（タスク(b)-2 完了 / 次回: タスク(b)-3）
-現在ステータス: **進行中（タスク(b)-2 完了 / 次回: タスク(b)-3）**
+改訂日: 2026-09-11（タスク(b)-3 完了 / 次回: タスク(b)-4）
+現在ステータス: **進行中（タスク(b)-3 完了 / 次回: タスク(b)-4）**
 対象ブランチ: `For-DI-migration-work`
 関連ドキュメント:
 - 個別計画書: `docs-forDIMG/MadeByAgent/Phase5-Step14-FormSettings-Unification-Plan.md`
@@ -21,11 +21,11 @@
 ### 1.2 現在地サマリ（2026-09-11 時点）
 * **完了タスク**:
   - フェーズA 全タスク完了（(a)-1, (a)-2, (a)-3, (a)-4, (a)-5, (a)-6, (a)-7）
-  - **フェーズB タスク(b)-1, (b)-2 完了**（コード修正対象ファイル全件是正完了）
+  - **フェーズB タスク(b)-1, (b)-2, (b)-3 完了**（コード改修および配線完了）
 * **ビルド / テスト状況**:
   - `dotnet build ./DS4Windows/DS4WinWPF.csproj` : ✅ **成功（警告 0 / エラー 0）**
   - `dotnet test`（全156件の単体テスト実行） : ✅ **全156件 PASS（オールグリーン）**
-* **次回着手予定**: **フェーズB タスク(b)-3: 通知設定アクセス経路の監査・統一**
+* **次回着手予定**: **フェーズB タスク(b)-4: 全単体テスト・クリーンビルド確認（フェーズB完了確認）**
 
 ---
 
@@ -51,8 +51,8 @@
 |---|---|---|:---:|---|
 | **(b)-1** | `SettingsViewModel.cs` の Global 直参照置換 | `SettingsViewModel.cs` | ✅ 完了 | `StartMinimize`, `MinimizeToTaskbar`, `CloseMinimizes` を注入済み `_appSettings` 経由へ配線 |
 | **(b)-2** | `ProfileEditor.xaml.cs` の Global 直参照置換 | `ProfileEditor.xaml.cs` | ✅ 完了 | `SaveSplitterAndColumnWidths` / `RestoreSplitterAndColumnWidths` のカラム幅を DI 経由に置換 |
-| **(b)-3** | 通知設定アクセス経路の監査・統一 | `SettingsViewModel.cs` 等 | ⏳ **次回着手** | `IAppSettingsService` / `INotificationService` の SSOT 連動確認 |
-| **(b)-4** | 全単体テスト・クリーンビルド確認 | ソリューション全体 | ⏳ 未着手 | 全テスト PASS 維持を確認 |
+| **(b)-3** | 通知設定アクセス経路の監査・統一 | `SettingsViewModel.cs` 等 | ✅ 完了 | `ShowNotificationsIndex` を `_appSettings.Notifications` に配線し SSOT 連動を確定 |
+| **(b)-4** | 全単体テスト・クリーンビルド確認 | ソリューション全体 | ⏳ **次回着手** | 全単体テスト PASS 維持およびビルド確認 |
 
 ---
 
@@ -78,8 +78,8 @@
 | `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` | サービス実装 | 孤立 private field 5個およびアクセサの完全削除 | ✅ **完了** |
 | `DS4Windows/DS4Control/Services/AppNotificationService.cs` | サービス実装 | `_notificationsEnabled`, `_flashTaskbar` 独自フィールド撤去、`Global` 委譲化 | ✅ **完了** |
 | `DS4WindowsTests/NotificationServiceTests.cs` | 単体テスト | `Global` 連動・テスト間状態汚染防止・双方向同期テストへ是正 | ✅ **完了** |
-| `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | UI ViewModel | `StartMinimize` 等の直参照を注入済み `_appSettings` 経由に置換 | ✅ **完了** |
-| `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | UI View Code-behind | `Global.ProfileEditorLeftWidth` 等の直参照を `appSettingsService` 経由に置換 | ✅ **完了** |
+| `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | UI ViewModel | `StartMinimize`、`ShowNotificationsIndex` 等の直参照を `_appSettings` 経由に配線 | ✅ **完了** |
+| `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | UI View Code-behind | カラム幅の直参照を `_appSettings` 経由に置換 | ✅ **完了** |
 
 ---
 
@@ -108,22 +108,26 @@
 ---
 
 ## 8. (b)-2 完了実績の詳細記録
+- **内容**: `ProfileEditor.xaml.cs` の `SaveSplitterAndColumnWidths` / `RestoreSplitterAndColumnWidths` におけるカラム幅 5 プロパティの直参照を、DI 注入された `_appSettings`（`IAppSettingsService`）経由に置換。
+- **検証**: ビルド・全単体テスト 100% 成功。
 
-### 8.1 改修内容
-`ProfileEditor.xaml.cs` において、スプリッター幅およびアクション一覧列幅の保存・復元処理を Pure DI 原則およびフォールバック・シム維持原則（§2.1, §3.1）に基づき改修：
-1. **DI 注入の追加**: フィールド `private readonly IAppSettingsService _appSettings;` を追加し、コンストラクタ引数に `IAppSettingsService appSettings = null`（オプショナル引数）を追加して内部解決。
-2. **`SaveSplitterAndColumnWidths()`**: 5 プロパティの書き込みを `_appSettings` 経由に置換。
-3. **`RestoreSplitterAndColumnWidths()`**: 5 プロパティの読み込みを `_appSettings` 経由に置換。
-4. 万が一の null フォールバックを維持し、例外安全性を確保。
+---
 
-### 8.2 検証エビデンス
+## 9. (b)-3 完了実績の詳細記録
+
+### 9.1 改修内容
+`SettingsViewModel.cs` の通知関連プロパティ `ShowNotificationsIndex` において、`Global.Notifications` への直接参照を注入済みの `_appSettings.Notifications` 経由へ配線：
+* UI（設定画面）での通知設定変更が `_appSettings.Notifications` 経由で `BackingStore` に保存される。
+* 同時に `AppNotificationService.NotificationsEnabled`（`Global.Notifications != 0`）にも 100% 即座に反映され、設定永続化と通知実行の SSOT 一本化が完了。
+
+### 9.2 検証エビデンス
 - **ビルド結果**: `dotnet build ./DS4Windows/DS4WinWPF.csproj` → 警告 0 / エラー 0
 - **単体テスト結果**: 全 156 件実行 → 全件 PASS
 - **コミット ＆ プッシュ**: リモートリポジトリ（`For-DI-migration-work`）に正常反映済み。
 
 ---
 
-## 9. 次回着手タスク（タスク(b)-3）の作業概要
+## 10. 次回着手タスク（タスク(b)-4）の作業概要
 
 * **目的**:
-  UI 層（`SettingsViewModel.cs` 等）における通知関連設定（`ShowNotificationsIndex` / `FlashTaskbar` 等）のアクセス経路を監査し、`IAppSettingsService`（設定永続化）と `INotificationService`（通知実行）の間で SSOT（`BackingStore`）が完全に同期・一貫していることを確認・保証する。
+  フェーズA・フェーズB で実施したすべてのコード改修（孤立フィールド排除・SSOT 委譲化・UI 配線）が完了した状態において、ソリューション全体のクリーンビルドおよび全単体テスト（156件超）の完全 PASS を最終確認し、フェーズB を正式に完了とする。
