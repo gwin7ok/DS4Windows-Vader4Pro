@@ -93,12 +93,12 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
   - `IProfileSettingsService` から上記5プロパティの宣言を削除。
   - `ProfileSettingsService.cs` から孤立 private field およびアクセサを完全削除。
 
-- [ ] **タスク(a)-6: `AppNotificationService.cs` の孤立フィールド排除と Global 委譲化**
+- [x] **タスク(a)-6: `AppNotificationService.cs` の孤立フィールド排除と Global 委譲化**
   - `_notificationsEnabled`（独自フィールド）を削除し、`Global.Instance.Notifications != 0` へ委譲。
   - `_flashTaskbar`（独自フィールド）を削除し、`Global.Instance.FlashWhenLate` へ委譲。
   - `SendNotification` メソッド等における通知有効判定が `Global.Instance.Notifications != 0` と同期して動作することを確認。
 
-- [ ] **タスク(a)-7: `NotificationServiceTests.cs` の是正**
+- [x] **タスク(a)-7: `NotificationServiceTests.cs` の是正**
   - 孤立フィールド前提のテストを改修し、`Global` との双方向同期・委譲が正しく機能することを検証する単体テストを追加。
 
 ---
