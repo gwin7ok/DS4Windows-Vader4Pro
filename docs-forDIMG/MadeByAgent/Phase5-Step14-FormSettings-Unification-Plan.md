@@ -1,10 +1,10 @@
 # Phase 5 - Step 14 個別計画書: フォーム/カラム幅設定の SSOT 統一（EnvironmentService重複排除 ＆ Global直参照のDI化）
 
 作成日: 2026-09-10
-改訂日: 2026-09-11（タスク一本化統合 ＆ 全設定項目監査に伴う INotificationService 是正追記・IUdpServerService 見積もり反映 ＆ 追加スコープ Issue 7 是正フェーズC新設・フェーズD繰り下げ）
+改訂日: 2026-09-11（フェーズA・B完了 ＆ 追加スコープ Issue 7 是正フェーズC新設・フェーズD繰り下げ）
 対象ブランチ: `For-DI-migration-work`
 関連ドキュメント:
-- `docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md`（§3.6 Issue 6）
+- `docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md`（§3.6 Issue 6, §6.4 Issue 7）
 - `docs-forDIMG/MadeByAgent/Phase5-Plan.md`（Step13/Step14の位置づけ）
 - `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（全体ロードマップ）
 - `.github/copilot-instructions.md`（3.1 Pure DI原則）
@@ -34,7 +34,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ### 2.2 将来方針: 案B（ドメインごとの完全分割）
 
-中長期的には、`IAppSettingsService` のうち「ウィンドウ幾何情報・カラム幅」を専用の小さいドメインサービス（例: `IWindowLayoutService`）へ分割し、`BackingStore`/`Global` 自体を段階的に解体することを最終形とする。ただし `Profiles.xml` のXML構造（`<AppSettings>` セクション同居、Step6のファイルI/O排他ロック）を含む大規模な再設計を伴うため、**本Stepおよび現行Phase5のロードマップのスコープには含めない**。Phase6以降の独立したテーマとして引き継ぐ。
+中長期的には、`IAppSettingsService` のうち「ウィンドウ幾何情報・カラム幅」を専用の小さいドメインサービス（例: `IWindowLayoutService`）へ分割し、`BackingStore`/`Global` 自体を段階的に解体することを最終形とする。ただし `Profiles.xml` のXML構造を含む大規模な再設計を伴うため、**本Stepおよび現行Phase5のロードマップのスコープには含めない**。Phase6以降の独立したテーマとして引き継ぐ。
 
 ### 2.3 本計画書のスコープ（今回実施する範囲）
 
@@ -48,22 +48,22 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ## 3. 作業対象ファイルの棚卸し（完全統合版）
 
-| ファイル | 現状 | 変更内容 | 進捗状況 |
-|---|---|---|---|
-| `DS4Windows/DI/IEnvironmentService.cs` | 8設定プロパティを宣言 | 8プロパティの宣言を削除、環境プローブのみ残す | **完了** (タスクa-1) |
-| `DS4Windows/DS4Control/Services/EnvironmentService.cs` | 独自 private field 8個を保持 | 独自フィールド・アクセサ削除、読み取り専用純化 | **完了** (タスクa-2) |
-| `DS4Windows/DI/ServiceRegistration.cs` | `AddSingleton<IEnvironmentService, ...>()` | 変更なし（登録維持） | **完了** |
-| `DS4Windows/DS4Control/ScpUtil.cs` | static シム | 変更なし（型メンバ縮小のみ） | **完了** |
-| `DS4WindowsTests/EnvironmentServiceTests.cs` | 孤立フィールド前提のテスト | 削除対象プロパティのテストを撤去 | **完了** (タスクa-3) |
-| `DS4Windows/DI/IAppSettingsService.cs` | カラム幅5プロパティ未定義 | カラム幅5プロパティの定義を追加 | **完了** (タスクa-4) |
-| `DS4Windows/DS4Control/Services/AppSettingsService.cs` | カラム幅5プロパティ未実装 | `Global` 委譲として5プロパティを実装 | **完了** (タスクa-4) |
-| `DS4Windows/DI/IProfileSettingsService.cs` | カラム幅5プロパティを宣言 | カラム幅5プロパティの宣言を削除 | **完了** (タスクa-5) |
-| `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` | 独自 private field 5個を保持 | 独自フィールド・アクセサを完全削除 | **完了** (タスクa-5) |
-| `DS4Windows/DS4Control/Services/AppNotificationService.cs` | `_notificationsEnabled`, `_flashTaskbar` を孤立保持 | 独自フィールド撤去、`Global`（`m_Config`）委譲へ変更 | **未着手** (タスクa-6) |
-| `DS4WindowsTests/NotificationServiceTests.cs` | 孤立フィールド前提のテストコード | `Global` 連動を検証するテストへ是正・拡充 | **未着手** (タスクa-7) |
-7. [ ] `ProfileEditor` において、`<OutputContDevice>DS4</OutputContDevice>` を持つプロファイルを読み込んだ際、`Emulated Controller` コンボボックスが正しく `DS4` を表示し、保存時にも設定が維持されること。（タスクc-1〜c-3対応）
-| `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | `Global.StartMinimized` 等を直参照 | コンストラクタ注入の `IAppSettingsService` 経由へ置換 | **未着手** (タスクb-1) |
-| `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | `Global.ProfileEditorLeftWidth` 等を直参照 | `IAppSettingsService` を解決し `appSettingsService.Xxx` に置換 | **未着手** (タスクb-2) |
+| ファイル | 現状・役割 | 変更内容 | 進捗状況 |
+|---|---|---|:---:|
+| `DS4Windows/DI/IEnvironmentService.cs` | DIインターフェース | 8プロパティの宣言を削除、環境プローブのみ残す | ✅ **完了** (タスクa-1) |
+| `DS4Windows/DS4Control/Services/EnvironmentService.cs` | サービス実装 | 独自フィールド・アクセサ削除、読み取り専用純化 | ✅ **完了** (タスクa-2) |
+| `DS4Windows/DI/ServiceRegistration.cs` | DIコンテナ登録 | 変更なし（登録維持） | ✅ **完了** |
+| `DS4Windows/DS4Control/ScpUtil.cs` | static シム | 変更なし（型メンバ縮小のみ） | ✅ **完了** |
+| `DS4WindowsTests/EnvironmentServiceTests.cs` | 単体テスト | 削除対象プロパティのテストを撤去 | ✅ **完了** (タスクa-3) |
+| `DS4Windows/DI/IAppSettingsService.cs` | DIインターフェース | カラム幅5プロパティ（`int`）の定義を追加 | ✅ **完了** (タスクa-4) |
+| `DS4Windows/DS4Control/Services/AppSettingsService.cs` | サービス実装 | カラム幅5プロパティの `Global` 委譲を実装 | ✅ **完了** (タスクa-4) |
+| `DS4Windows/DI/IProfileSettingsService.cs` | DIインターフェース | カラム幅5プロパティは元々未定義（無変更で整合） | ✅ **完了** (タスクa-5) |
+| `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` | サービス実装 | 独自 private field 5個およびアクセサを完全削除 | ✅ **完了** (タスクa-5) |
+| `DS4Windows/DS4Control/Services/AppNotificationService.cs` | サービス実装 | 独自フィールド撤去、`Global`（`m_Config`）委譲へ変更 | ✅ **完了** (タスクa-6) |
+| `DS4WindowsTests/NotificationServiceTests.cs` | 単体テスト | `Global` 連動を検証するテストへ是正・拡充 | ✅ **完了** (タスクa-7) |
+| `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | UI ViewModel | `StartMinimize`、`Notifications` 等の直参照を `_appSettings` 経由へ配線 | ✅ **完了** (タスクb-1, b-3) |
+| `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | UI View Code-behind | カラム幅の直参照を `appSettingsService.Xxx` に置換 | ✅ **完了** (タスクb-2) |
+| `DS4Windows/DS4Forms/ViewModels/ProfileSettingsViewModel.cs` | UI ViewModel | ロード時 `tempConType` 再同期漏れ是正 ＆ 双方向連動ガード | ⏳ **未着手 (タスクc-1, c-2)** |
 
 > **重要（No Feature Drop）**: いずれの置換も「アクセス経路の変更」のみであり、`BackingStore`（`m_Config`）という実データの格納先・シリアライズ方法・ロック機構は一切変更しない。挙動（保存タイミング・既定値・XML構造）に変更が生じないことを各マイクロタスクで確認する。
 
@@ -71,7 +71,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ## 4. マイクロタスク breakdown（完全一本化）
 
-### フェーズA: DI サービス側の孤立フィールド排除と SSOT 委譲化
+### フェーズA: DI サービス側の孤立フィールド排除と SSOT 委譲化（全件完了）
 
 - [x] **タスク(a)-1: `IEnvironmentService` インターフェースの縮小**
   - `FormWidth`, `FormHeight`, `FormLocationX`, `FormLocationY`, `RunAtStartup`, `StartMinimized`, `CloseMinimizes`, `UseLang` の8プロパティ宣言を削除。
@@ -106,7 +106,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ---
 
-### フェーズB: UI 層の Global 直参照置換とアクセス経路統一
+### フェーズB: UI 層の Global 直参照置換とアクセス経路統一（全件完了）
 
 - [x] **タスク(b)-1: `SettingsViewModel.cs` の Global 直参照置換**
   - コンストラクタ引数で `IAppSettingsService` を受領（Pure DI 原則）。
@@ -125,9 +125,9 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 - [x] **タスク(b)-3: 通知設定アクセス経路の監査・統一**
   - UI層（`SettingsViewModel.cs` 等）における通知関連設定のアクセス経路を確認し、`IAppSettingsService`（設定永続化）と `INotificationService`（通知実行）の間で SSOT（`BackingStore`）が整合していることを確認。
 
-- [x] **タスク(b)-4: 単体テスト・クリーンビルド確認**
+- [x] **タスク(b)-4: 全単体テスト・クリーンビルド確認**
   - 変更した全プロジェクトのビルド確認。
-  - 全単体テスト（169件超）を実行し、全件 PASS を確認。
+  - 全単体テスト（156件超）を実行し、全件 PASS を確認。
 
 ---
 
@@ -145,9 +145,12 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 ### フェーズD: ドキュメント更新・実機検証（繰り下げ）
 
 - [ ] **タスク(d)-1: ドキュメント・進捗ステータス更新（旧タスク-4）**
-  - `Phase5-Status.md`, `Phase5-Plan.md`, 調査レポート §3.6 / §3.7 を更新し、Issue 6 ＆ Issue 7 の是正完了を記録。
+  - `Phase5-Status.md`, `Phase5-Plan.md`, 調査レポート §3.6 / §6.4 を更新し、Issue 6 ＆ Issue 7 の是正完了を記録。
 - [ ] **実機CP4: 実機起動・終了時の設定永続化検証**
   - ウィンドウ幾何情報・カラム幅・通知・Emulated Controller 設定の XML 保存・復元確認。
+
+---
+
 ## 5. リスクと回避策
 
 1. **No Feature Drop の死守**:
@@ -159,30 +162,24 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ## 6. 本計画書のスコープ外（別タスクとして継続管理）
 
-1. **実際のリサイズ・移動操作を伴う実機再現テスト**:
-   * 本計画のコード改修完了後、実機検証（実機CP4）の最終確認として実施する。
+1. **🟡 IUdpServerService の ControlService への実接続（技術的負債の解消）**:
+   - **現状分析**: `ControlService.cs` は DI コンテナ登録済みの `IUdpServerService` を使わず、独自の生 `UdpServer` フィールドを直接生成・起動・パケット送出している。設定値は `Global` から正しく読んでおり実害はないが、未接続のまま死コード化している。
+   - **作業量・リスク見積もり**: 約 150〜250 行 / 推定工数: 約 2〜3 人日。ジャイロ通信 Hot Path 改変によるレイテンシリスク。
+   - **判定**: **本Step14のスコープとしては過大**。独立した通信系改修タスクとして後続で管理する。
 2. **`IsInitialShow` デッドコードの要否整理・除去判断**:
-   * 動作に実害がないため、UIリファクタリング時に別途判断する。
-3. **🟡 IUdpServerService の ControlService への実接続（技術的負債の解消）**:
-   - **現状分析**: `ControlService.cs` は DI コンテナ登録済みの `IUdpServerService`（`UdpServerService`）を使わず、独自の生 `UdpServer` フィールド（`_udpServer`）を直接生成・起動・パケット送出している。設定値（Port/ListenAddress）は `Global` から正しく読んでおり実害（データ破壊等）はないが、DIサービスが未接続のまま死コード化している。
-   - **作業量・リスク見積もり**:
-     - 改修範囲: `ControlService.cs`（3000行超コア巨大ファイル）、`IUdpServerService.cs`、`UdpServerService.cs`、テスト
-     - 改修内容: コントローラー入力パケット送出・ライフサイクル委譲、Cemuhookプロトコル対応クライアント（Dolphin, Cemu等）によるジャイロ・遅延の実機検証
-     - 改修規模: 約 150〜250 行 / 推定工数: 約 2〜3 人日
-     - リスク: 通信 Hot Path 改変によるジャイロ入力レイテンシ・パケットドロップの回帰リスク
-   - **判定**: **本Step14のスコープとしては「過大」**
-   - **方針**: UI フォーム設定・カラム幅の SSOT 統一（Issue 6）と責務が大きく異なるため、本 Step 14 には含めず、独立した通信系リファクタリングタスクとして継続管理する。
+   - 動作に実害がないため、UIリファクタリング時に別途判断する。
 
 ---
 
 ## 7. 完了条件（完全統合版）
 
-1. `IEnvironmentService`, `IProfileSettingsService`, `AppNotificationService` から孤立 private field が完全に排除されていること。
-2. 設定アクセスの窓口が `IAppSettingsService` および委譲型 `INotificationService` に一本化され、すべて単一の `BackingStore`（`m_Config`）と連動すること。
-3. `SettingsViewModel.cs` および `ProfileEditor.xaml.cs` から対象設定の `Global.Xxx` 直参照が排除され、DI サービス経由に統一されていること。
+1. [x] `IEnvironmentService`, `IProfileSettingsService`, `AppNotificationService` から孤立 private field が完全に排除されていること。（是正完了）
+2. [x] 設定アクセスの窓口が `IAppSettingsService` および委譲型 `INotificationService` に一本化され、すべて単一の `BackingStore`（`m_Config`）と連動すること。（是正完了）
+3. [x] `SettingsViewModel.cs` および `ProfileEditor.xaml.cs` から対象設定の `Global.Xxx` 直参照が排除され、DI サービス経由に統一されていること。（是正完了）
 4. [x] 単体テストがすべてクリーンに PASS すること。（全156件PASS確認完了）
-5. 実機起動・終了テストにおいて、ウィンドウサイズ・位置・カラム幅・通知設定が `Profiles.xml` に正常に保存・復元されること。
-6. `NotificationServiceTests.cs` がクリーンに PASS し、設定変更が `Global` へ正しく波及することがテストで証明されていること。
+5. [x] `NotificationServiceTests.cs` がクリーンに PASS し、設定変更が `Global` へ正しく波及することがテストで証明されていること。（検証完了）
+6. [ ] `ProfileEditor` において、`<OutputContDevice>DS4</OutputContDevice>` を持つプロファイルを読み込んだ際、`Emulated Controller` コンボボックスが正しく `DS4` を表示し、保存時にも設定が維持されること。（タスクc-1〜c-3対応）
+7. [ ] 実機起動・終了テストにおいて、ウィンドウサイズ・位置・カラム幅・通知・Emulated Controller 設定が `Profiles.xml` に正常に保存・復元されること。
 
 ---
 
@@ -190,7 +187,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 * 本個別計画書に記載されたマイクロタスク単位で順次進める。
 * 巨大ファイル編集時はピンポイント編集ルール（§3.2）を徹底し、不要な空白・改行差分を一切混入させない。
-* 成果物スクリプトは `.github/PowerShell-script-generation-rules-for-deliverables.md` に従い、PowerShell 形式で安全に提供する。
+* 進捗を記録する `.md` ファイルの更新は、ユーザー手元でのビルド・テスト成功確認後にのみ実施する。
 
 ---
 
@@ -202,7 +199,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ### 9.2 2026-09-11 監査: 全設定項目監査による孤立バグ是正と IUdpServerService の見積もり
 - `Profiles.xml` 全約70項目の横断監査を実施。
-- 🔴 `INotificationService`（`AppNotificationService`）の孤立バグを発見 → 案A準拠で是正スコープに追加（タスク(a)-6, (a)-7）。
+- 🔴 `INotificationService`（`AppNotificationService`）の孤立バグを発見 → 案A準拠で是正スコープに追加（タスク(a)-6, (a)-7 完了）。
 - 🟡 `IUdpServerService` の未接続を発見 → 作業量見積もり（約2〜3人日）の結果、本Step14としては過大と判定し、§6 スコープ外課題に登録。
 - ※ 全タスクの詳細・進捗管理は **§4 マイクロタスク breakdown** に完全統合済み。
 
@@ -219,7 +216,9 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 3. **通知設定の永続化・動作確認**:
    - 設定画面で通知トグルを切り替えて終了し、`Profiles.xml`（`Notifications`）への保存を確認。
    - 通知が設定通りに発火/抑制されることを確認。
+4. **Emulated Controller 表示・保存確認 (Issue 7)**:
+   - `<OutputContDevice>DS4</OutputContDevice>` を持つプロファイルを開いた際、コンボボックスが正しく `DS4` を表示し、チェックボックスと連動して保存時にも維持されることを確認。
 
 ### 10.2 実施タイミングと記録
-- 全マイクロタスク（フェーズA・B）完了後、実機テスト（実機CP4）の最終確認として実施。
+- 全マイクロタスク（フェーズA・B・C）完了後、実機テスト（実機CP4）の最終確認として実施。
 - 結果は `Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md` に記録する。
