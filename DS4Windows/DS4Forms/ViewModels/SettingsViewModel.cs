@@ -134,10 +134,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int ShowNotificationsIndex
         {
-            get => DS4Windows.Global.Notifications;
+            get => _appSettings.Notifications;
             set
             {
-                Global.Notifications = value;
+                _appSettings.Notifications = value;
                 // display only when all notifications are on
                 IsProfileChangedCheckVisible = value == 2 ? Visibility.Visible : Visibility.Collapsed;
             }
