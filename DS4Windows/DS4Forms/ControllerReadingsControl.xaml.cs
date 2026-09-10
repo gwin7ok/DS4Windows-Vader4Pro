@@ -43,6 +43,7 @@ namespace DS4WinWPF.DS4Forms
         private long _lastReadingTick = 0;
         private int _isReadingUpdating = 0;
         private const long READING_INTERVAL_TICKS = System.TimeSpan.TicksPerMillisecond * 33; // 約30fps (33ms)
+        private const long READING_INTERVAL_TICKS = System.TimeSpan.TicksPerMillisecond * 33; // 約30fps (33ms)
         private enum LatencyWarnMode : uint
         {
             None,
@@ -245,11 +246,27 @@ namespace DS4WinWPF.DS4Forms
 
         private void ControllerReadingsControl_DeviceNumChanged(object sender, EventArgs e)
         {
+            long currentTick = System.DateTime.UtcNow.Ticks;
+            if (currentTick - _lastReadingTick < READING_INTERVAL_TICKS)
+                return;
+
+            if (System.Threading.Interlocked.CompareExchange(ref _isReadingUpdating, 1, 0) != 0)
+                return;
+
+            _lastReadingTick = currentTick;
             inputContNum.Content = $"#{deviceNum + 1}";
         }
 
         private void ChangeSixAxisDeadControls(object sender, EventArgs e)
         {
+            long currentTick = System.DateTime.UtcNow.Ticks;
+            if (currentTick - _lastReadingTick < READING_INTERVAL_TICKS)
+                return;
+
+            if (System.Threading.Interlocked.CompareExchange(ref _isReadingUpdating, 1, 0) != 0)
+                return;
+
+            _lastReadingTick = currentTick;
             sixAxisDeadEllipse.Width = sixAxisXDead * CANVAS_WIDTH;
             sixAxisDeadEllipse.Height = sixAxisZDead * CANVAS_WIDTH;
             Canvas.SetLeft(sixAxisDeadEllipse, CANVAS_MIDPOINT - (sixAxisXDead * CANVAS_WIDTH / 2.0));
@@ -258,6 +275,14 @@ namespace DS4WinWPF.DS4Forms
 
         private void ChangeRsDriftControls(object sender, EventArgs e)
         {
+            long currentTick = System.DateTime.UtcNow.Ticks;
+            if (currentTick - _lastReadingTick < READING_INTERVAL_TICKS)
+                return;
+
+            if (System.Threading.Interlocked.CompareExchange(ref _isReadingUpdating, 1, 0) != 0)
+                return;
+
+            _lastReadingTick = currentTick;
             rsDriftEllipse.Width = rsDeadX * CANVAS_WIDTH;
             rsDriftEllipse.Height = rsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(rsDriftEllipse, (1 + (RsDriftX / 127.0) - rsDeadX) * CANVAS_MIDPOINT);
@@ -266,6 +291,14 @@ namespace DS4WinWPF.DS4Forms
 
         private void ChangeLsDriftControls(object sender, EventArgs e)
         {
+            long currentTick = System.DateTime.UtcNow.Ticks;
+            if (currentTick - _lastReadingTick < READING_INTERVAL_TICKS)
+                return;
+
+            if (System.Threading.Interlocked.CompareExchange(ref _isReadingUpdating, 1, 0) != 0)
+                return;
+
+            _lastReadingTick = currentTick;
             lsDriftEllipse.Width = lsDeadX * CANVAS_WIDTH;
             lsDriftEllipse.Height = lsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(lsDriftEllipse, (1 + (LsDriftX / 127.0) - lsDeadX) * CANVAS_MIDPOINT);
@@ -274,6 +307,14 @@ namespace DS4WinWPF.DS4Forms
 
         private void ChangeRsDeadControls(object sender, EventArgs e)
         {
+            long currentTick = System.DateTime.UtcNow.Ticks;
+            if (currentTick - _lastReadingTick < READING_INTERVAL_TICKS)
+                return;
+
+            if (System.Threading.Interlocked.CompareExchange(ref _isReadingUpdating, 1, 0) != 0)
+                return;
+
+            _lastReadingTick = currentTick;
             rsDeadEllipse.Width = rsDeadX * CANVAS_WIDTH;
             rsDeadEllipse.Height = rsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadX * CANVAS_WIDTH / 2.0));
@@ -282,6 +323,14 @@ namespace DS4WinWPF.DS4Forms
 
         private void ChangeLsDeadControls(object sender, EventArgs e)
         {
+            long currentTick = System.DateTime.UtcNow.Ticks;
+            if (currentTick - _lastReadingTick < READING_INTERVAL_TICKS)
+                return;
+
+            if (System.Threading.Interlocked.CompareExchange(ref _isReadingUpdating, 1, 0) != 0)
+                return;
+
+            _lastReadingTick = currentTick;
             lsDeadEllipse.Width = lsDeadX * CANVAS_WIDTH;
             lsDeadEllipse.Height = lsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadX * CANVAS_WIDTH / 2.0));
@@ -315,6 +364,14 @@ namespace DS4WinWPF.DS4Forms
 
         private void ControllerReadingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
+            long currentTick = System.DateTime.UtcNow.Ticks;
+            if (currentTick - _lastReadingTick < READING_INTERVAL_TICKS)
+                return;
+
+            if (System.Threading.Interlocked.CompareExchange(ref _isReadingUpdating, 1, 0) != 0)
+                return;
+
+            _lastReadingTick = currentTick;
             readingTimer.Stop();
 
             DS4Device ds = Program.rootHub.DS4Controllers[deviceNum];
