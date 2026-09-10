@@ -17,6 +17,7 @@
 | **3** | `ProfileEditor.xaml.cs` | プロファイル編集ボタン（Edit）を押すと NullReferenceException でアプリ全体が即死クラッシュする | `InitializeComponent()` の XAML 読込中に `FrictionUD` の変更イベントが早期発火し、未初期化の ViewModel を参照した | ハンドラ先頭に `if (profileSettingsVM == null) return;` の安全ガードを追加 | **解決** |
 | **4** | `ControllerReadingsControl.xaml.cs` | プロファイル編集ウィンドウの「Controller Readings」タブを開くと重くなり、数秒で操作不能になる | タイマーが 60fps（16.6ms）と過剰に高頻度であり、WPF メッセージキューが描画タスクで過密パンクしていた | タイマー間隔を安全で滑らかな 30fps（33.3ms）に最適化し、不要混入フィールドを完全除去 | **解決** |
 | **5** | `ControllerListViewModel.cs` | システムトレイから終了（ミドルクリック含む）すると異常に時間がかかり、終了処理が完了しない | `Dispose()` 内の `ClearControllerList()` が `WriteLock` 保持中に `controllerCol.Clear()` を実行 → WPF `ListCollectionView.RefreshOverride()` 経由で同一スレッドから `ReadLock` 再入を試行 → `LockRecursionException` が発生し、`MainDS4Window_Closed` の後続シャットダウン処理（`Application.Current.Shutdown()` 等）が中断されていた | `_colListLocker` を `LockRecursionPolicy.SupportsRecursion` に変更し、`ClearControllerList()` を `try/finally` で保護、`Dispose()` を `try/catch/finally` で保護 | **解決** |
+| **6** | `EnvironmentService.cs`<br>`ProfileEditor.xaml.cs`<br>`SettingsViewModel.cs` | ウィンドウサイズ・位置・各種カラム幅（`profileEditorLeftWidth` 等）が、セッションによって `Profiles.xml` へ正しく反映されないことがある | `IEnvironmentService`（`EnvironmentService.cs`）が `IAppSettingsService`（実体は `Global`/`m_Config`）と同名・同意味の設定（`FormWidth` 等）を **独自の非永続 private field として孤立保持** しており、`Global` 直参照（`ProfileEditor.xaml.cs`/`SettingsViewModel.cs`）と DI サービス経由（`MainWindow.xaml.cs`）でアクセス経路が混在していた | 方針確定：SSOTを `BackingStore`（`m_Config`）に一本化し、DIサービスを唯一の窓口とする（詳細は `Phase5-Step14-FormSettings-Unification-Plan.md`） | **対応中** |
 
 ---
 
@@ -104,8 +105,39 @@
 
 ---
 
+### 3.6 Issue 6: フォーム/カラム幅設定の二重管理と保存不整合（調査中・方針確定）
+* **発生現象**:
+  DS4Windows終了時に、メインウィンドウのサイズ・位置（`formWidth`/`formHeight`/`formLocationX`/`formLocationY`）や、プロファイル編集画面・コントローラー一覧のカラム幅（`profileEditorLeftWidth`/`specialActionNameColWidth`/`controllerIndexColWidth` 等）が、想定どおりに `Profiles.xml` へ反映されないケースが報告された。
+* **原因分析（ソースコード監査）**:
+  1. `Global.FormWidth` 等のプロパティ自体は、単一の static インスタンスである `m_Config`（`BackingStore`）への薄いラッパーであり、この経路単体では二重化していない（`Global` と `m_Config` は名前が2つあるだけで実体は1つ）。
+  2. しかし `DS4Windows/DS4Control/Services/EnvironmentService.cs`（`IEnvironmentService`）に、`IAppSettingsService` と**同名・同意味のプロパティ**（`FormWidth`/`FormHeight`/`FormLocationX`/`FormLocationY`/`RunAtStartup`/`StartMinimized`/`CloseMinimizes`/`UseLang`）が、`Global`/`m_Config` と一切連動しない**独自の private field**として孤立実装されていることが判明した。Phase5-Step13で是正済みの「`IAppSettingsService` 7プロパティ孤立バグ」と同一パターンの再発である。既存の `DS4WindowsTests/EnvironmentServiceTests.cs` もこの孤立状態を前提にした内容（`FormWidth` の初期値 `782` を正としてアサート）になっており、非連動であること自体がテストで固定化されてしまっている。
+  3. 現時点で `MainWindow.xaml.cs` は `environmentService` を `IsAdministrator()` 等の読み取り専用目的にしか使っておらず、上記の孤立プロパティ自体は実害ゼロの「死んだ複製」だが、今後の接続ミスを誘発する地雷として残存している。
+  4. 加えて、同じ意味の設定に対してファイルごとにアクセス経路が不統一である（`copilot-instructions.md` 3.1 Pure DI原則に抵触）：
+     | 設定 | 呼び出し元 | 経由するAPI |
+     |---|---|---|
+     | `FormWidth`/`FormHeight`/`FormLocationX/Y`、コントローラー一覧カラム幅 | `MainWindow.xaml.cs` | `appSettingsService.Xxx`（DI経由） |
+     | `StartMinimize`/`CloseMinimizes` | `SettingsViewModel.cs` | `DS4Windows.Global.Xxx`（static直参照） |
+     | `ProfileEditorLeftWidth`/`RightWidth`、SpecialAction一覧カラム幅 | `ProfileEditor.xaml.cs` | `Global.Xxx`（static直参照） |
+  5. `MainWindow.xaml.cs` の `MainDS4Window_SizeChanged`/`MainDS4Window_LocationChanged` には `!IsInitialShow` という早期ガード条件が存在するが、`IsInitialShow` プロパティはコード全体を通じて**一度も `true` に設定されておらず**、bool既定値の `false` のまま放置されているデッドコードであることを確認した（ガード自体は常に無効のため、現状これ単体は不具合の直接原因ではないが、意図不明の残存ロジックとして要整理）。
+* **ログ解析結果（`ds4windows_log.txt`、2026-09-10 16:34〜17:01のセッション）**:
+  * 起動時の `ApplyPlacement: Saved Logical Position (177, -1080), Size (1000x1087)` から、このセッション開始時点で `Global.FormWidth`（`m_Config.formWidth`）は `1000` として正しくロードされていたことを確認。
+  * セッション終了（コントローラーのアイドル切断を契機とした `CleanShutdown`）時、`[DI] ProfileXmlStore.SaveAppSettingsXml: saved=True` / `[DI] AppSettingsService.Save succeeded` が記録されており、**保存処理自体（`Global.Save()` → `AppSettingsService.Save()` → `IProfileXmlStore.SaveAppSettingsXml()` → `BackingStore.Save()`）は正常に完走している**。
+  * 一方で、ログ全体（623行）を通じて `MainWindow.SizeChanged` / `MainWindow.LocationChanged` / `ProfileEditor_Closed` のトレース行が**1件も出力されていない**。これは今回のセッション中にユーザーがウィンドウのリサイズ・移動操作を行わなかったことを意味する可能性が高く、本ログ単体では「リサイズ操作をしたのに保存されない」という実際の不具合シナリオの再現ログとしては不十分であると判断した。
+  * 上記より、**保存の実行経路自体は健全**であることが実機ログで裏付けられた一方、（a）`EnvironmentService` の孤立複製、（b）アクセス経路の不統一、という**再発防止・監査性の観点での構造的リスク**は明確に存在するため、これらの是正を優先して実施し、実際のリサイズ操作を含む再現ログの取得は本是正の適用後に改めて行う。
+* **対応方針（決定事項）**:
+  * **今回採用する設計方針**: 案A（`BackingStore` をSSOTとして正式に固定し、DIサービスを唯一の窓口とする）＋ 案C（`Global` 直参照をコード上・レビュー運用上で機械的に検出できるようにする）。
+  * **将来方針**: 中長期的には案B（ドメインごとの完全な状態分割、`BackingStore`/`Global` 自体の解体）を目指すが、本Stepでは現行の13〜19週間ロードマップ・Phase5のドメイン集約型設計から逸脱しない範囲に留める。
+  * 詳細な設計・作業手順は個別計画書 `Phase5-Step14-FormSettings-Unification-Plan.md` に分離して記録する。
+* **状態**: **対応中**（原因分析・設計方針は確定。(a) `EnvironmentService` 重複排除、(b) `Global` 直参照のDIサービス経由への置換をマイクロタスクとして実装予定）。
+
+---
+
 ## 5. 今後の追記・残存課題管理欄（未解決・継続調査用）
 実機テスト（Step 14）の継続に伴い、今後新たに確認された不具合や改善点は、本セクションの下に追記して記録を蓄積する。
 
+* **[対応中項目]**:
+  * Issue 6（フォーム/カラム幅設定の二重管理）: (a) `EnvironmentService` 重複排除、(b) `Global` 直参照のDIサービス経由への置換 → `Phase5-Step14-FormSettings-Unification-Plan.md` にて実施中。
 * **[未着手 / 調査中項目]**:
+  * Issue 6 (c): 実際にウィンドウをリサイズ・移動した状態での再現ログ取得と実機再検証（(a)(b) 是正の適用後に実施）。
+  * `MainWindow.xaml.cs` の `IsInitialShow` プロパティ（`SizeChanged`/`LocationChanged` の早期ガード条件として存在するが、一度も `true` に設定されず常時無効というデッドコード状態）の要否整理・除去判断。
   * （※ 新たな不具合が確認された場合に順次追記）
