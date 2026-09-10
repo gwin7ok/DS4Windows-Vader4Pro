@@ -16,6 +16,7 @@
 | **2** | `ProfileApplicationService.cs`<br>`ProfileSwitchAction.cs` | SpecialAction（SA）によるプロファイル切替を実行しても切り替わらない（手動ドロップダウン選択は成功） | 入力スレッド自身から `HaltReportingRunAction` を呼んだため、自分自身の停止を待機する自己デッドロック（タイムアウト）が発生していた | SA 実行時（`MappingAction`）は入力スレッドが既に停止中であるため直接適用を実行するようバイパス | **解決** |
 | **3** | `ProfileEditor.xaml.cs` | プロファイル編集ボタン（Edit）を押すと NullReferenceException でアプリ全体が即死クラッシュする | `InitializeComponent()` の XAML 読込中に `FrictionUD` の変更イベントが早期発火し、未初期化の ViewModel を参照した | ハンドラ先頭に `if (profileSettingsVM == null) return;` の安全ガードを追加 | **解決** |
 | **4** | `ControllerReadingsControl.xaml.cs` | プロファイル編集ウィンドウの「Controller Readings」タブを開くと重くなり、数秒で操作不能になる | タイマーが 60fps（16.6ms）と過剰に高頻度であり、WPF メッセージキューが描画タスクで過密パンクしていた | タイマー間隔を安全で滑らかな 30fps（33.3ms）に最適化し、不要混入フィールドを完全除去 | **解決** |
+| **5** | `ControllerListViewModel.cs` | システムトレイから終了（ミドルクリック含む）すると異常に時間がかかり、終了処理が完了しない | `Dispose()` 内の `ClearControllerList()` が `WriteLock` 保持中に `controllerCol.Clear()` を実行 → WPF `ListCollectionView.RefreshOverride()` 経由で同一スレッドから `ReadLock` 再入を試行 → `LockRecursionException` が発生し、`MainDS4Window_Closed` の後続シャットダウン処理（`Application.Current.Shutdown()` 等）が中断されていた | `_colListLocker` を `LockRecursionPolicy.SupportsRecursion` に変更し、`ClearControllerList()` を `try/finally` で保護、`Dispose()` を `try/catch/finally` で保護 | **解決** |
 
 ---
 
@@ -88,6 +89,18 @@
 * **ビルド状態**: Release / Debug ともに **エラー 0 件、警告 0 件（完全クリーン）**
 * **テスト状態**: 全 169 件の単体テストが 100% PASS
 * **ブランチ反映**: `For-DI-migration-work` リモートリポジトリへコミット・プッシュ済み
+
+### 3.5 Issue 5: システムトレイ終了時の LockRecursionException によるシャットダウンハング
+* **発生現象**:
+  システムトレイアイコンから終了（ミドルクリック含む）すると、アプリがすぐに消えず、数十秒〜数分かかってから強制終了される。ログに `LockRecursionException` が記録され、終了処理のログ（`Request App Shutdown` 等）が出ない。
+* **原因分析**:
+  `ControllerListViewModel.Dispose()` → `ClearControllerList()` が `WriteLock` を保持したまま `controllerCol.Clear()` を実行。WPF の `ObservableCollection` 変更通知が `ListCollectionView.RefreshOverride()` を経由し、同一スレッドから `ColLockCallback` で `ReadLock` を再入取得しようとする。既定の `ReaderWriterLockSlim` は再入を禁止しているため例外が発生し、`MainDS4Window_Closed` の後続処理（`notifyIcon.Dispose()`、`Application.Current.Shutdown()`、`CleanShutdown()`）が中断されていた。
+* **是正内容**:
+  1. `_colListLocker` を `new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion)` に変更（同一スレッド Write→Read 再入を許可）。
+  2. `ClearControllerList()` の各ロック区間を `try/finally` で保護。
+  3. `Dispose()` を `try/catch/finally` で保護し、例外発生時もイベント購読解除と後続シャットダウン処理が継続されるようガード。
+* **検証結果**:
+  実機テストでトレイアイコンから終了を実行。ログに `Request App Shutdown` → `Stopped DS4Windows` → `ProfileXmlStore.SaveAppSettingsXml: saved=True` が正常に記録され、`LockRecursionException` が一切出力されず、即座に終了することを確認。
 
 ---
 
