@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -8,6 +8,7 @@ namespace DS4WinWPF
 {
     public static class AppHost
     {
+        private static readonly System.Collections.Generic.HashSet<System.Type> _loggedResolvedTypes = new System.Collections.Generic.HashSet<System.Type>();
         private static IHost _host;
         private static readonly object _syncLock = new object();
 
@@ -15,6 +16,7 @@ namespace DS4WinWPF
 
         public static IHost CreateHost(IConfiguration configuration = null)
         {
+            lock (_loggedResolvedTypes) { _loggedResolvedTypes.Clear(); }
             lock (_syncLock)
             {
                 if (_host != null)
@@ -37,6 +39,7 @@ namespace DS4WinWPF
 
         public static IHost CreateHost(IConfiguration configuration, DS4WinWPF.ArgumentParser parser)
         {
+            lock (_loggedResolvedTypes) { _loggedResolvedTypes.Clear(); }
             lock (_syncLock)
             {
                 if (_host != null)
@@ -60,6 +63,7 @@ namespace DS4WinWPF
 
         public static IHost CreateHost(string[] args)
         {
+            lock (_loggedResolvedTypes) { _loggedResolvedTypes.Clear(); }
             lock (_syncLock)
             {
                 if (_host != null)
@@ -105,9 +109,15 @@ namespace DS4WinWPF
             }
 
             var service = _host?.Services.GetService<T>();
-            if (service != null && AppLogger.IsTraceEnabled)
+            if (AppLogger.IsTraceEnabled)
             {
-                AppLogger.LogTrace($"[DI] AppHost.GetService: Resolved {typeof(T).Name}");
+                lock (_loggedResolvedTypes)
+                {
+                    if (_loggedResolvedTypes.Add(typeof(T)))
+                    {
+                        AppLogger.LogTrace($"[DI] AppHost.GetService: Resolved {typeof(T).Name}");
+                    }
+                }
             }
             return service;
         }
@@ -126,9 +136,15 @@ namespace DS4WinWPF
             }
 
             var service = _host?.Services.GetService(serviceType);
-            if (service != null && AppLogger.IsTraceEnabled)
+            if (AppLogger.IsTraceEnabled)
             {
-                AppLogger.LogTrace($"[DI] AppHost.GetService: Resolved {serviceType.Name}");
+                lock (_loggedResolvedTypes)
+                {
+                    if (_loggedResolvedTypes.Add(serviceType))
+                    {
+                        AppLogger.LogTrace($"[DI] AppHost.GetService: Resolved {serviceType.Name}");
+                    }
+                }
             }
             return service;
         }
@@ -160,6 +176,7 @@ namespace DS4Windows
 {
     public static class AppHost
     {
+        private static readonly System.Collections.Generic.HashSet<System.Type> _loggedResolvedTypes = new System.Collections.Generic.HashSet<System.Type>();
         public static Microsoft.Extensions.Hosting.IHost Host => DS4WinWPF.AppHost.Host;
         public static Microsoft.Extensions.Hosting.IHost CreateHost(string[] args = null) => DS4WinWPF.AppHost.CreateHost(args);
         public static T GetService<T>() where T : class => DS4WinWPF.AppHost.GetService<T>();
