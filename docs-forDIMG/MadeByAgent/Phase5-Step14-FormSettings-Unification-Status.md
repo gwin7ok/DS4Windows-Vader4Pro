@@ -1,8 +1,8 @@
 # Phase 5 - Step 14 フォーム/カラム幅設定 SSOT 統一 進捗管理ステータス
 
 作成日: 2026-09-11
-改訂日: 2026-09-11（フェーズA完了 / 次回: フェーズB タスク(b)-1）
-現在ステータス: **進行中（フェーズA完了 / 次回: タスク(b)-1）**
+改訂日: 2026-09-11（タスク(b)-1 完了 / 次回: タスク(b)-2）
+現在ステータス: **進行中（タスク(b)-1 完了 / 次回: タスク(b)-2）**
 対象ブランチ: `For-DI-migration-work`
 関連ドキュメント:
 - 個別計画書: `docs-forDIMG/MadeByAgent/Phase5-Step14-FormSettings-Unification-Plan.md`
@@ -19,11 +19,13 @@
 実機検証中に発覚した「アプリ終了時にウィンドウサイズ・位置・各種カラム幅が `Profiles.xml` へ正しく反映されないことがある」不具合（Issue 6）の根本原因である、DIサービス（`EnvironmentService`, `ProfileSettingsService`, `AppNotificationService`）における **実体 `BackingStore`（`m_Config`）と連動しない孤立 private field の二重保持バグ** を根絶し、アクセス経路を `IAppSettingsService` / `INotificationService` 経由に統一（SSOT 一本化）する。
 
 ### 1.2 現在地サマリ（2026-09-11 時点）
-* **完了タスク**: **フェーズA 全タスク完了（(a)-1, (a)-2, (a)-3, (a)-4, (a)-5, (a)-6, (a)-7）**
+* **完了タスク**:
+  - フェーズA 全タスク完了（(a)-1, (a)-2, (a)-3, (a)-4, (a)-5, (a)-6, (a)-7）
+  - **フェーズB タスク(b)-1 完了**
 * **ビルド / テスト状況**:
   - `dotnet build ./DS4Windows/DS4WinWPF.csproj` : ✅ **成功（警告 0 / エラー 0）**
   - `dotnet test`（全156件の単体テスト実行） : ✅ **全156件 PASS（オールグリーン）**
-* **次回着手予定**: **フェーズB タスク(b)-1: `SettingsViewModel.cs` の Global 直参照置換**
+* **次回着手予定**: **フェーズB タスク(b)-2: `ProfileEditor.xaml.cs` の Global 直参照置換**
 
 ---
 
@@ -47,8 +49,8 @@
 
 | タスクID | タスク概要 | 対象ファイル | 状態 | 備考 |
 |---|---|---|:---:|---|
-| **(b)-1** | `SettingsViewModel.cs` の Global 直参照置換 | `SettingsViewModel.cs` | ⏳ **次回着手** | `StartMinimized`, `CloseMinimizes` 等を注入済み `_appSettings` 経由へ置換 |
-| **(b)-2** | `ProfileEditor.xaml.cs` の Global 直参照置換 | `ProfileEditor.xaml.cs` | ⏳ 未着手 | カラム幅5プロパティの直参照を `appSettingsService.Xxx` に置換 |
+| **(b)-1** | `SettingsViewModel.cs` の Global 直参照置換 | `SettingsViewModel.cs` | ✅ 完了 | `StartMinimize`, `MinimizeToTaskbar`, `CloseMinimizes` を注入済み `_appSettings` 経由へ配線 |
+| **(b)-2** | `ProfileEditor.xaml.cs` の Global 直参照置換 | `ProfileEditor.xaml.cs` | ⏳ **次回着手** | カラム幅5プロパティの直参照を `appSettingsService.Xxx` に置換 |
 | **(b)-3** | 通知設定アクセス経路の監査・統一 | `SettingsViewModel.cs` 等 | ⏳ 未着手 | `IAppSettingsService` / `INotificationService` の SSOT 連動確認 |
 | **(b)-4** | 全単体テスト・クリーンビルド確認 | ソリューション全体 | ⏳ 未着手 | 全テスト PASS 維持を確認 |
 
@@ -76,48 +78,52 @@
 | `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` | サービス実装 | 孤立 private field 5個およびアクセサの完全削除 | ✅ **完了** |
 | `DS4Windows/DS4Control/Services/AppNotificationService.cs` | サービス実装 | `_notificationsEnabled`, `_flashTaskbar` 独自フィールド撤去、`Global` 委譲化 | ✅ **完了** |
 | `DS4WindowsTests/NotificationServiceTests.cs` | 単体テスト | `Global` 連動・テスト間状態汚染防止・双方向同期テストへ是正 | ✅ **完了** |
-| `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | UI ViewModel | `Global.StartMinimized` 等の直参照を `appSettingsService` 経由に置換 | ⏳ **次回 (b)-1** |
-| `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | UI View Code-behind | `Global.ProfileEditorLeftWidth` 等の直参照を `appSettingsService` 経由に置換 | ⏳ 未着手 (b)-2 |
+| `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs` | UI ViewModel | `StartMinimize` 等の直参照を注入済み `_appSettings` 経由に置換 | ✅ **完了** |
+| `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | UI View Code-behind | `Global.ProfileEditorLeftWidth` 等の直参照を `appSettingsService` 経由に置換 | ⏳ **次回 (b)-2** |
 
 ---
 
 ## 4. (a)-4 完了実績の詳細記録
-
 - **内容**: `IAppSettingsService` および `AppSettingsService` にカラム幅 5 プロパティ（`ProfileEditorLeftWidth`, `ProfileEditorRightWidth`, `SpecialActionNameColWidth`, `SpecialActionTriggerColWidth`, `SpecialActionDetailColWidth`）を `Global` 委譲として実装。
 - **検証**: ビルド・全単体テスト 100% 成功。
 
 ---
 
 ## 5. (a)-5 完了実績の詳細記録
-
 - **内容**: `ProfileSettingsService.cs` から孤立していた上記 5 プロパティおよび private フィールドを波括弧深度解析に基づきピンポイント完全切除（正規メンバ `TouchpadActiveArray` 等は 100% 保護）。
 - **検証**: ビルド・全単体テスト 100% 成功。
 
 ---
 
 ## 6. (a)-6 ＆ (a)-7 完了実績の詳細記録
+- **内容**: `AppNotificationService.cs` の孤立フィールド（`_notificationsEnabled`, `_flashTaskbar`）を排除し、`Global` への直接委譲に変更。`NotificationServiceTests.cs` に状態復元ガードおよび双方向同期テストを追加。
+- **検証**: 全 156 件の単体テスト実行 → 全件 PASS。
 
-### 6.1 改修内容
-1. **`AppNotificationService.cs`**:
-   - 孤立 private field（`_notificationsEnabled`, `_flashTaskbar`, `_syncLock`）を完全排除。
-   - `NotificationsEnabled` を `Global.Notifications != 0`、`FlashTaskbar` を `Global.FlashWhenLate` への直接委譲に変更。
-   - `SendNotification` をアプリ全体の通知設定と完全に連動するように純化。
-2. **`NotificationServiceTests.cs`**:
-   - 各テストケースで `try ... finally` を用いて元の `Global` 状態を確実に復元するガードを導入（テスト並列実行時の共有静的状態汚染を根絶）。
-   - `Global` の変更が即座にサービスに波及することを証明する双方向同期テスト（`Service_ShouldDirectlyReflectGlobalChanges`）を追加。
+---
 
-### 6.2 検証エビデンス
-- **単体テスト結果**: 全 156 件実行 → **成功 156 件 / 失敗 0 件（全件 PASS）**
+## 7. (b)-1 完了実績の詳細記録
+
+### 7.1 改修内容
+`SettingsViewModel.cs` の以下の 3 プロパティにおいて、完全修飾名 `DS4Windows.Global.` を用いた静的直参照を、コンストラクタ注入済みの `_appSettings`（`IAppSettingsService`）経由へ配線：
+* `StartMinimize`: `DS4Windows.Global.StartMinimized` → `_appSettings.StartMinimized`
+* `MinimizeToTaskbar`: `DS4Windows.Global.MinToTaskbar` → `_appSettings.MinimizeToTaskbar`
+* `CloseMinimizes`: `DS4Windows.Global.CloseMini` → `_appSettings.CloseMinimizes`
+
+### 7.2 検証エビデンス
+- **ビルド結果**: `dotnet build ./DS4Windows/DS4WinWPF.csproj` → 警告 0 / エラー 0
+- **単体テスト結果**: 全 156 件実行 → 全件 PASS
 - **コミット ＆ プッシュ**: リモートリポジトリ（`For-DI-migration-work`）に正常反映済み。
 
 ---
 
-## 7. 次回着手タスク（タスク(b)-1）の作業概要
+## 8. 次回着手タスク（タスク(b)-2）の作業概要
 
 * **目的**:
-  UI 層（`SettingsViewModel.cs`）に残存する `Global` 直参照（`Global.StartMinimized`, `Global.CloseMinimizes` 等）を、既にコンストラクタ注入されている `_appSettings`（`IAppSettingsService`）経由に置換し、アクセス経路を統一する。
+  プロファイル編集画面（`ProfileEditor.xaml.cs`）に残存する以下のカラム幅・スプリッター幅の `Global.Xxx` 直参照を、`IAppSettingsService`（`appSettingsService`）経由に置換する。
 * **改修対象**:
-  `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs`
-  - `StartMinimize` プロパティの getter/setter: `_appSettings.StartMinimized` に置換
-  - `CloseMinimizes` プロパティの getter/setter: `_appSettings.CloseMinimizes` に置換
-  - `MinimizeToTaskbar` プロパティの getter/setter: `_appSettings.MinimizeToTaskbar` に置換
+  `DS4Windows/DS4Forms/ProfileEditor.xaml.cs`（361〜430行付近: `SaveSplitterAndColumnWidths`, `RestoreSplitterAndColumnWidths` 等）
+  - `Global.ProfileEditorLeftWidth` → `appSettingsService.ProfileEditorLeftWidth`
+  - `Global.ProfileEditorRightWidth` → `appSettingsService.ProfileEditorRightWidth`
+  - `Global.SpecialActionNameColWidth` → `appSettingsService.SpecialActionNameColWidth`
+  - `Global.SpecialActionTriggerColWidth` → `appSettingsService.SpecialActionTriggerColWidth`
+  - `Global.SpecialActionDetailColWidth` → `appSettingsService.SpecialActionDetailColWidth`

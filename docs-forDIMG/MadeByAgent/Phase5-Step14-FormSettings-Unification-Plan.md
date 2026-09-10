@@ -105,7 +105,7 @@ Phase5-Step14の実機検証中に、「DS4Windows終了時にウィンドウサ
 
 ### フェーズB: UI 層の Global 直参照置換とアクセス経路統一
 
-- [ ] **タスク(b)-1: `SettingsViewModel.cs` の Global 直参照置換**
+- [x] **タスク(b)-1: `SettingsViewModel.cs` の Global 直参照置換**
   - コンストラクタ引数で `IAppSettingsService` を受領（Pure DI 原則）。
   - 引数なしコンストラクタは `DS4WinWPF.AppHost.GetService<IAppSettingsService>()` によるフォールバックを維持（§2.1 フォールバック・シム維持原則）。
   - `StartMinimized`, `CloseMinimizes` 等のプロパティの getter/setter を `appSettingsService.StartMinimized` / `appSettingsService.CloseMinimizes` に置換。
