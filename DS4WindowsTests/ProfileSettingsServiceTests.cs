@@ -160,5 +160,34 @@ namespace DS4WindowsTests
             Assert.Equal(0, service.GetL2OutCurveMode(0));
             Assert.Equal(0, service.GetR2OutCurveMode(0));
         }
+
+        [Fact]
+        public void OutContType_ShouldShareBackingStoreWithGlobalShim()
+        {
+            // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク7）の回帰防止テスト。
+            // IOutputSlotService.GetOutputDeviceType が参照していた孤立配列（Global非連動）に
+            // 起因するバグの再発を検知するため、ProfileSettingsService.OutContType が
+            // Global.OutContType（m_Config.outputDevType）と同一の実体を参照していることを
+            // 意図的に確認する（copilot-instructions.md §3.3-4 における「孤立プロパティ」検知の
+            // ためのテストであり、削除・書き換えを行ってはならない）。
+            var service = new ProfileSettingsService();
+            Global.ProfileSettingsServiceInstance = service;
+
+            Assert.Same(service.OutContType, Global.OutContType);
+
+            OutContType original = service.OutContType[0];
+            try
+            {
+                service.OutContType[0] = OutContType.DS4;
+                Assert.Equal(OutContType.DS4, Global.OutContType[0]);
+
+                Global.OutContType[0] = OutContType.X360;
+                Assert.Equal(OutContType.X360, service.OutContType[0]);
+            }
+            finally
+            {
+                service.OutContType[0] = original;
+            }
+        }
     }
 }

@@ -40,7 +40,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private readonly ISpecialActionRepository specialActionRepo;
         private readonly IProfileRepository profileRepo;
         private readonly IManagedActionManager actionManager;
+        // TODO(技術的負債・削除要否は別途判断): Issue7是正（タスク3）により、本フィールドを
+        // 参照していたボタン名表示ロジックは profileSettings.OutContType 経由に置き換えられ、
+        // 本ファイル内では現在未使用となっている。Fix-Plan.md タスク3の方針に従い、本タスクでは
+        // 参照差し替えのみを行い、フィールド自体の削除要否は別途（Phase5-Step14タスク7の全体確認、
+        // またはPhase6）で判断する。
         private readonly IOutputSlotService outputSlotService;
+        // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク3）:
+        // ボタン名表示の参照先を outputSlotService.GetOutputDeviceType から
+        // 正しい永続化実体である profileSettings.OutContType へ切り替えるために新規注入。
+        private readonly IProfileSettingsService profileSettings;
         public event EventHandler SpecialActionIndexChanged;
         public event EventHandler ItemSelectedChanged;
 
@@ -48,13 +57,15 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             ISpecialActionRepository specialActionRepo = null,
             IProfileRepository profileRepo = null,
             IManagedActionManager actionManager = null,
-            IOutputSlotService outputSlotService = null)
+            IOutputSlotService outputSlotService = null,
+            IProfileSettingsService profileSettings = null)
         {
             this.deviceNum = deviceNum;
             this.specialActionRepo = specialActionRepo ?? DS4WinWPF.AppHost.GetService<ISpecialActionRepository>() ?? Global.SpecialActionRepositoryInstance;
             this.profileRepo = profileRepo ?? DS4WinWPF.AppHost.GetService<IProfileRepository>() ?? Global.ProfileRepositoryInstance;
             this.actionManager = actionManager ?? DS4WinWPF.AppHost.GetService<IManagedActionManager>();
             this.outputSlotService = outputSlotService ?? DS4WinWPF.AppHost.GetService<IOutputSlotService>() ?? Global.OutputSlotServiceInstance;
+            this.profileSettings = profileSettings ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
             SpecialActionIndexChanged += SpecialActionsListViewModel_SpecialActionIndexChanged;
             actionCol.CollectionChanged += ActionCol_CollectionChanged;
         }
@@ -247,10 +258,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                         int btnId = int.Parse(action.details);
                         if (deviceNum >= 0)
                         {
-                            // Step13-5: IOutputSlotService.GetOutputDeviceType が既存の正規DIラッパー
+                            // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク3）:
+                            // outputSlotService.GetOutputDeviceType はGlobal非連動の孤立バグを
+                            // 抱えていたため、正しい永続化実体である profileSettings.OutContType に変更。
+                            // （旧コメント「Step13-5: 既存の正規DIラッパー」は誤認であったため削除）
                             try
                             {
-                                OutContType outType = outputSlotService.GetOutputDeviceType(deviceNum);
+                                OutContType outType = profileSettings.OutContType[deviceNum];
                                 displayName = Global.getX360ControlString((X360Controls)btnId, outType);
                             }
                             catch

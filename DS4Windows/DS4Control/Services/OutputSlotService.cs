@@ -56,6 +56,8 @@ namespace DS4Windows
             return device != null;
         }
 
+        // TODO(技術的負債・詳細は IOutputSlotService.GetOutputDeviceType のコメント参照):
+        // _deviceTypes はGlobal/BackingStoreと非連動の孤立配列。新規利用禁止。
         public OutContType GetOutputDeviceType(int slotIndex)
         {
             if (slotIndex < 0 || slotIndex >= MAX_SLOTS)
@@ -67,6 +69,8 @@ namespace DS4Windows
             }
         }
 
+        // TODO(技術的負債・詳細は IOutputSlotService.SetOutputDeviceType のコメント参照):
+        // 書き込み先は孤立配列 _deviceTypes。プロファイル永続化には反映されない。
         public void SetOutputDeviceType(int slotIndex, OutContType deviceType)
         {
             if (slotIndex < 0 || slotIndex >= MAX_SLOTS)
@@ -114,6 +118,8 @@ namespace DS4Windows
             return _slotManager?.GetOutSlotDevice(slotNumber);
         }
 
+        // TODO(技術的負債・詳細は IOutputSlotService.PluginSlot のコメント参照):
+        // 呼出元0件（2026-09-11確認）。実際のホットスワップは別経路(ScpUtil.cs PostLoadSnippet)で実現。
         public bool PluginSlot(int slotNumber, OutContType devType)
         {
             if (slotNumber < 0 || slotNumber >= MAX_SLOTS) return false;
@@ -141,6 +147,8 @@ namespace DS4Windows
             }
         }
 
+        // TODO(技術的負債・詳細は IOutputSlotService.UnplugSlot のコメント参照):
+        // 呼出元0件（2026-09-11確認）。実際のホットスワップは別経路(ScpUtil.cs PostLoadSnippet)で実現。
         public bool UnplugSlot(int slotNumber)
         {
             if (slotNumber < 0 || slotNumber >= MAX_SLOTS) return false;
