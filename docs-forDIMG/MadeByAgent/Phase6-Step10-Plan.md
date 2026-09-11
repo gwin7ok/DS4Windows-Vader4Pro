@@ -1,6 +1,7 @@
-# Phase6-Step8 計画書: 残りの小型UIファイル群の解消
+# Phase6-Step10 計画書: 残りの小型UIファイル群の解消
 
 作成日: 2026-09-09
+改定日: 2026-09-11（Phase6全12ステップ再編に伴うステップ番号変更）
 対象ブランチ: `For-DI-migration-work`
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
 着手前提: Phase6-Step1（詳細監査と対象確定）の完了、および`Phase6-Step1-Global-Usage-Classification-Report.md`の承認
@@ -21,7 +22,7 @@
 
 `BindingWindow.xaml.cs`は、Phase5-Step14前クリーンアップ（PR-A）にて`Program.rootHub`の無条件直接代入
 （`controlService`取得部分）を`AppHost.GetService<ControlService>() ?? Program.rootHub`形式へ**既に
-統一済み**である。本Step8で扱う5件は、それとは別の`Global.*`メンバ参照（`ControlService`取得とは無関係の
+統一済み**である。本Step10で扱う5件は、それとは別の`Global.*`メンバ参照（`ControlService`取得とは無関係の
 設定値等）であることを確認した上で着手する。
 
 ---
@@ -85,7 +86,7 @@ Step1監査で確認し、該当する場合はカテゴリ除外対象として
 
 | リスク | 対応 |
 |---|---|
-| `WelcomeDialog.xaml.cs`は初回起動時のみ表示されるため、通常のテスト手順では見落とされやすい | Step9の実機検証項目に「設定ファイル削除後の初回起動確認」を明示的に含める（Phase5-Step14前クリーンアップでも同様の考慮を実施済み） |
+| `WelcomeDialog.xaml.cs`は初回起動時のみ表示されるため、通常のテスト手順では見落とされやすい | Step11の実機検証項目に「設定ファイル削除後の初回起動確認」を明示的に含める（Phase5-Step14前クリーンアップでも同様の考慮を実施済み） |
 | `PresetOption.cs`がカテゴリD/Eに該当し、実質的な対応不要と判明する可能性 | その場合は「対応不要」を正式な結論として記録し、無理に対応を作らない |
 | `BindingWindow.xaml.cs`の残り5件が、Phase5-Step14前クリーンアップで解消済みの`Program.rootHub`関連と誤って重複対応される | 着手前に該当ファイルの現在のコードを確認し、`controlService`取得部分には触れないことを確認する |
 
@@ -95,4 +96,4 @@ Step1監査で確認し、該当する場合はカテゴリ除外対象として
 
 1. Phase6-Step1の完了後、4ファイル分の確定件数・分類・`PresetOption.cs`の性質を確認する。
 2. 承認後、PR-1（4ファイル一括対応）から着手する。
-3. 完了後、`Phase6-Status.md`のStep8欄を更新し、Step9（自動テスト・実機検証）の計画書作成へ進む。
+3. 完了後、`Phase6-Status.md`のStep10欄を更新し、Step11（自動テスト・実機検証）の計画書作成へ進む。

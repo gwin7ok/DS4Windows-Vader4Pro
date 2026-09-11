@@ -1,6 +1,7 @@
-# Phase6-Step6 計画書: `ProfileEditor.xaml.cs` のGlobal直参照解消
+# Phase6-Step8 計画書: `ProfileEditor.xaml.cs` のGlobal直参照解消
 
 作成日: 2026-09-09
+改定日: 2026-09-11（Phase6全12ステップ再編に伴うステップ番号変更）
 対象ブランチ: `For-DI-migration-work`
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
 着手前提: Phase6-Step1（詳細監査と対象確定）の完了、および`Phase6-Step1-Global-Usage-Classification-Report.md`の承認
@@ -15,7 +16,7 @@ Step1の成果物を待って本計画書に反映する。
 
 `ProfileEditor.xaml.cs`は、Phase5-Step13（`MainWindow.xaml.cs`のUI層DI接続）完了時点で**対象漏れに
 なっていたファイル**である（Phase5-Step13+14-Addendum-Findings-Report、2026-09-09実地調査で判明）。
-Step6は、Phase5-Step13および同Step14前クリーンアップで確立された置換パターンを、本ファイルへ
+Step8は、Phase5-Step13および同Step14前クリーンアップで確立された置換パターンを、本ファイルへ
 横展開する作業と位置づけられる。
 
 ---
@@ -33,7 +34,7 @@ Step6は、Phase5-Step13および同Step14前クリーンアップで確立さ�
 
 `MainWindow.xaml.cs`は既にPhase5-Step13およびStep14前クリーンアップ（PR-A〜E）で同種の作業を完了している。
 `ProfileEditor.xaml.cs`の18件は、性質上`MainWindow.xaml.cs`で既に解消済みの参照と重複・類似している
-可能性が高い（例: パス関連、環境情報、アプリ設定関連）。Step6では新規設計を最小限にとどめ、以下の
+可能性が高い（例: パス関連、環境情報、アプリ設定関連）。Step8では新規設計を最小限にとどめ、以下の
 既存パターンをそのまま適用することを基本方針とする。
 
 ```csharp
@@ -51,7 +52,7 @@ pathService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IPathService>() ?? Glob
 Phase5-Step13+14-Addendum-Findings-Report-Part2（2026-09-09）の調査により、`ProfileEditor.xaml.cs`は
 `(Application.Current.MainWindow as MainWindow).ProfileListHolder`という形で`MainWindow`のインスタンス
 プロパティへ直接アクセスしていることが判明している。これは`Global.*`静的参照ではなくView間の直接結合
-であり、**本Stepのスコープ（Global直接参照の解消）には含まれない**。当該箇所の解消要否は、Step6の
+であり、**本Stepのスコープ（Global直接参照の解消）には含まれない**。当該箇所の解消要否は、Step8の
 成果物内で「別種の技術的負債」として記録するにとどめ、対応するかどうかはPhase6完了後の判断とする。
 
 ### 2.3 分類ごとの対応方針
@@ -96,5 +97,5 @@ Step2〜5と同様、既存DIサービスへの単純リダイレクト(a)を優
 
 1. Phase6-Step1の完了後、`ProfileEditor.xaml.cs`分の確定件数・分類・`MainWindow.xaml.cs`との重複有無を確認する。
 2. 承認後、PR-1（`MainWindow.xaml.cs`重複分）から着手する。
-3. 完了後、`Phase6-Status.md`のStep6欄を更新し、Step7（`SettingsViewModel.cs`他 主要ViewModel群の解消）の
+3. 完了後、`Phase6-Status.md`のStep8欄を更新し、Step9（`SettingsViewModel.cs`他 主要ViewModel群の解消）の
    計画書作成へ進む。

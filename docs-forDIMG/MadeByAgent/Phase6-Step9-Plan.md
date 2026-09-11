@@ -1,6 +1,7 @@
-# Phase6-Step7 計画書: `SettingsViewModel.cs`他 主要ViewModel群の解消
+# Phase6-Step9 計画書: `SettingsViewModel.cs`他 主要ViewModel群の解消
 
 作成日: 2026-09-09
+改定日: 2026-09-11（Phase6全12ステップ再編に伴うステップ番号変更）
 対象ブランチ: `For-DI-migration-work`
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
 着手前提: Phase6-Step1（詳細監査と対象確定）の完了、および`Phase6-Step1-Global-Usage-Classification-Report.md`の承認
@@ -18,8 +19,8 @@
 
 全体計画書§4.3（2026-09-09注記）で明記した通り、**「ViewModelがDI/Factory化されていること」と
 「ViewModel内部のロジックがGlobalを直接呼んでいないこと」は別の問題**である。対象4ファイルは
-いずれもPhase4-Step9でDI/Factory化が完了済みだが、コンストラクタ注入とは別に、メソッド内部で
-`Global.*`を直接呼んでいる箇所が残存している。Step7はこの内部ロジックの残存参照を対象とする
+いずれもPhase4-Step11でDI/Factory化が完了済みだが、コンストラクタ注入とは別に、メソッド内部で
+`Global.*`を直接呼んでいる箇所が残存している。Step9はこの内部ロジックの残存参照を対象とする
 （ViewModelの生成方式自体には変更を加えない）。
 
 ---
@@ -49,8 +50,8 @@
 
 ### 2.2 既存コンストラクタ注入サービスの活用確認
 
-各ViewModelは既にPhase4-Step9でDI/Factory化されており、コンストラクタで複数のDIサービスを受け取って
-いる可能性が高い。Step7の作業の多くは、**新たな依存を注入するのではなく、既に注入済みのサービスの
+各ViewModelは既にPhase4-Step11でDI/Factory化されており、コンストラクタで複数のDIサービスを受け取って
+いる可能性が高い。Step9の作業の多くは、**新たな依存を注入するのではなく、既に注入済みのサービスの
 未使用メンバへのアクセスを追加する、または既存の`Global.*`呼び出しを既存フィールド経由に差し替える**
 だけで完了する可能性がある。着手前に各ViewModelのコンストラクタ・既存フィールド一覧を確認し、
 重複投資を避ける。
@@ -100,4 +101,4 @@ Phase5-Step14前クリーンアップのPR-C・PR-Eで、`MainWindow.xaml.cs`側
 
 1. Phase6-Step1の完了後、対象4ファイル分の確定件数・分類・既存コンストラクタ注入サービス一覧を確認する。
 2. 承認後、PR-1（`SettingsViewModel.cs`の単純リダイレクト）から着手する。
-3. 完了後、`Phase6-Status.md`のStep7欄を更新し、Step8（残りの小型UIファイル群の解消）の計画書作成へ進む。
+3. 完了後、`Phase6-Status.md`のStep9欄を更新し、Step10（残りの小型UIファイル群の解消）の計画書作成へ進む。

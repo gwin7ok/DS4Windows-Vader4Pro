@@ -1,6 +1,7 @@
-# Phase6-Step5 計画書: `App.xaml.cs` 起動シーケンスの整理
+# Phase6-Step7 計画書: `App.xaml.cs` 起動シーケンスの整理
 
 作成日: 2026-09-09
+改定日: 2026-09-11（Phase6全12ステップ再編に伴うステップ番号変更）
 対象ブランチ: `For-DI-migration-work`
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
 着手前提: Phase6-Step1（詳細監査と対象確定）の完了、および`Phase6-Step1-Global-Usage-Classification-Report.md`の承認
@@ -32,19 +33,19 @@ UI起動の4フェーズ構造を崩さないことを最優先とする。
 ### 2.1 Pre-Host / Post-Host の分類（最重要）
 
 全体計画書§4.5カテゴリAで確定した通り、「DIコンテナ構築前のパス解決・ログ初期化」は**原理的にDI化
-対象外**である。Step5の最初の作業は、22件の参照それぞれについて以下を判定することである。
+対象外**である。Step7の最初の作業は、22件の参照それぞれについて以下を判定することである。
 
 | 分類 | 定義 | 対応方針 |
 |---|---|---|
-| **Pre-Host該当（カテゴリA、対象外）** | `AppHost.CreateHost()`呼び出しより前に実行される、またはHost構築自体の前提となる処理（パス確定、多重起動チェックの初期段階等） | Step1監査時点でカテゴリAとして除外し、Step5では一切変更しない |
-| **Post-Host該当（Step5の対象）** | DIコンテナ構築後、`OnStartup`の後半や`CreateControlService()`等で評価される処理 | 既存DIサービス（`IPathService`, `IEnvironmentService`, `IAppSettingsService`等）経由へ置換する |
+| **Pre-Host該当（カテゴリA、対象外）** | `AppHost.CreateHost()`呼び出しより前に実行される、またはHost構築自体の前提となる処理（パス確定、多重起動チェックの初期段階等） | Step1監査時点でカテゴリAとして除外し、Step7では一切変更しない |
+| **Post-Host該当（Step7の対象）** | DIコンテナ構築後、`OnStartup`の後半や`CreateControlService()`等で評価される処理 | 既存DIサービス（`IPathService`, `IEnvironmentService`, `IAppSettingsService`等）経由へ置換する |
 
 この判定を誤り、Pre-Host処理をDIサービス経由に置き換えてしまうと、「DIコンテナを構築するためにDI解決が
 必要」という自己矛盾（全体計画書§5.2フェーズ0の注記参照）が発生し、起動不能に陥るリスクがある。
 
 ### 2.2 On-Demandパス評価原則の継承
 
-Phase5-Step10で確立された「起動時キャッシュを持たず、都度Global/DIサービスから値を取得する」という
+Phase5-Step12で確立された「起動時キャッシュを持たず、都度Global/DIサービスから値を取得する」という
 原則を、`App.xaml.cs`の置換にも適用する。特にパス関連（`exelocation`, `appDataPpath`相当）は、
 Phase5-Step14前クリーンアップで`IPathService.ExecutablePath`等が既に整備されているため、その活用を
 優先する。
@@ -85,7 +86,7 @@ Phase5-Step14前クリーンアップで`IPathService.ExecutablePath`等が既�
 |---|---|
 | Pre-Host/Post-Hostの分類を誤り、起動不能に陥る | §2.1の判定を必ずStep1成果物に基づいて行い、疑わしい項目は保守的にPre-Host（対象外）側に倒す。各PR後に必ず実起動確認を行う |
 | 多重起動チェックロジックとの重複・競合 | 既存`IProcessInspector`との重複確認を事前に行う（§2.3） |
-| 起動シーケンスの変更がインストーラー・初回起動時の挙動に影響する | 初回起動相当のテスト（設定ファイル削除後の起動）をStep9の実機検証に追加する |
+| 起動シーケンスの変更がインストーラー・初回起動時の挙動に影響する | 初回起動相当のテスト（設定ファイル削除後の起動）をStep11の実機検証に追加する |
 
 ---
 
@@ -93,5 +94,5 @@ Phase5-Step14前クリーンアップで`IPathService.ExecutablePath`等が既�
 
 1. Phase6-Step1の完了後、`App.xaml.cs`分の確定件数・Pre-Host/Post-Host分類を確認する。
 2. 承認後、PR-1（分類確定のレビュー）→PR-2→PR-3の順に着手する。
-3. 完了後、`Phase6-Status.md`のStep5欄を更新し、Step6（`ProfileEditor.xaml.cs`のGlobal直参照解消）の
+3. 完了後、`Phase6-Status.md`のStep7欄を更新し、Step8（`ProfileEditor.xaml.cs`のGlobal直参照解消）の
    計画書作成へ進む。

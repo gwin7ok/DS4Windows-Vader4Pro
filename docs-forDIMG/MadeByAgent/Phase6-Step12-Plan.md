@@ -1,15 +1,16 @@
-# Phase6-Step10 計画書: 呼出元0件シムの物理削除判断
+# Phase6-Step12 計画書: 呼出元0件シムの物理削除判断
 
 作成日: 2026-09-09
+改定日: 2026-09-11（Phase6全12ステップ再編に伴うステップ番号変更）
 対象ブランチ: `For-DI-migration-work`
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
-着手前提: Phase6-Step9（自動テスト・実機検証）の完了
+着手前提: Phase6-Step11（自動テスト・実機検証）の完了
 
 ---
 
 ## 0. 前提の明記
 
-Step10はPhase6の最終ステップであり、Step2〜8で対象とした呼び出し元側の置換が完了した結果、
+Step12はPhase6の最終ステップであり、Step2〜8で対象とした呼び出し元側の置換が完了した結果、
 `Global`（`ScpUtil.cs`）内で**呼出元0件となったメンバ**を特定し、`[Obsolete]`付与および削除候補リスト化を
 行う。Phase5-Step15（Legacy shim削除判断）と同種の作業であり、安全側に倒す方針（即時物理削除は行わない）
 を踏襲する。
@@ -19,7 +20,7 @@ Phase5-Step15と本Stepの関係が重複しないよう、対象範囲を明確
 | Step | 対象 |
 |---|---|
 | Phase5-Step15 | Phase5（DIサービス内部のLegacy再委譲監査）の結果、呼出元0件となったシム |
-| **Phase6-Step10（本Step）** | **Phase6（Step2〜8の呼び出し元側置換）の結果、新たに呼出元0件となった`Global`メンバ** |
+| **Phase6-Step12（本Step）** | **Phase6（Step2〜8の呼び出し元側置換）の結果、新たに呼出元0件となった`Global`メンバ** |
 
 Phase5-Step15が本Stepより先に完了している前提のため、両者の削除候補リストは最終的に統合する。
 
@@ -50,7 +51,7 @@ Step1時点の分類がStep2〜8の実装過程で変化している可能性が
 3. Phase5-Step15で既に`[Obsolete]`付与・削除判断済みの対象と重複していないこと。
 
 `[Obsolete]`のメッセージには、置換先のDIサービス名を明記する（例:
-`[Obsolete("IProfileSettingsService.GetLSDeadzoneを使用してください。Phase6-Step10で呼出元0件を確認済み")]`)。
+`[Obsolete("IProfileSettingsService.GetLSDeadzoneを使用してください。Phase6-Step12で呼出元0件を確認済み")]`)。
 
 ### 2.3 即時物理削除は行わない
 
@@ -64,7 +65,7 @@ Phase5-Step15の方針を踏襲し、`[Obsolete]`付与にとどめ、**物理�
 
 ## 3. 成果物
 
-`docs-forDIMG/MadeByAgent/Phase6-Step10-Obsolete-Candidates-Report.md`として以下を含める。
+`docs-forDIMG/MadeByAgent/Phase6-Step12-Obsolete-Candidates-Report.md`として以下を含める。
 
 1. 呼出元0件が確定したメンバの一覧（メンバ名、行番号、`[Obsolete]`メッセージ内容）
 2. Phase5-Step15の削除候補リストとの統合結果
@@ -83,7 +84,7 @@ Phase5-Step15の方針を踏襲し、`[Obsolete]`付与にとどめ、**物理�
 - [ ] Phase5-Step15の削除候補リストとの重複がないこと（統合済みであること）。
 - [ ] `[Obsolete]`付与後もビルドが成功すること（警告は許容するが、エラーは許容しない）。
 - [ ] 既存自動テストが全件成功を維持していること。
-- [ ] `Phase6-Step10-Obsolete-Candidates-Report.md`が作成され、Phase6完了時点での残存状況が
+- [ ] `Phase6-Step12-Obsolete-Candidates-Report.md`が作成され、Phase6完了時点での残存状況が
       正確に記録されていること。
 
 ---
@@ -100,7 +101,7 @@ Phase5-Step15の方針を踏襲し、`[Obsolete]`付与にとどめ、**物理�
 
 ## 6. Phase6完了後のアクション
 
-1. 本Stepの成果物（`Phase6-Step10-Obsolete-Candidates-Report.md`）を確認する。
+1. 本Stepの成果物（`Phase6-Step12-Obsolete-Candidates-Report.md`）を確認する。
 2. `Phase6-Status.md`の全Step欄を更新し、Phase6を完了扱いとする。
 3. `DI-App-Wide-Migration-Plan.md`のPhase6行を「完了」に更新し、§6.12の定量指標に実績値を反映する。
 4. Phase7（`Mapping.cs`完全instance化）の個別計画書（`Phase7-Plan.md`）を新規策定する。
@@ -109,7 +110,7 @@ Phase5-Step15の方針を踏襲し、`[Obsolete]`付与にとどめ、**物理�
 
 ## 7. 次のアクション
 
-1. Phase6-Step9の完了後、本Stepに着手する。
+1. Phase6-Step11の完了後、本Stepに着手する。
 2. §2の実地再監査を実施し、`[Obsolete]`付与対象を確定する。
-3. `Phase6-Step10-Obsolete-Candidates-Report.md`を作成する。
+3. `Phase6-Step12-Obsolete-Candidates-Report.md`を作成する。
 4. 完了後、上記§6の「Phase6完了後のアクション」へ進む。
