@@ -199,10 +199,10 @@ mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
 ### タスク7（【2026-09-11一部実装・要確認】）: 単体テスト追加・全体確認
 
 - [x] `ProfileSettingsService` の新規プロパティに対する単体テストを追加した（`OutContType_ShouldShareBackingStoreWithGlobalShim`、`DS4WindowsTests/ProfileSettingsServiceTests.cs`）。`Global.OutContType`との同一参照性、および双方向の書き込み反映を確認する内容とした。
-- [ ] **【要確認・gwin7ok氏の判断待ち】** `ProfileSettingsViewModel` に対する単体テスト追加: `ProfileSettingsViewModelTests.cs` は現時点でリポジトリ中に存在せず、`ProfileSettingsViewModel` を直接インスタンス化する既存テストも確認できなかった（`DS4Device`等の実行時依存を伴うクラスのため、テスト容易性の観点で意図的に対象外とされている可能性がある）。計画書記載の通り「テストファイルが存在しない場合は新規作成の要否をgwin7ok氏に確認する」に従い、本タスクでは新規テストファイルの作成を見送った。新規作成を希望される場合はお申し付けください。
+- [x] **【2026-09-11追加実装】** `ProfileSettingsViewModel` に対する単体テストを新規作成した（`DS4WindowsTests/ProfileSettingsViewModelTests.cs`）。gwin7ok氏の指示により新規作成を実施。`PatternCViewModelTests.cs` に既存の `ViewModelFactory_ShouldCreate_ProfileSettingsViewModel`（Null チェックのみ）とは異なり、`OutContType`／`ControllerTypeIndex`／`ContType`／`UpdateLateProperties()` の連動という具体的な振る舞いを検証する3件のテストを追加した。WPFリソース読み込み（`BitmapImage`）に必要な `Application.Current` 初期化は `PatternCViewModelTests.cs` と同一のブートストラップパターンを踏襲した。
 - [x] `SpecialActionsListViewModel` 関連の既存テスト（`SpecialActionsListViewModelTests.cs`）を確認した。コンストラクタ引数の追加は末尾への追加のみであり、既存テスト（`new SpecialActionsListViewModel(0, specialActionRepo, profileRepo, null, outputSlotService)`）の呼び出し箇所数は変更前と同じであるため、破壊されていないことを確認した（コード修正は不要）。
-- [ ] **【要gwin7ok氏実施】** `dotnet build` によるクリーンビルド確認（警告0・エラー0）。本作業はLinuxベースのサンドボックス環境で行っており、.NET 8 / WPF（`net8.0-windows`）のビルド環境がないため、Claude側では実行できていない。ローカル環境（Windows）での実行をお願いします。
-- [ ] **【要gwin7ok氏実施】** `dotnet test` による全件PASS確認。上記と同じ理由でClaude側では未実施。ローカル環境での実行をお願いします。
+- [x] **【2026-09-11 gwin7ok氏確認済み】** `dotnet build` によるクリーンビルド確認: gwin7ok氏の環境（VS Codeウィンドウ再読み込み後）でビルド成功を確認済み。なお、最初の試行時に発生した `MC1000`（XAML生成物ファイルロック）エラーは、今回のコード変更とは無関係の環境要因（エディタのバックグラウンドプロセスによるファイルロック）であったことを確認済み。
+- [x] **【2026-09-11 gwin7ok氏確認済み】** `dotnet test` による全件PASS確認: gwin7ok氏の環境でテスト実行・全件成功を確認済み。ただし、この時点では `ProfileSettingsViewModelTests.cs`（本節上部で追加実装）はまだ含まれていなかったため、同ファイル追加後の再実行結果の確認をお願いします。
 
 ---
 
@@ -221,7 +221,7 @@ mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
 - [x] `SpecialActionsListViewModel.cs` が `IProfileSettingsService` を注入され、253行目が新プロパティ経由に置換されている。
 - [ ] **【要gwin7ok氏確認】** `<OutputContDevice>DS4</OutputContDevice>` を持つプロファイルを開いた際、`Emulated Controller` コンボボックスが正しく `DS4` を表示すること（実機での確認が必要。単体テストでは`OutContType_ShouldShareBackingStoreWithGlobalShim`によりデータ経路の同一性は保証済み）。
 - [ ] **【要gwin7ok氏確認】** Special Action 一覧のボタン名表示が、DS4プロファイルで空欄にならず正しいDS4名称で表示されること（実機での確認が必要）。
-- [ ] **【要gwin7ok氏実施】** 全単体テストがクリーンにPASSし、ビルド警告・エラーが増加していないこと（`dotnet build`／`dotnet test` はWindows環境での実行が必要なため、Claude側では静的レビュー・括弧対応チェックのみ実施済み）。
+- [ ] **【要gwin7ok氏再確認】** 全単体テストがクリーンにPASSし、ビルド警告・エラーが増加していないこと。ビルド成功・既存テスト全件PASSは確認済み（2026-09-11）。本節上部で追加した `ProfileSettingsViewModelTests.cs` を含めた再実行の確認をお願いします。
 - [ ] ~~（タスク4・5を実施する場合）該当箇所の動作確認が完了していること。~~ **【2026-09-11改訂】タスク4・5はPhase6-Step5／Phase6-Step6へ移管されたため、本計画書の完了条件からは除外する。**それぞれの完了条件は移管先の個別計画書（`Phase6-Step5-Plan.md` §7、`Phase6-Step6-Plan.md` §8）で管理する。
 
 ---
