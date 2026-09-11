@@ -1,12 +1,18 @@
 # Phase 5 - Step 14 個別計画書: Issue 7（Emulated Controller 誤表示）是正実装計画
 
 作成日: 2026-09-11
+改訂日: 2026-09-11（タスク4・5をPhase6へ移管し、本計画書のスコープ外とした旨を追記）
 対象ブランチ: `For-DI-migration-work`
 前提ドキュメント: `docs-forDIMG/MadeByAgent/Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md`（案1採用済み）
 関連ドキュメント:
 - `docs-forDIMG/MadeByAgent/Phase5-Step14-FormSettings-Unification-Plan.md`（フェーズC タスク(c)-1・(c)-2 を本計画書の内容に置き換える）
 - `docs-forDIMG/MadeByAgent/Phase5-Step14-FormSettings-Unification-Status.md`
+- `docs-forDIMG/MadeByAgent/Phase6-Plan.md`（§0.2, §1, §2 Phase6-Step5／Phase6-Step6。タスク4・5の移管先）
+- `docs-forDIMG/MadeByAgent/Phase6-Step5-Plan.md`（旧タスク4の個別計画書）
+- `docs-forDIMG/MadeByAgent/Phase6-Step6-Plan.md`（旧タスク5の個別計画書）
 - `.github/copilot-instructions.md`（3.1 Pure DI原則）
+
+> **【2026-09-11改訂】スコープ変更のお知らせ**: 当初「任意スコープ」として本計画書に含めていた**タスク4（`MainWindow.xaml.cs` のUDP診断コマンド修正）およびタスク5（`ProfileEditor.xaml.cs` の `Reload()` 内マッピング一覧機種追従修正）は、Phase6のStep5・Step6としてそれぞれ移管され、本Phase5-Step14-Issue7の実施対象外（スコープ外）となった。** 本計画書の「必須スコープ」であるタスク1〜3・6・7には変更がなく、これらは引き続きPhase5-Step14で実施する。タスク4・5の詳細な実装内容は、移管先の個別計画書（`Phase6-Step5-Plan.md`／`Phase6-Step6-Plan.md`）を参照のこと。以下の本文中、タスク4・5に関する記述は当時の検討経緯としてそのまま残すが、実施主体はPhase6に変わっている点に留意すること。
 
 ---
 
@@ -91,6 +97,8 @@ mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
 
 また、`MappingListViewModel` には `UpdateMappingDevType(OutContType)` という更新用メソッドが存在するが、これは `ProfileEditor.xaml.cs` 内のコンボボックス手動選択時のイベントハンドラ（`OutConTypeCombo_SelectionChanged`）からのみ呼ばれており、`Reload()`（同一エディタウィンドウ内で別プロファイルへ切り替える処理）では呼ばれていない。このため、**エディタを閉じずに別プロファイルへ切り替えた場合、マッピング一覧の内部状態が旧プロファイルの機種のまま残る**可能性がある。これは本Issue 7の直接の症状ではなく隣接する別経路の問題であるため、§4のタスク5として任意対応の形で提案する。
 
+> **【2026-09-11改訂】** 本項で提案したタスク5は、後日Phase6-Step6として移管・実施することが決定した。本Phase5-Step14-Issue7としては実施対象外である。詳細は `Phase6-Step6-Plan.md` を参照。
+
 ---
 
 ## 4. 修正対象ファイル棚卸し
@@ -101,8 +109,8 @@ mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
 | 2 | `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` | `public OutContType[] OutContType => _config.outputDevType;` を実装 | サービス実装追加 |
 | 3 | `DS4Windows/DS4Forms/ViewModels/ProfileSettingsViewModel.cs` | `ControllerTypeIndex`・`ContType`・`UpdateLateProperties()` の3箇所を `outputSlotService.GetOutputDeviceType(device)` → `profileSettings.OutContType[device]` に置換 | 参照先修正 |
 | 4 | `DS4Windows/DS4Forms/ViewModels/SpecialActionsListViewModel.cs` | コンストラクタに `IProfileSettingsService profileSettings = null` を追加（Pure DI＋フォールバック方式）、253行目の参照を `profileSettings.OutContType[deviceNum]` に置換 | 参照先修正＋DI追加 |
-| 5 | `DS4Windows/DS4Forms/MainWindow.xaml.cs` | （任意・推奨）1412行目のUDP診断コマンド `outconttype` の参照を `profileSettingsService.OutContType[tdevice]` に置換 | 参照先修正（任意） |
-| 6 | `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | （任意）`Reload()` 内、`profileSettingsVM.UpdateLateProperties();` の直後に `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加し、同一エディタ内でのプロファイル切替時にもマッピング一覧の機種表示を追従させる | 追加修正（任意・§3参照） |
+| 5 | ~~`DS4Windows/DS4Forms/MainWindow.xaml.cs`~~ | ~~（任意・推奨）1412行目のUDP診断コマンド `outconttype` の参照を `profileSettingsService.OutContType[tdevice]` に置換~~ **【対象外・Phase6-Step5へ移管】** | 移管（Phase6-Step5） |
+| 6 | ~~`DS4Windows/DS4Forms/ProfileEditor.xaml.cs`~~ | ~~（任意）`Reload()` 内、`profileSettingsVM.UpdateLateProperties();` の直後に `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加し、同一エディタ内でのプロファイル切替時にもマッピング一覧の機種表示を追従させる~~ **【対象外・Phase6-Step6へ移管】** | 移管（Phase6-Step6） |
 | 7 | `DS4Windows/DS4Control/Services/OutputSlotService.cs` / `IOutputSlotService.cs` | `GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` に技術的負債コメント（`// TODO(Phase6候補): ...`）を付与。実装自体は変更しない | コメント追記のみ |
 | 8 | `DS4WindowsTests/ProfileSettingsServiceTests.cs`（存在すれば）または新規テストファイル | 新規プロパティの単体テスト追加 | テスト追加 |
 | 9 | `DS4WindowsTests/SpecialActionsListViewModelTests.cs` | 既存テストへの影響確認・必要に応じてモック調整 | テスト確認 |
@@ -163,19 +171,24 @@ mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
 - [ ] `outputSlotService` フィールドが本箇所以外で使われていないか確認し、未使用になった場合でも他Stepとの整合のためフィールド自体の削除要否は別途判断する（本タスクでは参照差し替えのみ行う）。
 - [ ] `SpecialActionsListViewModel` を `new` している呼び出し元（`ProfileEditor.xaml.cs` 等）に対し、`IViewModelFactory` 経由かどうかを確認し、コンストラクタ引数追加による影響がないことを確認する。
 
-### タスク4（任意・推奨）: `MainWindow.xaml.cs` のUDP診断コマンド修正
+### タスク4（【2026-09-11改訂】対象外・Phase6-Step5へ移管）: `MainWindow.xaml.cs` のUDP診断コマンド修正
 
-- [ ] `outconttype` クエリの参照先を `profileSettingsService.OutContType[tdevice]` に置換（`MainWindow.xaml.cs` 内で `IProfileSettingsService` が既に注入されているか確認し、未注入であればコンストラクタに追加）。
-- [ ] 本タスクは影響範囲が外部UDP連携という限定的な箇所であるため、Step14本体のスコープに含めるか、次Stepへ回すかをgwin7ok氏に確認する。
+> **本タスクはPhase6-Step5として移管され、本Phase5-Step14-Issue7の実施対象外となった。** 以下は移管前の検討内容であり、実施は行わない（記録として残す）。詳細な実装計画は `Phase6-Step5-Plan.md` を参照。
 
-### タスク5（任意）: `ProfileEditor.xaml.cs` の `Reload()` 内、マッピング一覧の機種追従修正
+- [ ] ~~`outconttype` クエリの参照先を `profileSettingsService.OutContType[tdevice]` に置換（`MainWindow.xaml.cs` 内で `IProfileSettingsService` が既に注入されているか確認し、未注入であればコンストラクタに追加）。~~
+- [ ] ~~本タスクは影響範囲が外部UDP連携という限定的な箇所であるため、Step14本体のスコープに含めるか、次Stepへ回すかをgwin7ok氏に確認する。~~ → **次Stepへ回す方針が確定し、Phase6-Step5として移管された。**
 
-- [ ] `Reload()` 内、`profileSettingsVM.UpdateLateProperties();` の直後に以下を追加:
+### タスク5（【2026-09-11改訂】対象外・Phase6-Step6へ移管）: `ProfileEditor.xaml.cs` の `Reload()` 内、マッピング一覧の機種追従修正
+
+> **本タスクはPhase6-Step6として移管され、本Phase5-Step14-Issue7の実施対象外となった。** 以下は移管前の検討内容であり、実施は行わない（記録として残す）。詳細な実装計画は `Phase6-Step6-Plan.md` を参照。
+
+- [ ] ~~`Reload()` 内、`profileSettingsVM.UpdateLateProperties();` の直後に以下を追加:~~
   ```csharp
+  // （参考・Phase6-Step6で実施予定）
   mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);
   ```
-- [ ] `RefreshEditorBindings()`（同様のリロード処理が存在する場合）にも同一の追加が必要か確認する。
-- [ ] 本タスクは§3で新たに判明した隣接問題への対応であり、Issue 7そのものの是正には必須ではない。gwin7ok氏の判断で今回含めるか次回に回すかを決定する。
+- [ ] ~~`RefreshEditorBindings()`（同様のリロード処理が存在する場合）にも同一の追加が必要か確認する。~~
+- [ ] ~~本タスクは§3で新たに判明した隣接問題への対応であり、Issue 7そのものの是正には必須ではない。gwin7ok氏の判断で今回含めるか次回に回すかを決定する。~~ → **次回（Phase6-Step6）に回す方針が確定した。**
 
 ### タスク6: `IOutputSlotService` への技術的負債コメント付与
 
@@ -202,7 +215,7 @@ mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
 
 1. **`SpecialActionsListViewModel` のコンストラクタ変更による既存呼び出し元への影響**: 新規引数はオプション引数（デフォルト`null`＋フォールバック）とするため、既存の `new SpecialActionsListViewModel(device)` 等の呼び出しはソース互換を維持する。
 2. **`outputSlotService.OutDevTypeTemp` との役割混同の防止**: `OutDevTypeTemp`（プロファイルエディタ上の未確定選択値）と、今回追加する `OutContType`（永続化済みの確定値）は意味的に異なる。タスク1のXMLコメントで明確に区別を記載する。
-3. **タスク4・5は任意項目**: Issue 7本体の是正（タスク1〜3）とは独立して着手可否を判断できるよう、明確に分離して記載した。
+3. **タスク4・5は任意項目 → Phase6へ移管**: Issue 7本体の是正（タスク1〜3）とは独立して着手可否を判断できるよう、当初明確に分離して記載していたが、【2026-09-11改訂】この分離を活かす形でタスク4・5はそれぞれPhase6-Step5／Phase6-Step6として移管することが確定した。これにより本Phase5-Step14-Issue7は「必須スコープ」（タスク1〜3・6・7）のみで完結する。
 
 ---
 
@@ -214,12 +227,13 @@ mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
 - [ ] `<OutputContDevice>DS4</OutputContDevice>` を持つプロファイルを開いた際、`Emulated Controller` コンボボックスが正しく `DS4` を表示すること（実機またはユニットテストで確認）。
 - [ ] Special Action 一覧のボタン名表示が、DS4プロファイルで空欄にならず正しいDS4名称で表示されること。
 - [ ] 全単体テストがクリーンにPASSし、ビルド警告・エラーが増加していないこと。
-- [ ] （タスク4・5を実施する場合）該当箇所の動作確認が完了していること。
+- [ ] ~~（タスク4・5を実施する場合）該当箇所の動作確認が完了していること。~~ **【2026-09-11改訂】タスク4・5はPhase6-Step5／Phase6-Step6へ移管されたため、本計画書の完了条件からは除外する。**それぞれの完了条件は移管先の個別計画書（`Phase6-Step5-Plan.md` §7、`Phase6-Step6-Plan.md` §8）で管理する。
 
 ---
 
 ## 8. 進行ルール
 
-- 本計画書のタスク1〜3・6・7を「必須スコープ」、タスク4・5を「任意スコープ」として、着手前にgwin7ok氏の最終確認を得る。
+- 【2026-09-11改訂】本計画書のスコープはタスク1〜3・6・7の「必須スコープ」のみとする。当初「任意スコープ」としていたタスク4・5は、それぞれPhase6-Step5／Phase6-Step6として移管され、本Phase5-Step14-Issue7の実施対象外となった。着手前にこの移管内容についてもgwin7ok氏の最終確認を得る。
 - 巨大ファイル編集時はピンポイント編集ルールを徹底し、不要な空白・改行差分を混入させない。
 - 実装完了後、`Phase5-Step14-FormSettings-Unification-Plan.md` フェーズCのタスク(c)-1・(c)-2の記載を本計画書の内容に基づき改訂する。
+- タスク4・5（Phase6移管分）の進捗管理は、本計画書ではなく `Phase6-Status.md` のStep5／Step6欄で行う。
