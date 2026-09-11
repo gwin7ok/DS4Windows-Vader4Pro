@@ -140,6 +140,8 @@
 * **[未着手 / 調査中項目]**:
   * Issue 6 (c): 実際にウィンドウをリサイズ・移動した状態での再現ログ取得と実機再検証（(a)(b) 是正の適用後に実施）。
   * `MainWindow.xaml.cs` の `IsInitialShow` プロパティ（`SizeChanged`/`LocationChanged` の早期ガード条件として存在するが、一度も `true` に設定されず常時無効というデッドコード状態）の要否整理・除去判断。
+  * **Issue 8-1（2026-09-12発見・原因特定済み）**: SpecialActionによるプロファイル連続切替時の多重発火・暴走ループ。`Global.ApplyProfile`が`ActionInstanceState`/`KeyButtonActionController`を無条件に再構築し、held中の物理入力のトリガー済みラッチを毎回喪失させることが原因（詳細は§7.2）。是正方針は次回セッションで個別計画書を作成のうえ着手。
+  * **Issue 8-2（2026-09-12発見・原因未確定）**: プロファイル適用時のカスタム通知（`ProfileNotificationWindow`）で、以前鳴っていたWindows標準通知音（`MessageBeep`）が鳴らなくなった。コード上は無条件に呼ばれる構造を確認済みだが、鳴らない直接原因は未特定（詳細は§7.3、追加ログ・実機切り分けが必要）。
   * （※ 新たな不具合が確認された場合に順次追記）
 
 ---
@@ -203,3 +205,94 @@ Issue 6 と同様の **「UI ViewModel レイヤーにおける一時編集バ�
 以下の 2 段階の是正を実施することで、本不具合が 100% 解消されることを確認：
 1. **ViewModel プロパティ再同期の保証（タスクc-1）**: プロファイルロード完了時の再初期化ロジックにて、`tempConType = Global.OutContType[device];` を確実に代入し `OnPropertyChanged(nameof(ControllerTypeIndex))` を発火させる。
 2. **双方向連動フェイルセーフガード（タスクc-2）**: `EnableOutputDataToDS4 == true` なのに `ControllerTypeIndex == 0 (Xbox360)` という矛盾状態を検知した場合に自動で `DS4`（1）へ同期補正するガードを配置する。
+
+---
+
+## 7. 2026-09-12 追記: Issue 8（実機再報告）SpecialActionプロファイル連続切替の暴走、および通知音の欠落
+
+### 7.1 文書上の位置づけ
+
+gwin7ok氏より、Phase5-Step14-Issue7の是正完了後もなお実機で継続的に発生している（「以前から何度か報告はしていた」）2件の不具合が改めて報告された。本節では、gwin7ok氏提供の実機ログ（`ds4windows_log.txt`、2026-09-12 03:53〜03:54、約7,574行）の解析、および該当コードの追跡調査の結果を記録する。**本節作成時点では原因調査のみを完了しており、是正の実装は未着手である。**
+
+### 7.2 Issue 8-1: SpecialActionによるプロファイル連続切替時の多重発火・暴走ループ
+
+* **発生現象（gwin7ok氏報告）**:
+  SpecialActionによるプロファイル切替を連続で行うと、(a) 一回の切換のつもりが2回切換が起こる、(b) 連続して切換が起こり続けて止まらなくなる、という2種の症状が発生する。
+* **ステータス**: ⚠️ **原因特定済み（コード追跡による確定）・是正方針は次ステップで検討**
+
+#### ログ解析結果
+提供ログを解析したところ、`xxx_プロフ切替GI□`（原神DS4□へ切替）→`xxx_プロフ切替ACO`（Assassin's Creed Originsへ切替）→`xxx_プロフ切替GI`（原神DS4_for_gwinへ切替）→`xxx_プロフ切替GI□`→…という3プロファイルの巡回切替が、**新たなコントローラー操作が介在しないまま約1.0〜1.4秒間隔で自動的に繰り返され続けている**ことを確認した（該当行: 274, 526, 656, 882, 1134, 1265, 1492, …）。さらにログ後半（5886行目以降）では、同一プロファイル（`原神DS4_for_gwin`）へのリロードと、Guide系複合アクション`0101_GI_マップ`（`Type:MultiAction`）のトリガー検知が、**同一ミリ秒タイムスタンプ内に7回以上連続して記録される**という、さらに悪化した高頻度連射状態に至っていることも確認した（例: `03:54:07.2195` に7回連続）。
+
+各回のトリガー直前には必ず以下のログが記録されている点が重要な手がかりとなった。
+
+```
+SpecialAction PROFILE: beingTriggered=False, useTempProfile=False
+```
+
+物理的なボタン押下が本当に一度きりであれば、2回目以降は`BeingTriggered`（「トリガー済みで、離されるまで再発火を抑止する」ラッチ）が`True`のまま保持され、再発火は抑止されるはずである。しかし実際には**毎回`beingTriggered=False`から再出発している**ことが確認できる。
+
+#### 根本原因の技術的特定
+`Global.ApplyProfile`（`DS4Windows/DS4Control/ScpUtil.cs`）の内部で、プロファイル適用のたびに以下の処理が**無条件に**実行されていることを特定した。
+
+```csharp
+// ScpUtil.cs 3223-3232行目付近
+try { DS4Windows.ActionManager.ClearAllEntries(); } catch { }
+AppLogger.LogDebug($"ApplyProfile: Cleared ActionManager global entries to force re-creation of Action instances for new profile");
+...
+// ScpUtil.cs 3233-3241行目付近
+DS4Windows.Mapping.ClearKeyButtonControllersForDevice(device);
+try { DS4Windows.ActionManager.ClearDeviceState(device); } catch { }
+AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers and ActionManager state for device {device}");
+```
+
+* `ActionManager.ClearAllEntries()` / `ClearDeviceState(device)`（`DS4Windows/DS4Control/ActionManager.cs`）は、新しいプロファイルの`SpecialAction`定義に基づき`ActionEntry`/`ActionInstanceState`を作り直すために、**その時点で存在する全ての`ActionInstanceState`（`BeingTriggered`ラッチを保持するオブジェクト）を新品のインスタンスに置き換える**（`ent.States[device] = new ActionInstanceState();`）。
+* `Mapping.ClearKeyButtonControllersForDevice(device)`（`DS4Windows/DS4Control/Mapping.cs` 283行目〜）も同様に、その時点で存在する当該デバイスの`KeyButtonActionController`を**全て`Dispose`して破棄**する。
+* この2つの処理はいずれも、**「どの物理入力が現在まさに押され続けているか」を一切考慮せず**、プロファイル切替の引き金となった物理ボタン自身の状態も含めて無条件に初期化してしまう。
+* この結果、プロファイル切替を引き起こした物理ボタン（Guide＋複合キー等）をユーザーがまだ離していない状態で新プロファイルの`ActionEntry`が再構築されると、新しく生成された`ActionInstanceState.BeingTriggered`は`false`から始まるため、**次回のマッピング評価ループ（`Mapping.MapCustomAction`、実測で毎秒500回超）は、継続中の物理押下を「新しい立ち上がりエッジ」と誤認して即座に再発火させる**。
+* 新プロファイルの同じ物理ボタンに、さらに別のプロファイルへの切替アクションが割り当てられている場合（本ログのケースのように3プロファイルが同一トリガーで相互に切替先を指定している場合）、このサイクルが自己持続的に繰り返され、ユーザーが実際に物理ボタンを離すまで止まらない暴走ループとなる。
+* 観測された約1.0〜1.4秒という間隔は、プロファイルXMLの再読込・約149件の`ActionEntry`/`KeyButtonActionController`の再構築に要する処理時間にほぼ一致しており、この処理時間がボトルネックとして毎回のサイクル間隔を規定していると考えられる。ログ後半で観測された「同一ミリ秒内に7回連続」という極端な多重発火は、システムのキャッシュが温まる等の理由で再構築処理そのものが極めて高速化した結果、この暴走サイクルが実質的にマッピング評価の最高速度（500Hz超）に張り付いた状態に陥ったものと推測される。
+* 既存の`DefaultProfileSwitcher.SwitchProfile`（`DS4Windows/Actions/DefaultProfileSwitcher.cs` 31-40行目）には「カスケードループ防止」を目的とした**250msデバウンスガード**が実装済みであるが、これは本事象を防止できていない。理由は以下の2点である。
+  1. サイクル序盤の間隔（1.0〜1.4秒）は250msを大きく上回っており、デバウンスの対象時間窓の外側にある。
+  2. ログ後半の`0101_GI_マップ`（`Type:MultiAction`、プロファイル切替ではない通常のSpecialAction）の連射は、そもそも`DefaultProfileSwitcher`を経由しないため、このデバウンスガードの対象外である。
+* 以上より、既存の250msデバウンスは「同一トリガーの極短時間内の多重発火」を防ぐものであり、**「プロファイル再構築のたびにトリガー済みラッチが失われ、held状態の物理入力が新しいエッジとして誤認され続ける」という今回の根本原因に対しては、対症療法にしかなっていない**ことが判明した。
+
+#### 今後の是正方針（検討中・未実装）
+以下を候補として次ステップで設計を検討する。
+
+1. `ApplyProfile`のアクション再構築時に、**現在物理的にアクティブな入力（ボタン押下・アナログ閾値超過等）を検出し、新しく生成する`ActionInstanceState`に対して「既にトリガー済み・release待ち」の状態を引き継がせる**（`BeingTriggered`を`true`で初期化する、または新規生成前に該当する物理入力の現在値を再評価してから初期状態を決定する）。
+2. 上記が困難な場合の代替案として、**プロファイル切替（`ProfileSwitchAction`）に限り、切替元の物理トリガーが実際にリリース（release edge）されるまで、同一デバイスに対する次のプロファイル切替アクションの実行を明示的にブロックするラッチ**を`DefaultProfileSwitcher`側に追加する（既存の250msデバウンスを「時間ベース」から「リリース検知ベース」へ強化・併用する）。
+3. `0101_GI_マップ`のような非プロファイル切替系`SpecialAction`についても同一の"hold中の誤エッジ検知"が存在することを踏まえ、根本対応は`ActionInstanceState`の再構築ロジック（案1）を優先すべきであり、`DefaultProfileSwitcher`のみの対症療法（案2）は保険的な位置づけとする。
+
+**注記**: いずれの案も入力監視層・信号変換層のホットパスに関わる変更であり、`copilot-instructions.md` §2.2（No Feature Drop）および Phase5-Plan.md §5 ガードレール（カスケードループ防止ガード）との整合を保った設計・実機回帰確認が必須である。実装は次回セッションで個別の修正計画書を作成した上で着手する。
+
+### 7.3 Issue 8-2: プロファイル適用時のカスタム通知に、以前は鳴っていたWindows標準通知音が鳴らなくなった
+
+* **発生現象（gwin7ok氏報告）**:
+  プロファイルが接続されたコントローラーに適用された際、デスクトップ右上に表示されるカスタマイズされた通知ウィンドウ自体は変わらず表示されるが、以前は同時にWindows標準の通知音が鳴っていたのに対し、現在は鳴らない。
+* **ステータス**: ⚠️ **コード追跡調査完了・鳴らない根本原因は未特定（実機での追加切り分けが必要）**
+
+#### コード追跡結果
+* デスクトップ右上に表示されるカスタム通知ウィンドウは、`DS4Windows/DS4Forms/ProfileNotificationWindow.xaml.cs`の`ShowNotification(string message)`静的メソッドであることを、通知の表示位置ロジック（`PositionWindow()`: `workingArea.Right - Width - 20, workingArea.Top + 20` = 画面右上）から特定した。
+* 同メソッド内には、通知ウィンドウの`Show()`直後に以下の無条件呼び出しが存在する。
+  ```csharp
+  // ProfileNotificationWindow.xaml.cs 61-62行目
+  // システム音を再生
+  MessageBeep(MB_ICONINFORMATION);
+  ```
+  `MessageBeep`は`user32.dll`のWin32 APIであり、`MB_ICONINFORMATION`（`0x40`、`MB_ICONASTERISK`と同値）は、Windowsのサウンドスキームで「アスタリスク」イベントに割り当てられているシステムサウンドを再生する。
+* 呼び出し元を`MainWindow.xaml.cs`まで遡ったところ、`OnProfileChanged`イベントハンドラ（`ProfileChanged`イベント発火時に無条件で呼ばれる）→`ShowProfileChangeNotification(prolog, false)`→`ProfileNotificationWindow.ShowNotification(message)`という経路で、**設定（`appSettingsService.Notifications`等）による抑制を一切受けずに毎回呼ばれる**ことを確認した。すなわち、通知設定のON/OFFがこの経路の呼び出し可否には影響しない。
+* `git log`によるファイル履歴調査の結果、`ProfileNotificationWindow.xaml.cs`自体は**2026-09-11のコミット（`e936fd0`）で新規追加されたファイル**であることが判明した。すなわち、この「右上に表示されるカスタム通知ウィンドウ」の実装自体が比較的最近の作業成果物であり、`MessageBeep`呼び出しも当初からこの形で実装されている。
+* コードの構造上、`MessageBeep`の呼び出しは`notification.Show()`の直後・フェードイン開始の直前に位置しており、`ShowProfileChangeNotification`側の`catch`は`ProfileNotificationWindow.ShowNotification`呼び出し全体を包んでいるものの、通知ウィンドウの表示・フェードイン・3秒後の自動クローズが正常に動作している（gwin7ok氏からその他の異常報告がない）ことから、**この経路で例外が発生して`MessageBeep`行が未実行になっている可能性は低い**と判断した。
+* 以上より、コード上は`MessageBeep`が毎回呼ばれる構造になっていることを確認したが、**それでもなぜ音が鳴らないのかという根本原因はコードレビューのみでは特定できなかった**。
+
+#### 候補原因（切り分け未了・仮説）
+1. **Windowsのサウンドスキーム設定**: `MessageBeep(MB_ICONINFORMATION)`が実際に音を鳴らすかどうかは、Windowsの「コントロールパネル > サウンド > サウンド タブ > プログラム イベント」の「アスタリスク」（`SystemAsterisk`）に音声ファイルが割り当てられているかに完全に依存する。同イベントが「(なし)」に設定されている場合、API呼び出し自体は成功してもエラーなく無音となる。gwin7ok氏の環境でこの設定が現在「(なし)」になっていないか、あるいはサウンドスキーム自体が「サウンドなし」になっていないかの確認が必要。
+2. **他のプロセスによるオーディオセッションの占有・排他制御**: ゲームプレイ中（本ログはSpecialActionでゲーム用プロファイルへ切替中の状況）は、ゲーム側が排他モードでオーディオデバイスを占有している場合、Win32の`MessageBeep`のような「システムイベント経由」の音声がブロックされることがある（通常のプロセス音声とは異なる経路のため、必ずしも影響を受けるとは限らないが、環境依存の可能性として残る）。
+3. **リグレッションの可能性**: gwin7ok氏の「以前は鳴っていた」という証言との整合を取るには、リポジトリ内に本ファイル以前の別実装（例えば`NotifyIcon`のバルーン通知や`System.Media.SystemSounds`を使った旧実装）が存在した可能性も考慮する必要がある。ただし本調査時点の`git log`では`ProfileNotificationWindow.xaml.cs`自体の変更はこの1コミットのみであり、当時のフォーク元オリジナルDS4Windowsの通知実装（本フォーク以前の挙動）まで遡った比較はできていない。
+* **次の診断ステップ（提案）**:
+  1. `MessageBeep`呼び出しの直前・直後に`AppLogger.LogTrace`を追加し、実際にこの行へ到達しているか（例外で迂回されていないか）をログで確定する。
+  2. gwin7ok氏の実機でコントロールパネルのサウンド設定（「アスタリスク」イベント）を確認する。
+  3. ゲーム非起動時（オーディオデバイスが排他占有されていない状態）でも同様に無音になるかを確認し、候補原因2の切り分けを行う。
+  4. `MessageBeep`をより制御しやすい`System.Media.SystemSounds.Asterisk.Play()`（.NET標準API）へ置き換えることを是正候補として検討する（動作原理はほぼ同一だが、診断のしやすさ・将来のカスタム音声ファイル対応への拡張性で優位）。
+
+---
