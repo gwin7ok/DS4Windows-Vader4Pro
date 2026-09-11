@@ -855,7 +855,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 int type = 0;
-                switch (outputSlotService.GetOutputDeviceType(device))
+                // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク2）:
+                // outputSlotService.GetOutputDeviceType(device) はGlobal非連動の孤立バグを
+                // 抱えていたため、正しい永続化実体である profileSettings.OutContType に変更。
+                switch (profileSettings.OutContType[device])
                 {
                     case OutContType.X360:
                         type = 0;
@@ -952,7 +955,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public OutContType ContType
         {
-            get => outputSlotService.GetOutputDeviceType(device);
+            // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク2）: 参照先を
+            // outputSlotService.GetOutputDeviceType(device) から
+            // profileSettings.OutContType（Global.OutContTypeと同一実体）へ修正。
+            get => profileSettings.OutContType[device];
         }
 
         public int SASteeringWheelEmulationAxisIndex
@@ -3725,7 +3731,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public void UpdateLateProperties()
         {
             tempControllerIndex = ControllerTypeIndex;
-            outputSlotService.OutDevTypeTemp[device] = outputSlotService.GetOutputDeviceType(device);
+            // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク2）: 読み取り側の参照先を
+            // profileSettings.OutContType へ修正。書き込み先の OutDevTypeTemp（Temp出力デバイス
+            // 種別の一時保持）は outputSlotService 側のまま変更しない。
+            outputSlotService.OutDevTypeTemp[device] = profileSettings.OutContType[device];
             tempBtPollRate = profileSettings.BTPollRate[device];
             outputMouseSpeed = CalculateOutputMouseSpeed(ButtonMouseSensitivity);
             mouseOffsetSpeed = RawButtonMouseOffset * outputMouseSpeed;

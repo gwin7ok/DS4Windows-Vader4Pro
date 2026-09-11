@@ -214,6 +214,15 @@ namespace DS4Windows.DI
         sbyte[] LeftStickDriftXAxis { get; }
         sbyte[] LeftStickDriftYAxis { get; }
         bool[] EnableOutputDataToDS4 { get; }
+
+        /// <summary>
+        /// プロファイルに永続化されているエミュレートコントローラー種別（&lt;OutputContDevice&gt;）。
+        /// Global.OutContType（m_Config.outputDevType）への読み取り専用の薄い委譲。
+        /// Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク1）: 従来 IOutputSlotService.GetOutputDeviceType
+        /// が参照していたGlobal非連動の孤立配列に代わる、正しい参照先として新設。
+        /// </summary>
+        OutContType[] OutContType { get; }
+
         bool UseDs3PitchRollSim { get; set; }
         bool[] LowerRCOn { get; }
         string[] LaunchProgram { get; }

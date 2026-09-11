@@ -476,6 +476,11 @@ namespace DS4Windows
         public sbyte[] LeftStickDriftXAxis => _config.leftStickDriftXAxis;
         public sbyte[] LeftStickDriftYAxis => _config.leftStickDriftYAxis;
         public bool[] EnableOutputDataToDS4 => _config.enableOutputDataToDS4;
+
+        // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク1）:
+        // Global.OutContType（ScpUtil.cs）と同一の _config.outputDevType への読み取り専用委譲。
+        public OutContType[] OutContType => _config.outputDevType;
+
         public bool UseDs3PitchRollSim
         {
             get => _config.useDs3PitchRollSim;
