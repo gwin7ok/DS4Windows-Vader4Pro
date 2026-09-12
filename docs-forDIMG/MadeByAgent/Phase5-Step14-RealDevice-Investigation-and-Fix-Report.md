@@ -140,7 +140,7 @@
 * **[未着手 / 調査中項目]**:
   * Issue 6 (c): 実際にウィンドウをリサイズ・移動した状態での再現ログ取得と実機再検証（(a)(b) 是正の適用後に実施）。
   * `MainWindow.xaml.cs` の `IsInitialShow` プロパティ（`SizeChanged`/`LocationChanged` の早期ガード条件として存在するが、一度も `true` に設定されず常時無効というデッドコード状態）の要否整理・除去判断。
-  * **Issue 8-1（2026-09-12発見・原因特定済み・設計承認済み）**: SpecialActionによるプロファイル連続切替時の多重発火・暴走ループ。`Global.ApplyProfile`が`ActionInstanceState`/`KeyButtonActionController`を無条件に再構築し、held中の物理入力のトリガー済みラッチを毎回喪失させることが原因（詳細は§7.2、設計は`Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md`）。あわせて仕様③（実行重複禁止）・仕様⑤（トリガー構成ボタンの出力抑制）についても同文書内で設計・確認を進行中。個別実装計画書（`Phase5-Step14-Issue8-1-Fix-Plan.md`）の作成待ち。
+  * ~~**Issue 8-1（2026-09-12発見）**: SpecialActionによるプロファイル連続切替時の多重発火・暴走ループ。~~ **【2026-09-12 実装・実機検証完了】** `RequiresFreshPressAfterReset`（仕様④是正）・`IsExecuting`（仕様③厳格化）を`ActionInstanceState`/`Mapping.cs`に実装し、`dotnet build`/`dotnet test`成功、実機ログ解析（保持継続中は検知のみでブロック、離して押し直した瞬間に1回だけ実行／`ApplyProfile`のオーバーラップ0件）により是正を確認済み。詳細は§7.2、`Phase5-Step14-Issue8-1-Fix-Plan.md`。**残タスク（Issue 8-1(3): 仕様⑤是正）は別途個別計画書を作成予定。**
   * ~~**Issue 8-2（2026-09-12発見・原因未確定）**: プロファイル適用時のカスタム通知（`ProfileNotificationWindow`）で、以前鳴っていたWindows標準通知音（`MessageBeep`）が鳴らなくなった。~~ **【2026-09-12 取り下げ】** gwin7ok氏より、現在は正常に鳴るようになったとの報告あり。アプリ側コードは調査期間中不変のため、Windows側の環境要因と判断し取り下げ（詳細は§7.3）。
   * **Issue 8-3（2026-09-12新設・未着手）**: MultiAction（Guide複合キー）の連射現象の原因調査。Issue 8-1本体とは別メカニズム（前回DS4State比較ベース）による可能性が高く、独立した調査タスクとして新設（詳細は§7.4）。
   * （※ 新たな不具合が確認された場合に順次追記）
