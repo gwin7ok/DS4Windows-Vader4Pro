@@ -35,6 +35,23 @@ namespace DS4Windows
         // Bitmask for one-shot flags (GyroCalibrate, BatteryCheck, etc.) so we can record multiple one-shot states per action/device.
         // Interpretation of bits is up to higher-level managers; using uint for compactness.
         public uint OneShotFlags = 0u;
+
+        // Issue8-1是正(1): プロファイル適用後は、以後発生した成立イベントのみを成立とみなす（仕様④）。
+        // ActionInstanceStateが新規生成された直後はtrue。以後、当該アクションのトリガーが
+        // 一度でも「未成立（トリガー構成ボタンのいずれかが押されていない）」状態として観測されるまでは、
+        // たとえ全ボタン押下状態が検出されても新規成立とみなさない。
+        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md §2.3, §3
+        public bool RequiresFreshPressAfterReset = true;
+
+        // Issue8-1是正(2): 同一アクションの実行重複禁止（仕様③の厳格化）。
+        // Macro型はIsMacroRunningで既に管理されているため、それ以外の種別
+        // （Profile/Program/GyroCalibrate等）向けに新設する。
+        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md §4
+        public bool IsExecuting = false;
+
+        // 実行中に新たな成立イベントが発生した場合、完了後にもう一度だけ実行してほしいという
+        // 要求を記録する（実行キュー方式・キュー深さ1。無制限キューによる際限のない滞留を防ぐため）。
+        public bool PendingReExecutionRequested = false;
     }
 
     internal class ActionEntry
@@ -354,28 +371,28 @@ namespace DS4Windows
         // Parameters: (SpecialAction action, int device, bool oldValue, bool newValue)
         public static event Action<SpecialAction, int, bool, bool> ToggledOnChanged;
 
-            // Ensure the ToggledOnChanged event is always traced when fired.
-            static ActionManager()
+        // Ensure the ToggledOnChanged event is always traced when fired.
+        static ActionManager()
+        {
+            try
             {
-                try
+                ToggledOnChanged += (sa, dev, oldv, newv) =>
                 {
-                    ToggledOnChanged += (sa, dev, oldv, newv) =>
-                    {
-                        try { AppLogger.LogTrace($"ActionManager.ToggledOnChanged: name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
-                    };
-                }
-                catch { }
+                    try { AppLogger.LogTrace($"ActionManager.ToggledOnChanged: name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
+                };
             }
+            catch { }
+        }
 
-            // Helper for external components (such as DI-managed managers) to notify the static event.
-            public static void FireToggledOnChanged(SpecialAction action, int device, bool oldValue, bool newValue)
+        // Helper for external components (such as DI-managed managers) to notify the static event.
+        public static void FireToggledOnChanged(SpecialAction action, int device, bool oldValue, bool newValue)
+        {
+            try
             {
-                try
-                {
-                    try { ToggledOnChanged?.Invoke(action, device, oldValue, newValue); } catch { }
-                }
-                catch { }
+                try { ToggledOnChanged?.Invoke(action, device, oldValue, newValue); } catch { }
             }
+            catch { }
+        }
 
         // Helper to set toggled-on flag with change notification.
         public static void SetToggledOn(SpecialAction action, int device, bool value)

@@ -4823,42 +4823,42 @@ namespace DS4Windows
         private static void RunLightbarMacro(ObservableCollection<LightbarMacroElement> macro, int device, CancellationToken token)
         {
             lock (DS4LightBar.forcedColor) lock (DS4LightBar.forcelight)
-            {
-                DS4LightBar.forcelight[device] = true;
-
-                var timestamp = DateTime.UtcNow.Ticks;
-                var i = 0;
-
-                while (i < macro.Count)
                 {
-                    if (token.IsCancellationRequested)
+                    DS4LightBar.forcelight[device] = true;
+
+                    var timestamp = DateTime.UtcNow.Ticks;
+                    var i = 0;
+
+                    while (i < macro.Count)
                     {
-                        break;
+                        if (token.IsCancellationRequested)
+                        {
+                            break;
+                        }
+
+                        DS4LightBar.forcedColor[device] = macro[i].Color;
+
+                        try
+                        {
+                            Task.Delay(10, token).Wait();
+                        }
+                        catch (AggregateException ex)
+                        {
+                            if (ex.InnerExceptions.All(e => e is OperationCanceledException))
+                            { }
+                            else
+                            { throw; }
+                        }
+
+                        if (DateTime.UtcNow.Ticks - timestamp >= macro[i].Length * TimeSpan.TicksPerMillisecond)
+                        {
+                            i++;
+                            timestamp = DateTime.UtcNow.Ticks;
+                        }
                     }
 
-                    DS4LightBar.forcedColor[device] = macro[i].Color;
-
-                    try
-                    {
-                        Task.Delay(10, token).Wait();
-                    }
-                    catch (AggregateException ex)
-                    {
-                        if (ex.InnerExceptions.All(e => e is OperationCanceledException))
-                        { }
-                        else
-                        { throw; }
-                    }
-
-                    if (DateTime.UtcNow.Ticks - timestamp >= macro[i].Length * TimeSpan.TicksPerMillisecond)
-                    {
-                        i++;
-                        timestamp = DateTime.UtcNow.Ticks;
-                    }
+                    DS4LightBar.forcelight[device] = false;
                 }
-
-                DS4LightBar.forcelight[device] = false;
-            }
         }
 
         private static bool IfAxisIsNotModified(int device, bool shift, DS4Controls dc)
@@ -5076,6 +5076,19 @@ namespace DS4Windows
                         bool actionFound = false;
                         // Trigger evaluation is frequent; avoid unconditional per-tick debug logging to prevent log flooding.
 
+                        // Issue8-1是正(1): トリガー未成立を観測した時点で「以後の成立イベントは正規のもの」として
+                        // アームする（仕様④: プロファイル適用直後の押しっぱなし誤検知を防止）。
+                        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md §2.3, §3
+                        if (!triggeractivated)
+                        {
+                            try
+                            {
+                                var freshPressArmState = ActionManager.GetStateFor(action, device);
+                                if (freshPressArmState != null) freshPressArmState.RequiresFreshPressAfterReset = false;
+                            }
+                            catch { }
+                        }
+
                         if (triggeractivated)
                         {
                             // Emit rising-edge trace for non-Button SpecialActions.
@@ -5099,30 +5112,44 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!GetBeingTriggered(index, action, device))
+                                // Issue8-1是正(1)(2): プロファイル適用直後の押しっぱなし誤検知防止、
+                                // および同一アクションの実行中は新規実行を開始しない（仕様③④）。
+                                var programGateState = ActionManager.GetStateFor(action, device);
+                                bool programBlockedByFreshPress = programGateState != null && programGateState.RequiresFreshPressAfterReset;
+                                bool programBlockedByExecuting = programGateState != null && programGateState.IsExecuting;
+
+                                if (!GetBeingTriggered(index, action, device) && !programBlockedByFreshPress && !programBlockedByExecuting)
                                 {
                                     LogActionDoneCountOnTrigger(index, action, device, "Program");
 
-                                    // C5 / Phase1-D-2: ActionManager 経由（LaunchProcessAction）へのディスパッチ
-                                    bool handled = false;
+                                    if (programGateState != null) programGateState.IsExecuting = true;
                                     try
                                     {
-                                        var ctx = new DS4Windows.TriggerContext
+                                        // C5 / Phase1-D-2: ActionManager 経由（LaunchProcessAction）へのディスパッチ
+                                        bool handled = false;
+                                        try
                                         {
-                                            ActionDef = action,
-                                            Device = device,
-                                            IsEstablished = true
-                                        };
-                                        handled = DispatchInputEdge(ctx);
+                                            var ctx = new DS4Windows.TriggerContext
+                                            {
+                                                ActionDef = action,
+                                                Device = device,
+                                                IsEstablished = true
+                                            };
+                                            handled = DispatchInputEdge(ctx);
+                                        }
+                                        catch { }
+
+                                        if (!handled)
+                                        {
+                                            try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+
+                                            // フォールバック: DI未登録時も LaunchProcessAction に集約して安全に実行
+                                            new DS4Windows.Actions.LaunchProcessAction(action).Execute(null);
+                                        }
                                     }
-                                    catch { }
-
-                                    if (!handled)
+                                    finally
                                     {
-                                        try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
-
-                                        // フォールバック: DI未登録時も LaunchProcessAction に集約して安全に実行
-                                        new DS4Windows.Actions.LaunchProcessAction(action).Execute(null);
+                                        if (programGateState != null) programGateState.IsExecuting = false;
                                     }
                                 }
                             }
@@ -5130,101 +5157,116 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!GetBeingTriggered(index, action, device) && (!profileSettings.GetUseTempProfile(device) || deviceRuntime[device].UntriggerAction == null || deviceRuntime[device].UntriggerAction.typeID != SpecialAction.ActionTypeId.Profile))
+                                // Issue8-1是正(1)(2): プロファイル適用直後の押しっぱなし誤検知防止、
+                                // および同一アクションの実行中は新規実行を開始しない（仕様③④）。
+                                // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md §3, §4
+                                var profileGateState = ActionManager.GetStateFor(action, device);
+                                bool profileBlockedByFreshPress = profileGateState != null && profileGateState.RequiresFreshPressAfterReset;
+                                bool profileBlockedByExecuting = profileGateState != null && profileGateState.IsExecuting;
+
+                                if (!GetBeingTriggered(index, action, device) && !profileBlockedByFreshPress && !profileBlockedByExecuting && (!profileSettings.GetUseTempProfile(device) || deviceRuntime[device].UntriggerAction == null || deviceRuntime[device].UntriggerAction.typeID != SpecialAction.ActionTypeId.Profile))
                                 {
-                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
-                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={profileSettings.GetUseTempProfile(device)}");
-
-                                    LogActionDoneCountOnTrigger(index, action, device, "Profile");
-
-                                    // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
-                                    if (action.uTrigger.Count > 0 || action.automaticUntrigger)
+                                    if (profileGateState != null) profileGateState.IsExecuting = true;
+                                    try
                                     {
-                                        deviceRuntime[device].UntriggerAction = action;
-                                        deviceRuntime[device].UntriggerIndex = index;
+                                        DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
+                                        DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={profileSettings.GetUseTempProfile(device)}");
 
-                                        deviceRuntime[device].UntriggerAction.prevProfileWasTemporary = profileSettings.GetUseTempProfile(device);
-                                        deviceRuntime[device].UntriggerAction.prevProfileName = profileSettings.GetUseTempProfile(device)
-                                            ? profileSettings.GetTempProfileName(device)
-                                            : ProfilePath[device];
-                                    }
+                                        LogActionDoneCountOnTrigger(index, action, device, "Profile");
 
-                                    for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
-                                    {
-                                        DS4Controls dc = action.trigger[i];
-                                        DS4ControlSettings dcs = GetDS4CSetting(device, dc);
-                                        if (dcs.actionType != DS4ControlSettings.ActionType.Default)
+                                        // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
+                                        if (action.uTrigger.Count > 0 || action.automaticUntrigger)
                                         {
-                                            if (dcs.actionType == DS4ControlSettings.ActionType.Key)
+                                            deviceRuntime[device].UntriggerAction = action;
+                                            deviceRuntime[device].UntriggerIndex = index;
+
+                                            deviceRuntime[device].UntriggerAction.prevProfileWasTemporary = profileSettings.GetUseTempProfile(device);
+                                            deviceRuntime[device].UntriggerAction.prevProfileName = profileSettings.GetUseTempProfile(device)
+                                                ? profileSettings.GetTempProfileName(device)
+                                                : ProfilePath[device];
+                                        }
+
+                                        for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
+                                        {
+                                            DS4Controls dc = action.trigger[i];
+                                            DS4ControlSettings dcs = GetDS4CSetting(device, dc);
+                                            if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                                             {
-                                                uint tempKey = outputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
-                                                VirtualKBM.PerformKeyRelease(tempKey);
-                                            }
-                                            else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
-                                            {
-                                                int[] keys = (int[])dcs.action.actionMacro;
-                                                for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
+                                                if (dcs.actionType == DS4ControlSettings.ActionType.Key)
                                                 {
-                                                    uint tempKey = outputKBMMapping.GetRealEventKey((uint)keys[j]);
+                                                    uint tempKey = outputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
                                                     VirtualKBM.PerformKeyRelease(tempKey);
+                                                }
+                                                else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
+                                                {
+                                                    int[] keys = (int[])dcs.action.actionMacro;
+                                                    for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
+                                                    {
+                                                        uint tempKey = outputKBMMapping.GetRealEventKey((uint)keys[j]);
+                                                        VirtualKBM.PerformKeyRelease(tempKey);
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    // C4-5: ActionManager 経由（ProfileSwitchAction / IProfileSwitcher）へのディスパッチを試行
-                                    // handled が true の場合は下の直接 ApplyProfile（フォールバック）をスキップし二重実行を防止
-                                    bool handled = false;
-                                    try
-                                    {
-                                        var ctx = new DS4Windows.TriggerContext
+                                        // C4-5: ActionManager 経由（ProfileSwitchAction / IProfileSwitcher）へのディスパッチを試行
+                                        // handled が true の場合は下の直接 ApplyProfile（フォールバック）をスキップし二重実行を防止
+                                        bool handled = false;
+                                        try
                                         {
-                                            ActionDef = action,
-                                            Device = device,
-                                            IsEstablished = true
-                                        };
-                                        handled = DispatchInputEdge(ctx);
-                                    }
-                                    catch { }
-
-                                    if (!handled)
-                                    {
-                                        try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
-                                    }
-
-                                    if (!handled)
-                                    {
-                                        // フォールバック: DI未登録時は従来の直接 ApplyProfile 呼び出し
-                                        DS4Device d = ctrl.DS4Controllers[device];
-                                        string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
-                                            (device + 1).ToString(), action.details, $"{d.Battery}");
-                                        bool display = profileSettings.ProfileChangedNotification;
-
-                                        await Task.Run(() =>
-                                        {
-                                            d.HaltReportingRunAction(() =>
+                                            var ctx = new DS4Windows.TriggerContext
                                             {
-                                                Global.ApplyProfile(device, action.details, action.IsTemporaryProfileAction, true, ctrl,
-                                                    DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
+                                                ActionDef = action,
+                                                Device = device,
+                                                IsEstablished = true
+                                            };
+                                            handled = DispatchInputEdge(ctx);
+                                        }
+                                        catch { }
 
-                                                if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
+                                        if (!handled)
+                                        {
+                                            try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+                                        }
+
+                                        if (!handled)
+                                        {
+                                            // フォールバック: DI未登録時は従来の直接 ApplyProfile 呼び出し
+                                            DS4Device d = ctrl.DS4Controllers[device];
+                                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
+                                                (device + 1).ToString(), action.details, $"{d.Battery}");
+                                            bool display = profileSettings.ProfileChangedNotification;
+
+                                            await Task.Run(() =>
+                                            {
+                                                d.HaltReportingRunAction(() =>
                                                 {
-                                                    List<string> profileActionsNext = getProfileActions(device);
-                                                    for (int actionIndexNext = 0, profileListLenNext = profileActionsNext.Count; actionIndexNext < profileListLenNext; actionIndexNext++)
+                                                    Global.ApplyProfile(device, action.details, action.IsTemporaryProfileAction, true, ctrl,
+                                                        DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
+
+                                                    if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
                                                     {
-                                                        string actionnameNext = profileActionsNext[actionIndexNext];
-                                                        SpecialAction actionNext = GetProfileAction(device, actionnameNext);
-                                                        int indexNext = GetProfileActionIndexOf(device, actionnameNext);
+                                                        List<string> profileActionsNext = getProfileActions(device);
+                                                        for (int actionIndexNext = 0, profileListLenNext = profileActionsNext.Count; actionIndexNext < profileListLenNext; actionIndexNext++)
+                                                        {
+                                                            string actionnameNext = profileActionsNext[actionIndexNext];
+                                                            SpecialAction actionNext = GetProfileAction(device, actionnameNext);
+                                                            int indexNext = GetProfileActionIndexOf(device, actionnameNext);
 
-                                                        if (actionNext != null && actionNext.controls == action.controls)
-                                                            DispatchOrSetBeingTriggered(actionNext, device, true);
+                                                            if (actionNext != null && actionNext.controls == action.controls)
+                                                                DispatchOrSetBeingTriggered(actionNext, device, true);
+                                                        }
                                                     }
-                                                }
+                                                });
                                             });
-                                        });
-                                    }
+                                        }
 
-                                    return;
+                                        return;
+                                    }
+                                    finally
+                                    {
+                                        if (profileGateState != null) profileGateState.IsExecuting = false;
+                                    }
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.Macro)
@@ -5531,7 +5573,13 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!GetBeingTriggered(index, action, device))
+                                // Issue8-1是正(1): プロファイル適用直後の押しっぱなし誤検知防止（仕様④）。
+                                // 本アクションは瞬時に完了する同期処理のため、実行重複防止(2)ガードは付与しない
+                                // （§4.4のリスク検討: 重複実行しても実害がない種別と判断）。
+                                var gyroGateState = ActionManager.GetStateFor(action, device);
+                                bool gyroBlockedByFreshPress = gyroGateState != null && gyroGateState.RequiresFreshPressAfterReset;
+
+                                if (!GetBeingTriggered(index, action, device) && !gyroBlockedByFreshPress)
                                 {
                                     var d = ctrl.DS4Controllers[device];
 
@@ -8536,5 +8584,3 @@ namespace DS4Windows
         }
     }
 }
-
-
