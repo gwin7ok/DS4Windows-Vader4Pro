@@ -140,8 +140,9 @@
 * **[未着手 / 調査中項目]**:
   * Issue 6 (c): 実際にウィンドウをリサイズ・移動した状態での再現ログ取得と実機再検証（(a)(b) 是正の適用後に実施）。
   * `MainWindow.xaml.cs` の `IsInitialShow` プロパティ（`SizeChanged`/`LocationChanged` の早期ガード条件として存在するが、一度も `true` に設定されず常時無効というデッドコード状態）の要否整理・除去判断。
-  * **Issue 8-1（2026-09-12発見・原因特定済み）**: SpecialActionによるプロファイル連続切替時の多重発火・暴走ループ。`Global.ApplyProfile`が`ActionInstanceState`/`KeyButtonActionController`を無条件に再構築し、held中の物理入力のトリガー済みラッチを毎回喪失させることが原因（詳細は§7.2）。是正方針は次回セッションで個別計画書を作成のうえ着手。
+  * **Issue 8-1（2026-09-12発見・原因特定済み・設計承認済み）**: SpecialActionによるプロファイル連続切替時の多重発火・暴走ループ。`Global.ApplyProfile`が`ActionInstanceState`/`KeyButtonActionController`を無条件に再構築し、held中の物理入力のトリガー済みラッチを毎回喪失させることが原因（詳細は§7.2、設計は`Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md`）。あわせて仕様③（実行重複禁止）・仕様⑤（トリガー構成ボタンの出力抑制）についても同文書内で設計・確認を進行中。個別実装計画書（`Phase5-Step14-Issue8-1-Fix-Plan.md`）の作成待ち。
   * ~~**Issue 8-2（2026-09-12発見・原因未確定）**: プロファイル適用時のカスタム通知（`ProfileNotificationWindow`）で、以前鳴っていたWindows標準通知音（`MessageBeep`）が鳴らなくなった。~~ **【2026-09-12 取り下げ】** gwin7ok氏より、現在は正常に鳴るようになったとの報告あり。アプリ側コードは調査期間中不変のため、Windows側の環境要因と判断し取り下げ（詳細は§7.3）。
+  * **Issue 8-3（2026-09-12新設・未着手）**: MultiAction（Guide複合キー）の連射現象の原因調査。Issue 8-1本体とは別メカニズム（前回DS4State比較ベース）による可能性が高く、独立した調査タスクとして新設（詳細は§7.4）。
   * （※ 新たな不具合が確認された場合に順次追記）
 
 ---
@@ -308,3 +309,29 @@ AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers 
 </details>
 
 ---
+
+### 7.4 Issue 8-3（新設・2026-09-12）: MultiAction（Guide複合キー）の連射現象の原因調査
+
+**【本節はIssue 8-1（プロファイル連続切替の暴走）とは独立した別課題として、gwin7ok氏の指示により新設する。まずは原因調査から着手し、是正の実装は原因確定後に別途計画する。】**
+
+* **ステータス**: 🔍 **未着手（調査タスクとして新設）**
+* **関連**: `Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md` §2.5（現象の平易な説明・切り出し前の暫定調査）
+
+#### 現象の概要
+実機ログ（`ds4windows_log.txt`）後半（5886行目以降）で、`0101_GI_マップ`という`MultiAction`型SpecialAction（Guideボタンを含む複合キー）が、実際のボタン操作回数よりも明らかに多い頻度で、同一ミリ秒タイムスタンプ内に7回以上連続して実行されている現象が観測された。詳細な現象説明は上記関連文書§2.5を参照。
+
+#### Issue 8-1本体と区別する理由（再掲）
+Issue 8-1本体（プロファイル切替の暴走）は`ActionInstanceState.BeingTriggered`（`Profile`型等が使う判定機構）が原因であることを確定させたが、`MultiAction`型はこの機構を使わず、`Mapping.cs` 5707-5840行目付近の**別実装**（`activeCur`/`activePrev`という、前回受信したDS4State（`d.getPreviousStateRef()`）と今回の状態を直接比較する方式）でトリガー判定を行っている。このため、Issue 8-1本体の是正（`RequiresFreshPressAfterReset`等）を行っても、本現象が解消する保証がない。**発生の仕組みそのものが異なる可能性が高いため、独立した原因調査から始める。**
+
+#### 調査仮説（未検証）
+Guide（PS）ボタンの押下状態が、`d.getPreviousStateRef()`が参照する「前回のDS4State」に正しく反映されておらず、実際には押しっぱなしであっても「前回は押されていなかった」という誤った記録になっている結果、`activeCur && !activePrev`（＝新規立ち上がりエッジ）の条件が実際には成立していないはずの場面で毎フレーム成立してしまっている可能性がある。BluetoothとUSBでGuideボタンのHIDレポート上の格納位置・扱いが異なる実装になっていないか、`DS4State`のGuideボタン用フィールドの読み書きタイミングに他の箇所と不整合がないか、といった点が調査対象になると想定される。**ただしこれはあくまで技術的な仮説であり、確定した原因ではない。**
+
+#### 調査計画（案）
+1. `d.getPreviousStateRef()`の実装、および`DS4State`内のGuide（PS）ボタンに対応するフィールドの読み書き箇所を`grep`で洗い出し、`activeCur`/`activePrev`の算出ロジック（`Mapping.cs` 5707行目付近）が参照している値の更新タイミングを追跡する。
+2. Guideボタンの状態がBluetooth接続時とUSB接続時とで異なる経路・タイミングで更新されていないかを確認する（DS4Windows/DualSense系ドライバの実装は、接続方式によってHIDレポート構造が異なることが多いため、接続方式依存の不具合である可能性を考慮する）。
+3. 可能であれば、Guideボタン単体の押下状態を毎フレームログ出力する診断コードを一時的に追加し、gwin7ok氏の実機で再現ログを取得する。
+4. 原因を特定した後、是正方針を別途まとめ、個別の修正計画書（`Phase5-Step14-Issue8-3-Fix-Plan.md`等）を作成してから実装に着手する。
+
+#### 完了条件（本調査タスクとしての）
+* Guideボタンの状態追跡において、`activePrev`が実際の物理状態と乖離するメカニズムが特定されること、または「乖離は発生しておらず別の原因である」ことが確定すること。
+* 原因特定後、是正方針の設計案が別途まとめられること。
