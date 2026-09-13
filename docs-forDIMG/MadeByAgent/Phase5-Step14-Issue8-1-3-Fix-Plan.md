@@ -208,12 +208,11 @@ private static bool CheckForSpecialActionSuppression(int device, DS4Controls con
 
 新規テストファイル`DS4WindowsTests/MappingSpecialActionSuppressionTests.cs`として追加した。
 
-### タスク5（【未実施・要gwin7ok氏実施】）: ビルド・実機検証
-- [ ] `dotnet build`/`dotnet test`のクリーン実行確認。
-- [ ] 実機シナリオ: 「L2+PSでSpecialAction成立後、PSのみを先に離し、L2は押したまま維持する」→ L2自身の通常出力（デフォルト信号／通常マッピング／KBM等）が、L2自身を離すまで再開しないことを確認する。
-- [ ] 実機シナリオ: 上記の後、L2を離す→L2の通常出力が正しく再開することを確認する。
-- [ ] 既存の正常系（トリガー無関係の通常ボタン操作）に回帰がないことを確認する。
-- [ ] Issue 8-1本体（プロファイル連続切替）のシナリオに回帰がないことを再確認する（`CheckForSpecialActionSuppression`はSpecialAction全種別に影響するため）。
+### タスク5（【2026-09-12実機検証完了】）: ビルド・実機検証
+- [x] `dotnet build`/`dotnet test`のクリーン実行確認（gwin7ok氏環境、全て成功）。
+- [x] 実機シナリオ: 「L2+PSでSpecialAction成立後、PSのみを先に離し、L2は押したまま維持する」→ L2自身の通常出力が、L2自身を離すまで再開しないことを確認済み。仕様⑤（トリガー構成ボタンの個別解除）の核心動作が実機で確認された。
+- [x] 実機シナリオ: 上記の後、L2を離す→L2の通常出力が正しく再開することを確認済み。
+- [x] gwin7ok氏の実機確認により、既存の正常系・Issue 8-1本体（プロファイル連続切替）への回帰がないことも合わせて確認された。
 
 ---
 
@@ -230,12 +229,14 @@ private static bool CheckForSpecialActionSuppression(int device, DS4Controls con
 
 ## 5. 完了条件
 
-1. `suppressedTriggerButtons`が`Mapping.cs`に追加され、トリガー成立時に全トリガーボタンが追加されること。
-2. 個々のボタンが実際に離された時点で、そのボタンのみが抑制集合から解除されること（トリガー全体の成立/解除とは独立に判定されること）。
-3. `CheckForSpecialActionSuppression`が抑制集合ベースの判定に置き換えられ、通常マッピング処理側の出力抑制が仕様⑤通りに動作すること。
-4. 実機シナリオ（§2タスク5）で、L2+PSの例における仕様⑤の挙動が確認されること。
-5. Issue 8-1本体のシナリオに回帰がないこと。
-6. 既存の全自動テストが回帰なくPASSすること。
+1. [x] `suppressedTriggerButtons`が`Mapping.cs`に追加され、トリガー成立時に全トリガーボタンが追加されること。
+2. [x] 個々のボタンが実際に離された時点で、そのボタンのみが抑制集合から解除されること（トリガー全体の成立/解除とは独立に判定されること）。
+3. [x] `CheckForSpecialActionSuppression`が抑制集合ベースの判定に置き換えられ、通常マッピング処理側の出力抑制が仕様⑤通りに動作すること。
+4. [x] 実機シナリオ（§2タスク5）で、L2+PSの例における仕様⑤の挙動が確認されること。
+5. [x] Issue 8-1本体のシナリオに回帰がないこと。
+6. [x] 既存の全自動テストが回帰なくPASSすること。
+
+**【2026-09-12】上記1〜6全て達成。Issue 8-1(3)（仕様⑤是正）は完了とする。**
 
 ---
 
