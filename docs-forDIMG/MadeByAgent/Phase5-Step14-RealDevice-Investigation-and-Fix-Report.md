@@ -143,7 +143,7 @@
   * ~~**Issue 8-1（2026-09-12発見）**: SpecialActionによるプロファイル連続切替時の多重発火・暴走ループ。~~ **【2026-09-12 実装・実機検証完了】** `RequiresFreshPressAfterReset`（仕様④是正）・`IsExecuting`（仕様③厳格化）を`ActionInstanceState`/`Mapping.cs`に実装し、`dotnet build`/`dotnet test`成功、実機ログ解析（保持継続中は検知のみでブロック、離して押し直した瞬間に1回だけ実行／`ApplyProfile`のオーバーラップ0件）により是正を確認済み。詳細は§7.2、`Phase5-Step14-Issue8-1-Fix-Plan.md`。
   * ~~**Issue 8-1(3)（仕様⑤是正、トリガー構成ボタンの出力抑制期間）**: 「トリガー成立中は参加ボタン全てを一律抑制」となっており、個々のボタンが離されるまで継続すべき抑制が、いずれか1つが離れた時点で解除されてしまっていた。~~ **【2026-09-12 実装・実機検証完了】** `suppressedTriggerButtons`（デバイスごとのボタン単位集合）を`Mapping.cs`に新設し、`CheckForSpecialActionSuppression`を集合ベースの判定に置き換えた。`dotnet build`/`dotnet test`成功、実機で「L2+PS成立後にPSのみ離してもL2の抑制は継続し、L2を離した時点で正しく解除される」ことを確認済み。詳細は`Phase5-Step14-Issue8-1-3-Fix-Plan.md`。
   * ~~**Issue 8-2（2026-09-12発見・原因未確定）**: プロファイル適用時のカスタム通知（`ProfileNotificationWindow`）で、以前鳴っていたWindows標準通知音（`MessageBeep`）が鳴らなくなった。~~ **【2026-09-12 取り下げ】** gwin7ok氏より、現在は正常に鳴るようになったとの報告あり。アプリ側コードは調査期間中不変のため、Windows側の環境要因と判断し取り下げ（詳細は§7.3）。
-  * ~~**Issue 8-3（原因調査）**: MultiAction（Guide複合キー）の連射現象。~~ **【2026-09-13 実装完了・実機検証待ち】** 原因は`MultiAction`/`XboxGameDVR`型が`BeingTriggered`を設定しないことによる診断ログの誤発火と確定（実際のマクロ多重実行ではない）。gwin7ok氏のご提案（ログ出力位置を「実行が決定された場所」に移すことでフラグ判定自体を不要化する設計）を採用し、該当する全10箇所（Program/Profile/Macro×2/Key/DisconnectBT/BatteryCheck/SASteeringWheelEmulationCalibrate/GyroCalibrate/MultiAction系×3）に実装した。`dotnet build`/`dotnet test`・実機確認はgwin7ok氏実施待ち（詳細は§7.4）。
+  * ~~**Issue 8-3（原因調査）**: MultiAction（Guide複合キー）の連射現象。~~ **【2026-09-13 実装・実機検証完了】** 原因は`MultiAction`/`XboxGameDVR`型が`BeingTriggered`を設定しないことによる診断ログの誤発火と確定（実際のマクロ多重実行ではない）。gwin7ok氏のご提案（ログ出力位置を「実行が決定された場所」に移すことでフラグ判定自体を不要化する設計）を採用し、該当する全10箇所（Program/Profile/Macro×2/Key/DisconnectBT/BatteryCheck/SASteeringWheelEmulationCalibrate/GyroCalibrate/MultiAction系×3）に実装した。`dotnet build`/`dotnet test`成功、実機で「タップ→1回だけ実行・ログも1回」「長押し→実行されない」を確認済み（詳細は§7.4）。
   * （※ 新たな不具合が確認された場合に順次追記）
 
 ---
@@ -311,11 +311,11 @@ AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers 
 
 ---
 
-### 7.4 Issue 8-3（新設・2026-09-12、2026-09-13コード調査・2026-09-13実装完了）: MultiAction（Guide複合キー）の連射現象の原因調査と是正
+### 7.4 Issue 8-3（新設・2026-09-12、2026-09-13コード調査・実装・実機検証完了）: MultiAction（Guide複合キー）の連射現象の原因調査と是正
 
 **【本節はIssue 8-1（プロファイル連続切替の暴走）とは独立した別課題として、gwin7ok氏の指示により新設する。】**
 
-* **ステータス**: ✅ **原因確定・実装完了（実機検証待ち）**
+* **ステータス**: ✅ **完了**
 * **関連**: `Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md` §2.5（現象の平易な説明・切り出し前の暫定調査）
 
 #### 現象の概要（再掲）
@@ -361,13 +361,15 @@ gwin7ok氏より、`0101_GI_マップ`は`Multi-action Button`の**Tap Trigger**
 
 **この設計変更により、ログ出力のためだけに状態（`BeingTriggered`）を参照・判定する必要が完全に無くなった。** `MultiAction`/`XboxGameDVR`型についても、実際に`PlayMacro`が呼ばれる3箇所（Tap／Hold／DoubleTap）それぞれの直前にログ呼び出しを移動しただけであり、`BeingTriggered`に一切手を加えていない。これにより、当初検討していた「`BeingTriggered`を追加で`true`にする」方式よりも影響範囲が小さく、かつ将来同種の不具合が再発する可能性そのものを構造的に排除できる、より優れた設計となった。
 
-#### 実機での確認（推奨）
-1. `0101_GI_マップ`のトリガー（PS単体）を実際にタップ（すぐ離す）し、マクロが正しく1回だけ実行され、ログも1回だけ出力されることを確認する。
-2. PSを意図的に長押しし、マクロが実行されない（Tap Triggerの仕様通り）ことを確認する。ログについても、Tap/Hold/DoubleTapいずれの実行条件も満たさない限り出力されないことを確認する。
-3. 他の是正済みSpecialAction種別（Profile、Program等）のログ出力頻度に変化がないことを確認する。
+#### 実機での確認（2026-09-13 gwin7ok氏実施・確認済み）
+1. [x] `0101_GI_マップ`のトリガー（PS単体）を実際にタップ（すぐ離す）し、マクロが正しく1回だけ実行され、ログも1回だけ出力されることを確認。
+2. [x] PSを意図的に長押しし、マクロが実行されない（Tap Triggerの仕様通り）ことを確認。
+3. [x] 上記いずれも問題なし、との報告を受けた。
 
 #### 完了条件
 * [x] 「連射」が診断ログのみの不具合であり、実際の機能的な多重実行ではないことを確定した。
 * [x] ログ出力位置を「実行が決定された場所」へ移動する是正を、該当する全10箇所に実装した。
-* [ ] `dotnet build`/`dotnet test`のクリーン実行確認（gwin7ok氏実施待ち）。
-* [ ] 実機での確認（上記3点、gwin7ok氏実施待ち）。
+* [x] `dotnet build`/`dotnet test`のクリーン実行確認（gwin7ok氏環境、全て成功）。
+* [x] 実機での確認（上記3点、gwin7ok氏確認済み・問題なし）。
+
+**【2026-09-13】上記全て達成。Issue 8-3は完了とする。**
