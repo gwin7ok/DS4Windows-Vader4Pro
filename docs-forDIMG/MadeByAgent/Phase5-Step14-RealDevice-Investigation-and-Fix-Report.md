@@ -143,7 +143,7 @@
   * ~~**Issue 8-1（2026-09-12発見）**: SpecialActionによるプロファイル連続切替時の多重発火・暴走ループ。~~ **【2026-09-12 実装・実機検証完了】** `RequiresFreshPressAfterReset`（仕様④是正）・`IsExecuting`（仕様③厳格化）を`ActionInstanceState`/`Mapping.cs`に実装し、`dotnet build`/`dotnet test`成功、実機ログ解析（保持継続中は検知のみでブロック、離して押し直した瞬間に1回だけ実行／`ApplyProfile`のオーバーラップ0件）により是正を確認済み。詳細は§7.2、`Phase5-Step14-Issue8-1-Fix-Plan.md`。
   * ~~**Issue 8-1(3)（仕様⑤是正、トリガー構成ボタンの出力抑制期間）**: 「トリガー成立中は参加ボタン全てを一律抑制」となっており、個々のボタンが離されるまで継続すべき抑制が、いずれか1つが離れた時点で解除されてしまっていた。~~ **【2026-09-12 実装・実機検証完了】** `suppressedTriggerButtons`（デバイスごとのボタン単位集合）を`Mapping.cs`に新設し、`CheckForSpecialActionSuppression`を集合ベースの判定に置き換えた。`dotnet build`/`dotnet test`成功、実機で「L2+PS成立後にPSのみ離してもL2の抑制は継続し、L2を離した時点で正しく解除される」ことを確認済み。詳細は`Phase5-Step14-Issue8-1-3-Fix-Plan.md`。
   * ~~**Issue 8-2（2026-09-12発見・原因未確定）**: プロファイル適用時のカスタム通知（`ProfileNotificationWindow`）で、以前鳴っていたWindows標準通知音（`MessageBeep`）が鳴らなくなった。~~ **【2026-09-12 取り下げ】** gwin7ok氏より、現在は正常に鳴るようになったとの報告あり。アプリ側コードは調査期間中不変のため、Windows側の環境要因と判断し取り下げ（詳細は§7.3）。
-  * **Issue 8-3（2026-09-12新設・未着手）**: MultiAction（Guide複合キー）の連射現象の原因調査。Issue 8-1本体とは別メカニズム（前回DS4State比較ベース）による可能性が高く、独立した調査タスクとして新設（詳細は§7.4）。
+  * **Issue 8-3（2026-09-13コード調査完了・実機確認待ち）**: MultiAction（Guide複合キー）の連射現象の原因調査。当初仮説（Guideボタンの前回状態取り違え）はコード追跡の結果否定的と判明。新たに、診断用TRACEログの`risingEdge`算出ロジックが`MultiAction`/`XboxGameDVR`型に対して常に`true`を返してしまうバグを特定し、「連射」は実害のない診断ログの不具合である可能性が高いと判断した。実機での目視確認（マクロの効果が実際に繰り返されるか）待ち（詳細は§7.4）。
   * （※ 新たな不具合が確認された場合に順次追記）
 
 ---
@@ -311,28 +311,61 @@ AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers 
 
 ---
 
-### 7.4 Issue 8-3（新設・2026-09-12）: MultiAction（Guide複合キー）の連射現象の原因調査
+### 7.4 Issue 8-3（新設・2026-09-12、2026-09-13コード調査）: MultiAction（Guide複合キー）の連射現象の原因調査
 
 **【本節はIssue 8-1（プロファイル連続切替の暴走）とは独立した別課題として、gwin7ok氏の指示により新設する。まずは原因調査から着手し、是正の実装は原因確定後に別途計画する。】**
 
-* **ステータス**: 🔍 **未着手（調査タスクとして新設）**
+* **ステータス**: 🔍 **コード調査完了・実機による最終確認待ち（下記「gwin7ok氏に依頼したい実機検証」参照）**
 * **関連**: `Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md` §2.5（現象の平易な説明・切り出し前の暫定調査）
 
-#### 現象の概要
-実機ログ（`ds4windows_log.txt`）後半（5886行目以降）で、`0101_GI_マップ`という`MultiAction`型SpecialAction（Guideボタンを含む複合キー）が、実際のボタン操作回数よりも明らかに多い頻度で、同一ミリ秒タイムスタンプ内に7回以上連続して実行されている現象が観測された。詳細な現象説明は上記関連文書§2.5を参照。
+#### 現象の概要（再掲）
+実機ログ（`ds4windows_log.txt`）で、`0101_GI_マップ`という`MultiAction`型SpecialAction（Guideボタンを含む複合キー）に対応する`Trigger detected for SA`等のTRACEログが、実際のボタン操作回数よりも明らかに多い頻度で、同一ミリ秒タイムスタンプ内に何度も連続して記録される現象が観測された。
 
-#### Issue 8-1本体と区別する理由（再掲）
-Issue 8-1本体（プロファイル切替の暴走）は`ActionInstanceState.BeingTriggered`（`Profile`型等が使う判定機構）が原因であることを確定させたが、`MultiAction`型はこの機構を使わず、`Mapping.cs` 5707-5840行目付近の**別実装**（`activeCur`/`activePrev`という、前回受信したDS4State（`d.getPreviousStateRef()`）と今回の状態を直接比較する方式）でトリガー判定を行っている。このため、Issue 8-1本体の是正（`RequiresFreshPressAfterReset`等）を行っても、本現象が解消する保証がない。**発生の仕組みそのものが異なる可能性が高いため、独立した原因調査から始める。**
+#### 【重要】2026-09-13の追加コード調査により判明した内容: 当初仮説（Guideボタンの前回状態の取り違え）は否定的
 
-#### 調査仮説（未検証）
-Guide（PS）ボタンの押下状態が、`d.getPreviousStateRef()`が参照する「前回のDS4State」に正しく反映されておらず、実際には押しっぱなしであっても「前回は押されていなかった」という誤った記録になっている結果、`activeCur && !activePrev`（＝新規立ち上がりエッジ）の条件が実際には成立していないはずの場面で毎フレーム成立してしまっている可能性がある。BluetoothとUSBでGuideボタンのHIDレポート上の格納位置・扱いが異なる実装になっていないか、`DS4State`のGuideボタン用フィールドの読み書きタイミングに他の箇所と不整合がないか、といった点が調査対象になると想定される。**ただしこれはあくまで技術的な仮説であり、確定した原因ではない。**
+前回（2026-09-12）は「Guideボタンの押下状態が`d.getPreviousStateRef()`に正しく反映されていない可能性」を仮説として提示していたが、実装を1行ずつ追跡した結果、**この仮説は支持されないことが判明した。**
 
-#### 調査計画（案）
-1. `d.getPreviousStateRef()`の実装、および`DS4State`内のGuide（PS）ボタンに対応するフィールドの読み書き箇所を`grep`で洗い出し、`activeCur`/`activePrev`の算出ロジック（`Mapping.cs` 5707行目付近）が参照している値の更新タイミングを追跡する。
-2. Guideボタンの状態がBluetooth接続時とUSB接続時とで異なる経路・タイミングで更新されていないかを確認する（DS4Windows/DualSense系ドライバの実装は、接続方式によってHIDレポート構造が異なることが多いため、接続方式依存の不具合である可能性を考慮する）。
-3. 可能であれば、Guideボタン単体の押下状態を毎フレームログ出力する診断コードを一時的に追加し、gwin7ok氏の実機で再現ログを取得する。
-4. 原因を特定した後、是正方針を別途まとめ、個別の修正計画書（`Phase5-Step14-Issue8-3-Fix-Plan.md`等）を作成してから実装に着手する。
+1. `DS4Device.cs`の入力処理ループを確認したところ、HIDレポート受信のたびに`Report`イベント（＝`Mapping.MapCustom`の呼び出しにつながる）が発火した**後**に`cState.CopyTo(pState)`が実行される（1521行目）。すなわち、`Mapping`側が`d.getPreviousStateRef()`（＝`pState`）を参照する時点では、`pState`は正しく「1つ前のフレームの状態」を保持しており、`PS`（Guide）ボタンのフィールドも`DS4State.CopyTo`（`DS4State.cs` 200行目）で他のボタンと同様にコピーされることを確認した。**Guideボタン特有の取り違えは見当たらなかった。**
+2. これを踏まえると、`activeCur && !activePrev`（`Mapping.cs` 5837行目、MultiActionの「押された瞬間」判定）は、Guideボタンが継続して押されている間は`activePrev`も正しく`true`を保持し続けるため、**理論上は毎フレーム成立するはずがない**。
+
+#### 【新たな確定した原因】診断ログ自体の実装不備（`risingEdge`計算のバグ）
+
+上記の見直しを受けて調査範囲を広げた結果、**別の、より単純で確実な原因**を特定した。
+
+`Mapping.cs`には、SpecialActionのTRACEログをまとめて出力する共通関数`LogSpecialActionTrace`（319-389行目）があり、これは`risingEdge`という真偽値パラメータが`true`の場合にのみログを出力する（「Trigger detected for SA」「SA maps to」「Trigger keys for SA」「SA output combo」の4行全てがこの1つのフラグでゲートされている）。
+
+この`risingEdge`は、呼び出し元（`Mapping.cs` 5145-5153行目）で以下のように計算される。
+
+```csharp
+bool risingEdge = false;
+if (index >= 0)
+    risingEdge = !GetBeingTriggered(index, action, device);
+
+if (action.typeID != SpecialAction.ActionTypeId.Button)
+    LogSpecialActionTrace(actionname, action, device, risingEdge, outputfieldMapping, Mapping.deviceState);
+```
+
+`GetBeingTriggered`は`ActionInstanceState.BeingTriggered`（Issue 8-1で扱ったものと同一の状態）を参照する。ところが、`MultiAction`型・`XboxGameDVR`型の実行ブロック（5806-5958行目）を全文確認したところ、**この2種別は`BeingTriggered`を`true`に設定する処理を一切含んでいない**ことを確認した。`BeingTriggered`が`false`になる処理（5957行目、`triggeractivated`が`false`になった際の後始末）は存在するが、`true`にする処理が存在しないため、**`BeingTriggered`はこの2種別に対して常に`false`のまま**である。
+
+この結果、`risingEdge = !GetBeingTriggered(...)`は、Guideボタンが押され続けている間、**毎フレーム`true`と評価され続ける**。`LogSpecialActionTrace`はこれを「新規の立ち上がりエッジ」と誤認し、ボタンを押し続けているだけの間、`AppLogger.IsTraceEnabled`が有効な環境では**毎フレーム（実測500Hz超）ログを出力し続ける**。
+
+#### この発見が意味すること: 「連射」は実害のない診断ログの不具合である可能性が高い
+
+`MultiAction`型・`XboxGameDVR`型自体の実際のジェスチャー判定・マクロ実行ロジック（5837-5958行目、`action.firstTouch`・`action.tappedOnce`・`action.pastTime`という、`SpecialAction`オブジェクト自身が持つ状態を使った実装）は、`BeingTriggered`を一切参照しない**完全に独立したロジック**である。`activeCur`/`activePrev`の比較についても、上記の通りGuideボタンの状態取り違えは見当たらなかった。
+
+このため、現時点でのコード調査結果を総合すると、**実際にゲーム側へ送出されるマクロ出力（`PlayMacro`の呼び出し）自体は1回の押下につき正しく1回しか実行されておらず、「連射」に見えていたのはTRACEログ（診断用の記録）だけが誤って毎フレーム出力され続けていた、という可能性が高い**と考えられる。ただし、これはコードの静的な追跡から導いた結論であり、**実際に実機で「本当にマクロの効果（キー入力等）が連射されているかどうか」を確認できていない**ため、断定はできない。
+
+#### gwin7ok氏に依頼したい実機検証（本節の結論を確定させるために必須）
+
+以下の手順で実機検証を行い、ログを取得・共有いただきたい。
+
+1. DS4Windowsの設定でログレベルが`TRACE`（最も詳細なレベル）になっていることを確認する（現状のログにも`[TRACE]`表示のログが含まれているため、既に有効な可能性が高い）。
+2. 該当のプロファイル（`0101_GI_マップ`というMultiAction型SpecialActionが設定されているプロファイル）を適用した状態で、そのSpecialActionのトリガーとなっているGuide複合キーを**意図的に2〜3秒間、押しっぱなしにする**（離さない）。
+3. その間、**実際にPC側・ゲーム側で何が起きるかを目視で確認する**。具体的には、そのMultiActionが送出するはずのキー/マウス操作（例: 特定のキーが押される、特定の操作が実行される等）が、押している間**繰り返し何度も実行されている（例えば文字入力欄であれば同じ文字が連続して入力され続ける）ように見えるか**、それとも**1回だけ実行されてそれ以降は何も起きないか**を確認する。
+4. 上記の目視結果と合わせて、その操作中のログ（`ds4windows_log.txt`相当）を取得し共有いただきたい。
+
+**確認したいポイント**: 目視で「1回しか実行されていない」ことが確認できれば、本節の結論（診断ログのみの不具合）が確定し、是正は`risingEdge`の計算ロジック修正（ログの誤表示を直すだけ、低リスク）で完了する。もし目視でも「実際に繰り返し実行されている」ことが確認できた場合は、まだ特定できていない別の原因（例えば`PlayMacro`関数自体、またはその出力先である`IVirtualKBM`側に、多重実行を招く別の問題がある可能性）を追加調査する必要がある。
 
 #### 完了条件（本調査タスクとしての）
-* Guideボタンの状態追跡において、`activePrev`が実際の物理状態と乖離するメカニズムが特定されること、または「乖離は発生しておらず別の原因である」ことが確定すること。
-* 原因特定後、是正方針の設計案が別途まとめられること。
+* 上記実機検証により、「連射」が診断ログのみの不具合か、実際の機能的な多重実行かが確定すること。
+* 原因確定後、是正方針の設計案をまとめること（ログのみの不具合であれば、`risingEdge`算出ロジックの修正案を`Phase5-Step14-Issue8-3-Fix-Plan.md`としてまとめる）。
