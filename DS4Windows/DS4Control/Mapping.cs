@@ -5142,17 +5142,14 @@ namespace DS4Windows
                             }
                             catch { }
 
-                            // Emit rising-edge trace for non-Button SpecialActions.
-                            try
-                            {
-                                bool risingEdge = false;
-                                if (index >= 0)
-                                    risingEdge = !GetBeingTriggered(index, action, device);
-
-                                if (action.typeID != SpecialAction.ActionTypeId.Button)
-                                    LogSpecialActionTrace(actionname, action, device, risingEdge, outputfieldMapping, Mapping.deviceState);
-                            }
-                            catch { }
+                            // Issue8-3是正: 従来ここにあった「risingEdge = !GetBeingTriggered(...)」ベースの
+                            // 共通TRACEログ呼び出しは廃止した。MultiAction/XboxGameDVR型はBeingTriggeredを
+                            // trueに設定しないため、押下し続けている間ずっと「新規成立」と誤認してログが
+                            // 出続けるバグの原因になっていた（連射に見えた事象の正体）。
+                            // 対応として、ログ出力自体を「SpecialActionの実行が決定された、まさにその場所」
+                            // （各typeIDの分岐内、実行判定のif文の内側）に移動した。これにより、
+                            // ログ出力のためだけにBeingTriggeredの状態を判定する必要が無くなる。
+                            // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md §7.4
                             for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                             {
                                 DS4Controls dc = action.trigger[i];
@@ -5171,6 +5168,9 @@ namespace DS4Windows
 
                                 if (!GetBeingTriggered(index, action, device) && !programBlockedByFreshPress && !programBlockedByExecuting)
                                 {
+                                    // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                     LogActionDoneCountOnTrigger(index, action, device, "Program");
 
                                     if (programGateState != null) programGateState.IsExecuting = true;
@@ -5220,6 +5220,9 @@ namespace DS4Windows
                                     if (profileGateState != null) profileGateState.IsExecuting = true;
                                     try
                                     {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
                                         DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={profileSettings.GetUseTempProfile(device)}");
 
@@ -5328,6 +5331,9 @@ namespace DS4Windows
                                     // Macro run when trigger keys are pressed down (the default behaviour)
                                     if (!GetBeingTriggered(index, action, device))
                                     {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         LogActionDoneCountOnTrigger(index, action, device, "Macro");
 
                                         // C3-5: ActionManager 経由（MacroAction / IMacroPlayer）へのディスパッチを試行
@@ -5371,6 +5377,9 @@ namespace DS4Windows
                                         action.firstTouch = false;
                                         if (!GetBeingTriggered(index, action, device))
                                         {
+                                            // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                            try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                             LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
 
                                             // C3-5: リリース時トリガーの DI ディスパッチ試行
@@ -5480,6 +5489,9 @@ namespace DS4Windows
                                 {
                                     if (!prevActionDone)
                                     {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         LogActionDoneCountOnTrigger(index, action, device, "KeyTriggered");
                                         try
                                         {
@@ -5561,6 +5573,9 @@ namespace DS4Windows
                                     //bool exclusive = /*tempBool =*/ d.isExclusive();
                                     if (deviceConn == ConnectionType.BT)
                                     {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         d.DisconnectBT();
                                         ReleaseActionKeys(action, device);
                                         return;
@@ -5597,6 +5612,12 @@ namespace DS4Windows
                                     if (fadetimer[device] < 100)
                                         DS4LightBar.forcedColor[device] = getTransitionedColor(ref lastColor[device], ref trans, fadetimer[device] += 2);
                                 }
+                                // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                if (!GetBeingTriggered(index, action, device))
+                                {
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+                                }
+
                                 LogActionDoneCountOnTrigger(index, action, device, "BatteryCheck");
                                 LogActionDoneCountOnTrigger(index, action, device, "WheelRecalibrate");
                                 DispatchOrSetBeingTriggered(action, device, true);
@@ -5609,11 +5630,17 @@ namespace DS4Windows
                                 // If controller is not already in SASteeringWheelCalibration state then enable it now. If calibration is active then complete it (commit calibration values)
                                 if (d.WheelRecalibrateActiveState == 0 && DateTime.UtcNow > (action.firstTap + TimeSpan.FromMilliseconds(3000)))
                                 {
+                                    // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                     action.firstTap = DateTime.UtcNow;
                                     d.WheelRecalibrateActiveState = 1;  // Start calibration process
                                 }
                                 else if (d.WheelRecalibrateActiveState == 2 && DateTime.UtcNow > (action.firstTap + TimeSpan.FromMilliseconds(3000)))
                                 {
+                                    // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                     action.firstTap = DateTime.UtcNow;
                                     d.WheelRecalibrateActiveState = 3;  // Complete calibration process
                                 }
@@ -5632,6 +5659,9 @@ namespace DS4Windows
 
                                 if (!GetBeingTriggered(index, action, device) && !gyroBlockedByFreshPress)
                                 {
+                                    // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                     var d = ctrl.DS4Controllers[device];
 
                                     d.SixAxis.ResetContinuousCalibration();
@@ -5896,7 +5926,12 @@ namespace DS4Windows
                                     if ((DateTime.UtcNow - action.TimeofEnd) > TimeSpan.FromMilliseconds(150) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device]))
                                     {
                                         if (macro != "")
+                                        {
+                                            // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                            try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                             PlayMacro(device, macroControl, macro, null, null, DS4Controls.None, DS4KeyType.None);
+                                        }
 
                                         tappedOnce = false;
                                         action.tappedOnce = false;
@@ -5922,7 +5957,12 @@ namespace DS4Windows
                                     }
 
                                     if (macro != "")
+                                    {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         PlayMacro(device, macroControl, macro, null, null, DS4Controls.None, DS4KeyType.None);
+                                    }
 
                                     firstTouch = false;
                                     action.firstTouch = false;
@@ -5946,7 +5986,12 @@ namespace DS4Windows
                                     }
 
                                     if (macro != "")
+                                    {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         PlayMacro(device, macroControl, macro, null, null, DS4Controls.None, DS4KeyType.None);
+                                    }
 
                                     secondtouchbegin = false;
                                     action.secondtouchbegin = false;
