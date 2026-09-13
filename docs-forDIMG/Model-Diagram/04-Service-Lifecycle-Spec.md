@@ -1,69 +1,84 @@
 # サービスライフサイクル（DI登録）仕様書
 **（Service Lifecycle & DI Container Specification）**
 
-本ドキュメントは、`ServiceRegistration.cs` にて `Microsoft.Extensions.DependencyInjection` コンテナに登録される全サービスのライフタイム（寿命）と責務を定義する。
+本ドキュメントは、巨大ファイルの分解後における各コンポーネントのライフタイム（寿命）、責務、および依存注入（DI）関係を定義する。すべての登録は `ServiceRegistration.cs` に集約される。
 
 ---
 
-## 1. ライフタイム定義ルール
+## 1. ライフタイム定義ポリシー
 
-* **Singleton（単一インスタンス）:**
-  * アプリ起動から終了まで生存。
-  * スレッドセーフであること。
-  * デバイス通信ハンドル、永続化キャッシュ、バックグラウンド監視タスクを持つサービスに適用。
-* **Transient（一時インスタンス）:**
-  * 要求されるたびに新規生成。
-  * 画面遷移で開閉されるダイアログや、使い捨ての設定画面 ViewModel に適用。
-* **Factory生成（Pattern C）:**
-  * 実行時に動的な引数（プロファイル名やスロット番号）が必要な ViewModel に適用。`IViewModelFactory` 経由で解決。
+1. **Singleton（単一インスタンス）:**
+   * アプリ起動から終了まで常駐するサービス。
+   * 入力監視、デバイスレジストリ、マッピングパイプラインおよび各プロセッサ、仮想コントローラー出力、ファイル永続化リポジトリなど、スレッドセーフで状態を保持する全コアコンポーネントに適用。
+2. **Transient（一時インスタンス）:**
+   * 要求されるたびに新しく生成されるサービス。
+   * 開くたびに最新の設定値を読み込み直すダイアログ・独立画面（`SettingsViewModel`, `LogViewModel`, `AboutViewModel` 等）に適用。
+3. **Factory生成（Pattern C / Composite）:**
+   * `ProfileSettingsViewModel` などのパラメータ（プロファイル名）を伴う複合ViewModel。`IViewModelFactory` 経由で生成され、配下の各サブViewModel（`StickSubVM` 等）に必要な依存サービスを自動伝播してインスタンス化する。
 
 ---
 
-## 2. 登録サービス完全一覧表
+## 2. 登録サービス完全一覧表（解体後）
 
 | 分類 | サービス（インターフェース） | 具象クラス（実装） | ライフタイム | 責務 / 役割 | 主な依存注入引数 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **基盤** | `IPathService` | `PathService` | **Singleton** | アプリデータパス、プロファイル保存パスの動的解決 | なし |
-| **基盤** | `IEnvironmentService` | `EnvironmentService` | **Singleton** | OSバージョン、管理者権限有無、ディスプレイ情報 | なし |
-| **基盤** | `INotificationService` | `AppNotificationService` | **Singleton** | トースト通知、OS通知の共通発行 | なし |
-| **基盤** | `IAppearanceSettingsService` | `AppearanceSettingsService` | **Singleton** | UIテーマ（Dark/Default）、フォントサイズ設定 | `IAppSettingsService` |
-| **基盤** | `IAppSettingsService` | `AppSettingsService` | **Singleton** | アプリ全体設定（`AppSettings.xml`）の永続化と状態保持 | `IPathService`, `XmlIoLock` |
-| **基盤** | `IProfileXmlStore` | `ProfileXmlStore` | **Singleton** | プロファイルXMLのディスク読み書き（排他ロック内包） | `IPathService`, `XmlIoLock` |
-| **基盤** | `IProfileSettingsService` | `ProfileSettingsService` | **Singleton** | 読み込み済みプロファイル設定値のインメモリ管理 | `IProfileXmlStore` |
-| **基盤** | `IProfileRepository` | `ProfileRepository` | **Singleton** | プロファイル名一覧の管理、存在確認、CRUD | `IProfileXmlStore`, `IPathService` |
-| **基盤** | `ISpecialActionRepository` | `SpecialActionRepository` | **Singleton** | SpecialAction定義（`Actions.xml`）のCRUD・永続化 | `IPathService` |
-| **基盤** | `IOutputSlotStore` | `OutputSlotStore` | **Singleton** | スロット番号と仮想パッドの永続化（`OutputSlots.xml`） | `IPathService` |
-| **1.入力**| `IDs4DeviceRegistry` | `Ds4DeviceRegistryAdapter` | **Singleton** | 物理HIDコントローラー（DS4/Vader4Pro）の列挙と監視 | なし |
-| **1.入力**| `IDeviceStateService` | `DeviceStateService` | **Singleton** | 接続中デバイスのバッテリー残量、BT/USB状態管理 | `IDs4DeviceRegistry` |
-| **2.変換**| `IProfileApplicationService`| `ProfileApplicationService` | **Singleton** | スロットへのプロファイル適用・復帰、Halt保護 | `IProfileRepository`, `IOutputSlotService` |
-| **2.変換**| `IProfileActionProvider` | `ProfileActionProvider` | **Singleton** | プロファイルに紐づくアクション一覧の解決 | `ISpecialActionRepository` |
-| **2.変換**| `IProfileActionChainService` | `ProfileActionChainService` | **Singleton** | アクションの連鎖実行・アンロード制御 | `IProfileActionProvider` |
-| **2.変換**| `IAutoProfileService` | `AutoProfileService` | **Singleton** | フォアグラウンドウィンドウ監視と自動切替実行 | `IProcessInspector`, `IProfileApplicationService` |
-| **2.変換**| `IMappingActionDispatcher` | `MappingActionDispatcher` | **Singleton** | `Mapping.cs` からのアクション実行要求の中継 | `IManagedActionManager` |
-| **2.変換**| `ControlService` | `ControlService` | **Singleton** | 入力監視〜変換〜出力のコアパイプライン統括 | `IDs4DeviceRegistry`, `IProfileSettingsService`, `IOutputSlotService` |
-| **3.出力**| `IOutputSlotService` | `OutputSlotService` | **Singleton** | 仮想Xbox360/DS4パッド（ViGEm）の生成・アタッチ・切替 | `IOutputSlotStore` |
-| **3.出力**| `IVirtualKBM` | `OutputKBMHandlerAdapter` | **Singleton** | SendInput / FakerInput 経由のキー・マウス送出 | なし |
-| **3.出力**| `IMacroPlayer` | `DefaultMacroPlayer` | **Singleton** | マクロの時系列非同期再生エンジン | `IVirtualKBM` |
-| **3.出力**| `IActionFactory` | `DefaultActionFactory` | **Singleton** | アクション実行インスタンス（Key/Macro/Launch）の生成 | `IVirtualKBM`, `IMacroPlayer`, `IProcessLauncher` |
-| **3.出力**| `IProcessLauncher` | `DefaultProcessLauncher` | **Singleton** | 通常プロセスの起動 | なし |
+| **基盤** | `IPathService` | `PathService` | **Singleton** | プロファイル・アプリデータ保存先パスの動的解決 | なし |
+| **基盤** | `IEnvironmentService` | `EnvironmentService` | **Singleton** | OS種別、管理者権限、ディスプレイ解像度情報の提供 | なし |
+| **基盤** | `INotificationService` | `AppNotificationService` | **Singleton** | OSトースト通知、ステータス通知の統一発行 | なし |
+| **基盤** | `XmlIoLock` | `XmlIoLock` | **Singleton** | プロセス内・スレッド間のファイル排他制御ロック | なし |
+| **基盤** | `IAppSettingsService` | `AppSettingsService` | **Singleton** | `AppSettings.xml` の永続化・設定値管理 | `IPathService`, `XmlIoLock` |
+| **基盤** | `IAppearanceSettingsService`| `AppearanceSettingsService` | **Singleton** | UIテーマ（Dark/Default）、フォントスケール | `IAppSettingsService` |
+| **基盤** | `IProfileXmlStore` | `ProfileXmlStore` | **Singleton** | プロファイルXMLのシリアライズ・デシリアライズ | `IPathService`, `XmlIoLock` |
+| **基盤** | `IProfileRepository` | `ProfileRepository` | **Singleton** | プロファイル名一覧の保持、CRUD、存在検証 | `IProfileXmlStore`, `IPathService` |
+| **基盤** | `IProfileSettingsService` | `ProfileSettingsService` | **Singleton** | ロード済みプロファイルのインメモリ設定値管理 | `IProfileXmlStore` |
+| **基盤** | `IDeviceOptionRepository` | `DeviceOptionRepository` | **Singleton** | 機種別オプション（`*ControllerOptsDTO`）の管理 | `IPathService`, `XmlIoLock` |
+| **基盤** | `ISpecialActionRepository` | `SpecialActionRepository` | **Singleton** | `Actions.xml` のCRUDおよび定義管理 | `IPathService`, `XmlIoLock` |
+| **基盤** | `IOutputSlotStore` | `OutputSlotStore` | **Singleton** | スロット永続化設定（`OutputSlots.xml`）の管理 | `IPathService`, `XmlIoLock` |
+| **1.入力**| `IDeviceHotplugMonitor` | `DeviceHotplugMonitor` | **Singleton** | Win32 RAW/HID デバイス到着・抜去イベントの検知 | なし |
+| **1.入力**| `IDs4DeviceRegistry` | `Ds4DeviceRegistryAdapter` | **Singleton** | コントローラー（DS4/Vader4Pro等）の列挙と保持 | `IDeviceHotplugMonitor` |
+| **1.入力**| `IDeviceStateService` | `DeviceStateService` | **Singleton** | 接続中デバイスのバッテリー残量、通信種別管理 | `IDs4DeviceRegistry` |
+| **2.変換**| `IButtonProcessor` | `ButtonProcessor` | **Singleton** | ボタンリマップ、シフトモディファイア計算 | なし |
+| **2.変換**| `IStickProcessor` | `StickProcessor` | **Singleton** | デッドゾーン、感度カーブ（`StickOutCurve`）、軸補正 | なし |
+| **2.変換**| `ITriggerProcessor` | `TriggerProcessor` | **Singleton** | トリガー2段階判定、デッドゾーン、モーター制御 | なし |
+| **2.変換**| `ITouchGyroProcessor` | `TouchGyroProcessor` | **Singleton** | タッチパッドジェスチャー、ジャイロマウス計算 | なし |
+| **2.変換**| `IMouseEngine` | `MouseEngine` | **Singleton** | `Mouse.cs`解体先: マウスカーソル加速、平滑化フィルター | なし |
+| **2.変換**| `IInputMappingPipeline` | `InputMappingPipeline` | **Singleton** | 各Processorを順次実行し、入力信号を変換統括 | `IButtonProcessor`, `IStickProcessor`, `ITriggerProcessor`, `ITouchGyroProcessor`, `IMouseEngine`, `IMappingActionDispatcher` |
+| **2.変換**| `IInputLoopCoordinator` | `InputLoopCoordinator` | **Singleton** | 毎秒250〜1000回の高速入力ポーリングループ実行 | `IDs4DeviceRegistry`, `IInputMappingPipeline` |
+| **2.変換**| `IProfileApplicationService`| `ProfileApplicationService` | **Singleton** | プロファイルのスロット適用・復帰、Halt保護 | `IProfileRepository`, `IOutputSlotService` |
+| **2.変換**| `IProfileActionProvider` | `ProfileActionProvider` | **Singleton** | プロファイルに紐づくアクション定義の解決 | `ISpecialActionRepository` |
+| **2.変換**| `IProfileActionChainService` | `ProfileActionChainService` | **Singleton** | アクションの連鎖実行・ライフサイクル管理 | `IProfileActionProvider` |
+| **2.変換**| `IAutoProfileService` | `AutoProfileService` | **Singleton** | フォアグラウンドアプリ監視とプロファイル自動切替 | `IProcessInspector`, `IProfileApplicationService` |
+| **2.変換**| `IMappingActionDispatcher` | `MappingActionDispatcher` | **Singleton** | パイプラインからのアクション発火要求の非同期分配 | `IManagedActionManager` |
+| **2.変換**| `IManagedActionManager` | `DefaultActionManager` | **Singleton** | マクロ・キー・プロファイル切替アクションの実行統括 | `IActionFactory` |
+| **2.変換**| `ControlService` | `ControlService` | **Singleton** | 入力・変換・出力パイプライン全体の開始・停止統括 | `IDs4DeviceRegistry`, `IInputLoopCoordinator`, `IOutputSlotService` |
+| **3.出力**| `IOutputSlotService` | `OutputSlotService` | **Singleton** | 仮想Xbox360/DS4（ViGEm）の生成、割当、切替 | `IOutputSlotStore` |
+| **3.出力**| `IVirtualKBM` | `OutputKBMHandlerAdapter` | **Singleton** | SendInput / FakerInput によるキー・マウス送出 | なし |
+| **3.出力**| `IMacroPlayer` | `DefaultMacroPlayer` | **Singleton** | 時系列非同期マクロの再生・停止管理 | `IVirtualKBM` |
+| **3.出力**| `ILightbarService` | `LightbarService` | **Singleton** | バッテリー・プロファイル色に応じたLED発光計算 | なし |
+| **3.出力**| `IActionFactory` | `DefaultActionFactory` | **Singleton** | 各種アクションインスタンス（Key/Macro/Launch）の生成 | `IVirtualKBM`, `IMacroPlayer`, `IProcessLauncher` |
+| **3.出力**| `IProcessLauncher` | `DefaultProcessLauncher` | **Singleton** | 外部プロセスの通常起動 | なし |
 | **3.出力**| `IElevatedProcessLauncher` | `DefaultElevatedProcessLauncher` | **Singleton** | UAC昇格を伴う外部ツールの起動 | なし |
-| **3.出力**| `IProcessInspector` | `DefaultProcessInspector` | **Singleton** | 実行中プロセスのパス・ウィンドウタイトル調査 | なし |
+| **3.出力**| `IProcessInspector` | `DefaultProcessInspector` | **Singleton** | 実行中プロセスのパス・ウィンドウ名調査 | なし |
 | **3.出力**| `IProfileSwitcher` | `DefaultProfileSwitcher` | **Singleton** | アクションからのプロファイル切替実行 | `IProfileApplicationService` |
-| **3.出力**| `IUdpServerService` | `UdpServerService` | **Singleton** | Cemuhook 互換 UDP モーションデータ送信 | `IAppSettingsService` |
-| **4.UI** | `IViewModelFactory` | `ViewModelFactory` | **Singleton** | パラメータ付きViewModel（Pattern C）生成ファクトリ | `IServiceProvider` |
-| **4.UI** | `MainWindowsViewModel` | `MainWindowsViewModel` | **Singleton** | メインウィンドウ（ステータスバー、タブ統括）の状態保持 | `IAppSettingsService`, `ControlService` |
-| **4.UI** | `ControllersViewModel` | `ControllersViewModel` | **Singleton** | コントローラー接続スロット一覧画面の状態保持 | `IDs4DeviceRegistry`, `IProfileApplicationService` |
-| **4.UI** | `SettingsViewModel` | `SettingsViewModel` | **Transient** | 設定画面（開くたびに最新値を読み直して生成） | `IAppSettingsService`, `IAppearanceSettingsService` |
+| **3.出力**| `IUdpServerService` | `UdpServerService` | **Singleton** | Cemuhook 互換 UDP モーションデータ配信 | `IAppSettingsService` |
+| **4.UI** | `IViewModelFactory` | `ViewModelFactory` | **Singleton** | パラメータ付きViewModel / 複合ViewModelの生成 | `IServiceProvider` |
+| **4.UI** | `MainWindowsViewModel` | `MainWindowsViewModel` | **Singleton** | メインウィンドウ（ヘッダー、タブ切替、ステータス） | `IAppSettingsService`, `ControlService` |
+| **4.UI** | `ControllersViewModel` | `ControllersViewModel` | **Singleton** | コントローラー接続スロット一覧表示画面 | `IDs4DeviceRegistry`, `IProfileApplicationService` |
+| **4.UI** | `SettingsViewModel` | `SettingsViewModel` | **Transient** | アプリ全般設定画面（開くたびに最新値取得） | `IAppSettingsService`, `IAppearanceSettingsService` |
 | **4.UI** | `LogViewModel` | `LogViewModel` | **Transient** | ログ表示画面 | なし |
 | **4.UI** | `AboutViewModel` | `AboutViewModel` | **Transient** | バージョン・クレジット表示画面 | `IEnvironmentService` |
-| **4.UI** | `ProfileSettingsViewModel` | `ProfileSettingsViewModel` | **Factory生成 (Pattern C)** | 個別プロファイル編集画面 | `IProfileSettingsService`, `IProfileXmlStore` |
-| **4.UI** | `SpecialActEditorViewModel` | `SpecialActEditorViewModel` | **Factory生成 (Pattern C)** | スペシャルアクション設定・編集ダイアログ | `ISpecialActionRepository`, `IDs4DeviceRegistry` |
+| **4.UI** | `ProfileSettingsViewModel` | `ProfileSettingsViewModel` | **Factory生成 (親VM)** | プロファイル編集画面（配下のサブVM群を束ねる） | サブVM群, `IProfileSettingsService` |
+| **4.UI** | `StickSettingsSubViewModel` | `StickSettingsSubViewModel` | **Factory生成 (サブVM)** | スティック感度・カーブ・デッドゾーン設定タブ | `IProfileSettingsService` |
+| **4.UI** | `TriggerSettingsSubViewModel`| `TriggerSettingsSubViewModel`| **Factory生成 (サブVM)** | トリガー感度・2段階設定・モーター設定タブ | `IProfileSettingsService` |
+| **4.UI** | `ButtonMappingSubViewModel` | `ButtonMappingSubViewModel` | **Factory生成 (サブVM)** | ボタン割り当て・シフトモディファイア設定タブ | `IProfileSettingsService` |
+| **4.UI** | `SpecialActionsSubViewModel`| `SpecialActionsSubViewModel`| **Factory生成 (サブVM)** | スペシャルアクション一覧・登録タブ | `ISpecialActionRepository`, `IDs4DeviceRegistry` |
 
 ---
 
-## 3. リソースの破棄（Dispose）ガイドライン
+## 3. リソース破棄と安全な終了手順
 
-1. **`IDisposable` の自動連鎖：**
-   * コンテナによって生成された Singleton サービス（`ControlService`, `OutputSlotService`, `UdpServerService` 等）は、アプリ終了時（`App.OnExit`）にコンテナが破棄されるのと連動して、安全な順序で `Dispose()` が呼び出される。
-2. **スレッド/タスクの安全な停止：**
-   * HID読み取りループやViGEmデバイスハンドルを持つサービスは、`Dispose()` 内で確実に `CancellationTokenSource.Cancel()` を発行し、スレッドの合流（Join / Wait）を待機してからネイティブハンドルを閉じる。
+1. **破棄の依存順序制御（LIFO / 逆順破棄）:**
+   * アプリ終了時、`AppHost` が破棄される際に、依存している側（上位）から順に `Dispose()` が呼ばれる。
+   * `ControlService` / `InputLoopCoordinator` が停止してスレッドを安全に閉じた後に、`IDs4DeviceRegistry`（HIDデバイスハンドル）や `OutputSlotService`（ViGEmクライアント）が破棄されるため、リソース解放時の競合クラッシュが発生しない。
+2. **ホットパスサービスのステートレス設計:**
+   * `ButtonProcessor`、`StickProcessor` などの各変換プロセッサは、内部にミュータブルな状態（前フレームの値など）を持たず、パイプラインコンテキスト経由で受け渡すステートレス設計とすることで、Singleton でありながら完全なスレッドセーフとゼロGCを両立する。
