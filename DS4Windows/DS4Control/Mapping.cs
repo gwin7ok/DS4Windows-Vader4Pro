@@ -1027,6 +1027,17 @@ namespace DS4Windows
             new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState()
         };
 
+        // Issue8-1(3)是正: トリガー成立時に抑制対象となった物理ボタンのうち、
+        // まだ「離される」ことを観測していないものの集合（デバイスごと）。
+        // ここに含まれる間は、当該ボタン自身の通常出力（デフォルト信号／通常マッピング／KBM／機能）を抑制し続ける。
+        // トリガー全体の成立/解除（いずれか1つが離れたら解除）とは独立に、ボタン単位で管理する。
+        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-3-Fix-Plan.md §2.1
+        public static HashSet<DS4Controls>[] suppressedTriggerButtons = new HashSet<DS4Controls>[Global.MAX_DS4_CONTROLLER_COUNT]
+        {
+            new HashSet<DS4Controls>(), new HashSet<DS4Controls>(), new HashSet<DS4Controls>(), new HashSet<DS4Controls>(),
+            new HashSet<DS4Controls>(), new HashSet<DS4Controls>(), new HashSet<DS4Controls>(), new HashSet<DS4Controls>()
+        };
+
         // Cache of previous input-level 'established' state per (actionIndex, device).
         // Mapping will use this to detect input-edge (rise/fall) and only call DispatchTriggerEdge when input changed.
         private static readonly Dictionary<long, bool> prevInputEstablished = new Dictionary<long, bool>();
@@ -4934,6 +4945,29 @@ namespace DS4Windows
                 // crashing the async void mapping task.
                 string[] profileActions = getProfileActions(device)?.ToArray() ?? Array.Empty<string>();
 
+                // Issue8-1(3)是正: 抑制中のボタンのうち、実際に離されたものを解除する（デバイスにつき1回）。
+                // トリガー全体の成立/解除（triggeractivated）とは独立に、ボタン単位で判定する。
+                // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-3-Fix-Plan.md §2.3
+                try
+                {
+                    var currentlySuppressedSet = suppressedTriggerButtons[device];
+                    if (currentlySuppressedSet != null && currentlySuppressedSet.Count > 0)
+                    {
+                        // 列挙中の変更を避けるためコピーしてから判定する
+                        DS4Controls[] currentlySuppressed = new DS4Controls[currentlySuppressedSet.Count];
+                        currentlySuppressedSet.CopyTo(currentlySuppressed);
+                        for (int i = 0; i < currentlySuppressed.Length; i++)
+                        {
+                            DS4Controls suppressedControl = currentlySuppressed[i];
+                            if (!getBoolSpecialActionMapping(device, suppressedControl, cState, eState, tp, fieldMapping))
+                            {
+                                currentlySuppressedSet.Remove(suppressedControl);
+                            }
+                        }
+                    }
+                }
+                catch { }
+
                 for (int actionIndex = 0, profileListLen = profileActions.Length;
                      actionIndex < profileListLen; actionIndex++)
                 {
@@ -5091,6 +5125,23 @@ namespace DS4Windows
 
                         if (triggeractivated)
                         {
+                            // Issue8-1(3)是正: トリガー成立中は、構成する全ボタンを抑制対象に加える。
+                            // 個々のボタンの解除はMapCustomAction冒頭の解除パス（§2.3）で、
+                            // トリガー全体の成立/解除とは独立にボタン単位で行われる。
+                            // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-3-Fix-Plan.md §2.2
+                            try
+                            {
+                                var suppressSet = suppressedTriggerButtons[device];
+                                if (suppressSet != null)
+                                {
+                                    for (int __si = 0, __salen = action.trigger.Count; __si < __salen; __si++)
+                                    {
+                                        suppressSet.Add(action.trigger[__si]);
+                                    }
+                                }
+                            }
+                            catch { }
+
                             // Emit rising-edge trace for non-Button SpecialActions.
                             try
                             {
@@ -7673,36 +7724,15 @@ namespace DS4Windows
         private static bool CheckForSpecialActionSuppression(int device, DS4Controls control,
             DS4State cState, DS4StateExposed eState, Mouse tp, DS4StateFieldMapping fieldMap)
         {
-            List<string> profileActions = getProfileActions(device);
-
-            for (int actionIndex = 0, profileListLen = profileActions.Count; actionIndex < profileListLen; actionIndex++)
-            {
-                string actionname = profileActions[actionIndex];
-                SpecialAction action = GetProfileAction(device, actionname);
-
-                if (action == null || action.trigger == null) continue;
-
-                // Check if this control is part of the Special Action trigger
-                bool controlInTrigger = false;
-                for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
-                {
-                    if (action.trigger[i] == control)
-                    {
-                        controlInTrigger = true;
-                        break;
-                    }
-                }
-
-                if (!controlInTrigger) continue;
-
-                // Use the extracted trigger logic from MapCustomAction
-                if (IsSpecialActionTriggered(action, device, cState, eState, tp, fieldMap))
-                {
-                    return true; // Special Action would be triggered - suppress normal mapping
-                }
-            }
-
-            return false; // No Special Action triggered - allow normal mapping
+            // Issue8-1(3)是正: 「現在トリガーが成立しているか」（IsSpecialActionTriggeredの都度再計算）ではなく、
+            // 「このボタンが、いずれかのトリガー成立によりまだ抑制継続中か」を判定する。
+            // 判定に必要な状態は suppressedTriggerButtons（MapCustomAction内で更新）で管理される。
+            // これにより、トリガー成立中にPS等の一部ボタンだけ先に離されても、
+            // まだ押され続けているボタン（例: L2）自身の通常出力は、L2が実際に離されるまで抑制され続ける
+            // （旧実装は triggeractivated、すなわちいずれか1つでも離れた瞬間に抑制ごと解除されてしまっていた）。
+            // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-3-Fix-Plan.md §2.4
+            var suppressSet = suppressedTriggerButtons[device];
+            return suppressSet != null && suppressSet.Contains(control);
         }
 
         private static bool getBoolSpecialActionMapping(int device, DS4Controls control,

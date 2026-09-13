@@ -186,23 +186,29 @@ private static bool CheckForSpecialActionSuppression(int device, DS4Controls con
 
 ## 3. マイクロタスク breakdown
 
-### タスク1: `Mapping.cs`への抑制集合フィールド追加
-- [ ] `suppressedTriggerButtons`（`HashSet<DS4Controls>[]`、デバイス数分）を追加する。
-- [ ] 初期化パターンを既存のper-device静的配列と揃える。
+### タスク1（【2026-09-12実装済み】）: `Mapping.cs`への抑制集合フィールド追加
+- [x] `suppressedTriggerButtons`（`HashSet<DS4Controls>[]`、`Global.MAX_DS4_CONTROLLER_COUNT`分）を`deviceRuntime`の直後に追加した。
+- [x] 初期化パターンを既存の`deviceRuntime`配列と揃えた。
 
-### タスク2: `MapCustomAction`への追加・解除ロジックの実装
-- [ ] per-actionループ手前（§2.3）に、解除判定パスを追加する。
-- [ ] `triggeractivated`確定箇所（§2.2、Issue8-1是正(1)の`RequiresFreshPressAfterReset`アーム処理と同じ場所）に、追加処理を実装する。
+### タスク2（【2026-09-12実装済み】）: `MapCustomAction`への追加・解除ロジックの実装
+- [x] per-actionループ手前（§2.3）に解除判定パスを追加した。列挙中の変更を避けるため`HashSet.CopyTo`で配列に複製してから判定している。
+- [x] `triggeractivated`確定箇所（Issue8-1是正(1)の`RequiresFreshPressAfterReset`アーム処理と同じ`if (triggeractivated)`ブロック内、既存ロジックの直前）に、抑制対象への追加処理を実装した。
 
-### タスク3: `CheckForSpecialActionSuppression`の簡素化
-- [ ] §2.4の通りロジックを置き換える。
-- [ ] `IsSpecialActionTriggered`の他の呼び出し元の有無を`grep`で確認し、呼出元0件が確定すれば技術的負債コメントを付与する。
+### タスク3（【2026-09-12実装済み】）: `CheckForSpecialActionSuppression`の簡素化
+- [x] §2.4の通りロジックを置き換えた（`suppressedTriggerButtons[device].Contains(control)`の単純な判定に変更）。
+- [x] `IsSpecialActionTriggered`の他の呼び出し元を`grep`で確認した結果、**`Mapping.cs` 3297行目付近（`Button`型SpecialActionのトレースログ用、`AppLogger.LogTrace`での状態変化検知）に別の呼び出し箇所が存在し、現役で使用されていることを確認した。** 当初想定していた「呼出元0件」ではなかったため、技術的負債コメントの付与は不要と判断し、`IsSpecialActionTriggered`自体には変更を加えていない（今回の変更は`CheckForSpecialActionSuppression`側の呼び出し方法のみ）。
 
-### タスク4: 単体テストの追加
-- [ ] `suppressedTriggerButtons`関連ロジックは`Mapping`の内部static状態に強く依存するため、`Mapping`を直接操作するテストが可能か（既存テストの手法）を確認する。
-- [ ] 困難な場合は、少なくとも「トリガー成立→解除→個別ボタンの解放」というシナリオを人手で実機確認するテスト手順書（チェックリスト）を代替として整備する。
+### タスク4（【2026-09-12実装済み】）: 単体テストの追加
+**実装メモ**: `suppressedTriggerButtons`が`public static`フィールドであるため直接操作・検証が可能であり、`CheckForSpecialActionSuppression`（`private static`）は既存の`SpecialActionsListViewModelTests.cs`等で使われているreflectionパターンを踏襲して呼び出した。他テストとの副作用回避のため、本テスト専用のデバイス添字（3）を使用した。
 
-### タスク5: ビルド・実機検証
+- [x] `CheckForSpecialActionSuppression_ReturnsFalse_WhenButtonNotSuppressed`: 抑制集合に含まれないボタンは抑制されないことを確認。
+- [x] `CheckForSpecialActionSuppression_ReturnsTrue_WhenButtonAddedToSuppressedSet`: 抑制集合に追加したボタンが抑制されることを確認。
+- [x] `SuppressedTriggerButtons_ReleasingOneButton_DoesNotAffectOtherStillHeldButton`: **仕様⑤の核心シナリオ**。L2+PSを抑制集合に追加後、PSのみを取り除いた場合、L2は抑制継続・PSは解除されることを確認（本Issueの主目的そのものの検証）。
+- [x] `SuppressedTriggerButtons_ArrayIsSizedForAllDevices`: 配列が全デバイス分正しく初期化されていることを確認。
+
+新規テストファイル`DS4WindowsTests/MappingSpecialActionSuppressionTests.cs`として追加した。
+
+### タスク5（【未実施・要gwin7ok氏実施】）: ビルド・実機検証
 - [ ] `dotnet build`/`dotnet test`のクリーン実行確認。
 - [ ] 実機シナリオ: 「L2+PSでSpecialAction成立後、PSのみを先に離し、L2は押したまま維持する」→ L2自身の通常出力（デフォルト信号／通常マッピング／KBM等）が、L2自身を離すまで再開しないことを確認する。
 - [ ] 実機シナリオ: 上記の後、L2を離す→L2の通常出力が正しく再開することを確認する。
