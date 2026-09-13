@@ -12,11 +12,15 @@
 
 ```mermaid
 flowchart TD
-    classDef uiLayer fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
-    classDef coreLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
-    classDef egressLayer fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
-    classDef ingressLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
-    classDef infraLayer fill:#eceff1,stroke:#455a64,stroke-width:2px;
+    %% 全ノードのデフォルト文字色を「くっきりとした黒」に指定
+    classDef default color:#000000;
+
+    %% レイヤー別スタイル定義 (背景: 視認性の高い淡色 / 枠線: 濃色 / 文字色: 純黒 #000000)
+    classDef uiLayer fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000000;
+    classDef coreLayer fill:#ffe0b2,stroke:#e65100,stroke-width:2px,color:#000000;
+    classDef egressLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#000000;
+    classDef ingressLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000000;
+    classDef infraLayer fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000000;
 
     %% === 4. UI層 ===
     subgraph Layer4 ["4. UI層 (Presentation Layer)"]
