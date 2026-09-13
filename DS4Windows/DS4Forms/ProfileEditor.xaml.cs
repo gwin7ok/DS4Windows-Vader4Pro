@@ -1220,6 +1220,11 @@ namespace DS4WinWPF.DS4Forms
 
         private void RefreshEditorBindings()
         {
+            // 注意: profileSettingsVM は INotifyPropertyChanged 非実装のため、直後のDataContext代入
+            // （同一インスタンスの再代入）だけではWPFのバインディングは更新されない。本メソッドの
+            // 呼び出し元（PresetBtn_Click）が必ず先にStopEditorBindings()（DataContext=null）を
+            // 呼んでいることが、UI反映を成立させる前提条件になっている。詳細はUpdateLateProperties()の
+            // コメント、および Phase5-Step14-FormSettings-Unification-Status.md タスク(c)-1 を参照。
             specialActionsVM.LoadActions(currentProfile == null);
             mappingListVM.UpdateMappings();
             profileSettingsVM.UpdateLateProperties();
@@ -1357,7 +1362,24 @@ namespace DS4WinWPF.DS4Forms
         private void SetLateProperties(bool fullSave = true)
         {
             Global.BTPollRate[deviceNum] = profileSettingsVM.TempBTPollRateIndex;
-            Global.OutContType[deviceNum] = profileSettingsVM.TempConType;
+
+            // Phase5-Step14 FormSettings-Unification タスク(c)-2: 双方向連動フェイルセーフガード。
+            // EnableOutputDataToDS4（DS4固有データの出力）が有効なのに、エミュレートするコントローラー種別が
+            // X360のままだと、DS4専用データ（タッチパッド・ジャイロ等）を送出できる出力先が存在せず矛盾する。
+            // この矛盾を検知した場合は、UseDs3PitchRollSim（1372行目付近）と同様の既存パターンに倣い、
+            // ControllerType側をDS4へ自動補正する（Save・Apply両方の唯一の合流点である本メソッドに実装することで、
+            // SaveBtn_ClickとApplyBtn_Clickの両経路を1箇所で確実にカバーする）。
+            OutContType targetConType = profileSettingsVM.TempConType;
+            if (profileSettingsVM.EnableOutputDataToDS4 && targetConType != OutContType.DS4)
+            {
+                profileSettingsVM.TempControllerIndex = 1; // DS4
+                targetConType = OutContType.DS4;
+                AppLogger.LogToGui(
+                    "EnableOutputDataToDS4 が有効なため、Emulated Controller を自動的に DS4 へ補正しました。",
+                    false);
+            }
+
+            Global.OutContType[deviceNum] = targetConType;
             if (fullSave)
             {
                 Global.outDevTypeTemp[deviceNum] = OutContType.X360;

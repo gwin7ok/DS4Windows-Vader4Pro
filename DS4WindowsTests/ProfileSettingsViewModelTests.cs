@@ -129,5 +129,51 @@ namespace DS4WindowsTests
                 service.OutContType[device] = original;
             }
         }
+
+        [Fact]
+        public void UpdateLateProperties_ShouldSyncTempControllerIndexAndTempConType_FromProfileSettingsOutContType()
+        {
+            // Phase5-Step14 FormSettings-Unification タスク(c)-1 の回帰防止テスト。
+            // UI（Emulated Controllerコンボボックス）は TempControllerIndex/TempConType に
+            // バインドされているため、UpdateLateProperties() 実行後にこれらが
+            // profileSettings.OutContType（プロファイル切替・再読込直後の実体）と
+            // 正しく一致していることを確認する。
+            //
+            // 注意: 本テストはViewModel層のデータ整合性のみを検証する。実際のUI（ComboBox）が
+            // 画面上に正しく反映されるかどうかは、ProfileSettingsViewModelがINotifyPropertyChangedを
+            // 実装していないため、ProfileEditor.xaml.cs側のDataContext再設定（null代入後に再代入する
+            // パターン、Reload()/StopEditorBindings()+RefreshEditorBindings()）に依存する。
+            // この部分はViewを伴うため単体テスト化が困難であり、実機での目視確認が必要
+            // （詳細はPhase5-Step14-FormSettings-Unification-Status.md参照）。
+            var service = new ProfileSettingsService();
+            var outputSlotService = new OutputSlotService();
+            Global.ProfileSettingsServiceInstance = service;
+            Global.OutputSlotServiceInstance = outputSlotService;
+
+            const int device = 0;
+            OutContType original = service.OutContType[device];
+            try
+            {
+                service.OutContType[device] = OutContType.DS4;
+                var vm = new ProfileSettingsViewModel(device, service, outputSlotService: outputSlotService);
+
+                // コンストラクタ時点ではX360(0)で初期化されている実装のため、
+                // 明示的にUpdateLateProperties()を呼び、DS4への切替が反映されることを確認する。
+                vm.UpdateLateProperties();
+
+                Assert.Equal(1, vm.TempControllerIndex);
+                Assert.Equal(OutContType.DS4, vm.TempConType);
+
+                service.OutContType[device] = OutContType.X360;
+                vm.UpdateLateProperties();
+
+                Assert.Equal(0, vm.TempControllerIndex);
+                Assert.Equal(OutContType.X360, vm.TempConType);
+            }
+            finally
+            {
+                service.OutContType[device] = original;
+            }
+        }
     }
 }

@@ -3728,6 +3728,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
         }
 
+        // TODO(技術的負債・Phase5-Step14 タスク(c)-1関連): このViewModelはINotifyPropertyChangedを
+        // 実装していない。本メソッドが更新する各フィールド（tempControllerIndex等）がUIへ正しく反映される
+        // のは、呼び出し元（ProfileEditor.xaml.cs）が必ずDataContextをnullにしてから再代入する
+        // （Reload()、およびStopEditorBindings()+RefreshEditorBindings()のペア）という規約を
+        // 守っているためである。将来、本メソッドを新たな呼び出し元から呼ぶ場合、このDataContext
+        // 再設定の規約を守らないと、値は正しく更新されてもUI上には反映されない不具合が再発する。
+        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-FormSettings-Unification-Status.md タスク(c)-1
         public void UpdateLateProperties()
         {
             tempControllerIndex = ControllerTypeIndex;
