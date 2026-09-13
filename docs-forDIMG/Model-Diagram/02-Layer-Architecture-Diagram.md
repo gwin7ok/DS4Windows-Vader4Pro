@@ -1,7 +1,7 @@
 # レイヤー構成図（スタック図）
 **（Layered Stack Architecture Specification）**
 
-本ドキュメントは、巨大モノリスファイル解体（`ScpUtil`, `Mapping`, `ControlService`, `ProfileSettingsViewModel` 等の1クラス1ファイル化）を反映した、DS4Windows-Vader4Pro の実行時スタック構造、データパイプライン、およびレイヤー間の責務境界を定義する。
+本ドキュメントは、巨大ファイル群の1クラス1ファイル解体（パイプライン＆プロセッサ化、通信とパケットパースの分離、UIのMediator化）を反映した、DS4Windows-Vader4Pro の実行時スタック構造、データパイプライン、およびレイヤー間の責務境界を定義する。
 
 ---
 
@@ -13,21 +13,22 @@
 │  WPF Views (MainWindow, ProfileEditor, BindingWindow, etc.)                                      │
 │  ├── Singleton ViewModels: MainWindowsViewModel / ControllersViewModel                           │
 │  ├── Transient ViewModels: SettingsViewModel / LogViewModel / AboutViewModel                     │
-│  └── ProfileEditor 分割ViewModels (親コンテナ ＋ サブVM群):                                       │
-│       ProfileSettingsViewModel (親)                                                              │
-│       ├── StickSettingsSubVM (スティック感度/軸/カーブ)     TriggerSettingsSubVM (トリガー/モーター) │
-│       ├── ButtonMappingSubVM (ボタンリマップ/シフト)       SpecialActionsSubVM (アクション管理)   │
-│       └── IViewModelFactory (動的パラメータ注入・サブVM生成)                                      │
+│  └── ProfileEditor 分割ViewModels (Mediatorパターンによる調停):                                   │
+│       ProfileSettingsViewModel (親Mediator: 保存・集約・全体設定)                                 │
+│       ├── StickSettingsSubVM (LS/RS 感度/デッドゾーン/カーブ)   TriggerSettingsSubVM (L2/R2/モーター)│
+│       ├── ButtonMappingSubVM (ボタンリマップ/シフト)          SpecialActionsSubVM (アクション管理) │
+│       └── IViewModelFactory (動的パラメータ注入・サブVM群の生成)                                  │
 └────────────────────────────────────────────────┬─────────────────────────────────────────────────┘
                                                  │ 依存 (UIバインド・要求発行・イベント購読)
                                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                               第2層: 信号変換層 (Domain & Application Core)                       │
 │  【ループ統括】 ControlService (ファサード) ──> IInputLoopCoordinator (高速ループ実行エンジン)       │
-│  【状態・切替】 IProfileApplicationService (適用/復帰/Halt) / IAutoProfileService (自動切替)     │
+│  【状態管理】   MappingPipelineContext Pool (スロット別常駐バッファ: インプレース更新 / Zero-GC)   │
+│  【切替制御】   IProfileApplicationService (適用/復帰/Halt) / IAutoProfileService (自動切替)     │
 │  【アクション】 IManagedActionManager (アクション実行・トグル) ──> IMappingActionDispatcher        │
-│  【マッピング】 IInputMappingPipeline (変換パイプライン親)                                        │
-│                 ├── IButtonProcessor (ボタン変換・シフト)   IStickProcessor (軸/カーブ/デッドゾーン)│
+│  【マッピング】 IInputMappingPipeline (変換パイプライン親: Context統括)                           │
+│                 ├── IButtonProcessor (ボタン変換・シフト)   IStickProcessor (軸/カーブ/AntiSnap)   │
 │                 ├── ITriggerProcessor (2段階トリガー)      ITouchGyroProcessor (タッチ/ジャイロ)  │
 │                 └── IMouseEngine (Mouse.cs解体先: マウス加速度/OneEuroFilter平滑化/Trackball)     │
 └───────────────────────┬──────────────────────────────────────────────────┬───────────────────────┘
@@ -38,11 +39,11 @@
 │          第1層: 入力監視層 (Ingress)            │  │          第3層: 信号出力層 (Egress)            │
 │  IDs4DeviceRegistry (デバイス検出・管理)       │  │  3-a 仮想パッド: IOutputSlotService           │
 │  ├─ IDeviceHotplugMonitor (Win32挿抜検知)     │  │  │   └─ ViGEm Client (Xbox360 / DS4 OutDevice) │
-│  └─ Input Device Units (生HIDレポート読取)     │  │  3-b KBM/マクロ: IVirtualKBM (SendInput/Faker)│
-│     ├─ DS4Device (DualShock 4)                │  │  │   └─ IMacroPlayer (非同期時系列マクロ再生)  │
-│     ├─ Vader4ProDevice (Flydigi)              │  │  3-c 副作用実行:                               │
-│     └─ DualSenseDevice / JoyConDevice         │  │      ├─ IProcessLauncher / ElevatedLauncher    │
-│                                               │  │      ├─ IProfileSwitcher (アクション内切替)     │
+│  ├─ IHidTransport (USB / Bluetooth 通信)      │  │  3-b KBM/マクロ: IVirtualKBM (SendInput/Faker)│
+│  └─ IInputReportParser / OutputReportEncoder  │  │  │   └─ IMacroPlayer (非同期時系列マクロ再生)  │
+│     ├─ DS4ReportParser / Encoder              │  │  3-c 副作用実行:                               │
+│     ├─ Vader4ProReportParser / Encoder        │  │      ├─ IProcessLauncher / ElevatedLauncher    │
+│     └─ DualSenseReportParser / Encoder        │  │      ├─ IProfileSwitcher (アクション内切替)     │
 │                                               │  │      ├─ IUdpServerService (Cemuhook Motion)    │
 │                                               │  │      └─ ILightbarService (LED/発光色計算)      │
 └───────────────────────────────────────────────┘  └───────────────────────────────────────────────┘
@@ -62,15 +63,26 @@
 
 ---
 
-## 2. 各層の責務詳細と巨大ファイル解体マッピング
+## 2. 採用アーキテクチャ方針の詳細解説
 
-| 層番号 | レイヤー名 | 主な構成要素（解体後クラス群） | 責務と役割 |
-| :--- | :--- | :--- | :--- |
-| **第4層** | **UI層**<br>(Presentation) | Views (XAML), ViewModels, Sub-ViewModels, `IViewModelFactory` | **画面表示とユーザー入力の受付。**<br>・`ProfileSettingsViewModel` を親とし、各タブ単位で `StickSettingsSubVM`、`TriggerSettingsSubVM` 等に分割。<br>・各サブVMは単一の関心事のみを受け持ち、巨大コードビハインド（`ProfileEditor.xaml.cs`）を撤廃。 |
-| **第2層** | **信号変換層**<br>(Domain/App) | `ControlService`, `IInputLoopCoordinator`, `IInputMappingPipeline`, 各Processors, `ActionManager` | **アプリケーションの頭脳（変換と分配）。**<br>・`Mapping.cs`（443KB）を `IInputMappingPipeline` と5つの専門Processorに分解。<br>・`Mouse.cs`（78KB）を `IMouseEngine` に独立化。<br>・`ControlService.cs`（145KB）からループ実行を `IInputLoopCoordinator` として切り出し。 |
-| **第1層** | **入力監視層**<br>(Ingress) | `IDs4DeviceRegistry`, `IDeviceHotplugMonitor`, `DS4Device`, `Vader4ProDevice` | **物理コントローラーとの通信と切断検知。**<br>・USB/Bluetooth HID レポートの常時読み取り。<br>・Win32 RAW/デバイス到着イベントを `IDeviceHotplugMonitor` で検知。 |
-| **第3層** | **信号出力層**<br>(Egress) | `IOutputSlotService`, `IVirtualKBM`, `IMacroPlayer`, `ILightbarService`, 各Launchers | **変換済みデータのOS側への反映・物理フィードバック。**<br>・ViGEm経由の仮想Xbox360/DS4パッド出力。<br>・SendInput/FakerInput によるキーボード・マウスエミュレーション。<br>・LED発光色計算を `ILightbarService` として独立化。 |
-| **基盤** | **横断基盤・永続化層**<br>(Infrastructure) | `ProfileXmlStore`, `AppSettingsService`, `DeviceOptionRepository`, `OutputSlotStore`, `XmlIoLock` | **ファイルIOと排他制御（`ScpUtil.cs` / `Global` の解体先）。**<br>・XMLファイルのディスク読み書きと、`XmlIoLock` による完全なスレッドセーフ化。<br>・各DTO（`ProfileDTO`, `AppSettingsDTO`, `*ControllerOptsDTO`）の管理。 |
+### 方針1：ステートレスSingletonプロセッサ ＋ `MappingPipelineContext` によるZero-GCインプレース更新
+* **課題：** スティックのアンチスナップバックや `OneEuroFilter` などの平滑化には「前フレームの座標や時間」という内部状態が必要だが、毎秒1000回のループでインスタンスを `new` するとGCプレッシャーで遅延が発生する。
+* **解決策：**
+  * 各プロセッサ（`StickProcessor` 等）は**完全ステートレスなSingleton**とする。
+  * スロットごとに1つ常駐するバッファオブジェクト `MappingPipelineContext` を事前確保（プール）する。
+  * このコンテキスト内に「現在フレームの生入力」「前フレームの状態履歴（HistoryState）」「変換後出力バッファ」を保持し、各プロセッサが順次**インプレース（破壊的書き換え）**で更新していく。これにより、毎フレームのアロケーションを完全にゼロ（Zero-GC）化する。
+
+### 方針2：Layer 1 における通信（Transport）と解析（Parser/Encoder）の分離
+* **課題：** `DS4Device.cs` や `Vader4ProDevice.cs` にOS通信ハンドルとバイト解析コードが同居していると、実機をPCに接続しないとテストができない。
+* **解決策：**
+  * OSとの入出力（`ReadFile`/`WriteFile`）を担当する `IHidTransport` と、バイト列を構造体にパースする `IInputReportParser`、フィードバック用パケットを構築する `IOutputReportEncoder` を分離。
+  * パケット解析クラスはOS非依存の純粋なロジックとなるため、Vader 4 Pro の独自ボタン（C/Zボタン、背面M1〜M4）のデコード検証などをテストコードで100%自動検証可能にする。
+
+### 方針3：UI層における Mediator パターンによる親・子ViewModelの調停
+* **課題：** `ProfileSettingsViewModel.cs`（158KB）を分割する際、サブVM同士が過度なイベント駆動で通信すると循環参照や更新順序の破綻が起きやすい。
+* **解決策：**
+  * 親の `ProfileSettingsViewModel` が Mediator となり、各サブVM（`StickSubVM`, `TriggerSubVM` 等）を直接保持・調停する。
+  * 「保存」ボタンが押された際は、親VMが各子VMから設定スライスを吸い上げて `ProfileDTO` に統合し、`IProfileXmlStore` に一括保存を要求する。
 
 ---
 
@@ -79,16 +91,16 @@
 ```text
 【データの流れる方向 (Data Flow - 毎秒250〜1000回)】
   [物理コントローラー]
-         │ (生HID入力)
+         │ (生HIDパケット)
          ▼
-  [1. 入力監視層] (IDs4DeviceRegistry / 各Device)
-         │ (InputReport)
+  [1. 入力監視層] (IHidTransport ──> IInputReportParser)
+         │ (Parsed RawInputState)
          ▼
-  [2. 信号変換層] (IInputMappingPipeline ──> 各Processor)
-         │ (Transformed State / Actions)
+  [2. 信号変換層] (IInputMappingPipeline ──[Contextインプレース更新]──> 各Processor)
+         │ (Transformed State / SpecialActions)
          ▼
   [3. 信号出力層] (IOutputSlotService / IVirtualKBM)
-         │ (仮想パッド / キーマウ)
+         │ (仮想パッド信号 / キーマウ)
          ▼
      [PCゲーム / OS]
 
@@ -103,7 +115,3 @@
    ▼            ▼             ▼
   [1. 入力監視層] [3. 信号出力層] [横断基盤・永続化層]
 ```
-
-### ホットパス（Hot Path）の実行時原則
-* 毎秒250〜1000回呼び出される入力ループ（`IInputLoopCoordinator` $\rightarrow$ `IInputMappingPipeline` $\rightarrow$ `IOutputSlotService`）内では、**ヒープアロケーション（`new`）およびDIコンテナ解決（`GetService`）を一切行わない**。
-* すべてのプロセッサや出力サービスは Singleton として初期化時に注入され、キャッシュされた参照経由で直接処理を実行する。

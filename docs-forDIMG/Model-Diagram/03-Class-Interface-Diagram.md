@@ -1,7 +1,7 @@
 # クラス図 / インターフェース関連図
 **（Class & Interface Specification）**
 
-本ドキュメントは、巨大ファイルの解体および1クラス1ファイル化を反映した、DS4Windows-Vader4Pro のインターフェース構成とクラス関連性を定義する。
+本ドキュメントは、巨大ファイルの解体、ステートレスパイプライン、パケット解析の分離、およびUIのMediator化を反映した、DS4Windows-Vader4Pro のインターフェース構成とクラス関連性を定義する。
 
 ---
 
@@ -10,12 +10,12 @@
 ```mermaid
 classDiagram
     %% ==========================================
-    %% 1. 入力監視層 (Ingress)
+    %% 1. 入力監視層 (Ingress: 通信と解析の分離)
     %% ==========================================
     class IDs4DeviceRegistry {
         <<interface>>
-        +getDevices() IEnumerable~DS4Device~
-        +findDeviceByMac(string mac) DS4Device
+        +getDevices() IEnumerable~IInputDevice~
+        +findDeviceByMac(string mac) IInputDevice
         +startScan()
         +stopScan()
     }
@@ -26,39 +26,71 @@ classDiagram
         +DeviceArrived event
         +DeviceRemoved event
     }
-    class Ds4DeviceRegistryAdapter {
-        -List~DS4Device~ _activeDevices
+    class IHidTransport {
+        <<interface>>
+        +ReadReport(byte[] buffer) int
+        +WriteReport(byte[] buffer) bool
+        +IsConnected bool
     }
+    class IInputReportParser {
+        <<interface>>
+        +ParseInputReport(byte[] rawReport, ref RawInputState outState) bool
+    }
+    class IOutputReportEncoder {
+        <<interface>>
+        +BuildOutputReport(FeedbackState feedback, byte[] outBuffer) int
+    }
+
+    class Ds4DeviceRegistryAdapter {
+        -List~IInputDevice~ _activeDevices
+    }
+    class DS4ReportParser {
+        +ParseInputReport(byte[] rawReport, ref RawInputState outState) bool
+    }
+    class Vader4ProReportParser {
+        +ParseInputReport(byte[] rawReport, ref RawInputState outState) bool
+    }
+
     IDs4DeviceRegistry <|.. Ds4DeviceRegistryAdapter : implements
+    IInputReportParser <|.. DS4ReportParser : implements
+    IInputReportParser <|.. Vader4ProReportParser : implements
     Ds4DeviceRegistryAdapter --> IDeviceHotplugMonitor : uses
+    Ds4DeviceRegistryAdapter --> IHidTransport : uses
 
     %% ==========================================
-    %% 2. 信号変換層 (Mapping Pipeline & Processors)
+    %% 2. 信号変換層 (Mapping Pipeline & Context)
     %% ==========================================
+    class MappingPipelineContext {
+        +int SlotIndex
+        +RawInputState CurrentRaw
+        +SlotHistoryState History
+        +TransformedOutput Output
+        +ResetForTick()
+    }
+
     class IInputMappingPipeline {
         <<interface>>
-        +Process(int slot, ControllerInputState input, ProfileEntity profile) TransformedOutput
+        +ProcessPipeline(MappingPipelineContext ctx, ProfileEntity profile)
     }
     class IButtonProcessor {
         <<interface>>
-        +ProcessButtons(ButtonInputState input, ButtonMappingConfig cfg) ButtonOutputState
+        +ProcessButtons(MappingPipelineContext ctx, ButtonMappingConfig cfg)
     }
     class IStickProcessor {
         <<interface>>
-        +ProcessStick(StickInputState input, StickConfig cfg) StickOutputState
+        +ProcessStick(MappingPipelineContext ctx, StickConfig cfg)
     }
     class ITriggerProcessor {
         <<interface>>
-        +ProcessTriggers(TriggerInputState input, TriggerConfig cfg) TriggerOutputState
+        +ProcessTriggers(MappingPipelineContext ctx, TriggerConfig cfg)
     }
     class ITouchGyroProcessor {
         <<interface>>
-        +ProcessTouchAndGyro(TouchState touch, SixAxisState gyro, MotionConfig cfg) MotionOutputState
+        +ProcessTouchAndGyro(MappingPipelineContext ctx, MotionConfig cfg)
     }
     class IMouseEngine {
         <<interface>>
-        +CalculateMouseMovement(int dx, int dy, MouseConfig cfg) MouseDelta
-        +ApplyFilter(OneEuroFilter filter, double val) double
+        +ProcessMousePointer(MappingPipelineContext ctx, MouseConfig cfg)
     }
 
     class InputMappingPipeline {
@@ -68,6 +100,7 @@ classDiagram
         -ITouchGyroProcessor _touchGyroProc
         -IMouseEngine _mouseEngine
         -IMappingActionDispatcher _dispatcher
+        +ProcessPipeline(MappingPipelineContext ctx, ProfileEntity profile)
     }
     IInputMappingPipeline <|.. InputMappingPipeline : implements
     InputMappingPipeline o-- IButtonProcessor
@@ -75,25 +108,20 @@ classDiagram
     InputMappingPipeline o-- ITriggerProcessor
     InputMappingPipeline o-- ITouchGyroProcessor
     InputMappingPipeline o-- IMouseEngine
+    InputMappingPipeline ..> MappingPipelineContext : mutates
 
-    class IInputLoopCoordinator {
-        <<interface>>
-        +StartLoop()
-        +StopLoop()
-        +Tick()
-    }
     class ControlService {
         -IDs4DeviceRegistry _deviceRegistry
         -IInputLoopCoordinator _loopCoordinator
         -IInputMappingPipeline _pipeline
         -IOutputSlotService _outputSlotService
-        -IProfileApplicationService _profileAppService
+        -MappingPipelineContext[] _contextPool
         +Start()
         +Stop()
     }
     ControlService --> IDs4DeviceRegistry : uses
-    ControlService --> IInputLoopCoordinator : uses
     ControlService --> IInputMappingPipeline : uses
+    ControlService o-- MappingPipelineContext : pools per slot
 
     %% ==========================================
     %% 3. 信号出力層 (Egress)
@@ -125,7 +153,7 @@ classDiagram
     ControlService --> ILightbarService : updates LED
 
     %% ==========================================
-    %% 4. UI層 (Sub-ViewModels Composition)
+    %% 4. UI層 (Sub-ViewModels Mediator構成)
     %% ==========================================
     class ProfileSettingsViewModel {
         +StickSettingsSubViewModel StickSubVM
@@ -133,23 +161,32 @@ classDiagram
         +ButtonMappingSubViewModel ButtonSubVM
         +SpecialActionsSubViewModel ActionSubVM
         +SaveProfile()
+        +ApplyPreset(PresetOption opt)
     }
     class StickSettingsSubViewModel {
         -IProfileSettingsService _profileSettings
+        +LoadSettings(StickConfig cfg)
+        +ApplyTo(StickConfig cfg)
     }
     class TriggerSettingsSubViewModel {
         -IProfileSettingsService _profileSettings
+        +LoadSettings(TriggerConfig cfg)
+        +ApplyTo(TriggerConfig cfg)
     }
     class ButtonMappingSubViewModel {
         -IProfileSettingsService _profileSettings
+        +LoadSettings(ButtonMappingConfig cfg)
+        +ApplyTo(ButtonMappingConfig cfg)
     }
     class SpecialActionsSubViewModel {
         -ISpecialActionRepository _actionRepo
+        +LoadActions(string profileName)
     }
-    ProfileSettingsViewModel *-- StickSettingsSubViewModel
-    ProfileSettingsViewModel *-- TriggerSettingsSubViewModel
-    ProfileSettingsViewModel *-- ButtonMappingSubViewModel
-    ProfileSettingsViewModel *-- SpecialActionsSubViewModel
+
+    ProfileSettingsViewModel *-- StickSettingsSubViewModel : mediates
+    ProfileSettingsViewModel *-- TriggerSettingsSubViewModel : mediates
+    ProfileSettingsViewModel *-- ButtonMappingSubViewModel : mediates
+    ProfileSettingsViewModel *-- SpecialActionsSubViewModel : mediates
 
     class IViewModelFactory {
         <<interface>>
@@ -188,13 +225,13 @@ classDiagram
 
 ---
 
-## 2. アーキテクチャ・パターンの適用
+## 2. 適用された主要アーキテクチャ・デザインパターン
 
-1. **Pipeline & Filter パターン（信号変換層）：**
-   * 443KBの `Mapping.cs` を、`IInputMappingPipeline`（コンテキスト統括）と5つの独立した Processor（`Button`, `Stick`, `Trigger`, `TouchGyro`, `Mouse`）に分割。各Processorは入力を受け取り、補正・変換結果を次のステージに渡す。
-2. **Composite / Sub-ViewModel パターン（UI層）：**
-   * 158KBの `ProfileSettingsViewModel` を親とし、関心事ごとに `StickSettingsSubVM` 等をコンポジション。各サブVMがそれぞれの設定値とUIバインディングを担当し、巨大単一ViewModelの肥大化を解消。
-3. **Facade パターン（ControlService）：**
-   * 旧 `ControlService.cs` が抱えていた膨大な責務（ループ制御、ホットプラグ、LED計算）を配下サービスに委譲し、自身は全体の開始・停止とオーケストレーションを司るファサードとして軽量化。
-4. **Lock Wrapper パターン（基盤層）：**
-   * `XmlIoLock` が `ReaderWriterLockSlim` をカプセル化し、複数スレッドからのXML設定ファイル読み書き時のデッドロックおよび競合を完全に防護。
+1. **Pipeline & In-place Mutation パターン（信号変換層）：**
+   * `IInputMappingPipeline` を起点に、各プロセッサが常駐バッファ `MappingPipelineContext` を順次更新（インプレースミューテーション）。参照型のアロケーションを完全に抑制し、Zero-GCホットパスを実現。
+2. **Mediator パターン（UI層）：**
+   * 親の `ProfileSettingsViewModel` が Mediator となり、分割された各サブViewModel（`StickSubVM`, `TriggerSubVM` 等）の設定値収集・反映・永続化呼び出しを一元管理。サブVM同士の結合度をゼロにする。
+3. **Transport / Parser 分離パターン（入力監視層）：**
+   * `IHidTransport`（OS依存の通信）と `IInputReportParser`（OS非依存のパケット解析）を切り離し、Vader 4 Pro や DS4 の生バイト列解析ロジックを実機なしで単体テスト可能にする。
+4. **Repository & IoLock パターン（横断基盤層）：**
+   * XMLファイルの入出力を `XmlIoLock` で完全にラップし、複数スレッドからの同時アクセスやプロファイル自動保存時のデッドロックを防止。

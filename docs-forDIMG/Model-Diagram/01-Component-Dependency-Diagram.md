@@ -1,7 +1,7 @@
 # コンポーネント図 / パッケージ依存関係図
 **（Component & Package Dependency Specification）**
 
-本ドキュメントは、DS4Windows-Vader4Pro における完全DI化移行および巨大モノリスファイル（`ScpUtil`, `Mapping`, `ControlService`, `ProfileSettingsViewModel` 等）解体完了後の**「理想的な最終コンポーネント依存関係」**を定義する。
+本ドキュメントは、DS4Windows-Vader4Pro における完全DI化移行および巨大モノリスファイル（`ScpUtil`, `Mapping`, `ControlService`, `ProfileSettingsViewModel`, 各Deviceクラス）解体後の**「最終コンポーネント依存関係仕様」**を定義する。
 
 ---
 
@@ -12,36 +12,36 @@
 
 ```mermaid
 flowchart TD
-    %% 全ノードのデフォルト文字色を「くっきりとした黒」に指定
+    %% 全ノードのデフォルト文字色を「純黒 #000000」に固定
     classDef default color:#000000;
 
-    %% レイヤー別スタイル定義 (背景: 淡色 / 枠線: 濃色 / 文字色: 純黒 #000000)
+    %% レイヤー別スタイル定義 (背景: 視認性の高い淡色 / 枠線: 濃色 / 文字色: 純黒 #000000)
     classDef uiLayer fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#000000;
     classDef coreLayer fill:#ffe0b2,stroke:#e65100,stroke-width:2px,color:#000000;
     classDef procLayer fill:#fff8e1,stroke:#f57f17,stroke-width:1px,color:#000000;
-    classDef egressLayer fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#000000;
+    classDef egressLayer fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000000;
     classDef ingressLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000000;
     classDef infraLayer fill:#eceff1,stroke:#37474f,stroke-width:2px,color:#000000;
 
     %% ==========================================
-    %% 4. UI層 (ProfileSettingsVMの分解を含む)
+    %% 4. UI層 (Mediator パターンによる分割)
     %% ==========================================
     subgraph Layer4 ["4. UI層 (Presentation Layer)"]
         UI_Views["WPF Views / Windows<br>(MainWindow, ProfileEditor, etc.)"]:::uiLayer
         UI_Factory["IViewModelFactory<br>(ViewModelFactory)"]:::uiLayer
         UI_VM_Main["MainWindowsVM / ControllersVM<br>(Singleton ViewModels)"]:::uiLayer
 
-        subgraph UI_ProfileEdit ["ProfileEditor ViewModels (分解後)"]
-            VM_ProfileContainer["ProfileSettingsViewModel<br>(親コンテナVM)"]:::uiLayer
-            VM_SubStick["StickSettingsSubVM<br>(スティック感度/カーブ)"]:::uiLayer
-            VM_SubTrigger["TriggerSettingsSubVM<br>(トリガー/モーター設定)"]:::uiLayer
-            VM_SubButton["ButtonMappingSubVM<br>(ボタン割り当て)"]:::uiLayer
-            VM_SubAction["SpecialActionsSubVM<br>(アクション編集)"]:::uiLayer
+        subgraph UI_ProfileEdit ["ProfileEditor ViewModels (Mediator構成)"]
+            VM_ProfileContainer["ProfileSettingsViewModel<br>(親Mediator VM: 保存・調停統括)"]:::uiLayer
+            VM_SubStick["StickSettingsSubVM<br>(LS/RS 感度・カーブ・軸)"]:::uiLayer
+            VM_SubTrigger["TriggerSettingsSubVM<br>(L2/R2 2段階・モーター)"]:::uiLayer
+            VM_SubButton["ButtonMappingSubVM<br>(ボタン割り当て・シフト)"]:::uiLayer
+            VM_SubAction["SpecialActionsSubVM<br>(アクション一覧・登録)"]:::uiLayer
 
-            VM_ProfileContainer --> VM_SubStick
-            VM_ProfileContainer --> VM_SubTrigger
-            VM_ProfileContainer --> VM_SubButton
-            VM_ProfileContainer --> VM_SubAction
+            VM_ProfileContainer -- Mediator調停 --> VM_SubStick
+            VM_ProfileContainer -- Mediator調停 --> VM_SubTrigger
+            VM_ProfileContainer -- Mediator調停 --> VM_SubButton
+            VM_ProfileContainer -- Mediator調停 --> VM_SubAction
         end
 
         UI_Views --> UI_Factory
@@ -50,22 +50,23 @@ flowchart TD
     end
 
     %% ==========================================
-    %% 2. 信号変換層 (Mapping.cs と ControlServiceの分解)
+    %% 2. 信号変換層 (Mapping.cs と ControlService の解体)
     %% ==========================================
     subgraph Layer2 ["2. 信号変換層 (Domain & Application Core)"]
         Core_Coordinator["ControlService / InputLoopCoordinator<br>(パイプライン統括・ループ実行)"]:::coreLayer
-        Core_ProfileApp["IProfileApplicationService<br>(プロファイル切替/復帰/保護)"]:::coreLayer
+        Core_ContextPool["MappingPipelineContext Pool<br>(スロット別常駐バッファ・Zero-GC)"]:::coreLayer
+        Core_ProfileApp["IProfileApplicationService<br>(プロファイル切替/復帰/Halt保護)"]:::coreLayer
         Core_AutoProfile["IAutoProfileService<br>(プロセス監視切替)"]:::coreLayer
-        Core_ActionMgr["IManagedActionManager<br>(アクション実行・トグル管理)"]:::coreLayer
+        Core_ActionMgr["IManagedActionManager<br>(アクション実行管理・トグル状態)"]:::coreLayer
         Core_Dispatcher["IMappingActionDispatcher<br>(アクション発火中継)"]:::coreLayer
 
-        subgraph Mapping_Processors ["Mapping Pipeline & Processors (Mapping.cs 解体先)"]
-            Pipe_Master["IInputMappingPipeline<br>(変換パイプライン親)"]:::coreLayer
-            Proc_Button["IButtonProcessor<br>(ボタンリマップ/シフト)"]:::procLayer
-            Proc_Stick["IStickProcessor<br>(デッドゾーン/StickOutCurve)"]:::procLayer
-            Proc_Trigger["ITriggerProcessor<br>(トリガー感度/モーター制御)"]:::procLayer
+        subgraph Mapping_Processors ["Mapping Pipeline & Stateless Processors"]
+            Pipe_Master["IInputMappingPipeline<br>(パイプライン親: Context更新統括)"]:::coreLayer
+            Proc_Button["IButtonProcessor<br>(ボタンリマップ/シフト変調)"]:::procLayer
+            Proc_Stick["IStickProcessor<br>(デッドゾーン/StickOutCurve/AntiSnap)"]:::procLayer
+            Proc_Trigger["ITriggerProcessor<br>(2段階判定/モーター制御)"]:::procLayer
             Proc_TouchGyro["ITouchGyroProcessor<br>(タッチパッド/ジャイロ計算)"]:::procLayer
-            Proc_Mouse["IMouseEngine<br>(Mouse.cs解体先: 加速度/Filter)"]:::procLayer
+            Proc_Mouse["IMouseEngine<br>(Mouse.cs解体先: 加速度/OneEuroFilter)"]:::procLayer
 
             Pipe_Master --> Proc_Button
             Pipe_Master --> Proc_Stick
@@ -74,6 +75,7 @@ flowchart TD
             Pipe_Master --> Proc_Mouse
         end
 
+        Core_Coordinator --> Core_ContextPool
         Core_Coordinator --> Pipe_Master
         Core_Coordinator --> Core_ProfileApp
         Pipe_Master --> Core_Dispatcher
@@ -82,20 +84,24 @@ flowchart TD
     end
 
     %% ==========================================
-    %% 1. 入力監視層 (DS4Device / Vader4ProDevice)
+    %% 1. 入力監視層 (通信とパケットパースの分離)
     %% ==========================================
     subgraph Layer1 ["1. 入力監視層 (Infrastructure - Ingress)"]
         In_Registry["IDs4DeviceRegistry<br>(デバイス検出・ホットプラグ管理)"]:::ingressLayer
-        In_Hotplug["IDeviceHotplugMonitor<br>(Win32 RAW/HID挿抜監視)"]:::ingressLayer
+        In_Hotplug["IDeviceHotplugMonitor<br>(Win32 RAW/HID挿抜検知)"]:::ingressLayer
 
-        subgraph In_DeviceUnits ["Input Device Abstraction"]
-            Dev_DS4["DS4Device (DualShock 4)"]:::ingressLayer
-            Dev_Vader["Vader4ProDevice (Flydigi)"]:::ingressLayer
-            Dev_DualSense["DualSenseDevice"]:::ingressLayer
+        subgraph In_DeviceUnits ["Input Device Abstraction & Parsers"]
+            Dev_Transport["IHidTransport<br>(USB / Bluetooth HID 通信)"]:::ingressLayer
+            Parser_DS4["DS4ReportParser / Encoder<br>(DS4 パケット解析・出力パケット生成)"]:::ingressLayer
+            Parser_Vader["Vader4ProReportParser / Encoder<br>(Vader4Pro パケット解析・出力生成)"]:::ingressLayer
+            Parser_DualSense["DualSenseReportParser / Encoder<br>(DualSense アダプティブ解析・生成)"]:::ingressLayer
         end
 
         In_Registry --> In_Hotplug
-        In_Registry --> In_DeviceUnits
+        In_Registry --> Dev_Transport
+        Dev_Transport --> Parser_DS4
+        Dev_Transport --> Parser_Vader
+        Dev_Transport --> Parser_DualSense
     end
 
     %% ==========================================
@@ -103,22 +109,22 @@ flowchart TD
     %% ==========================================
     subgraph Layer3 ["3. 信号・アクション出力層 (Infrastructure - Egress)"]
         subgraph Out_VirtualPad ["3-a: 仮想コントローラー出力 (ViGEm)"]
-            Out_SlotSvc["IOutputSlotService<br>(OutputSlotService / Manager)"]:::egressLayer
+            Out_SlotSvc["IOutputSlotService<br>(OutputSlotService / SlotManager)"]:::egressLayer
             Out_ViGEm["ViGEm Client<br>(Xbox360OutDevice / DS4OutDevice)"]:::egressLayer
             Out_SlotSvc --> Out_ViGEm
         end
 
         subgraph Out_KBM ["3-b: キーボード・マウス・マクロ出力"]
             Out_KBMHandler["IVirtualKBM<br>(SendInput / FakerInput Adapter)"]:::egressLayer
-            Out_Macro["IMacroPlayer<br>(DefaultMacroPlayer)"]:::egressLayer
+            Out_Macro["IMacroPlayer<br>(DefaultMacroPlayer: 非同期再生)"]:::egressLayer
             Out_KBMHandler --> Out_Macro
         end
 
         subgraph Out_Actions ["3-c: アプリ・OS副作用実行"]
             Out_Launcher["IProcessLauncher / IElevatedProcessLauncher<br>(通常起動 / UAC昇格起動)"]:::egressLayer
             Out_Switcher["IProfileSwitcher<br>(プロファイル切替実行)"]:::egressLayer
-            Out_UDP["IUdpServerService<br>(Cemuhook Motion Server)"]:::egressLayer
-            Out_LED["ILightbarService<br>(LED/ライトバー制御)"]:::egressLayer
+            Out_UDP["IUdpServerService<br>(Cemuhook Motion UDP配信)"]:::egressLayer
+            Out_LED["ILightbarService<br>(LED/ライトバー計算・出力指示)"]:::egressLayer
         end
     end
 
@@ -126,11 +132,11 @@ flowchart TD
     %% 横断基盤・永続化層 (ScpUtil / Global の解体先)
     %% ==========================================
     subgraph LayerInfra ["横断基盤・永続化層 (Cross-Cutting Infrastructure)"]
-        Store_Profile["IProfileXmlStore / IProfileRepository<br>(プロファイルXML/CRUD)"]:::infraLayer
-        Store_App["IAppSettingsService<br>(AppSettings.xml永続化)"]:::infraLayer
-        Store_Slot["IOutputSlotStore<br>(OutputSlots.xml永続化)"]:::infraLayer
-        Store_DevOpts["IDeviceOptionRepository<br>(*ControllerOptsDTO永続化)"]:::infraLayer
-        Lock_Io["XmlIoLock<br>(排他ファイルロック)"]:::infraLayer
+        Store_Profile["IProfileXmlStore / IProfileRepository<br>(プロファイルXML CRUD・シリアライズ)"]:::infraLayer
+        Store_App["IAppSettingsService<br>(AppSettings.xml 永続化)"]:::infraLayer
+        Store_Slot["IOutputSlotStore<br>(OutputSlots.xml 永続化)"]:::infraLayer
+        Store_DevOpts["IDeviceOptionRepository<br>(機種別 *ControllerOptsDTO 永続化)"]:::infraLayer
+        Lock_Io["XmlIoLock<br>(プロセス内・スレッド間 排他ロック)"]:::infraLayer
         Svc_Env["IPathService / IEnvironmentService / INotificationService"]:::infraLayer
 
         Store_Profile --> Lock_Io
@@ -176,7 +182,8 @@ flowchart TD
 | **`Mapping.cs`**<br>(443 KB) | 巨大静的マッピング、デッドゾーン、カーブ計算 | `IInputMappingPipeline`, `ButtonProcessor`, `StickProcessor`, `TriggerProcessor`, `TouchGyroProcessor` | **2. 信号変換層** |
 | **`Mouse.cs`**<br>(78 KB) | タッチパッド/ジャイロのマウス変換、カーソル加速 | `IMouseEngine`, `MouseCursor`, `OneEuroFilter`, `FakeTrackball` | **2. 信号変換層** |
 | **`ControlService.cs`**<br>(145 KB) | パイプライン統括、スレッドループ、LED計算、デバイス監視 | `ControlService`(統括), `InputLoopCoordinator`, `IDeviceHotplugMonitor`, `ILightbarService` | **2. 信号変換層 / 3. 出力層** |
-| **`ProfileSettingsViewModel.cs`**<br>(158 KB) | 全UI設定プロパティの抱え込み | `ProfileSettingsViewModel`(親) ＋ `StickSubVM`, `TriggerSubVM`, `ButtonSubVM`, `SpecialActionsSubVM` | **4. UI層** |
+| **`ProfileSettingsViewModel.cs`**<br>(158 KB) | 全UI設定プロパティの抱え込み | `ProfileSettingsViewModel`(親Mediator) ＋ `StickSubVM`, `TriggerSubVM`, `ButtonSubVM`, `SpecialActionsSubVM` | **4. UI層** |
+| **`DS4Device.cs`**<br>(87 KB) | 通信、パケット解析、CRC32、振動出力の混在 | `IHidTransport`(通信), `DS4ReportParser`(解析), `DS4OutputReportEncoder`(生成) | **1. 入力監視層** |
 
 ---
 
@@ -184,7 +191,9 @@ flowchart TD
 
 1. **`Global` の完全根絶:**  
    コードベースから `Global.*` へのアクセスを完全に排除し、各ドメイン専用の注入サービス経由で取得する。
-2. **Processorの完全独立化:**  
-   `StickProcessor` や `ButtonProcessor` などの各変換プロセッサは、互いの内部状態を直接読み取ってはならず、パイプラインコンテキスト（入力状態・プロファイル設定）のみを入力として受け取る。
-3. **UIサブViewModelの自律化:**  
-   各サブViewModel（スティック設定、トリガー設定等）は必要な設定サービスのみを個別に注入され、巨大な親ViewModelの全容を知る必要がないように設計する。
+2. **ステートレスプロセッサとZero-GCの徹底:**  
+   `StickProcessor` や `ButtonProcessor` はステートレスSingletonとして動作し、状態は `MappingPipelineContext` へのインプレース更新によって受け渡す。ホットパス内でのアロケーションを禁止する。
+3. **UIサブViewModelの自律化とMediator調停:**  
+   各サブViewModel（スティック、トリガー等）は自身の設定スライスのみを扱い、プロファイル全体の保存やリセット指示は親の `ProfileSettingsViewModel` が調停する。
+4. **デバイス通信とパケット解析の分離:**  
+   ハードウェア固有のバイト列パースロジックは `IInputReportParser` に閉じ込め、Windows HIDハンドルから切り離すことで、完全なオフライン単体テストを担保する。
