@@ -3135,7 +3135,28 @@ namespace DS4Windows
         {
             SelectedProfileChanged?.Invoke(null, new SelectedProfileChangedEventArgs(deviceIndex, profileName));
         }
+        #region Profile Application Unified Gateway
 
+        /// <summary>
+        /// 指定したコントローラースロットに対してプロファイルを安全に適用する単一の共通窓口メソッド。
+        /// 手動選択・保存時ホットリロード・スペシャルアクション・自動プロファイル・接続時・Rename時等の全適用経路を一本化します。
+        /// </summary>
+        /// <param name="slotIndex">コントローラースロット番号 (0〜3)</param>
+        /// <param name="profileName">適用するプロファイル名</param>
+        /// <param name="source">適用の契機 (Manual / SpecialAction / AutoProfile / ControlService 等)</param>
+        /// <returns>適用成功時は true</returns>
+        public static bool ApplyProfileToSlot(int slotIndex, string profileName, ProfileChangeSource source = ProfileChangeSource.Manual)
+        {
+            if (slotIndex < 0 || slotIndex >= ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(profileName))
+                return false;
+
+            return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, "", false);
+        }
+
+        #endregion
         /// <summary>
         /// プロファイル適用の共通メソッド。データ更新、ログ出力、UI通知を一箇所で行う。
         /// </summary>

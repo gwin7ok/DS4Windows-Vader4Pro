@@ -4,7 +4,7 @@
 - **Target Branch**: `gwin7ok/DS4Windows-Vader4Pro` (`For-DI-migration-work`)
 - **Base Branch**: `gwin7ok/DS4Windows-Vader4Pro` (`For-DI-migration-work`)
 - **Author**: Agent (Claude-based assistant)
-- **Status**: 実装準備完了 (Ready to Implement)
+- **Status**: フェーズA 完了 / フェーズB 準備完了
 - **Created Date**: 2026-09-14
 - **Last Updated**: 2026-09-14
 
@@ -29,14 +29,14 @@
 ## 1. 全体サマリ
 
 ### 1.1 進捗状況
-* **総合進捗率**: **0% (0 / 6 フェーズ完了)**
-* **現在ステータス**: フェーズA 開始待ち
+* **総合進捗率**: **17% (1 / 6 フェーズ完了)**
+* **現在ステータス**: フェーズA 完了 / フェーズB 着手準備完了
 
 ### 1.2 フェーズ別ステータスサマリ
 
 | フェーズ | 対象領域 | 状態 | 完了予定 | 備考 |
 | :--- | :--- | :---: | :---: | :--- |
-| **フェーズA** | `ScpUtil.cs` 共通適用窓口新設 | [ ] 未着手 | 2026-09-14 | `Global.ApplyProfileToSlot` 追加 |
+| **フェーズA** | `ScpUtil.cs` 共通適用窓口新設 | [x] 完了 | 2026-09-14 | `Global.ApplyProfileToSlot` 実装完了 |
 | **フェーズB** | `MainWindow.xaml.cs` 同期メソッド・ガード新設 | [ ] 未着手 | 2026-09-14 | `isProfileSyncing` および `SyncProfileListAndControllers` |
 | **フェーズC** | 保存時ホットリロード＆手動 ComboBox 統合 | [ ] 未着手 | 2026-09-14 | **保存時クラッシュの完全解消** |
 | **フェーズD** | Rename（名前変更）契機の統合 | [ ] 未着手 | 2026-09-14 | 接続中プロファイルの Rename 破綻解消 |
@@ -48,8 +48,8 @@
 ## 2. フェーズ別進捗詳細
 
 ### 2.1 フェーズA: 共通適用窓口 ApplyProfileToSlot の新設
-- [ ] **タスク A-1**: `DS4Windows/DS4Control/ScpUtil.cs` の `Global` クラスに `ApplyProfileToSlot` 静的メソッドを追加
-- [ ] **タスク A-2**: `dotnet build` によるコンパイル整合性検証（警告・エラー 0 件）
+- [x] **タスク A-1**: `DS4Windows/DS4Control/ScpUtil.cs` の `Global` クラスに `ApplyProfileToSlot` 静的メソッドを追加
+- [x] **タスク A-2**: `dotnet build` によるコンパイル整合性検証（警告・エラー 0 件）
 
 ### 2.2 フェーズB: 4段階同期メソッドおよびガードの実装
 - [ ] **タスク B-1**: `DS4Windows/DS4Forms/MainWindow.xaml.cs` に `private bool isProfileSyncing = false;` フラグを追加
@@ -79,8 +79,8 @@
 
 ## 3. ビルドおよび自動テスト結果ログ
 
-### 3.1 ビルドログ最新状態 (ベースライン)
-* **日時**: 2026-09-14 13:05:29
+### 3.1 フェーズA ビルド結果
+* **日時**: 2026-09-14
 * **結果**: ビルド成功 (警告 0件, エラー 0件)
 * **テスト結果**: 169 成功, 0 失敗 (DS4Windows.Actions.Tests)
 
@@ -109,5 +109,6 @@
 ## 6. 更新履歴 (Change Log)
 
 * **2026-09-14**:
+  - フェーズA 完了: `Global.ApplyProfileToSlot` 共通静的窓口を `ScpUtil.cs` に新設。
   - 実装計画書（`Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md`）策定。
-  - 進捗管理文書（本ドキュメント）新規作成。フェーズA〜Fのタスク分割完了。
+  - 進捗管理文書（本ドキュメント）新規作成。
