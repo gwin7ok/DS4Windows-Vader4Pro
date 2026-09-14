@@ -30,49 +30,49 @@ namespace DS4Windows.Actions
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
-            if (deviceIndex < 0 || deviceIndex >= 4 || action == null) return;
+            // ハードコードを排除し、システム共通定数 CURRENT_DS4_CONTROLLER_LIMIT でスロット境界を安全に検証
+            if (deviceIndex < 0 || deviceIndex >= ControlService.CURRENT_DS4_CONTROLLER_LIMIT || action == null)
+                return;
 
             long now = DateTime.UtcNow.Ticks;
             // 短時間（250ms以内）の連続切り替えを防止（同一トリガー押し込み中のカスケードループ遮断）
-            if (now - _lastSwitchTicks[deviceIndex] < TimeSpan.FromMilliseconds(250).Ticks)
+            if (deviceIndex < _lastSwitchTicks.Length &&
+                now - _lastSwitchTicks[deviceIndex] < TimeSpan.FromMilliseconds(250).Ticks)
             {
                 return;
             }
 
-            _lastSwitchTicks[deviceIndex] = now;
+            if (deviceIndex < _lastSwitchTicks.Length)
+            {
+                _lastSwitchTicks[deviceIndex] = now;
+            }
 
             try
             {
                 string targetProfile = action.details;
-                if (string.IsNullOrWhiteSpace(targetProfile)) return;
+                if (string.IsNullOrWhiteSpace(targetProfile))
+                    return;
 
                 // 現在のプロファイルをバックアップ
-                _previousProfiles[deviceIndex] = Global.ProfilePath[deviceIndex];
+                if (deviceIndex < _previousProfiles.Length)
+                {
+                    _previousProfiles[deviceIndex] = Global.ProfilePath[deviceIndex];
+                }
                 bool isTemporaryProfile = action.IsTemporaryProfileAction;
-                _temporaryProfiles[deviceIndex] = isTemporaryProfile;
-
-                // プロファイル適用: IProfileApplicationService へ一本化（Halt保護内包、Program.rootHub 直参照排除）
-                var appService = ResolveAppService();
-                if (appService != null)
+                if (deviceIndex < _temporaryProfiles.Length)
                 {
-                    appService.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
-                        ProfileChangeSource.MappingAction);
-                }
-                else
-                {
-                    // 極限フォールバック: DI未初期化時（§2.1 原則）
-                    Global.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
-                        Program.rootHub, ProfileChangeSource.MappingAction);
+                    _temporaryProfiles[deviceIndex] = isTemporaryProfile;
                 }
 
-                try { AppLogger.LogToGui($"Profile switched to '{targetProfile}' on controller {deviceIndex + 1}", false); } catch { }
+                // ★共通窓口 ApplyProfileToSlot を経由してプロファイルを適用
+                // （手動切り替え・保存時と完全に同一のルートを通し、二重ログ出力を解消）
+                Global.ApplyProfileToSlot(deviceIndex, targetProfile, ProfileChangeSource.MappingAction);
             }
             catch (Exception ex)
             {
                 try { AppLogger.LogTrace($"DefaultProfileSwitcher.SwitchProfile failed: {ex}"); } catch { }
             }
         }
-
         public void RestoreProfile(int deviceIndex)
         {
             if (deviceIndex < 0 || deviceIndex >= 4) return;

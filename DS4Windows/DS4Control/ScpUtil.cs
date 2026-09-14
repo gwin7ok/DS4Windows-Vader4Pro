@@ -3135,6 +3135,8 @@ namespace DS4Windows
         {
             SelectedProfileChanged?.Invoke(null, new SelectedProfileChangedEventArgs(deviceIndex, profileName));
         }
+
+
         #region Profile Application Unified Gateway
 
         /// <summary>
@@ -3145,6 +3147,7 @@ namespace DS4Windows
         /// <param name="profileName">適用するプロファイル名</param>
         /// <param name="source">適用の契機 (Manual / SpecialAction / AutoProfile / ControlService 等)</param>
         /// <returns>適用成功時は true</returns>
+        /// </summary>
         public static bool ApplyProfileToSlot(int slotIndex, string profileName, ProfileChangeSource source = ProfileChangeSource.Manual)
         {
             if (slotIndex < 0 || slotIndex >= ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
@@ -3153,10 +3156,19 @@ namespace DS4Windows
             if (string.IsNullOrWhiteSpace(profileName))
                 return false;
 
-            return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, "", false);
+            // 接続中のデバイス情報をもとにログメッセージを組み立てる
+            string prolog = string.Empty;
+            try
+            {
+                // Global に備わっているバッテリー取得や通知リソースを利用
+                prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (slotIndex + 1).ToString(), profileName, "");
+            }
+            catch { }
+
+            // showNotification: true (通知設定に応じてデスクトップ通知を表示)
+            return ApplyProfile(slotIndex, profileName, false, true, Program.rootHub, source, prolog, false);
         }
 
-        #endregion
         /// <summary>
         /// プロファイル適用の共通メソッド。データ更新、ログ出力、UI通知を一箇所で行う。
         /// </summary>
@@ -3203,7 +3215,7 @@ namespace DS4Windows
             AppLogger.LogDebug($"ApplyProfile COMPLETED: device={device}, profile={profileName}, result={result}");
             return result;
         }
-
+        #endregion
         internal static void CompleteProfileApplication(int device, string profileName, bool isTemp,
             ControlService control, ProfileChangeSource source, string prolog, bool displayNotification)
         {
@@ -11438,3 +11450,4 @@ namespace DS4Windows
         }
     }
 }
+
