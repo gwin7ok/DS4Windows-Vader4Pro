@@ -869,19 +869,18 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (tempControllerIndex == value) return;
                 tempControllerIndex = value;
-                tempConType = value == 1 ? OutContType.DS4 : OutContType.X360;
-                profileSettings.OutContType[device] = tempConType;
+                profileSettings.OutContType[device] = value == 1 ? OutContType.DS4 : OutContType.X360;
             }
         }
 
-        private OutContType tempConType;
         public OutContType TempConType
         {
-            get => tempConType;
+            get => tempControllerIndex == 1 ? OutContType.DS4 : OutContType.X360;
             set
             {
-                if (tempConType == value) return;
-                tempConType = value;
+                int newIndex = value == OutContType.DS4 ? 1 : 0;
+                if (tempControllerIndex == newIndex) return;
+                TempControllerIndex = newIndex;
             }
         }
         public int GyroOutModeIndex
@@ -2997,7 +2996,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             funcDevNum = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : 0;
 
             tempControllerIndex = ControllerTypeIndex;
-            tempConType = ContType;
 
             this.outputSlotService.OutDevTypeTemp[device] = OutContType.X360;
             tempBtPollRate = profileSettings.BTPollRate[device];
