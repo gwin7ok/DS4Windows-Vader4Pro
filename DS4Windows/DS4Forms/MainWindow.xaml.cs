@@ -1896,7 +1896,7 @@ Suspend support not enabled.", true);
                 // }
 
                 editor = new ProfileEditor(device);
-                editor.CreatedProfile += Editor_CreatedProfile;
+                editor.ProfileSaved += Editor_ProfileSaved;
                 editor.Closed += ProfileEditor_Closed;
                 profDockPanel.Children.Add(editor);
                 editor.Reload(device, entity);
@@ -1920,23 +1920,24 @@ Suspend support not enabled.", true);
 
         }
 
-        private void Editor_CreatedProfile(ProfileEditor sender, string profile)
+        private void Editor_ProfileSaved(ProfileEditor sender, string profile)
         {
-            profileListHolder.AddProfileSort(profile);
-            int devnum = sender.DeviceNum;
-            if (devnum >= 0 && devnum + 1 <= conLvViewModel.ControllerCol.Count)
+            // ③ ★ プロファイルタブの一覧ビューをディスク正本（全XML）から完全再同期
+            ProfileListHolder.Refresh();
+
+            // ④ ★ コントローラー画面のプロファイル選択コンボボックス一覧を最新化
+            // （※ProfileListHolder.ProfileListCol と連動して自動更新）
+
+            // ⑤ ★ 現在接続中のコントローラーで使用中であれば再適用（ホットリロード）
+            // 保存されたプロファイルを「現在すでに使用している」コントローラースロットのみ再適用する
+            for (int i = 0; i < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i++)
             {
-                CompositeDeviceModel devitem = conLvViewModel.ControllerCol[devnum];
-                if (devitem?.Device != null)
+                if (string.Equals(Global.ProfilePath[i], profile, StringComparison.CurrentCultureIgnoreCase))
                 {
-                    string prolog = string.Format(Properties.Resources.UsingProfile,
-                        (devnum + 1).ToString(), profile, $"{devitem.Device.Battery}");
-                    profileAppService.ApplyProfile(devnum, profile, false, true,
-                        DS4Windows.ProfileChangeSource.Manual, prolog);
+                    Global.ApplyProfile(i, profile, false, false, Program.rootHub, ProfileChangeSource.Manual, "", false);
                 }
             }
         }
-
         private void ControllerLV_PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
             // Save column widths when user finishes resizing (similar to form size/position)

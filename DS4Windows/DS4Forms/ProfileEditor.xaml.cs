@@ -170,9 +170,8 @@ namespace DS4WinWPF.DS4Forms
 
         public event EventHandler Closed;
 
-        public delegate void CreatedProfileHandler(ProfileEditor sender, string profile);
-
-        public event CreatedProfileHandler CreatedProfile;
+        public delegate void ProfileSavedHandler(ProfileEditor sender, string profile);
+        public event ProfileSavedHandler ProfileSaved;
 
         private Dictionary<Button, ImageBrush> hoverImages =
             new Dictionary<Button, ImageBrush>();
@@ -1363,10 +1362,10 @@ namespace DS4WinWPF.DS4Forms
 
         /// <summary>
         /// プロファイル保存および適用の共通処理ルート。
-        /// UI上のEmulated Controller選択値（0: Xbox 360, 1: DS4）をSSOT（Global.OutContType）に直接反映し、
-        /// XMLへ保存後、現在接続中のコントローラーで使用中であれば再適用（ホットリロード）を行います。
+        /// UI上の選択値をSSOTに反映してXMLに保存し、親画面へ保存完了通知（ProfileSaved）を送信します。
+        /// （※プロファイル一覧の全体再同期やコントローラーへのホットリロードは親画面側で一括実行されます）
         /// </summary>
-        /// <param name="closeWindow">処理完了後にプロファイル編集画面を閉じるかどうか（保存: true / 適用: false）</param>
+        /// <param name="closeWindow">保存後に画面を閉じるかどうか（保存: true / 適用: false）</param>
         /// <returns>保存成否</returns>
         private bool ExecuteSaveOrApply(bool closeWindow)
         {
@@ -1376,7 +1375,7 @@ namespace DS4WinWPF.DS4Forms
                 return false;
             }
 
-            // 1. UI上の Emulated Controller 選択値を SSOT（Global.OutContType）へダイレクトに反映
+            // 1. UI上の Emulated Controller 選択値を SSOT へダイレクト反映
             OutContType selectedContType = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
             Global.OutContType[deviceNum] = selectedContType;
             if (Global.ProfileSettingsServiceInstance != null)
@@ -1388,10 +1387,9 @@ namespace DS4WinWPF.DS4Forms
             {
                 profileSettingsVM.ControllerTypeIndex = outConTypeCombo.SelectedIndex;
                 profileSettingsVM.TempControllerIndex = outConTypeCombo.SelectedIndex;
-                profileSettingsVM.TempConType = selectedContType;
             }
 
-            // 2. [Profile名].xml へ保存
+            // 2. ディスク上の [Profile名].xml へ保存
             bool saveSuccess = Global.SaveProfile(deviceNum, profileName);
             if (!saveSuccess)
             {
@@ -1399,17 +1397,13 @@ namespace DS4WinWPF.DS4Forms
                 return false;
             }
 
-            // 3. 現在接続中のコントローラーで本プロファイルが使用されている場合は再適用（ホットリロード）
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT &&
-                Global.ProfilePath[deviceNum] == profileName)
-            {
-                Global.ApplyProfile(deviceNum, profileName, false, false, Program.rootHub, ProfileChangeSource.Manual, "", false);
-            }
+            // 3. 親画面へプロファイル保存完了を通知
+            // （MainWindow.Editor_ProfileSaved がディスク全XML同期とホットリロードを一括実行します）
+            ProfileSaved?.Invoke(this, profileName);
 
-            // 4. 保存ボタン時は親画面へプロファイル変更を通知して画面を閉じ、適用ボタン時は開いたままにする
+            // 4. 保存ボタン時は画面を閉じ、適用ボタン時は開いたまま作業継続
             if (closeWindow)
             {
-                CreatedProfile?.Invoke(this, profileName);
                 this.Close();
             }
 
@@ -1422,6 +1416,7 @@ namespace DS4WinWPF.DS4Forms
         }
 
         #endregion
+
         private void KeepSizeCheckBox_Click(object sender, RoutedEventArgs e)
         {
             var checkBox = sender as System.Windows.Controls.CheckBox;
