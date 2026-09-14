@@ -1359,230 +1359,104 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        private void SetLateProperties(bool fullSave = true)
+        #region Save / Apply Profile Logic (Unified)
+
+        /// <summary>
+        /// プロファイル保存および適用の共通処理ルート。
+        /// UI上のEmulated Controller選択値をSSOTに直接反映し、XML保存後、
+        /// 接続中のコントローラーで使用中であれば再適用（ホットリロード）を行います。
+        /// </summary>
+        /// <param name="closeWindow">処理完了後にプロファイル編集画面を閉じるか（保存: true / 適用: false）</param>
+        /// <returns>保存成否</returns>
+        private bool ExecuteSaveOrApply(bool closeWindow)
         {
-            Global.BTPollRate[deviceNum] = profileSettingsVM.TempBTPollRateIndex;
-
-            // Phase5-Step14 FormSettings-Unification タスク(c)-2: 双方向連動フェイルセーフガード。
-            // EnableOutputDataToDS4（DS4固有データの出力）が有効なのに、エミュレートするコントローラー種別が
-            // X360のままだと、DS4専用データ（タッチパッド・ジャイロ等）を送出できる出力先が存在せず矛盾する。
-            // この矛盾を検知した場合は、UseDs3PitchRollSim（1372行目付近）と同様の既存パターンに倣い、
-            // ControllerType側をDS4へ自動補正する（Save・Apply両方の唯一の合流点である本メソッドに実装することで、
-            // SaveBtn_ClickとApplyBtn_Clickの両経路を1箇所で確実にカバーする）。
-            OutContType targetConType = profileSettingsVM.TempConType;
-            if (profileSettingsVM.EnableOutputDataToDS4 && targetConType != OutContType.DS4)
+            // 1. プロファイル名入力検証
+            string profileName = profileNameTxt.Text.Trim();
+            if (string.IsNullOrWhiteSpace(profileName))
             {
-                profileSettingsVM.TempControllerIndex = 1; // DS4
-                targetConType = OutContType.DS4;
-                AppLogger.LogToGui(
-                    "EnableOutputDataToDS4 が有効なため、Emulated Controller を自動的に DS4 へ補正しました。",
-                    false);
+                MessageBox.Show(Properties.Resources.ValidProfileNameText,
+                    Properties.Resources.ProfileName, MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return false;
             }
 
-            Global.OutContType[deviceNum] = targetConType;
-            if (fullSave)
+            // 2. UI上の Emulated Controller 選択値（0: Xbox 360, 1: DS4）を SSOT へダイレクト反映
+            OutContType selectedContType = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
+            if (profileSettingsVM != null)
             {
-                Global.outDevTypeTemp[deviceNum] = OutContType.X360;
+                profileSettingsVM.ProfileSettings.OutContType[deviceNum] = selectedContType;
+                profileSettingsVM.ControllerTypeIndex = outConTypeCombo.SelectedIndex;
+                profileSettingsVM.TempControllerIndex = outConTypeCombo.SelectedIndex;
+                profileSettingsVM.TempConType = selectedContType;
             }
+            Global.OutContType[deviceNum] = selectedContType;
+
+            // 3. その他 UI コントロールの値の同期
+            SetLateProperties(deviceNum);
+
+            // 4. [Profile名].xml へ保存
+            bool saveSuccess = Global.SaveProfile(deviceNum, profileName);
+            if (!saveSuccess)
+            {
+                AppLogger.LogToGui($"Failed to save profile: {profileName}", true);
+                return false;
+            }
+
+            // 5. 現在接続中のコントローラーで本プロファイルが使用されている場合は再適用（ホットリロード）
+            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT &&
+                Global.ProfilePath[deviceNum] == profileName)
+            {
+                Global.ApplyProfile(deviceNum, false, Program.rootHub);
+            }
+
+            // 6. 保存時はウィンドウを閉じ、適用時は開いたままにする
+            if (closeWindow)
+            {
+                this.Close();
+            }
+
+            return true;
+        }
+
+        private void SetLateProperties(int devIndex)
+        {
+            Global.CustomLed[devIndex] = (bool)customColorToggle.IsChecked;
+            Global.FlushHIDQueue[devIndex] = (bool)flushHIDQueueCheck.IsChecked;
+            Global.IdleDisconnectTimeout[devIndex] = (int)idleDisconnectNum.Value;
+            Global.DinputOnly[devIndex] = (bool)dinputOnlyCheckBox.IsChecked;
+            Global.TouchSensitivity[devIndex] = (byte)touchSensNum.Value;
+
+            // Emulated Controller は UI セレクトボックスの値を正として確実に保持
+            Global.OutContType[devIndex] = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
         }
 
         private void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (profileSettingsVM.UseDs3PitchRollSim)
-            {
-                // change controller type to DS4 if the DS3 pitch and roll sim is on
-                profileSettingsVM.TempControllerIndex = 1;
-            }
-
-            if (profileSettingsVM.HasUseDs3PitchRollSimChanged)
-            {
-                var mainWindow = (MainWindow)Application.Current.MainWindow;
-                if (mainWindow is not null)
-                {
-                    var changeServiceTask = Task.Run(() => Dispatcher.InvokeAsync(mainWindow.ChangeService));
-                    changeServiceTask.ContinueWith(_ => Dispatcher.InvokeAsync(() => mainWindow.ChangeService()));
-
-                }
-                else
-                {
-                    MessageBox.Show("The app has to be restarted for DS3 gyro simulation to work.",
-                        "DS4Windows", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-
-            bool saved = ApplyProfileStep(false);
-            if (saved)
-            {
-                Closed?.Invoke(this, EventArgs.Empty);
-            }
+            ExecuteSaveOrApply(closeWindow: true);
         }
 
-        private bool ApplyProfileStep(bool fullSave = true)
+        private void ApplyBtn_Click(object sender, RoutedEventArgs e)
         {
-            bool result = false;
-            if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                controlService.setRumble(0, 0, profileSettingsVM.FuncDevNum);
-            }
-
-            if (profileSettingsVM.HasDebouncingMsChanged)
-            {
-                Global.DebouncingMsHasChanged();
-            }
-
-            string temp = profileNameTxt.Text;
-            if (!string.IsNullOrWhiteSpace(temp) &&
-                temp.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) == -1)
-            {
-                SetLateProperties(false);
-
-                // Compute pre-save vs to-be-saved special-action lists and defer
-                // persistence until now. We must detect which actions will be removed
-                // and which of those are invalid (not present in Actions.xml). The
-                // actual Global.ProfileActions update and CacheExtraProfileInfo call
-                // happen here before we save the profile to disk.
-                List<string> removedInvalidSpecialActions = new List<string>();
-                try
-                {
-                    var prevList = Global.ProfileActions != null && Global.ProfileActions.Length > deviceNum && Global.ProfileActions[deviceNum] != null
-                        ? new List<string>(Global.ProfileActions[deviceNum])
-                        : new List<string>();
-
-                    var newList = specialActionsVM?.GetEnabledActionNames() ?? new List<string>();
-
-                    // Perform name normalization (trim) and case-insensitive comparison
-                    var prevNorm = prevList.Select(n => Global.NormalizeActionName(n)).ToList();
-                    var newNorm = newList.Select(n => Global.NormalizeActionName(n)).ToList();
-                    var removed = prevNorm.Except(newNorm, StringComparer.OrdinalIgnoreCase).ToList();
-
-                    var actionsXml = Global.GetActions() ?? new List<SpecialAction>();
-                    var xmlSet = new HashSet<string>(actionsXml.Select(a => Global.NormalizeActionName(a.name)), StringComparer.OrdinalIgnoreCase);
-                    removedInvalidSpecialActions = removed.Where(name => !xmlSet.Contains(name)).ToList();
-
-                    // Persist the new list into Global and rebuild cached info before saving file
-                    // Global.ProfileActions is an array of List<string> exposed via a read-only
-                    // property; update the element in-place.
-                    try
-                    {
-                        var pa = Global.ProfileActions; // List<string>[]
-                        if (pa != null && pa.Length > deviceNum)
-                        {
-                            pa[deviceNum] = new List<string>(newList);
-                        }
-                        Global.CacheExtraProfileInfo(deviceNum);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to update ProfileActions: {ex.Message}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to compute removed invalid special actions: {ex.Message}");
-                }
-                DS4Windows.Global.ProfilePath[deviceNum] =
-                    DS4Windows.Global.OlderProfilePath[deviceNum] = temp;
-
-                if (currentProfile != null)
-                {
-                    if (temp != currentProfile.Name)
-                    {
-                        //File.Delete(DS4Windows.Global.appdatapath + @"\Profiles\" + currentProfile.Name + ".xml");
-                        currentProfile.DeleteFile();
-                        currentProfile.Name = temp;
-                    }
-                }
-
-                if (currentProfile != null)
-                {
-                    currentProfile.SaveProfile(deviceNum);
-                    currentProfile.FireSaved();
-
-                    // After saving an existing profile, reload it for all devices currently using it
-                    // This ensures backlight color and other settings are updated
-                    for (int i = 0; i < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i++)
-                    {
-                        if (Global.SelectedProfile[i] == temp)
-                        {
-                            DS4Device device = controlService.DS4Controllers[i];
-                            if (device != null)
-                            {
-                                device.HaltReportingRunAction(() =>
-                                {
-                                    string prolog = string.Format(Properties.Resources.UsingProfile,
-                                        (i + 1).ToString(), temp, $"{device.Battery}");
-                                    bool display = Global.ProfileChangedNotification;
-                                    profileSwitcher.ApplyManualProfile(i, temp, false, true, controlService,
-                                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                                });
-                            }
-                        }
-                    }
-
-                    // Log removed invalid special actions after save completes
-                    try
-                    {
-                        if (removedInvalidSpecialActions != null && removedInvalidSpecialActions.Count > 0)
-                        {
-                            string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
-                            foreach (var name in removedInvalidSpecialActions)
-                            {
-                                try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to GUI: {ex.Message}"); }
-                                try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to tray: {ex.Message}"); }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to log removed invalid special actions: {ex.Message}");
-                    }
-
-                    result = true;
-                }
-                else
-                {
-                    string tempprof = Global.appdatapath + @"\Profiles\" + temp + ".xml";
-                    if (!File.Exists(tempprof))
-                    {
-                        profileRepository.SaveProfile(deviceNum, temp);
-                        CreatedProfile?.Invoke(this, temp);
-
-                        // Log removed invalid special actions after save completes
-                        try
-                        {
-                            if (removedInvalidSpecialActions != null && removedInvalidSpecialActions.Count > 0)
-                            {
-                                string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
-                                foreach (var name in removedInvalidSpecialActions)
-                                {
-                                    try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to GUI: {ex.Message}"); }
-                                    try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to tray: {ex.Message}"); }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to log removed invalid special actions: {ex.Message}");
-                        }
-
-                        result = true;
-                    }
-                    else
-                    {
-                        MessageBox.Show(Properties.Resources.ValidName, Properties.Resources.NotValid,
-                            MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show(Properties.Resources.ValidName, Properties.Resources.NotValid,
-                    MessageBoxButton.OK, MessageBoxImage.Exclamation);
-            }
-
-            return result;
+            ExecuteSaveOrApply(closeWindow: false);
         }
 
+        private void OutConTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (outConTypeCombo == null || profileSettingsVM == null)
+                return;
+
+            OutContType selected = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
+            profileSettingsVM.ProfileSettings.OutContType[deviceNum] = selected;
+            profileSettingsVM.ControllerTypeIndex = outConTypeCombo.SelectedIndex;
+            profileSettingsVM.TempControllerIndex = outConTypeCombo.SelectedIndex;
+            profileSettingsVM.TempConType = selected;
+
+            if (mappingListVM != null)
+            {
+                mappingListVM.UpdateMappingDevType(selected);
+            }
+        }
+
+        #endregion
         private void KeepSizeCheckBox_Click(object sender, RoutedEventArgs e)
         {
             var checkBox = sender as System.Windows.Controls.CheckBox;

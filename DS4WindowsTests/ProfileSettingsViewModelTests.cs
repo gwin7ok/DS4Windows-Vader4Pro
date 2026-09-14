@@ -7,27 +7,8 @@ using DS4WinWPF.DS4Forms.ViewModels;
 
 namespace DS4WindowsTests
 {
-    // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク7）の回帰防止テスト。
-    //
-    // 修正前は ControllerTypeIndex / ContType / UpdateLateProperties() が
-    // IOutputSlotService.GetOutputDeviceType（Global/BackingStoreと非連動の孤立配列）を
-    // 参照しており、プロファイルに実際に永続化された OutputContDevice の値に関わらず
-    // 常に既定値（X360）が返る「孤立バグ」を抱えていた。
-    //
-    // 本テストは、修正後の参照先である IProfileSettingsService.OutContType
-    // （Global.OutContType と同一実体）の値を変更した際に、ProfileSettingsViewModel の
-    // ControllerTypeIndex / ContType が正しく追従することを確認し、この孤立バグの再発を検知する。
-    //
-    // なお PatternCViewModelTests.cs には IViewModelFactory 経由での
-    // ProfileSettingsViewModel 生成確認（Null チェックのみ）が既に存在するが、
-    // OutContType 連動という具体的な振る舞いまでは検証していないため、本ファイルを独立して新設する。
     public class ProfileSettingsViewModelTests
     {
-        // ProfileSettingsViewModel のコンストラクタは、パック URI
-        // (pack://application:,,,/DS4Windows;component/Resources/rainbowCCrop.png) から
-        // BitmapImage を読み込む処理を含む。これには WPF の Application.Current /
-        // Application.ResourceAssembly が設定されている必要があるため、
-        // PatternCViewModelTests.cs と同一の最小限のブートストラップパターンを踏襲する。
         static ProfileSettingsViewModelTests()
         {
             if (string.IsNullOrEmpty(Global.appdatapath))
@@ -55,7 +36,7 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void ControllerTypeIndex_ShouldReflectProfileSettingsOutContType()
+        public void ControllerTypeIndex_ShouldSupportBidirectionalSwitching()
         {
             var service = new ProfileSettingsService();
             Global.ProfileSettingsServiceInstance = service;
@@ -64,36 +45,20 @@ namespace DS4WindowsTests
             OutContType original = service.OutContType[device];
             try
             {
-                service.OutContType[device] = OutContType.DS4;
-                var vm = new ProfileSettingsViewModel(device, service);
-
-                Assert.Equal(1, vm.ControllerTypeIndex);
-
+                // 1. 初期状態: X360
                 service.OutContType[device] = OutContType.X360;
-                Assert.Equal(0, vm.ControllerTypeIndex);
-            }
-            finally
-            {
-                service.OutContType[device] = original;
-            }
-        }
-
-        [Fact]
-        public void ContType_ShouldReflectProfileSettingsOutContType()
-        {
-            var service = new ProfileSettingsService();
-            Global.ProfileSettingsServiceInstance = service;
-
-            const int device = 0;
-            OutContType original = service.OutContType[device];
-            try
-            {
-                service.OutContType[device] = OutContType.DS4;
                 var vm = new ProfileSettingsViewModel(device, service);
+                Assert.Equal(0, vm.ControllerTypeIndex);
+                Assert.Equal(OutContType.X360, vm.ContType);
 
+                // 2. X360 -> DS4 への変更
+                service.OutContType[device] = OutContType.DS4;
+                Assert.Equal(1, vm.ControllerTypeIndex);
                 Assert.Equal(OutContType.DS4, vm.ContType);
 
+                // 3. DS4 -> X360 への変更（今回の不具合再発防止の検証）
                 service.OutContType[device] = OutContType.X360;
+                Assert.Equal(0, vm.ControllerTypeIndex);
                 Assert.Equal(OutContType.X360, vm.ContType);
             }
             finally
@@ -103,26 +68,28 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void UpdateLateProperties_ShouldSyncOutDevTypeTempFromProfileSettingsOutContType()
+        public void TempControllerIndex_ShouldUpdateSSOTAndBidirectionalState()
         {
-            // UpdateLateProperties() 内の読み取り側（Fix-Plan タスク2-3）の回帰防止テスト。
-            // outputSlotService.OutDevTypeTemp[device] が、修正後の参照先である
-            // profileSettings.OutContType の現在値と一致することを確認する。
             var service = new ProfileSettingsService();
-            var outputSlotService = new OutputSlotService();
             Global.ProfileSettingsServiceInstance = service;
-            Global.OutputSlotServiceInstance = outputSlotService;
 
             const int device = 0;
             OutContType original = service.OutContType[device];
             try
             {
                 service.OutContType[device] = OutContType.DS4;
-                var vm = new ProfileSettingsViewModel(device, service, outputSlotService: outputSlotService);
-
+                var vm = new ProfileSettingsViewModel(device, service);
                 vm.UpdateLateProperties();
+                Assert.Equal(1, vm.TempControllerIndex);
 
-                Assert.Equal(OutContType.DS4, outputSlotService.OutDevTypeTemp[device]);
+                // UI上で Xbox 360 (0) に変更された場合
+                vm.TempControllerIndex = 0;
+
+                // SSOT (service.OutContType) および各プロパティが即座に X360 に追従すること
+                Assert.Equal(OutContType.X360, service.OutContType[device]);
+                Assert.Equal(0, vm.ControllerTypeIndex);
+                Assert.Equal(OutContType.X360, vm.TempConType);
+                Assert.Equal(OutContType.X360, vm.ContType);
             }
             finally
             {
@@ -131,20 +98,8 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void UpdateLateProperties_ShouldSyncTempControllerIndexAndTempConType_FromProfileSettingsOutContType()
+        public void UpdateLateProperties_ShouldSyncBidirectionally_RegardlessOfEnableOutputDataToDS4()
         {
-            // Phase5-Step14 FormSettings-Unification タスク(c)-1 の回帰防止テスト。
-            // UI（Emulated Controllerコンボボックス）は TempControllerIndex/TempConType に
-            // バインドされているため、UpdateLateProperties() 実行後にこれらが
-            // profileSettings.OutContType（プロファイル切替・再読込直後の実体）と
-            // 正しく一致していることを確認する。
-            //
-            // 注意: 本テストはViewModel層のデータ整合性のみを検証する。実際のUI（ComboBox）が
-            // 画面上に正しく反映されるかどうかは、ProfileSettingsViewModelがINotifyPropertyChangedを
-            // 実装していないため、ProfileEditor.xaml.cs側のDataContext再設定（null代入後に再代入する
-            // パターン、Reload()/StopEditorBindings()+RefreshEditorBindings()）に依存する。
-            // この部分はViewを伴うため単体テスト化が困難であり、実機での目視確認が必要
-            // （詳細はPhase5-Step14-FormSettings-Unification-Status.md参照）。
             var service = new ProfileSettingsService();
             var outputSlotService = new OutputSlotService();
             Global.ProfileSettingsServiceInstance = service;
@@ -154,21 +109,26 @@ namespace DS4WindowsTests
             OutContType original = service.OutContType[device];
             try
             {
-                service.OutContType[device] = OutContType.DS4;
                 var vm = new ProfileSettingsViewModel(device, service, outputSlotService: outputSlotService);
 
-                // コンストラクタ時点ではX360(0)で初期化されている実装のため、
-                // 明示的にUpdateLateProperties()を呼び、DS4への切替が反映されることを確認する。
-                vm.UpdateLateProperties();
+                // EnableOutputDataToDS4 (DS4にデータを出力する) が有効であっても干渉しないこと
+                vm.EnableOutputDataToDS4 = true;
 
-                Assert.Equal(1, vm.TempControllerIndex);
-                Assert.Equal(OutContType.DS4, vm.TempConType);
-
+                // DS4 -> X360 への変更
                 service.OutContType[device] = OutContType.X360;
                 vm.UpdateLateProperties();
 
                 Assert.Equal(0, vm.TempControllerIndex);
                 Assert.Equal(OutContType.X360, vm.TempConType);
+                Assert.Equal(OutContType.X360, vm.ContType);
+
+                // X360 -> DS4 への変更
+                service.OutContType[device] = OutContType.DS4;
+                vm.UpdateLateProperties();
+
+                Assert.Equal(1, vm.TempControllerIndex);
+                Assert.Equal(OutContType.DS4, vm.TempConType);
+                Assert.Equal(OutContType.DS4, vm.ContType);
             }
             finally
             {

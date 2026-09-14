@@ -852,56 +852,36 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int ControllerTypeIndex
         {
-            get
+            get => profileSettings.OutContType[device] == OutContType.DS4 ? 1 : 0;
+            set
             {
-                int type = 0;
-                // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク2）:
-                // outputSlotService.GetOutputDeviceType(device) はGlobal非連動の孤立バグを
-                // 抱えていたため、正しい永続化実体である profileSettings.OutContType に変更。
-                switch (profileSettings.OutContType[device])
-                {
-                    case OutContType.X360:
-                        type = 0;
-                        break;
-
-                    case OutContType.DS4:
-                        type = 1;
-                        break;
-
-                    default: break;
-                }
-
-                return type;
+                OutContType target = value == 1 ? OutContType.DS4 : OutContType.X360;
+                if (profileSettings.OutContType[device] == target) return;
+                profileSettings.OutContType[device] = target;
             }
         }
 
-        private int tempControllerIndex;
         public int TempControllerIndex
         {
-            get => tempControllerIndex; set
+            get => tempControllerIndex;
+            set
             {
+                if (tempControllerIndex == value) return;
                 tempControllerIndex = value;
-                outputSlotService.OutDevTypeTemp[device] = TempConType;
+                ControllerTypeIndex = value;
+                TempConType = value == 1 ? OutContType.DS4 : OutContType.X360;
             }
         }
 
         public OutContType TempConType
         {
-            get
+            get => tempConType;
+            set
             {
-                OutContType result = OutContType.None;
-                switch (tempControllerIndex)
-                {
-                    case 0:
-                        result = OutContType.X360; break;
-                    case 1:
-                        result = OutContType.DS4; break;
-                    default: result = OutContType.X360; break;
-                }
-                return result;
+                if (tempConType == value) return;
+                tempConType = value;
             }
         }
-
         public int GyroOutModeIndex
         {
             get
