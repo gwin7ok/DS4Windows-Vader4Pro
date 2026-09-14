@@ -1033,6 +1033,10 @@ Suspend support not enabled.", true);
         /// </summary>
         private void SelectProfCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+
+            // ★同期処理中は ComboBox の自動選択変更イベントをスキップ（暴発防止）
+            if (isProfileSyncing) return;
+
             ComboBox box = sender as ComboBox;
             int idx = Convert.ToInt32(box.Tag);
             if (idx > -1 && conLvViewModel.ControllerDict.ContainsKey(idx))
@@ -1919,6 +1923,84 @@ Suspend support not enabled.", true);
             }
 
         }
+
+        #region Profile List & Controllers Synchronization (4-Stage Transaction)
+
+        /// <summary>
+        /// プロファイル同期処理中のイベント暴発を抑制するガードフラグ
+        /// </summary>
+        private bool isProfileSyncing = false;
+
+        /// <summary>
+        /// プロファイル保存・更新・リネーム時の4段階トランザクション同期メソッド。
+        /// ComboBoxの選択解除・イベント抑制を行い、ディスク正本からリストを安全に再構築した上で、
+        /// 各スロットの選択復元および最新設定のホットリロードを一括実行します。
+        /// </summary>
+        /// <param name="oldProfile">Rename時の旧プロファイル名（保存・更新時はnull）</param>
+        /// <param name="newProfile">Rename時の新プロファイル名（保存・更新時はnull）</param>
+        private void SyncProfileListAndControllers(string oldProfile = null, string newProfile = null)
+        {
+            int slotCount = ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
+            // ① 【退避 & ガード (Detach)】
+            isProfileSyncing = true;
+            string[] activeProfiles = new string[slotCount];
+            try
+            {
+                for (int i = 0; i < slotCount; i++)
+                {
+                    activeProfiles[i] = Global.ProfilePath[i] ?? string.Empty;
+                }
+
+                // ② 【SSOT 再構築 (Rebuild)】
+                bool isRename = !string.IsNullOrWhiteSpace(oldProfile) && !string.IsNullOrWhiteSpace(newProfile);
+                if (isRename)
+                {
+                    for (int i = 0; i < slotCount; i++)
+                    {
+                        if (string.Equals(activeProfiles[i], oldProfile, StringComparison.CurrentCultureIgnoreCase))
+                        {
+                            activeProfiles[i] = newProfile;
+                            Global.ProfilePath[i] = newProfile;
+                            Global.OlderProfilePath[i] = newProfile;
+                        }
+                    }
+                }
+
+                // ディスク全XMLを正（SSOT）としてプロファイル一覧を再構築
+                // （※isProfileSyncing中のため、Clear()が走ってもTargetExceptionクラッシュは完全に防止される）
+                ProfileListHolder.Refresh();
+
+                // ③ 【復元・再選択 (Re-attach)】
+                // メモリ上の ProfilePath を確定させ、ComboBox の選択状態を復元
+                for (int i = 0; i < slotCount; i++)
+                {
+                    if (!string.IsNullOrEmpty(activeProfiles[i]))
+                    {
+                        Global.ProfilePath[i] = activeProfiles[i];
+                    }
+                }
+            }
+            finally
+            {
+                // ガード解除
+                isProfileSyncing = false;
+            }
+
+            // ④ 【再適用・ホットリロード (Re-apply)】
+            // 保存またはリネームの影響を受けたスロットに対し、共通窓口経由で再適用を実行
+            string targetProfile = !string.IsNullOrWhiteSpace(newProfile) ? newProfile : oldProfile;
+            for (int i = 0; i < slotCount; i++)
+            {
+                if (string.IsNullOrEmpty(targetProfile) ||
+                    string.Equals(activeProfiles[i], targetProfile, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    Global.ApplyProfileToSlot(i, activeProfiles[i], ProfileChangeSource.Manual);
+                }
+            }
+        }
+
+        #endregion
 
         private void Editor_ProfileSaved(ProfileEditor sender, string profile)
         {
