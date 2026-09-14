@@ -30,7 +30,6 @@ namespace DS4Windows.Actions
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
-            // ハードコードを排除し、システム共通定数 CURRENT_DS4_CONTROLLER_LIMIT でスロット境界を安全に検証
             if (deviceIndex < 0 || deviceIndex >= ControlService.CURRENT_DS4_CONTROLLER_LIMIT || action == null)
                 return;
 
@@ -64,9 +63,22 @@ namespace DS4Windows.Actions
                     _temporaryProfiles[deviceIndex] = isTemporaryProfile;
                 }
 
-                // ★共通窓口 ApplyProfileToSlot を経由してプロファイルを適用
-                // （手動切り替え・保存時と完全に同一のルートを通し、二重ログ出力を解消）
-                Global.ApplyProfileToSlot(deviceIndex, targetProfile, ProfileChangeSource.MappingAction);
+                // プロファイル適用: IProfileApplicationService へ委譲（DI原則維持 & 単体テスト整合）
+                var appService = ResolveAppService();
+                if (appService != null)
+                {
+                    appService.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
+                        ProfileChangeSource.MappingAction);
+                }
+                else
+                {
+                    // フォールバック
+                    Global.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
+                        Program.rootHub, ProfileChangeSource.MappingAction);
+                }
+
+                // ★注意: 以前ここに存在した独自ログ出力 (AppLogger.LogToGui) は二重ログの原因となるため削除済み。
+                // 適用完了ログおよび通知は ApplyProfile 側で一元出力されます。
             }
             catch (Exception ex)
             {
