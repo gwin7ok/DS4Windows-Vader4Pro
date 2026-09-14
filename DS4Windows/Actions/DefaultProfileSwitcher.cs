@@ -63,22 +63,9 @@ namespace DS4Windows.Actions
                     _temporaryProfiles[deviceIndex] = isTemporaryProfile;
                 }
 
-                // プロファイル適用: IProfileApplicationService へ委譲（DI原則維持 & 単体テスト整合）
-                var appService = ResolveAppService();
-                if (appService != null)
-                {
-                    appService.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
-                        ProfileChangeSource.MappingAction);
-                }
-                else
-                {
-                    // フォールバック
-                    Global.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
-                        Program.rootHub, ProfileChangeSource.MappingAction);
-                }
-
-                // ★注意: 以前ここに存在した独自ログ出力 (AppLogger.LogToGui) は二重ログの原因となるため削除済み。
-                // 適用完了ログおよび通知は ApplyProfile 側で一元出力されます。
+                // ★共通窓口 ApplyProfileToSlot を経由してプロファイルを適用
+                // 手動切り替え・保存時と完全に同一の単一ルートを通し、設定連動の正規通知を1回だけ出力
+                Global.ApplyProfileToSlot(deviceIndex, targetProfile, ProfileChangeSource.MappingAction);
             }
             catch (Exception ex)
             {

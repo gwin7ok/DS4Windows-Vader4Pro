@@ -3140,13 +3140,9 @@ namespace DS4Windows
         #region Profile Application Unified Gateway
 
         /// <summary>
-        /// 指定したコントローラースロットに対してプロファイルを安全に適用する単一の共通窓口メソッド。
+        /// 指定したコントローラースロットに対してプロファイルを安全に適用する共通窓口メソッド。
         /// 手動選択・保存時ホットリロード・スペシャルアクション・自動プロファイル・接続時・Rename時等の全適用経路を一本化します。
-        /// </summary>
-        /// <param name="slotIndex">コントローラースロット番号 (0〜3)</param>
-        /// <param name="profileName">適用するプロファイル名</param>
-        /// <param name="source">適用の契機 (Manual / SpecialAction / AutoProfile / ControlService 等)</param>
-        /// <returns>適用成功時は true</returns>
+        /// 設定（Global.Notifications）に従い、同一の独自ウィンドウデスクトップ通知を一元制御します。
         /// </summary>
         public static bool ApplyProfileToSlot(int slotIndex, string profileName, ProfileChangeSource source = ProfileChangeSource.Manual)
         {
@@ -3160,13 +3156,15 @@ namespace DS4Windows
             string prolog = string.Empty;
             try
             {
-                // Global に備わっているバッテリー取得や通知リソースを利用
                 prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (slotIndex + 1).ToString(), profileName, "");
             }
             catch { }
 
-            // showNotification: true (通知設定に応じてデスクトップ通知を表示)
-            return ApplyProfile(slotIndex, profileName, false, true, Program.rootHub, source, prolog, false);
+            // ★通知設定の有効・無効を一元反映（Notifications != 0 であれば通知を表示）
+            bool shouldDisplayNotification = Global.Notifications != 0;
+
+            // 引数仕様: (deviceIndex, profileName, isTemp: false, launchProgram: false, service, source, prolog, shouldDisplay: shouldDisplayNotification)
+            return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, prolog, shouldDisplayNotification);
         }
 
         /// <summary>
