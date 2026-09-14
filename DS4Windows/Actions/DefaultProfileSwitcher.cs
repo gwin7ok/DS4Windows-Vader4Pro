@@ -30,8 +30,7 @@ namespace DS4Windows.Actions
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
-            if (deviceIndex < 0 || deviceIndex >= ControlService.CURRENT_DS4_CONTROLLER_LIMIT || action == null)
-                return;
+            if (deviceIndex < 0 || deviceIndex >= ControlService.CURRENT_DS4_CONTROLLER_LIMIT || action == null) return;
 
             long now = DateTime.UtcNow.Ticks;
             // 短時間（250ms以内）の連続切り替えを防止（同一トリガー押し込み中のカスケードループ遮断）
@@ -49,8 +48,7 @@ namespace DS4Windows.Actions
             try
             {
                 string targetProfile = action.details;
-                if (string.IsNullOrWhiteSpace(targetProfile))
-                    return;
+                if (string.IsNullOrWhiteSpace(targetProfile)) return;
 
                 // 現在のプロファイルをバックアップ
                 if (deviceIndex < _previousProfiles.Length)
@@ -63,9 +61,21 @@ namespace DS4Windows.Actions
                     _temporaryProfiles[deviceIndex] = isTemporaryProfile;
                 }
 
-                // ★共通窓口 ApplyProfileToSlot を経由してプロファイルを適用
-                // 手動切り替え・保存時と完全に同一の単一ルートを通し、設定連動の正規通知を1回だけ出力
-                Global.ApplyProfileToSlot(deviceIndex, targetProfile, ProfileChangeSource.MappingAction);
+                // プロファイル適用: IProfileApplicationService へ一本化（Halt保護内包、Program.rootHub 直参照排除）
+                var appService = ResolveAppService();
+                if (appService != null)
+                {
+                    appService.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
+                        ProfileChangeSource.MappingAction);
+                }
+                else
+                {
+                    // 極限フォールバック: DI未初期化時（§2.1 原則）
+                    Global.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
+                        Program.rootHub, ProfileChangeSource.MappingAction);
+                }
+
+                // ★二重ログ・二重通知の元凶だった末尾の AppLogger.LogToGui 呼び出しは削除済み
             }
             catch (Exception ex)
             {
