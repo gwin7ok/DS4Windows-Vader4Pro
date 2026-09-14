@@ -61,7 +61,7 @@ namespace DS4Windows.Actions
                     _temporaryProfiles[deviceIndex] = isTemporaryProfile;
                 }
 
-                // プロファイル適用: IProfileApplicationService へ一本化（Halt保護内包、Program.rootHub 直参照排除）
+                // プロファイル適用: IProfileApplicationService へ委譲（DI原則維持 & 単体テスト整合）
                 var appService = ResolveAppService();
                 if (appService != null)
                 {
@@ -70,12 +70,12 @@ namespace DS4Windows.Actions
                 }
                 else
                 {
-                    // 極限フォールバック: DI未初期化時（§2.1 原則）
+                    // フォールバック
                     Global.ApplyProfile(deviceIndex, targetProfile, isTemporaryProfile, false,
                         Program.rootHub, ProfileChangeSource.MappingAction);
                 }
 
-                // ★二重ログ・二重通知の元凶だった末尾の AppLogger.LogToGui 呼び出しは削除済み
+                // ★二重ログの原因となっていた末尾の独自 AppLogger.LogToGui 呼び出しは削除済み
             }
             catch (Exception ex)
             {

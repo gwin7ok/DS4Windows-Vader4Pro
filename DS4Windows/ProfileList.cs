@@ -40,27 +40,44 @@ namespace DS4WinWPF
             BindingOperations.EnableCollectionSynchronization(profileListCol, _proLockobj);
         }
 
+        /// <summary>
+        /// ディスク上の全プロファイルXMLファイルを正（SSOT）としてコレクションを同期します。
+        /// ※ ComboBoxのバインディング破壊・TargetExceptionクラッシュを防ぐため、
+        ///   Clear() は行わず、新規追加分と削除分のみを差分同期（マージ）します。
+        /// </summary>
         public void Refresh()
         {
-            profileListCol.Clear();
-            string[] profiles = Directory.GetFiles(DS4Windows.Global.appdatapath + @"\Profiles\");
-            foreach (string s in profiles)
-            {
-                if (s.EndsWith(".xml"))
-                {
-                    ProfileEntity item = new ProfileEntity()
-                    {
-                        Name = Path.GetFileNameWithoutExtension(s)
-                    };
+            string profilesDir = DS4Windows.Global.appdatapath + @"\Profiles\";
+            if (!Directory.Exists(profilesDir))
+                return;
 
-                    profileListCol.Add(item);
+            string[] files = Directory.GetFiles(profilesDir, "*.xml");
+            var diskProfileNames = new HashSet<string>(
+                files.Select(f => Path.GetFileNameWithoutExtension(f)),
+                StringComparer.CurrentCultureIgnoreCase);
+
+            // 1. ディスクから削除されたプロファイルのみリストから除去
+            for (int i = profileListCol.Count - 1; i >= 0; i--)
+            {
+                if (!diskProfileNames.Contains(profileListCol[i].Name))
+                {
+                    profileListCol.RemoveAt(i);
+                }
+            }
+
+            // 2. ディスク上に新設されたプロファイルのみをソート順で挿入（既存アイテムはそのまま維持）
+            foreach (string name in diskProfileNames.OrderBy(n => n))
+            {
+                if (!profileListCol.Any(x => string.Equals(x.Name, name, StringComparison.CurrentCultureIgnoreCase)))
+                {
+                    AddProfileSort(name);
                 }
             }
         }
 
         public void AddProfileSort(string profilename)
         {
-            // 重複チェック: 既に同名のプロファイルが一覧に存在する場合はスキップ
+            // 重複チェック: 既に同名のプロファイルが存在する場合はスキップ
             if (profileListCol.Any(x => string.Equals(x.Name, profilename, StringComparison.CurrentCultureIgnoreCase)))
             {
                 return;
@@ -87,7 +104,7 @@ namespace DS4WinWPF
 
         public void RemoveProfile(string profile)
         {
-            var selectedEntity = profileListCol.SingleOrDefault(x => x.Name == profile);
+            var selectedEntity = profileListCol.SingleOrDefault(x => string.Equals(x.Name, profile, StringComparison.CurrentCultureIgnoreCase));
             if (selectedEntity != null)
             {
                 int selectedIndex = profileListCol.IndexOf(selectedEntity);
