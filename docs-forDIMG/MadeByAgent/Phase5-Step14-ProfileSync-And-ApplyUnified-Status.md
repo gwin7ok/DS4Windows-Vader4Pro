@@ -4,9 +4,9 @@
 - **Target Branch**: `gwin7ok/DS4Windows-Vader4Pro` (`For-DI-migration-work`)
 - **Base Branch**: `gwin7ok/DS4Windows-Vader4Pro` (`For-DI-migration-work`)
 - **Author**: Agent (Claude-based assistant)
-- **Status**: フェーズA・B 完了 / フェーズC 実装済み・実機確認待ち（実地確認により判明） / 通知判定基準の是正方針は承認待ち（§7参照）
+- **Status**: フェーズA・B 完了 / フェーズC 実装済み・実機確認待ち / **フェーズE（通知機能の完全分離、新設）とフェーズF改訂（案①採用）が2026-09-14付でユーザー承認済み**（実装は未着手）
 - **Created Date**: 2026-09-14
-- **Last Updated**: 2026-09-14（実コード grep によるフェーズC実装状況の訂正、および通知表示判定基準の二重化を追記）
+- **Last Updated**: 2026-09-14（ユーザー承認を受け、フェーズE「通知機能の完全分離」を新規挿入。旧フェーズEはフェーズFへ改称し案①ベースに全面差し替え。契機7・8を正式契機として確定）
 
 ---
 
@@ -17,8 +17,9 @@
    - 2.2 [フェーズB: 4段階同期メソッドおよびガードの実装](#22-フェーズb-4段階同期メソッドおよびガードの実装)
    - 2.3 [フェーズC: プロファイル保存契機および手動選択の統合](#23-フェーズc-プロファイル保存契機および手動選択の統合)
    - 2.4 [フェーズD: Rename 契機の統合](#24-フェーズd-rename-契機の統合)
-   - 2.5 [フェーズE: 切換アクションおよび自動プロファイルの統合](#25-フェーズe-切換アクションおよび自動プロファイルの統合)
-   - 2.6 [フェーズF: 総合検証および完了報告](#26-フェーズf-総合検証および完了報告)
+   - 2.5 [フェーズE: 通知機能の完全分離](#25-フェーズe-通知機能の完全分離)
+   - 2.6 [フェーズF: 通知判定基準の統一（案①実装）](#26-フェーズf-通知判定基準の統一案実装)
+   - 2.7 [フェーズG: 総合検証および完了報告](#27-フェーズg-総合検証および完了報告)
 3. [ビルドおよび自動テスト結果ログ](#3-ビルドおよび自動テスト結果ログ)
 4. [実機テスト検証マトリクス](#4-実機テスト検証マトリクス)
 5. [課題・ブロッカー・技術的負債トラッキング](#5-課題ブロッカー技術的負債トラッキング)
@@ -30,8 +31,13 @@
 ## 1. 全体サマリ
 
 ### 1.1 進捗状況
-* **総合進捗率**: **33% (2 / 6 フェーズ完了) ＋ フェーズC実装は完了済み（実地確認で判明、実機確認C-3のみ残）**
-* **現在ステータス**: フェーズA・B 完了。フェーズCはコード実装（C-1・C-2）が既に完了していることを2026-09-14の実地確認（`git`ベースのソース照合）で確認した。加えて、フェーズEの計画内容に影響する重大な追加発見（プロファイル切替通知の表示判定基準が2種類並存している）があり、ユーザー承認待ち（§7参照）。
+* **総合進捗率**: **33% (2 / 7 フェーズ完了) ＋ フェーズC実装は完了済み（実機確認C-3のみ残）。フェーズE・F（承認済み）の実装は未着手**
+* **現在ステータス**: フェーズA・B 完了。フェーズCはコード実装（C-1・C-2）が完了済み（実機確認C-3待ち）。実地確認で判明した「プロファイル切替通知の表示判定基準の二重化」および「システム通知とプロファイル切替通知のメソッド混線」を是正するため、2026-09-14付で以下がユーザーより承認された。
+  1. **フェーズE（新設）**: 通知機能の完全分離（`ShowSystemNotification`/`ShowProfileSwitchNotification`への分離実装）を、フェーズFより先に実施する。
+  2. **フェーズF（旧「フェーズE」）**: 案①（`Global.ApplyProfileToSlot`を`IProfileApplicationService`への委譲に書き直す）を採用。
+  3. 契機7（トレイアイコン選択）・契機8（ホットキー経由）を正式契機として `Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md` §3.1 に統合済み。
+
+  いずれも**実装はこれから**。
 
 ### 1.2 フェーズ別ステータスサマリ
 
@@ -41,8 +47,9 @@
 | **フェーズB** | `MainWindow.xaml.cs` 同期メソッド・ガード新設 | [x] 完了 | 2026-09-14 | `isProfileSyncing` および `SyncProfileListAndControllers` 実装完了 |
 | **フェーズC** | 保存時ホットリロード＆手動 ComboBox 統合 | [~] 実装済み・実機確認待ち | 2026-09-14 | **保存時クラッシュの完全解消**。C-1/C-2はコード実装済み（2026-09-14実地確認、§2.3・§7参照）。C-3（実機確認）と通知判定基準の是正（§7）が残課題 |
 | **フェーズD** | Rename（名前変更）契機の統合 | [ ] 未着手 | 2026-09-14 | 接続中プロファイルの Rename 破綻解消 |
-| **フェーズE** | スペシャルアクション＆自動プロファイル統合 | [ ] 未着手 | 2026-09-14 | 全適用経路の一本化完了 |
-| **フェーズF** | 総合検証・DoD 判定・ドキュメント完了 | [ ] 未着手 | 2026-09-14 | 実機テスト網羅・完了報告書作成 |
+| **フェーズE** | 通知機能の完全分離（新設） | [ ] 未着手（承認済み・実装待ち） | 2026-09-14 | `ShowSystemNotification`/`ShowProfileSwitchNotification`への分離。契機8（ホットキー）の是正含む |
+| **フェーズF** | 通知判定基準の統一（案①実装） | [ ] 未着手（承認済み・実装待ち） | 2026-09-14 | `Global.ApplyProfileToSlot` を `IProfileApplicationService` への委譲に書き換え。`DefaultProfileSwitcher`/`AutoProfileService`/`TrayIconVM_ProfileSelected` は無改修据え置き |
+| **フェーズG** | 総合検証・DoD 判定・ドキュメント完了 | [ ] 未着手 | 2026-09-14 | 実機テスト網羅・完了報告書作成 |
 
 ---
 
@@ -69,14 +76,30 @@
 - [ ] **タスク D-1**: `MainWindow.xaml.cs` の `RenameProfileBtn_Click` 後続処理を `SyncProfileListAndControllers(oldProfile, newProfile);` に統合
 - [ ] **タスク D-2**: 接続中コントローラー適用プロファイルの Rename 実機追従検証
 
-### 2.5 フェーズE: 切換アクションおよび自動プロファイルの統合
-- [ ] **タスク E-1**: `DS4Windows/Actions/DefaultProfileSwitcher.cs` の `ApplyProfileToSlot` 差し替え
-- [ ] **タスク E-2**: `DS4Windows/DS4Control/Services/AutoProfileService.cs` の `ApplyProfileToSlot` 差し替え
-- [ ] **タスク E-3**: 全自動テスト（169件）実行・検証
+### 2.5 フェーズE: 通知機能の完全分離 【2026-09-14新設】
 
-### 2.6 フェーズF: 総合検証および完了報告
-- [ ] **タスク F-1**: 実機検証マトリクスの全項目 PASS 確認
-- [ ] **タスク F-2**: 完了報告書の作成
+> 実地確認の結果、`MainWindow.xaml.cs` の `ShowNotification`/`ShowProfileChangeNotification`/`OnProfileChanged`/`ShowHotkeyNotification` が絡み合い、「通知を表示」（システム通知レベル）と「Display profile switch notification」（プロファイル切替通知）の判定基準が混線していることが判明した。詳細は `Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md` §4.5・§7を参照。
+
+- [ ] **タスク E-1**: `MainWindow.xaml.cs` の `ShowNotification(object sender, DebugEventArgs e)` を `ShowSystemNotification` へ改名（判定ロジック・購読先は変更なし）。
+- [ ] **タスク E-2**: `ShowProfileChangeNotification(string, bool)` を廃止し、`ShowProfileSwitchNotification(string message)` を新設。内部で `profileSettingsService.ProfileChangedNotification` を直接判定してから `ProfileNotificationWindow.ShowNotification` を呼ぶ。
+- [ ] **タスク E-3**: `OnProfileChanged` の呼び出し先を `ShowProfileSwitchNotification` に置き換え。
+- [ ] **タスク E-4**: `ShowHotkeyNotification`（契機8）内の `appSettingsService.Notifications == 2` ガードを撤去し、常に `AppLogger.LogProfileChanged(...)` を呼ぶよう修正。
+- [ ] **タスク E-5**: `Log.cs` の `LogProfileChanged` の `displayNotification` 引数のXMLドキュメントコメントを、「表示可否」ではなく「イベント発火可否（既定`true`）」に純化。
+- [ ] **タスク E-6**: 全単体テスト（169件）実行・検証。
+- [ ] **タスク E-7**: 実機にて、「通知を表示」＝なし／「Display profile switch notification」＝ONの組み合わせ、およびその逆の組み合わせで、各通知が自身の設定のみに従って独立して表示・非表示になることを確認（TC-06・TC-07、§4参照）。
+
+### 2.6 フェーズF: 通知判定基準の統一（案①実装） 【2026-09-14改訂・タスク全面差し替え、旧「フェーズE」から改称】
+
+> 旧タスクE-1・E-2（`DefaultProfileSwitcher`/`AutoProfileService` を `Global.ApplyProfileToSlot` へ差し替え）は撤回。実地確認の結果これらは無改修が正しいと判明したため。また、フェーズEの新設に伴い本フェーズはフェーズFへ改称した。詳細は `Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md` §4.6（改訂版）・§7を参照。
+
+- [ ] **タスク F-1（旧E-1改訂）**: `DS4Windows/DS4Control/ScpUtil.cs` の `Global.ApplyProfileToSlot` を、独自の `Global.Notifications` 判定・`Global.ApplyProfile` 直接呼び出しから、`DS4WinWPF.AppHost.GetService<IProfileApplicationService>()` 経由の委譲に書き換え。フェーズE完了後は `displayNotification: true` を渡すだけでよい。DI未解決時のフォールバックも同様に `displayNotification: true` を用いる。
+- [ ] **タスク F-2（旧E-2改訂）**: `DefaultProfileSwitcher.cs` / `AutoProfileService.cs` / `MainWindow.xaml.cs`（`TrayIconVM_ProfileSelected`）が無改修のまま整合していることを確認（コード変更なし、レビューのみ）。
+- [ ] **タスク F-3**: 全単体テスト（169件）実行・検証（変更なし）
+- [ ] **タスク F-4（新設）**: 実機にて TC-06（§4）を実施し、メインウィンドウComboBoxとトレイアイコンメニューの通知挙動が一致することを確認。
+
+### 2.7 フェーズG: 総合検証および完了報告
+- [ ] **タスク G-1**: 実機検証マトリクスの全項目 PASS 確認
+- [ ] **タスク G-2**: 完了報告書の作成
 
 ---
 
@@ -98,7 +121,9 @@
 | **TC-03** | 接続中プロファイルの Rename 実行 | UI の ComboBox が新名にスライドし動作継続 | Pending | 課題2の解消確認（フェーズD検証対象） |
 | **TC-04** | 手動 ComboBox によるプロファイル切り替え | 選択したプロファイルに即時切り替わる | Pending | 契機1の確認（フェーズC検証対象） |
 | **TC-05** | Emulated Controller の双方向切り替え | X360 ⇄ DS4 の変更が破綻なく追従する | Pending | Issue 7 整合性確認 |
-| **TC-06**（新規） | 「Display profile switch notification」チェックボックスをOFFにした状態で、(a)メインウィンドウComboBox、(b)トレイアイコン メニューの双方からプロファイルを切り替える | (a)(b)いずれの経路でも独自通知ウィンドウが表示されないこと（現状は(a)側が`Global.Notifications`基準のため、条件によって表示されてしまう不整合を検証） | Pending | §7で判明した通知判定基準の二重化の実機確認用（是正実装後に実施） |
+| **TC-06** | 「Display profile switch notification」チェックボックスをOFFにした状態で、(a)メインウィンドウComboBox、(b)トレイアイコン メニューの双方からプロファイルを切り替える | (a)(b)いずれの経路でも独自通知ウィンドウが表示されないこと | Pending | フェーズF（旧「フェーズE」）検証対象。フェーズE完了後に実施 |
+| **TC-07**（新規） | 「通知を表示」を「なし」に設定した状態で、「Display profile switch notification」をONにしてプロファイルを切り替える | システム通知（トースト）は出ないが、プロファイル切替の独自デスクトップ通知は正しく表示されること | Pending | フェーズE検証対象。§4.5の機能分離が正しく機能しているかの確認 |
+| **TC-08**（新規） | 「Display profile switch notification」をOFFにした状態で、ホットキー経由でプロファイルを切り替える（契機8） | 独自デスクトップ通知が表示されないこと（「通知を表示」の設定値に関わらず） | Pending | フェーズE検証対象。契機8の是正確認 |
 
 ---
 
@@ -107,7 +132,7 @@
 * **既知の課題**:
   - `ProfileListCol.Clear()` 実行時の ComboBox バインディング破壊（フェーズBにて同期メソッド・ガード新設完了、フェーズCの呼び出し差し替えで完全解消予定）。
 * **ブロッカー**: なし。
-* **（2026-09-14追記）新規の技術的負債**: `Global.ApplyProfileToSlot`（フェーズA新設）と既存 `IProfileApplicationService.ApplyProfile` とで、プロファイル切替通知の表示判定基準（`Global.Notifications` vs `Global.ProfileChangedNotification`）が食い違っている。詳細・是正方針は §7 参照。ユーザー承認待ちのため現時点で未着手。
+* **（2026-09-14追記）新規の技術的負債**: `Global.ApplyProfileToSlot`（フェーズA新設）と既存 `IProfileApplicationService.ApplyProfile` とで、プロファイル切替通知の表示判定基準（`Global.Notifications` vs `Global.ProfileChangedNotification`）が食い違っている。さらに `MainWindow.xaml.cs` の通知関連メソッド（`ShowNotification`/`ShowProfileChangeNotification`/`OnProfileChanged`/`ShowHotkeyNotification`）がシステム通知とプロファイル切替通知の判定を混同している。**2026-09-14、是正方針（フェーズE：通知機能の完全分離、フェーズF：案①）がユーザーより承認され、実装タスク化済み（§2.5・§2.6）。実装自体はこれから。**
 
 ---
 
@@ -125,6 +150,13 @@
   - `MainWindow.xaml.cs` の `TrayIconVM_ProfileSelected`（トレイアイコン メニュー経由の選択）が、Plan.md §3.1の「6つの契機」に未列挙だった第7の適用契機であることを発見・追記。
   - 実機テスト検証マトリクスに TC-06（通知判定基準の不整合確認用）を追加。
   - コードの変更は本追記では一切行っていない（ドキュメントのみ更新）。
+* **2026-09-14（追記・ユーザー承認反映、第2回）**:
+  - ユーザーより、通知関連メソッドの「完全分離」（`ShowSystemNotification`/`ShowProfileSwitchNotification`への分離実装）を新規フェーズEとして、フェーズFの前に挿入することが承認された。
+  - これに伴い、従来「フェーズE」と呼んでいた「通知判定基準の統一（案①実装）」はフェーズFへ改称した（総合検証フェーズも旧フェーズF→フェーズGへ改称）。
+  - `MainWindow.xaml.cs` の実コード再確認により、契機8（ホットキー経由のプロファイル切替、`ShowHotkeyNotification`）が「通知を表示」設定でプロファイル切替通知イベントの発火可否を誤って判定していることを新規発見し、契機一覧・フェーズEのタスクに追加。
+  - `Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md` §3.1（契機8を追加）・§4.5（新設）・§4.6（旧§4.5から改称・内部の`displayNotification`受け渡しをフェーズE完了後提としてシンプル化）・§4.7（旧§4.6から改称）・§5・§7.3を改訂。
+  - 本ドキュメント（Status.md）のフェーズ別ステータスサマリ・§2.5（新設）・§2.6（改称）・§2.7（改称）・§4実機テストマトリクス（TC-07・TC-08追加）を更新。
+  - **コードの実装はまだ行っていない。ドキュメント更新のみ完了。**
 
 ---
 
@@ -138,9 +170,12 @@
 2. **契機の不統一**: 手動選択（メインウィンドウComboBox）・編集保存時は `Global.ApplyProfileToSlot` 経由（誤った基準）、切換アクション・自動プロファイル・トレイアイコン選択は `IProfileApplicationService` 経由（正しい基準）と、契機によって経路が分裂している。
 3. **未列挙の契機7**: `TrayIconVM_ProfileSelected`（トレイアイコン メニュー経由の選択）が、本ドキュメント群が前提とする「6つの契機」に含まれていなかった。
 4. **本Status.mdの記載誤り**: フェーズC（C-1・C-2）は「未着手」と記載されていたが、実コード確認の結果、既に実装済みであることが判明した（§2.3で訂正済み）。
+5. **（2026-09-14第2回追記）通知メソッド自体の混線**: `MainWindow.xaml.cs` の `ShowNotification`/`ShowProfileChangeNotification`/`OnProfileChanged` を実コード確認した結果、「プロファイル切替通知」を出す `ShowProfileChangeNotification` は `ProfileChangedNotification` 設定を一切参照せず無条件に表示していることが判明した。表示可否は呼び出し元（`ApplyProfile`系）が計算した `displayNotification` フラグに完全依存しており、判定ロジックがメソッド自身に存在しない構造的欠陥である。
+6. **（2026-09-14第2回追記）未列挙の契機8**: `ShowHotkeyNotification`（ホットキー経由のプロファイル切替）が、`appSettingsService.Notifications == 2` を条件に `AppLogger.LogProfileChanged` の呼び出し自体を抑制しており、システム通知の設定でプロファイル切替通知の発火を左右する、契機1・2と同種の誤りを独立に持っていた。
 
 ### 7.2 是正方針の状態
 
-- 案①（`Global.ApplyProfileToSlot` を `IProfileApplicationService.ApplyProfile` への薄い委譲に書き直す。フェーズEは対応不要に変更）と、案②（判定式の一行修正のみ）の2案を提示済み。
-- **いずれもユーザー承認待ちであり、本追記時点でコードは一切変更していない。**
-- 承認が得られ次第、フェーズC-4（新設想定）として本ドキュメントにタスクを追加し、あわせてフェーズEの対象・作業内容（§2.5）を見直す。
+- 通知判定基準の二重化（1・2）に対しては、案①（`Global.ApplyProfileToSlot` を `IProfileApplicationService.ApplyProfile` への薄い委譲に書き直す）と、案②（判定式の一行修正のみ）の2案を提示し、**案①が承認され、フェーズFとして実装タスク化済み**。
+- 通知メソッド自体の混線（5・6）に対しては、**「通知機能の完全分離」を新規フェーズEとして、フェーズFより前に実施することが承認された**（`ShowSystemNotification`/`ShowProfileSwitchNotification`への分離、契機8の是正を含む。§2.5参照）。フェーズEを先に完了させることで、フェーズFの実装（`displayNotification`の扱い）もより単純になる。
+- **いずれもユーザー承認済みであり、本追記時点でコードは一切変更していない。**
+- 実装順序: **フェーズE（通知機能の完全分離）→ フェーズF（判定基準の統一・案①）→ フェーズG（総合検証）**。
