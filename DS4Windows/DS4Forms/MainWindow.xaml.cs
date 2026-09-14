@@ -1033,7 +1033,6 @@ Suspend support not enabled.", true);
         /// </summary>
         private void SelectProfCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-
             // ★同期処理中は ComboBox の自動選択変更イベントをスキップ（暴発防止）
             if (isProfileSyncing) return;
 
@@ -1056,14 +1055,8 @@ Suspend support not enabled.", true);
 
                     DS4Windows.AppLogger.LogDebug($"SelectProfCombo_SelectionChanged: Applying profile '{prof}' for device {idx}");
 
-                    // 直接ApplyProfileを呼び出す（すべての切り替え手段を統一）
-                    DS4Device device = item.Device;
-                    if (device != null)
-                    {
-                        string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (idx + 1).ToString(), prof, $"{device.Battery}");
-                        profileAppService.ApplyProfile(idx, prof, false, true,
-                            DS4Windows.ProfileChangeSource.Manual, prolog);
-                    }
+                    // ★共通適用窓口 ApplyProfileToSlot を呼び出す（すべての切り替え手段を統一）
+                    Global.ApplyProfileToSlot(idx, prof, ProfileChangeSource.Manual);
 
                     trayIconVM.PopulateContextMenu();
                 }
@@ -2002,23 +1995,14 @@ Suspend support not enabled.", true);
 
         #endregion
 
+        /// <summary>
+        /// プロファイル編集画面で [保存] または [適用] が実行された際のコールバック。
+        /// 安全な4段階同期メソッドを経由することで、クラッシュを防ぎつつリスト同期とホットリロードを一括実行します。
+        /// </summary>
         private void Editor_ProfileSaved(ProfileEditor sender, string profile)
         {
-            // ③ ★ プロファイルタブの一覧ビューをディスク正本（全XML）から完全再同期
-            ProfileListHolder.Refresh();
-
-            // ④ ★ コントローラー画面のプロファイル選択コンボボックス一覧を最新化
-            // （※ProfileListHolder.ProfileListCol と連動して自動更新）
-
-            // ⑤ ★ 現在接続中のコントローラーで使用中であれば再適用（ホットリロード）
-            // 保存されたプロファイルを「現在すでに使用している」コントローラースロットのみ再適用する
-            for (int i = 0; i < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i++)
-            {
-                if (string.Equals(Global.ProfilePath[i], profile, StringComparison.CurrentCultureIgnoreCase))
-                {
-                    Global.ApplyProfile(i, profile, false, false, Program.rootHub, ProfileChangeSource.Manual, "", false);
-                }
-            }
+            // 保存されたプロファイルを対象として、安全にリスト再同期＆該当スロットのホットリロードを実行
+            SyncProfileListAndControllers(oldProfile: profile, newProfile: null);
         }
         private void ControllerLV_PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
