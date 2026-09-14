@@ -1406,9 +1406,10 @@ namespace DS4WinWPF.DS4Forms
                 Global.ApplyProfile(deviceNum, profileName, false, false, Program.rootHub, ProfileChangeSource.Manual, "", false);
             }
 
-            // 4. 保存ボタン時は画面を閉じ、適用ボタン時は開いたままにする
+            // 4. 保存ボタン時は親画面へプロファイル変更を通知して画面を閉じ、適用ボタン時は開いたままにする
             if (closeWindow)
             {
+                CreatedProfile?.Invoke(this, profileName);
                 this.Close();
             }
 

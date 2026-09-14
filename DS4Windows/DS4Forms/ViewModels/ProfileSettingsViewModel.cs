@@ -2995,7 +2995,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             this.outputSlotService = outputSlotService ?? DS4WinWPF.AppHost.GetService<IOutputSlotService>() ?? Global.OutputSlotServiceInstance;
             this.profileRepo = profileRepo ?? DS4WinWPF.AppHost.GetService<IProfileRepository>() ?? Global.ProfileRepositoryInstance;
             funcDevNum = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : 0;
+
             tempControllerIndex = ControllerTypeIndex;
+            tempConType = ContType;
+
             this.outputSlotService.OutDevTypeTemp[device] = OutContType.X360;
             tempBtPollRate = profileSettings.BTPollRate[device];
 
