@@ -861,6 +861,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
         }
 
+        private int tempControllerIndex;
         public int TempControllerIndex
         {
             get => tempControllerIndex;
@@ -868,11 +869,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (tempControllerIndex == value) return;
                 tempControllerIndex = value;
-                ControllerTypeIndex = value;
-                TempConType = value == 1 ? OutContType.DS4 : OutContType.X360;
+                tempConType = value == 1 ? OutContType.DS4 : OutContType.X360;
+                profileSettings.OutContType[device] = tempConType;
             }
         }
 
+        private OutContType tempConType;
         public OutContType TempConType
         {
             get => tempConType;

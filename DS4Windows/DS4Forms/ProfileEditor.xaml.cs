@@ -1363,37 +1363,35 @@ namespace DS4WinWPF.DS4Forms
 
         /// <summary>
         /// プロファイル保存および適用の共通処理ルート。
-        /// UI上のEmulated Controller選択値をSSOTに直接反映し、XML保存後、
-        /// 接続中のコントローラーで使用中であれば再適用（ホットリロード）を行います。
+        /// UI上のEmulated Controller選択値（0: Xbox 360, 1: DS4）をSSOT（Global.OutContType）に直接反映し、
+        /// XMLへ保存後、現在接続中のコントローラーで使用中であれば再適用（ホットリロード）を行います。
         /// </summary>
-        /// <param name="closeWindow">処理完了後にプロファイル編集画面を閉じるか（保存: true / 適用: false）</param>
+        /// <param name="closeWindow">処理完了後にプロファイル編集画面を閉じるかどうか（保存: true / 適用: false）</param>
         /// <returns>保存成否</returns>
         private bool ExecuteSaveOrApply(bool closeWindow)
         {
-            // 1. プロファイル名入力検証
             string profileName = profileNameTxt.Text.Trim();
             if (string.IsNullOrWhiteSpace(profileName))
             {
-                MessageBox.Show(Properties.Resources.ValidProfileNameText,
-                    Properties.Resources.ProfileName, MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return false;
             }
 
-            // 2. UI上の Emulated Controller 選択値（0: Xbox 360, 1: DS4）を SSOT へダイレクト反映
+            // 1. UI上の Emulated Controller 選択値を SSOT（Global.OutContType）へダイレクトに反映
             OutContType selectedContType = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
+            Global.OutContType[deviceNum] = selectedContType;
+            if (Global.ProfileSettingsServiceInstance != null)
+            {
+                Global.ProfileSettingsServiceInstance.OutContType[deviceNum] = selectedContType;
+            }
+
             if (profileSettingsVM != null)
             {
-                profileSettingsVM.ProfileSettings.OutContType[deviceNum] = selectedContType;
                 profileSettingsVM.ControllerTypeIndex = outConTypeCombo.SelectedIndex;
                 profileSettingsVM.TempControllerIndex = outConTypeCombo.SelectedIndex;
                 profileSettingsVM.TempConType = selectedContType;
             }
-            Global.OutContType[deviceNum] = selectedContType;
 
-            // 3. その他 UI コントロールの値の同期
-            SetLateProperties(deviceNum);
-
-            // 4. [Profile名].xml へ保存
+            // 2. [Profile名].xml へ保存
             bool saveSuccess = Global.SaveProfile(deviceNum, profileName);
             if (!saveSuccess)
             {
@@ -1401,14 +1399,14 @@ namespace DS4WinWPF.DS4Forms
                 return false;
             }
 
-            // 5. 現在接続中のコントローラーで本プロファイルが使用されている場合は再適用（ホットリロード）
+            // 3. 現在接続中のコントローラーで本プロファイルが使用されている場合は再適用（ホットリロード）
             if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT &&
                 Global.ProfilePath[deviceNum] == profileName)
             {
-                Global.ApplyProfile(deviceNum, false, Program.rootHub);
+                Global.ApplyProfile(deviceNum, profileName, false, false, Program.rootHub, ProfileChangeSource.Manual, "", false);
             }
 
-            // 6. 保存時はウィンドウを閉じ、適用時は開いたままにする
+            // 4. 保存ボタン時は画面を閉じ、適用ボタン時は開いたままにする
             if (closeWindow)
             {
                 this.Close();
@@ -1417,43 +1415,9 @@ namespace DS4WinWPF.DS4Forms
             return true;
         }
 
-        private void SetLateProperties(int devIndex)
-        {
-            Global.CustomLed[devIndex] = (bool)customColorToggle.IsChecked;
-            Global.FlushHIDQueue[devIndex] = (bool)flushHIDQueueCheck.IsChecked;
-            Global.IdleDisconnectTimeout[devIndex] = (int)idleDisconnectNum.Value;
-            Global.DinputOnly[devIndex] = (bool)dinputOnlyCheckBox.IsChecked;
-            Global.TouchSensitivity[devIndex] = (byte)touchSensNum.Value;
-
-            // Emulated Controller は UI セレクトボックスの値を正として確実に保持
-            Global.OutContType[devIndex] = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
-        }
-
         private void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
             ExecuteSaveOrApply(closeWindow: true);
-        }
-
-        private void ApplyBtn_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteSaveOrApply(closeWindow: false);
-        }
-
-        private void OutConTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (outConTypeCombo == null || profileSettingsVM == null)
-                return;
-
-            OutContType selected = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
-            profileSettingsVM.ProfileSettings.OutContType[deviceNum] = selected;
-            profileSettingsVM.ControllerTypeIndex = outConTypeCombo.SelectedIndex;
-            profileSettingsVM.TempControllerIndex = outConTypeCombo.SelectedIndex;
-            profileSettingsVM.TempConType = selected;
-
-            if (mappingListVM != null)
-            {
-                mappingListVM.UpdateMappingDevType(selected);
-            }
         }
 
         #endregion
@@ -1806,13 +1770,28 @@ namespace DS4WinWPF.DS4Forms
 
         private void OutConTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            int index = outConTypeCombo.SelectedIndex;
-            if (index >= 0)
+            if (outConTypeCombo == null)
+                return;
+
+            OutContType selected = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
+            Global.OutContType[deviceNum] = selected;
+            if (Global.ProfileSettingsServiceInstance != null)
             {
-                mappingListVM.UpdateMappingDevType(profileSettingsVM.TempConType);
+                Global.ProfileSettingsServiceInstance.OutContType[deviceNum] = selected;
+            }
+
+            if (profileSettingsVM != null)
+            {
+                profileSettingsVM.ControllerTypeIndex = outConTypeCombo.SelectedIndex;
+                profileSettingsVM.TempControllerIndex = outConTypeCombo.SelectedIndex;
+                profileSettingsVM.TempConType = selected;
+            }
+
+            if (mappingListVM != null)
+            {
+                mappingListVM.UpdateMappingDevType(selected);
             }
         }
-
         private void NewActionBtn_Click(object sender, RoutedEventArgs e)
         {
             baseSpeActPanel.Visibility = Visibility.Collapsed;
@@ -2320,9 +2299,8 @@ namespace DS4WinWPF.DS4Forms
 
         private void ApplyBtn_Click(object sender, RoutedEventArgs e)
         {
-            ApplyProfileStep();
+            ExecuteSaveOrApply(closeWindow: false);
         }
-
         private void TriggerFullPullBtn_Click(object sender, RoutedEventArgs e)
         {
             Button btn = sender as Button;
