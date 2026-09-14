@@ -13,19 +13,11 @@ namespace DS4WinWPF.DS4Forms
         private static List<ProfileNotificationWindow> activeNotifications = new List<ProfileNotificationWindow>();
         private static readonly object lockObject = new object();
 
-        /// <summary>
-        /// 通知ウィンドウが次の通知によって消去されずに画面に維持される最小時間（ミリ秒）。
-        /// とりあえず1秒（1000ms）に設定。必要に応じてこの定数値を変更してください。
-        /// </summary>
-        public const int MIN_NOTIFICATION_HOLD_DURATION_MS = 2000;
-
+        public const int MIN_NOTIFICATION_HOLD_DURATION_MS = 1000;
         private DateTime shownTime = DateTime.MinValue;
 
-        // Windows API for system sound
         [DllImport("user32.dll")]
         private static extern bool MessageBeep(uint uType);
-
-        // Windows API for system sound
         private const uint MB_ICONINFORMATION = 0x00000040;
 
         public ProfileNotificationWindow()
@@ -45,7 +37,6 @@ namespace DS4WinWPF.DS4Forms
 
             lock (lockObject)
             {
-                // すべての通知を同じ位置（右上）に重ねて表示
                 this.Left = workingArea.Right - this.Width - 20;
                 this.Top = workingArea.Top + 20;
             }
@@ -57,9 +48,9 @@ namespace DS4WinWPF.DS4Forms
             {
                 DateTime now = DateTime.UtcNow;
 
-                // 新しい通知が来た際、既存の通知が最低1秒（MIN_NOTIFICATION_HOLD_DURATION_MS）は維持されるよう制御
                 lock (lockObject)
                 {
+                    // 既存の古い通知があればクローズ（1秒維持判定）
                     foreach (var oldWin in activeNotifications.ToList())
                     {
                         double elapsedMs = (now - oldWin.shownTime).TotalMilliseconds;
@@ -67,12 +58,10 @@ namespace DS4WinWPF.DS4Forms
 
                         if (remainingMs <= 0)
                         {
-                            // すでに1秒以上経過していれば即座に閉じる
                             oldWin.CloseNotification();
                         }
                         else
                         {
-                            // まだ1秒経過していなければ、残り時間を待機してからフェードアウト（最低1秒の表示を保証）
                             Task.Delay(remainingMs).ContinueWith(_ =>
                             {
                                 Application.Current?.Dispatcher.Invoke(() =>
@@ -91,7 +80,6 @@ namespace DS4WinWPF.DS4Forms
                 lock (lockObject)
                 {
                     activeNotifications.Add(notification);
-                    // リストに追加後に位置を再設定
                     notification.PositionWindow();
                 }
 
@@ -100,11 +88,10 @@ namespace DS4WinWPF.DS4Forms
                 // システム音を再生
                 MessageBeep(MB_ICONINFORMATION);
 
-                // フェードイン アニメーション
-                var fadeIn = notification.FindResource("FadeInStoryboard") as Storyboard;
-                fadeIn?.Begin(notification);
+                // ※注意: XAML側で Loaded 時の FadeInStoryboard が自動実行されるため、
+                // ここでの fadeIn?.Begin 二重呼び出し（チラつき・消えかけの原因）は削除済み。
 
-                // 3秒後にフェードアウト（次の通知が来なくても3秒で自然消去）
+                // 3秒後に自動フェードアウト
                 Task.Delay(3000).ContinueWith(t =>
                 {
                     Application.Current?.Dispatcher.Invoke(() =>
@@ -125,9 +112,6 @@ namespace DS4WinWPF.DS4Forms
                     lock (lockObject)
                     {
                         activeNotifications.Remove(this);
-
-                        // すべての通知は同じ位置に重なっているため、位置調整は不要
-                        // 残った通知は既に正しい位置にある
                     }
 
                     this.Close();
