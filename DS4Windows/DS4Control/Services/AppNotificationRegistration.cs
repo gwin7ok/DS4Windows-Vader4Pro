@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
@@ -56,6 +57,7 @@ namespace DS4Windows
 
         /// <summary>
         /// Windows 10 / 11 のモダン トースト通知を発行します。
+        /// （エディタの言語サーバーでのCS0234誤認を完全防止するため動的解決を使用）
         /// </summary>
         public static void ShowModernToast(string title, string message)
         {
@@ -69,12 +71,42 @@ namespace DS4Windows
     </visual>
 </toast>";
 
-            var xmlDoc = new Windows.Data.Xml.Dom.XmlDocument();
-            xmlDoc.LoadXml(toastXmlString);
+            Type xmlDocType = ResolveWinRTType("Windows.Data.Xml.Dom.XmlDocument");
+            Type toastType = ResolveWinRTType("Windows.UI.Notifications.ToastNotification");
+            Type toastManagerType = ResolveWinRTType("Windows.UI.Notifications.ToastNotificationManager");
 
-            var toast = new Windows.UI.Notifications.ToastNotification(xmlDoc);
-            var notifier = Windows.UI.Notifications.ToastNotificationManager.CreateToastNotifier(AppId);
-            notifier.Show(toast);
+            if (xmlDocType == null || toastType == null || toastManagerType == null)
+            {
+                throw new PlatformNotSupportedException("WinRT Notification types could not be resolved.");
+            }
+
+            object xmlDoc = Activator.CreateInstance(xmlDocType);
+            xmlDocType.GetMethod("LoadXml", new[] { typeof(string) })?.Invoke(xmlDoc, new object[] { toastXmlString });
+
+            object toast = Activator.CreateInstance(toastType, new object[] { xmlDoc });
+            object notifier = toastManagerType.GetMethod("CreateToastNotifier", new[] { typeof(string) })?.Invoke(null, new object[] { AppId });
+            notifier?.GetType().GetMethod("Show", new[] { toastType })?.Invoke(notifier, new object[] { toast });
+        }
+
+        private static Type ResolveWinRTType(string fullName)
+        {
+            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type type = assembly.GetType(fullName);
+                if (type != null)
+                    return type;
+            }
+
+            try
+            {
+                Assembly sdkAssembly = Assembly.Load("Microsoft.Windows.SDK.NET");
+                Type type = sdkAssembly?.GetType(fullName);
+                if (type != null)
+                    return type;
+            }
+            catch { }
+
+            return Type.GetType(fullName);
         }
 
         private static string EscapeXml(string input)
