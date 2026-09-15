@@ -705,6 +705,8 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Fix-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-Plan.md
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-ProfileSync-And-ApplyUnified-Status.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Verification-Checklist.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-pretest-cleanup-Completion-Report.md
