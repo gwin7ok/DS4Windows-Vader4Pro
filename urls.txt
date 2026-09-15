@@ -154,6 +154,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Wi
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/ReleasePolicy.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/RepeatHelper.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/ScpUtil.cs
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/AppNotificationRegistration.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/AppNotificationService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/AppSettingsService.cs
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/DS4Windows/DS4Control/Services/AppearanceSettingsService.cs
