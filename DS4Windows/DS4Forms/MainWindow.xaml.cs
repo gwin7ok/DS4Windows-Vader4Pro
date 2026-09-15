@@ -396,11 +396,25 @@ namespace DS4WinWPF.DS4Forms
 
             if (levelPass)
             {
+                string title = TrayIconViewModel.ballonTitle;
+
+                // 1. Windows 10/11 モダン トースト通知（ポータブル・管理者権限対応）
+                try
+                {
+                    AppNotificationRegistration.ShowModernToast(title, message);
+                    DS4Windows.AppLogger.LogDebug("[Diag-Toast] AppNotificationRegistration.ShowModernToast 呼び出し成功");
+                    return; // モダン通知が成功した場合は完了
+                }
+                catch (Exception ex)
+                {
+                    DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowModernToast で例外発生、レガシー通知へフォールバック: {ex.GetType().Name}: {ex.Message}");
+                }
+
+                // 2. フォールバック（従来の H.NotifyIcon レガシー通知）
                 if (notifyIcon.IsCreated)
                 {
                     try
                     {
-                        string title = TrayIconViewModel.ballonTitle;
                         notifyIcon.ShowNotification(title, message, !isWarning ? H.NotifyIcon.Core.NotificationIcon.Info :
                         H.NotifyIcon.Core.NotificationIcon.Warning);
                         DS4Windows.AppLogger.LogDebug("[Diag-Toast] notifyIcon.ShowNotification 呼び出し成功（例外なし）");

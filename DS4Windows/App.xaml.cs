@@ -142,6 +142,9 @@ namespace DS4WinWPF
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
+            // ★ 最優先で AUMID とレジストリを初期化（ポータブル通知対策）
+            DS4Windows.AppNotificationRegistration.Initialize();
+
             runShutdown = true;
             skipSave = true;
 
