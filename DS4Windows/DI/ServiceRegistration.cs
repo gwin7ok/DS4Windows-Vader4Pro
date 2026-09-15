@@ -49,7 +49,11 @@ namespace DS4Windows.DI
             services.AddSingleton<IAutoProfileService, AutoProfileService>();
 
             // Phase 5 Step 6: アプリ全体設定サービス
-            services.AddSingleton<IAppSettingsService, AppSettingsService>();
+            // 修正前:
+            // services.AddSingleton<IAppSettingsService, AppSettingsService>();
+
+            // 修正後（完全修飾名で確実にバインド）:
+            services.AddSingleton<IAppSettingsService, DS4Windows.Services.AppSettingsService>();
 
             // Phase 5 Step 10: UDP サーバーサービス（Cemuhook モーションサーバー境界化）
             services.AddSingleton<IUdpServerService, UdpServerService>();

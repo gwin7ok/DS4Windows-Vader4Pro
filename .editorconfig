@@ -32,3 +32,9 @@ indent_style = space
 indent_size = 2
 insert_final_newline = false
 trim_trailing_whitespace = true
+
+# コア層（DS4Control, DI, Actions）は、WPF UI層(DS4WinWPF)とは意図的に分離し
+# 「DS4Windows」名前空間を採用するアーキテクチャ設計であるため、
+# フォルダ構造と名前空間を一致させるコードスタイル規約の適用外として宣言する
+[DS4Windows/{DS4Control,DI,Actions}/**.cs]
+dotnet_style_namespace_match_folder = false

@@ -1,12 +1,14 @@
 using System;
+using DS4Windows;
 using DS4Windows.DI;
 
 namespace DS4Windows.Services
 {
-    public class AppSettingsService : IAppSettingsService
+    // ★ IDE0290 根本解決: C# 12 プライマリコンストラクタ構文を適用
+    public class AppSettingsService(IProfileXmlStore xmlStore = null, IPathService pathService = null) : IAppSettingsService
     {
-        private readonly IProfileXmlStore _xmlStore;
-        private readonly IPathService _pathService;
+        private readonly IProfileXmlStore _xmlStore = xmlStore;
+        private readonly IPathService _pathService = pathService;
 
         // Phase5-Step13-7根本修正: StartMinimized等はGlobal(m_Config/BackingStore)への
         // 正規シムとし、UI層(MainWindow.xaml.cs等)からGlobal直参照した場合と完全に同一の実体を
@@ -19,12 +21,7 @@ namespace DS4Windows.Services
 
         public event EventHandler<string> SettingChanged;
 
-        public AppSettingsService(IProfileXmlStore xmlStore = null, IPathService pathService = null)
-        {
-            _xmlStore = xmlStore ?? DS4WinWPF.AppHost.GetService<IProfileXmlStore>() ?? new ProfileXmlStore();
-            _pathService = pathService ?? DS4WinWPF.AppHost.GetService<IPathService>() ?? new PathService();
-        }
-
+        // (※旧コンストラクタ public AppSettingsService(...) { ... } は削除)
         public bool Save()
         {
             bool success = _xmlStore.SaveAppSettingsXml();
@@ -267,10 +264,14 @@ namespace DS4Windows.Services
 
         public bool ProfileChangedNotification
         {
-            get => config.ProfileChangedNotification;
-            set => config.ProfileChangedNotification = value;
+            get => Global.ProfileChangedNotification;
+            set
+            {
+                if (Global.ProfileChangedNotification == value) return;
+                Global.ProfileChangedNotification = value;
+                NotifyChanged(nameof(ProfileChangedNotification));
+            }
         }
-
         public bool SwipeProfiles
         {
             get => Global.SwipeProfiles;
