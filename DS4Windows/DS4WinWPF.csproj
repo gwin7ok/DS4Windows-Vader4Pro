@@ -453,4 +453,11 @@
 	  </ItemGroup>
 	  <WriteLinesToFile File="$(GeneratedMSBuildEditorConfigFile)" Lines="@(_MergedLines)" Overwrite="true" Encoding="utf-8" />
 	</Target>
+
+	<ItemGroup>
+		<!-- CsWin32 の設定ファイルを AdditionalFiles として登録 -->
+		<AdditionalFiles Include="NativeMethods.json" />
+		<!-- もし NativeMethods.txt がある場合はこちらも追加 -->
+		<AdditionalFiles Include="NativeMethods.txt" Condition="Exists('NativeMethods.txt')" />
+	</ItemGroup>
 </Project>
