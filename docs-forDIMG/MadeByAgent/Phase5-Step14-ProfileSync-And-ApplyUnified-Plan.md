@@ -191,7 +191,7 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 
 ---
 
-### 4.6 フェーズF: 通知機能の完全分離（システム通知とプロファイル切替通知の独立実装）【2026-09-14新設・2026-09-14改称（旧フェーズE）】
+### 4.6 フェーズF: 通知機能の完全分離（システム通知とプロファイル切替通知の独立実装）【2026-09-14新設・2026-09-14改称（旧フェーズE）・2026-09-15実機検証を経て仕様確定・実装完了】
 
 #### 背景（実地確認による裏付け）
 
@@ -204,46 +204,86 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 | `OnProfileChanged(object sender, ProfileChangedEventArgs e)`（L755、`AppLogger.ProfileChanged`購読） | メッセージ文字列を組み立てて `ShowProfileChangeNotification` を無条件に呼ぶだけ | 上記と同じ問題がそのまま伝播 |
 | `ShowHotkeyNotification(string message)`（L697、**契機8として新規発見**：ホットキー経由のプロファイル切替） | `appSettingsService.Notifications == 2` のときのみ `AppLogger.LogProfileChanged(...)` を呼ぶ（＝これが`true`でなければ`ProfileChanged`イベント自体が発火しない） | 「システム通知」の重大度設定（`Notifications`）でプロファイル切替通知の発火可否を決めてしまっている。`Global.ApplyProfileToSlot`と同種の誤りが、ここにも独立に存在する |
 | `AppLogger.LogProfileChanged(...)`（`Log.cs` L84、`displayNotification`引数、既定値`true`） | `displayNotification` が `false` の場合、`ProfileChanged` イベント自体を発火しない（`Log.cs` L93-100） | 「表示可否の最終判定」と「イベントを発火するか否か」が同じ1個のboolに同居しており、呼び出し元（契機）ごとに異なる設定値で計算されてしまう根本原因 |
+| `SettingsViewModel.cs` の `IsProfileChangedCheckVisible`（**2026-09-15実機検証で新規発見**） | `ShowNotificationsIndex`（＝`Notifications`）が「すべて」(2) でない限り、`Display profile switch notification` チェックボックス自体を `Visibility.Collapsed` にしてUIから隠す | UIレベルでも2設定が絡み合っており、「通知を表示」が「すべて」以外だとプロファイル切替通知の設定自体を変更できない（実機検証で発覚した問題1） |
 
-この結果、**「Display profile switch notification」をOFFにしても、契機によっては（例：ホットキー経由、あるいは`Global.ApplyProfileToSlot`経由の契機で`Notifications`が0でない場合）プロファイル切替の独自通知ウィンドウが表示され続ける**、というユーザー体感上の不整合が生じ得る。逆に「通知を表示」を「なし」にしても、`IProfileApplicationService`経由の契機（3・4・7）では`ProfileChangedNotification`が真であれば独自通知ウィンドウは正しく表示される、という不統一もある。
+この結果、実機検証（2026-09-15）にて以下2点の不具合として顕在化した。
+
+- **問題1**: 「通知を表示」が「すべて」になっていないと、「Display profile switch notification」チェックボックスがUI上から消え、設定変更ができない。
+- **問題2**: 「通知を表示」を「すべて」にしていても、コントローラーの接続・切断時にトースト通知が表示されない（接続時のプロファイル適用通知が、常に独自ウィンドウ側の`Log.ProfileChanged`経路のみに固定されており、トースト経路と接続していなかったための仕様上のギャップ）。
+
+#### 確定仕様（2026-09-15、ユーザー指示に基づき確定）
+
+* **チェックボックス（`Display profile switch notification`）**:
+  - UI表示は「通知を表示」の設定値に関わらず**常に表示**する（問題1の是正）。
+  - ON: プロファイル**適用**時（表示上は「切替」だが、仕様上は手動切替に限らずあらゆる適用契機を対象とする）に、独自ウィンドウによる通知を表示する。
+  - OFF: 独自ウィンドウは表示しない。
+* **リストボックス（`通知を表示`、`Global.Notifications`）**:
+  - 選択レベルにより、通常のシステム通知（トースト）の表示可否を制限する（既存仕様通り）。
+  - チェックボックスがONの場合、プロファイル適用イベントの通知は**トーストでは一切表示しない**（独自ウィンドウのみに一本化）。
+  - チェックボックスがOFFの場合、プロファイル適用イベントの通知は**通常のシステム通知と同列に扱い**、リストボックスのレベル判定に従ってトースト表示する（プロファイル適用は警告ではないため、実質「すべて」選択時のみ表示される）。
 
 #### 目的
 
 「システム通知」と「プロファイル切替通知」を、**設定値・出力先ともに完全に独立した2つのメソッド**として実装し直し、以後どの契機から呼ばれても常に一貫した判定結果になるようにする。
 
 * **機能1：システム通知**（`ShowSystemNotification`） — 判定基準は `Global.Notifications`（0/1/2）のみ。出力先は Windows トースト（`notifyIcon.ShowNotification`）のみ。プロファイル関連の処理には一切関与しない。
-* **機能2：プロファイル切替通知**（`ShowProfileSwitchNotification`） — 判定基準は `Global.ProfileChangedNotification`（`IProfileSettingsService.ProfileChangedNotification`）のみ。出力先は独自デスクトップ通知（`ProfileNotificationWindow.ShowNotification`）のみ。**判定はメソッド自身が行い**、呼び出し元から判定結果を bool で受け取る設計をやめる。
+* **機能2：プロファイル切替通知**（`ShowProfileSwitchNotification`） — 出力先は独自デスクトップ通知（`ProfileNotificationWindow.ShowNotification`）のみ。**表示可否の判定（`ProfileChangedNotification`）は呼び出し元（`OnProfileChanged`）が行い**、本メソッド自体は無条件に表示する（機能1・機能2どちらへ振り分けるかの判定を一箇所に集約するため）。
 
 #### 対象ファイル
 
 1. `DS4Windows/DS4Forms/MainWindow.xaml.cs`（主対象）
 2. `DS4Windows/DS4Control/Log.cs`（`displayNotification` 引数の意味づけの純化）
 3. `DS4Windows/DS4Forms/ProfileNotificationWindow.xaml.cs`（**変更なし**。単一ウィンドウ・タイマー延長ロジックは既に適切なため確認のみ）
+4. `DS4Windows/DS4Forms/MainWindow.xaml`（**2026-09-15追加**。チェックボックスの`Visibility`バインディング撤去）
+5. `DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs`（**2026-09-15追加**。`IsProfileChangedCheckVisible`関連コードの完全削除）
 
-#### 作業内容
+#### 作業内容（2026-09-15、実機検証結果を踏まえ確定・実装済み）
 
-1. **機能1の整理・改名**: `ShowNotification(object sender, DebugEventArgs e)` を `ShowSystemNotification` へ改名する（判定ロジック・購読先 `AppLogger.TrayIconLog` は変更しない）。
-2. **機能2の新設**: `ShowProfileChangeNotification(string message, bool isWarning)` を廃止し、代わりに以下のシグネチャで `ShowProfileSwitchNotification` を新設する。
+1. **機能1の整理・改名**: `ShowNotification(object sender, DebugEventArgs e)` を `ShowSystemNotification` へ改名。判定ロジック・購読先 `AppLogger.TrayIconLog` は変更しない。あわせて `ShowSystemNotification(string message, bool isWarning)` という文字列ベースのオーバーロードを新設し、`OnProfileChanged`（機能2 OFF時）からも共用できるようにする。
+   ```csharp
+   private void ShowSystemNotification(object sender, DS4Windows.DebugEventArgs e)
+   {
+       if (e.Temporary) return;
+       if (!string.IsNullOrEmpty(e.Data) && (e.Data.StartsWith("[DI]") || e.Data.StartsWith("[Legacy]"))) return;
+       Dispatcher.BeginInvoke((Action)(() => ShowSystemNotification(e.Data, e.Warning)));
+   }
 
+   private void ShowSystemNotification(string message, bool isWarning)
+   {
+       if (appSettingsService.Notifications == 2 || (appSettingsService.Notifications == 1 && isWarning))
+       {
+           if (notifyIcon.IsCreated)
+           {
+               try { notifyIcon.ShowNotification(TrayIconViewModel.ballonTitle, message,
+                   !isWarning ? H.NotifyIcon.Core.NotificationIcon.Info : H.NotifyIcon.Core.NotificationIcon.Warning); }
+               catch (System.InvalidOperationException) { }
+           }
+       }
+   }
+   ```
+2. **機能2の新設**: `ShowProfileChangeNotification(string message, bool isWarning)` を廃止し、以下のシグネチャで `ShowProfileSwitchNotification` を新設する。判定を持たない点に注意（判定は呼び出し元 `OnProfileChanged` が行う）。
    ```csharp
    private void ShowProfileSwitchNotification(string message)
    {
-       if (!profileSettingsService.ProfileChangedNotification)
-           return;
-
-       try
-       {
-           ProfileNotificationWindow.ShowNotification(message);
-       }
+       try { ProfileNotificationWindow.ShowNotification(message); }
        catch { /* プロファイル通知失敗は無視 */ }
    }
    ```
-
-   `profileSettingsService`（`IProfileSettingsService`）は既に `MainWindow.xaml.cs` にDI注入済みのフィールド（L74/L109）であるため、新規のDI解決コードは不要。
-3. `OnProfileChanged` の末尾を `ShowProfileChangeNotification(prolog, false);` から `ShowProfileSwitchNotification(prolog);` に置き換える。
-4. **契機8（新規発見）の是正**: `ShowHotkeyNotification` 内の `if (appSettingsService.Notifications == 2)` によるガードを撤去し、常に `AppLogger.LogProfileChanged(-1, message, false, ProfileChangeSource.Hotkey)` を呼ぶように変更する（＝イベントは常に発火させ、表示可否は下流の `ShowProfileSwitchNotification` に一任する）。
-5. **`Log.cs` の意味づけ純化**: `LogProfileChanged` の `displayNotification` 引数のXMLドキュメントコメントを、「UIに表示するか否か」ではなく「このプロファイル変更をイベントとして通知対象とするか否か（サイレント内部処理を除外するためのフラグ。既定は`true`）」に書き換える。実装（`if (displayNotification) { ProfileChanged?.Invoke(...) }`）自体は変更不要。
-6. 契機1・2・5・6・7・8のいずれも、最終的に `AppLogger.ProfileChanged` イベント経由で `OnProfileChanged` → `ShowProfileSwitchNotification` に到達し、同一の判定（`ProfileChangedNotification`）を受けることを確認する。
+3. **`OnProfileChanged` を機能1/機能2の振り分けポイントとして書き換え**（確定仕様の中核）:
+   ```csharp
+   if (profileSettingsService.ProfileChangedNotification)
+   {
+       ShowProfileSwitchNotification(prolog);      // 機能2: 独自ウィンドウのみ
+   }
+   else
+   {
+       ShowSystemNotification(prolog, false);      // 機能1: 通常のトーストと同列（isWarning: false）
+   }
+   ```
+4. **契機8の是正**: `ShowHotkeyNotification` 内の `if (appSettingsService.Notifications == 2)` ガードを撤去し、常に `AppLogger.LogProfileChanged(-1, message, false, ProfileChangeSource.Hotkey)` を呼ぶ（イベントは常に発火させ、表示可否は `OnProfileChanged` に一任）。
+5. **`Log.cs` の意味づけ純化**: `LogProfileChanged` の `displayNotification` 引数のXMLドキュメントコメントを、「UIに表示するか否か」ではなく「イベント発火可否（サイレント内部処理を除外するためのフラグ。既定`true`）」に更新。実装は変更なし。
+6. **（2026-09-15追加）問題1の是正**: `MainWindow.xaml` のチェックボックスから `Visibility="{Binding IsProfileChangedCheckVisible}"` を削除。`SettingsViewModel.cs` から `IsProfileChangedCheckVisible` プロパティ・バッキングフィールド・イベント、および `ShowNotificationsIndex` セッター内・コンストラクタ内の関連代入コードを完全削除。
+7. 契機1・2・5・6・7・8のいずれも、最終的に `AppLogger.ProfileChanged` イベント経由で `OnProfileChanged` に到達し、確定仕様に基づく同一の振り分けロジックを受けることを確認する。
 
 #### 本フェーズがフェーズG（§4.7、通知判定基準の統一）に与える影響
 
@@ -253,9 +293,11 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 
 * `dotnet build` が警告・エラー 0 件で成功すること。
 * 全単体テスト（169件）がすべて PASS すること。
-* 実機にて、「通知を表示」を「なし」に設定した状態でプロファイルを手動切替しても、「Display profile switch notification」がONであれば独自デスクトップ通知が正しく表示されること（＝トレイ通知設定の影響を受けないことの確認）。
-* 実機にて、「Display profile switch notification」をOFFにした状態でも、警告発生時等のトースト通知（`Notifications`設定に従う）は正しく表示されること（＝プロファイル通知設定の影響を受けないことの確認）。
-* 実機にて、ホットキー経由のプロファイル切替（契機8）について、「通知を表示」の設定値に関わらず「Display profile switch notification」の設定通りに独自通知ウィンドウの表示・非表示が切り替わること。
+* 実機にて、「通知を表示」がどの設定値でも「Display profile switch notification」チェックボックスが常に表示・操作可能であること（問題1の解消確認）。
+* 実機にて、チェックボックスON時、「通知を表示」の設定値に関わらずプロファイル適用時に独自デスクトップ通知が表示されること。
+* 実機にて、チェックボックスOFF時、「通知を表示」＝「すべて」であればプロファイル適用時にトースト通知が表示され、それ以外のレベルでは表示されないこと（問題2の解消確認）。
+* 実機にて、コントローラー接続時・切断時の通知が、上記の確定仕様通りに動作すること。
+* 実機にて、ホットキー経由のプロファイル切替（契機8）についても、上記と同様に確定仕様通りに動作すること。
 
 ---
 

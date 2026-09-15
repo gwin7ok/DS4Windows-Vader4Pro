@@ -54,7 +54,7 @@ namespace DS4Windows
         public static bool IsTraceEnabled => Logger.IsTraceEnabled;
 
         // Errorレベルログ専用メソッド（エラー情報用）
-                // Warnレベルログ専用メソッド（警告情報用）
+        // Warnレベルログ専用メソッド（警告情報用）
         public static void LogWarn(string data)
         {
             Logger.Warn(data);
@@ -81,11 +81,19 @@ namespace DS4Windows
             }
         }
 
+        /// <summary>
+        /// プロファイル適用イベントを記録し、ProfileChanged イベントを発火する。
+        /// </summary>
+        /// <param name="displayNotification">
+        /// このプロファイル変更をイベントとして通知対象とするか否か（サイレント内部処理を除外するためのフラグ。既定は true）。
+        /// UIへの実際の表示可否（トースト／独自ウィンドウのどちらで出すか、あるいは出さないか）は、
+        /// 本イベントの購読側（MainWindow.OnProfileChanged）が ProfileChangedNotification 設定を見て別途判定する。
+        /// </param>
         public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null, bool displayNotification = true)
         {
             // NLog Debugレベルで出力（NLog.configで制御可能）
             Logger.Debug($"LogProfileChanged CALLED: device={deviceIndex}, profile={profileName}, isTemp={isTemp}, source={source}, display={displayNotification}");
-            
+
             try
             {
                 // originalMessageは呼び出し側で出力されるのでここでは出力しない（重複防止）
@@ -135,4 +143,3 @@ namespace DS4Windows
         }
     }
 }
-

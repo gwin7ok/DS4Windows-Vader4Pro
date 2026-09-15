@@ -4,9 +4,9 @@
 - **Target Branch**: `gwin7ok/DS4Windows-Vader4Pro` (`For-DI-migration-work`)
 - **Base Branch**: `gwin7ok/DS4Windows-Vader4Pro` (`For-DI-migration-work`)
 - **Author**: Agent (Claude-based assistant)
-- **Status**: フェーズA・B 完了 / フェーズC 実装済み・実機確認待ち / **フェーズD コード実装完了・ビルド確認/実機確認待ち** / フェーズF・G 承認済み・未着手
+- **Status**: フェーズA・B 完了 / フェーズC 実装済み・実機確認待ち / **フェーズD 完了（ビルド・テスト成功、実機検証済み）** / **フェーズF コード実装完了・ビルド確認/実機確認待ち**（フェーズD実機検証で発覚した問題1・2の是正含む） / フェーズG 承認済み・未着手
 - **Created Date**: 2026-09-14
-- **Last Updated**: 2026-09-14（フェーズD（契機5統合）のコード実装完了。`ControlService.cs`・`ScpUtil.cs` を修正。ビルド・単体テスト・実機確認はgwin7ok氏の実施待ち）
+- **Last Updated**: 2026-09-15（フェーズDのビルド・テスト成功を確認。実機検証で発覚した2件の不具合（チェックボックス可視性の混線＝問題1、接続時トースト未対応＝問題2）を調査・原因特定し、確定仕様に基づきフェーズFのコード実装を完了。ビルド・単体テスト・実機確認はgwin7ok氏の実施待ち）
 
 ---
 
@@ -47,9 +47,9 @@
 | **フェーズA** | `ScpUtil.cs` 共通適用窓口新設 | [x] 完了 | 2026-09-14 | `Global.ApplyProfileToSlot` 実装完了 |
 | **フェーズB** | `MainWindow.xaml.cs` 同期メソッド・ガード新設 | [x] 完了 | 2026-09-14 | `isProfileSyncing` および `SyncProfileListAndControllers` 実装完了 |
 | **フェーズC** | 保存時ホットリロード＆手動 ComboBox 統合 | [~] 実装済み・実機確認待ち | 2026-09-14 | **保存時クラッシュの完全解消**。C-1/C-2はコード実装済み（2026-09-14実地確認、§2.3・§7参照）。C-3（実機確認）と通知判定基準の是正（§7）が残課題 |
-| **フェーズD** | 契機5（HotPlug）の共通窓口統合（新設） | [~] コード実装完了・ビルド確認/実機確認待ち | 2026-09-14 | `ControlService.cs` を `Global.ApplyProfileToSlot` 経由に統一。付随的な通知判定の暫定是正含む |
+| **フェーズD** | 契機5（HotPlug）の共通窓口統合（新設） | [x] 完了 | 2026-09-14 | `ControlService.cs` を `Global.ApplyProfileToSlot` 経由に統一。ビルド・テスト成功（2026-09-15）。実機検証で問題1・2を新規発見しフェーズFに反映 |
 | **フェーズE** | Rename（名前変更）契機の統合 | [ ] 未着手 | 2026-09-14 | 接続中プロファイルの Rename 破綻解消 |
-| **フェーズF** | 通知機能の完全分離（新設） | [ ] 未着手（承認済み・実装待ち） | 2026-09-14 | `ShowSystemNotification`/`ShowProfileSwitchNotification`への分離。契機8（ホットキー）の是正含む |
+| **フェーズF** | 通知機能の完全分離（新設） | [~] コード実装完了・ビルド確認/実機確認待ち | 2026-09-15 | `ShowSystemNotification`/`ShowProfileSwitchNotification`への分離。契機8の是正、チェックボックス常時表示化を含む |
 | **フェーズG** | 通知判定基準の統一（案①実装） | [ ] 未着手（承認済み・実装待ち） | 2026-09-14 | `Global.ApplyProfileToSlot` を `IProfileApplicationService` への委譲に書き換え。`DefaultProfileSwitcher`/`AutoProfileService`/`TrayIconVM_ProfileSelected`/`ControlService.cs` は無改修据え置き |
 | **フェーズH** | 総合検証・DoD 判定・ドキュメント完了 | [ ] 未着手 | 2026-09-14 | 実機テスト網羅・完了報告書作成 |
 
@@ -80,24 +80,30 @@
 
 - [x] **タスク D-1**: `ControlService.cs` の `PrepareConnectedInputControllerSettingEvents` 内の `Global.ApplyProfile` 直接呼び出しを `Global.ApplyProfileToSlot(index, profileToApply, ProfileChangeSource.ControlService)` に置き換え。**実装完了（2026-09-14）**
 - [x] **タスク D-2（No Feature Drop対応・付随的な暫定是正）**: `Global.ApplyProfileToSlot` 内の `Global.Notifications != 0` を `Global.ProfileChangedNotification` に暫定修正（契機5が従来正しく参照していた基準を維持するため。フェーズGで `IProfileApplicationService` への完全委譲に置き換えられる暫定措置）。**実装完了（2026-09-14）**
-- [ ] **タスク D-3**: 全単体テスト（169件）実行・検証。**gwin7ok氏の実施待ち**（本セッションはLinuxサンドボックスのため `dotnet build`/`dotnet test` を実行できず、コード編集のみ）
-- [ ] **タスク D-4**: 実機にて、コントローラー初回接続時・再接続時のプロファイル適用と、`ProfileChangedNotification` 設定に応じた通知表示・非表示が退行なく動作することを確認。**gwin7ok氏の実施待ち**（TC-09参照）
+- [x] **タスク D-3**: 全単体テスト（169件）実行・検証。**完了（2026-09-15、gwin7ok氏によりビルド・テスト実行、全PASS確認済み）**
+- [~] **タスク D-4**: 実機にて、コントローラー初回接続時・再接続時のプロファイル適用と、`ProfileChangedNotification` 設定に応じた通知表示・非表示が退行なく動作することを確認。**実機検証実施済み（2026-09-15）。検証の過程で問題1・問題2が新規発覚し、フェーズFの追加是正に反映（§2.6参照）。問題1・2是正後の再確認が必要**
 
 ### 2.5 フェーズE: Rename 契機の統合
 - [ ] **タスク E-1**: `MainWindow.xaml.cs` の `RenameProfileBtn_Click` 後続処理を `SyncProfileListAndControllers(oldProfile, newProfile);` に統合
 - [ ] **タスク E-2**: 接続中コントローラー適用プロファイルの Rename 実機追従検証
 
-### 2.6 フェーズF: 通知機能の完全分離 【2026-09-14新設】
+### 2.6 フェーズF: 通知機能の完全分離 【2026-09-14新設・2026-09-15実機検証を経て仕様確定・コード実装完了】
 
-> 実地確認の結果、`MainWindow.xaml.cs` の `ShowNotification`/`ShowProfileChangeNotification`/`OnProfileChanged`/`ShowHotkeyNotification` が絡み合い、「通知を表示」（システム通知レベル）と「Display profile switch notification」（プロファイル切替通知）の判定基準が混線していることが判明した。詳細は `Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md` §4.6・§7を参照。
+> 実地確認の結果、`MainWindow.xaml.cs` の `ShowNotification`/`ShowProfileChangeNotification`/`OnProfileChanged`/`ShowHotkeyNotification` が絡み合い、「通知を表示」（システム通知レベル）と「Display profile switch notification」（プロファイル切替通知）の判定基準が混線していることが判明した。2026-09-15の実機検証（フェーズD検証時）で、UI層（チェックボックス可視性）にも同種の混線があること（問題1）、および接続時通知がトースト経路に接続されていないこと（問題2）が新たに発覚し、ユーザー指示により確定仕様（§2.6末尾参照）に基づき実装した。詳細は `Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md` §4.6・§7を参照。
 
-- [ ] **タスク F-1**: `MainWindow.xaml.cs` の `ShowNotification(object sender, DebugEventArgs e)` を `ShowSystemNotification` へ改名（判定ロジック・購読先は変更なし）。
-- [ ] **タスク F-2**: `ShowProfileChangeNotification(string, bool)` を廃止し、`ShowProfileSwitchNotification(string message)` を新設。内部で `profileSettingsService.ProfileChangedNotification` を直接判定してから `ProfileNotificationWindow.ShowNotification` を呼ぶ。
-- [ ] **タスク F-3**: `OnProfileChanged` の呼び出し先を `ShowProfileSwitchNotification` に置き換え。
-- [ ] **タスク F-4**: `ShowHotkeyNotification`（契機8）内の `appSettingsService.Notifications == 2` ガードを撤去し、常に `AppLogger.LogProfileChanged(...)` を呼ぶよう修正。
-- [ ] **タスク F-5**: `Log.cs` の `LogProfileChanged` の `displayNotification` 引数のXMLドキュメントコメントを、「表示可否」ではなく「イベント発火可否（既定`true`）」に純化。
-- [ ] **タスク F-6**: 全単体テスト（169件）実行・検証。
-- [ ] **タスク F-7**: 実機にて、「通知を表示」＝なし／「Display profile switch notification」＝ONの組み合わせ、およびその逆の組み合わせで、各通知が自身の設定のみに従って独立して表示・非表示になることを確認（TC-06・TC-07、§4参照）。
+- [x] **タスク F-1**: `MainWindow.xaml.cs` の `ShowNotification(object sender, DebugEventArgs e)` を `ShowSystemNotification` へ改名（判定ロジック・購読先は変更なし）。文字列ベースのオーバーロード `ShowSystemNotification(string, bool)` を新設。**実装完了**
+- [x] **タスク F-2**: `ShowProfileChangeNotification(string, bool)` を廃止し、`ShowProfileSwitchNotification(string message)` を新設。**設計変更**: 判定はメソッド内部ではなく `OnProfileChanged`（呼び出し元）側で行う（機能1/機能2の振り分けを1箇所に集約するため）。**実装完了**
+- [x] **タスク F-3**: `OnProfileChanged` を、`ProfileChangedNotification` の値に応じて `ShowProfileSwitchNotification`（ON時）／`ShowSystemNotification(prolog, false)`（OFF時）に振り分けるロジックへ書き換え。**実装完了**
+- [x] **タスク F-4**: `ShowHotkeyNotification`（契機8）内の `appSettingsService.Notifications == 2` ガードを撤去し、常に `AppLogger.LogProfileChanged(...)` を呼ぶよう修正。**実装完了**
+- [x] **タスク F-5**: `Log.cs` の `LogProfileChanged` の `displayNotification` 引数のXMLドキュメントコメントを、「表示可否」ではなく「イベント発火可否（既定`true`）」に純化。**実装完了**
+- [x] **タスク F-6（2026-09-15新設・問題1是正）**: `MainWindow.xaml` の `Display profile switch notification` チェックボックスから `Visibility="{Binding IsProfileChangedCheckVisible}"` を削除。`SettingsViewModel.cs` から `IsProfileChangedCheckVisible` 関連コード（プロパティ・フィールド・イベント・`ShowNotificationsIndex`セッター内およびコンストラクタ内の代入）を完全削除し、チェックボックスを常時表示に変更。**実装完了**
+- [ ] **タスク F-7**: 全単体テスト（169件）実行・検証。**gwin7ok氏の実施待ち**
+- [ ] **タスク F-8**: 実機にて、確定仕様（下記）通りに動作することを確認（TC-06〜TC-09、TC-10・TC-11を§4に追加）。**gwin7ok氏の実施待ち**
+
+**確定仕様（2026-09-15、ユーザー指示に基づき確定）**:
+- チェックボックスは「通知を表示」の設定値に関わらず常に表示。
+- チェックボックスON: プロファイル適用時、独自ウィンドウのみで通知（トーストには出さない）。
+- チェックボックスOFF: プロファイル適用時、通常のシステム通知と同列に扱い、「通知を表示」のレベル判定に従ってトーストで通知（実質「すべて」選択時のみ表示）。
 
 ### 2.7 フェーズG: 通知判定基準の統一（案①実装） 【2026-09-14改訂・タスク全面差し替え、当初「フェーズE」から改称】
 
@@ -135,7 +141,9 @@
 | **TC-06** | 「Display profile switch notification」チェックボックスをOFFにした状態で、(a)メインウィンドウComboBox、(b)トレイアイコン メニューの双方からプロファイルを切り替える | (a)(b)いずれの経路でも独自通知ウィンドウが表示されないこと | Pending | フェーズG検証対象。フェーズF完了後に実施 |
 | **TC-07** | 「通知を表示」を「なし」に設定した状態で、「Display profile switch notification」をONにしてプロファイルを切り替える | システム通知（トースト）は出ないが、プロファイル切替の独自デスクトップ通知は正しく表示されること | Pending | フェーズF検証対象。§4.6の機能分離が正しく機能しているかの確認 |
 | **TC-08** | 「Display profile switch notification」をOFFにした状態で、ホットキー経由でプロファイルを切り替える（契機8） | 独自デスクトップ通知が表示されないこと（「通知を表示」の設定値に関わらず） | Pending | フェーズF検証対象。契機8の是正確認 |
-| **TC-09**（新規） | コントローラーの初回接続・再接続時（契機5）に、「Display profile switch notification」の設定通りに通知が表示・非表示されること | フェーズD統合後も退行がないこと | Pending | フェーズD検証対象。契機5統合に伴う暫定是正の確認 |
+| **TC-09** | コントローラーの初回接続・再接続時（契機5）に、「Display profile switch notification」の設定通りに通知が表示・非表示されること | フェーズD統合後も退行がないこと | **実施済み（2026-09-15）** | 実機検証の過程で問題1・2を発見（下記TC-10・TC-11参照）。契機5統合自体（プロファイル適用処理）は正常動作を確認 |
+| **TC-10**（新規、2026-09-15） | 「通知を表示」をどの設定値（なし／警告のみ／すべて）にしても、「Display profile switch notification」チェックボックスが常に表示・操作可能であること | チェックボックスが非表示にならないこと | Pending | フェーズF検証対象。問題1の解消確認 |
+| **TC-11**（新規、2026-09-15） | 「Display profile switch notification」をOFF、「通知を表示」を「すべて」にした状態で、コントローラーを接続・切断する | トースト通知が表示されること | Pending | フェーズF検証対象。問題2の解消確認 |
 
 ---
 
@@ -198,6 +206,8 @@
 5. **（2026-09-14第2回追記）通知メソッド自体の混線**: `MainWindow.xaml.cs` の `ShowNotification`/`ShowProfileChangeNotification`/`OnProfileChanged` を実コード確認した結果、「プロファイル切替通知」を出す `ShowProfileChangeNotification` は `ProfileChangedNotification` 設定を一切参照せず無条件に表示していることが判明した。表示可否は呼び出し元（`ApplyProfile`系）が計算した `displayNotification` フラグに完全依存しており、判定ロジックがメソッド自身に存在しない構造的欠陥である。
 6. **（2026-09-14第2回追記）未列挙の契機8**: `ShowHotkeyNotification`（ホットキー経由のプロファイル切替）が、`appSettingsService.Notifications == 2` を条件に `AppLogger.LogProfileChanged` の呼び出し自体を抑制しており、システム通知の設定でプロファイル切替通知の発火を左右する、契機1・2と同種の誤りを独立に持っていた。
 7. **（2026-09-14第3回追記）契機5が共通窓口を未経由**: `ControlService.cs`（`PrepareConnectedInputControllerSettingEvents`）が、`Global.ApplyProfileToSlot` を経由せず `Global.ApplyProfile`（8引数の静的メソッド）を直接呼び出し続けていた。§3.1に契機5として列挙されていたにもかかわらず、いずれのフェーズにも統合作業が割り当てられていなかった計画上の抜け漏れ。
+8. **（2026-09-15追記・問題1）UI層のチェックボックス可視性混線**: `SettingsViewModel.cs` の `IsProfileChangedCheckVisible` が、`ShowNotificationsIndex`（`Global.Notifications`）が2（すべて）でない限り、独立設定であるべき「Display profile switch notification」チェックボックス自体をUI上から隠していた。フェーズD実機検証で発覚。
+9. **（2026-09-15追記・問題2）プロファイル適用通知とトースト経路の未接続**: 従来、プロファイル適用時の通知は `Log.ProfileChanged` 経由で独自ウィンドウのみに固定されており、トースト通知（`AppLogger.TrayIconLog`）経路とは接続されていなかった。ユーザーより「チェックボックスOFF時はプロファイル適用イベントもトースト経路で扱う」という確定仕様が示され、これに基づき実装した。
 
 ### 7.2 是正方針の状態
 
@@ -206,3 +216,24 @@
 - 契機5の未統合（7）に対しては、**「契機5の共通窓口統合」を新規フェーズDとして、フェーズCの直後に実施することが承認された**（§2.4参照）。契機5統合に伴う通知判定の暫定是正も同フェーズに含む。
 - 実装順序: **フェーズD（契機5統合）→ フェーズE（Rename統合）→ フェーズF（通知機能の完全分離）→ フェーズG（判定基準の統一・案①）→ フェーズH（総合検証）**。
 - **いずれもユーザー承認済みであり、フェーズDの実装から着手する。**
+
+## 6-1. 2026-09-15 追記: フェーズDビルド・テスト成功、実機検証で問題1・2を発見・是正
+
+* **2026-09-15**:
+  - gwin7ok氏により、フェーズD実装（`ControlService.cs`・`ScpUtil.cs`）の `dotnet build`／単体テスト（169件）が全PASSであることを確認。リモートリポジトリに反映済み。
+  - 実機テストの結果、以下2点の新規不具合が発見された。
+    1. **問題1**: 「通知を表示」が「すべて」でないと、「Display profile switch notification」チェックボックスがUI上から消え、設定変更できない。
+    2. **問題2**: 「通知を表示」を「すべて」にしていても、コントローラーの接続・切断時にトースト通知が表示されない。
+  - 実コード調査により、問題1の原因を `SettingsViewModel.cs` の `IsProfileChangedCheckVisible`（`ShowNotificationsIndex`が2でない限りチェックボックスを`Collapsed`にする既存ロジック）と特定。
+  - 問題2について、通知経路（`Global.Notifications`配線、`AppSettingsService`、`ShowNotification`判定ロジック、`LogToTray`呼び出し元）を精査したが、フェーズDの変更範囲には問題は見つからず。ユーザーへ再現条件の確認を依頼。
+  - ユーザーより、以下の確定仕様が示された。
+    - チェックボックスは「通知を表示」に関わらず常に表示。
+    - チェックボックスON: プロファイル**適用**時（切替に限らず全契機）に独自ウィンドウのみで通知。
+    - チェックボックスOFF: プロファイル適用時を通常のシステム通知と同列に扱い、「通知を表示」のレベル判定に従ってトースト通知（実質「すべて」選択時のみ表示）。
+  - 上記確定仕様に基づき、以下を実装（フェーズFのタスクとして統合）。
+    - `MainWindow.xaml`: チェックボックスの `Visibility` バインディングを削除（問題1是正）。
+    - `SettingsViewModel.cs`: `IsProfileChangedCheckVisible` 関連コードを完全削除（問題1是正）。
+    - `MainWindow.xaml.cs`: `ShowNotification`→`ShowSystemNotification`に改名し文字列オーバーロードを追加、`ShowProfileChangeNotification`→判定を持たない`ShowProfileSwitchNotification`に置き換え、`OnProfileChanged`を確定仕様通りの振り分けロジックに書き換え、`ShowHotkeyNotification`のガードを撤去。
+    - `Log.cs`: `LogProfileChanged`の`displayNotification`引数のドキュメントコメントを純化。
+  - `Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md` §4.6（フェーズF）・`Phase5-Step14-ProfileSync-And-ApplyUnified-Status.md` §2.4（フェーズD完了反映）・§2.6（フェーズFタスク更新）・§4（TC-10・TC-11追加）を更新。
+  - **本セッションはLinuxサンドボックスのため、今回の変更についても `dotnet build`/`dotnet test` は未実行。gwin7ok氏の実施が必要（タスクF-7・F-8）。**

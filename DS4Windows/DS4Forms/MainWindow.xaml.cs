@@ -366,7 +366,9 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        private void ShowNotification(object sender, DS4Windows.DebugEventArgs e)
+        // 機能1: システム通知（Global.Notifications基準、トースト通知のみ）
+        // AppLogger.TrayIconLog イベントのアダプタ
+        private void ShowSystemNotification(object sender, DS4Windows.DebugEventArgs e)
         {
             if (e.Temporary)
                 return;
@@ -374,35 +376,37 @@ namespace DS4WinWPF.DS4Forms
             if (!string.IsNullOrEmpty(e.Data) && (e.Data.StartsWith("[DI]") || e.Data.StartsWith("[Legacy]")))
                 return;
 
-            Dispatcher.BeginInvoke((Action)(() =>
-            {
-                if (appSettingsService.Notifications == 2 ||
-                    (appSettingsService.Notifications == 1 && e.Warning))
-                {
-                    if (notifyIcon.IsCreated)
-                    {
-                        try
-                        {
-                            // Profile notifications are emitted via typed ProfileChanged event; treat all tray logs as regular notifications.
-                            string title = TrayIconViewModel.ballonTitle;
-                            notifyIcon.ShowNotification(title, e.Data, !e.Warning ? H.NotifyIcon.Core.NotificationIcon.Info :
-                            H.NotifyIcon.Core.NotificationIcon.Warning);
-                        }
-                        catch (System.InvalidOperationException)
-                        {
-                            // Ignore
-                        }
-                    }
-                }
-            }));
+            Dispatcher.BeginInvoke((Action)(() => ShowSystemNotification(e.Data, e.Warning)));
         }
 
-        // プロファイル変更通知専用メソッド - カスタム通知ウィンドウを使用
-        private void ShowProfileChangeNotification(string message, bool isWarning)
+        // 機能1: システム通知の本体。判定基準は Global.Notifications のみ。出力先はトースト（notifyIcon）のみ。
+        private void ShowSystemNotification(string message, bool isWarning)
+        {
+            if (appSettingsService.Notifications == 2 ||
+                (appSettingsService.Notifications == 1 && isWarning))
+            {
+                if (notifyIcon.IsCreated)
+                {
+                    try
+                    {
+                        string title = TrayIconViewModel.ballonTitle;
+                        notifyIcon.ShowNotification(title, message, !isWarning ? H.NotifyIcon.Core.NotificationIcon.Info :
+                        H.NotifyIcon.Core.NotificationIcon.Warning);
+                    }
+                    catch (System.InvalidOperationException)
+                    {
+                        // Ignore
+                    }
+                }
+            }
+        }
+
+        // 機能2: プロファイル切替通知。判定基準は ProfileChangedNotification のみ。出力先は独自デスクトップ通知のみ。
+        // 判定は OnProfileChanged 側で行い、本メソッドは無条件に表示する。
+        private void ShowProfileSwitchNotification(string message)
         {
             try
             {
-                // ログ出力と同じメッセージをカスタム通知ウィンドウで表示
                 ProfileNotificationWindow.ShowNotification(message);
             }
             catch { /* プロファイル通知失敗は無視 */ }
@@ -416,7 +420,7 @@ namespace DS4WinWPF.DS4Forms
             controlService.PreServiceStop += PrepareForServiceStop;
             //root.rootHubtest.RunningChanged += ControlServiceChanged;
             conLvViewModel.ControllerCol.CollectionChanged += ControllerCol_CollectionChanged;
-            AppLogger.TrayIconLog += ShowNotification;
+            AppLogger.TrayIconLog += ShowSystemNotification;
 
             // 型付きプロファイル変更イベントを購読
             AppLogger.ProfileChanged += OnProfileChanged;
@@ -696,21 +700,16 @@ Suspend support not enabled.", true);
 
         private void ShowHotkeyNotification(string message)
         {
-            if (appSettingsService.Notifications == 2)
+            // Phase5-Step14 フェーズF: 「通知を表示」レベルによるイベント発火抑制を撤廃。
+            // プロファイル適用イベントは常に発火させ、表示可否は OnProfileChanged 側で
+            // ProfileChangedNotification を基準に一元判定する。
+            try
             {
-                // 通常のトレイ通知を使用（ShowNotificationで連続通知が改善される）
-                // Hotkey-driven profile changes should emit typed ProfileChanged event instead of raw tray log.
-                try
-                {
-                    // Attempt to parse the message for device/profile info. If parsing fails, fall back to LogToTray.
-                    // Expected format: UsingProfile resource (device, profile, battery)
-                    // We will not parse battery; just trigger a generic ProfileChanged with Unknown device (-1).
-                    AppLogger.LogProfileChanged(-1, message, false, DS4Windows.ProfileChangeSource.Hotkey);
-                }
-                catch
-                {
-                    AppLogger.LogToTray(message);
-                }
+                AppLogger.LogProfileChanged(-1, message, false, DS4Windows.ProfileChangeSource.Hotkey);
+            }
+            catch
+            {
+                AppLogger.LogToTray(message);
             }
         }
 
@@ -775,7 +774,18 @@ Suspend support not enabled.", true);
                     else
                         prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, battery);
 
-                    ShowProfileChangeNotification(prolog, false);
+                    // Phase5-Step14 フェーズF: 「通知を表示」と「Display profile switch notification」を完全分離。
+                    // チェックボックスON: 独自デスクトップ通知のみ（「通知を表示」の設定値に関わらず表示）。
+                    // チェックボックスOFF: プロファイル適用イベントを通常のシステム通知（トースト）として扱い、
+                    //   「通知を表示」のレベル設定にのみ従う（警告扱いではないため実質「すべて」選択時のみ表示）。
+                    if (profileSettingsService.ProfileChangedNotification)
+                    {
+                        ShowProfileSwitchNotification(prolog);
+                    }
+                    else
+                    {
+                        ShowSystemNotification(prolog, false);
+                    }
                 }
                 catch { }
             }));

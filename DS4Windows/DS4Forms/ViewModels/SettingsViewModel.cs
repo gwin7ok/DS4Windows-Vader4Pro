@@ -112,20 +112,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public event EventHandler ShowRunStartPanelChanged;
 
-        private Visibility _isProfileChangedCheckVisible;
-
-        public Visibility IsProfileChangedCheckVisible
-        {
-            get => _isProfileChangedCheckVisible;
-            private set
-            {
-                _isProfileChangedCheckVisible = value;
-                IsProfileChangedCheckVisibleChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-
-        public event EventHandler IsProfileChangedCheckVisibleChanged;
-
         public bool ProfileChangedNotification
         {
             get => Global.ProfileChangedNotification;
@@ -135,12 +121,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public int ShowNotificationsIndex
         {
             get => _appSettings.Notifications;
-            set
-            {
-                _appSettings.Notifications = value;
-                // display only when all notifications are on
-                IsProfileChangedCheckVisible = value == 2 ? Visibility.Visible : Visibility.Collapsed;
-            }
+            set => _appSettings.Notifications = value;
         }
 
         public bool DisconnectBTStop { get => DS4Windows.Global.DCBTatStop; set => DS4Windows.Global.DCBTatStop = value; }
@@ -438,7 +419,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             checkEveryUnitIdx = DS4Windows.Global.CheckEveryUnit;
             // Ensure unit idx is valid
             if (checkEveryUnitIdx != 0 && checkEveryUnitIdx != 1) checkEveryUnitIdx = 1;
-            IsProfileChangedCheckVisible = Global.Notifications == 2 ? Visibility.Visible : Visibility.Collapsed;
             // No longer derive from CheckWhen; numeric value is held separately
 
             CheckStartupOptions();
