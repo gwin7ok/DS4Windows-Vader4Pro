@@ -432,15 +432,34 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        // 機能2: プロファイル切替通知。判定基準は ProfileChangedNotification のみ。出力先は独自デスクトップ通知のみ。
-        // 判定は OnProfileChanged 側で行い、本メソッドは無条件に表示する。
+        // 機能2: プロファイル切替通知。判定基準は ProfileChangedNotification のみ。出力先は独自デスクトップウィンドウのみ。
+        // 機能: プロファイル変更通知の表示処理
+        // 機能2: プロファイル切替通知の表示処理
+        // - ProfileChangedNotification が ON: 独自デスクトップウィンドウを表示
+        // - ProfileChangedNotification が OFF かつ Notifications が「すべて(2)」: トースト通知を表示
         private void ShowProfileSwitchNotification(string message)
         {
-            try
+            if (appSettingsService.ProfileChangedNotification)
             {
-                ProfileNotificationWindow.ShowNotification(message);
+                // 1. チェックボックスが ON -> 独自デスクトップウィンドウを表示
+                Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    try
+                    {
+                        var win = new ProfileNotificationWindow(message);
+                        win.Show();
+                    }
+                    catch (Exception ex)
+                    {
+                        DS4Windows.AppLogger.LogDebug($"[ProfileNotification] ウィンドウ表示エラー: {ex.Message}");
+                    }
+                }));
             }
-            catch { /* プロファイル通知失敗は無視 */ }
+            else if (appSettingsService.Notifications == 2)
+            {
+                // 2. チェックボックスが OFF かつ 通知設定が「すべて」 -> トースト通知を表示
+                ShowSystemNotification(message, false);
+            }
         }
 
         private void SetupEvents()
@@ -805,18 +824,14 @@ Suspend support not enabled.", true);
                     else
                         prolog = string.Format(Properties.Resources.UsingProfile, (devIndex + 1).ToString(), prof, battery);
 
-                    // Phase5-Step14 フェーズF: 「通知を表示」と「Display profile switch notification」を完全分離。
-                    // チェックボックスON: 独自デスクトップ通知のみ（「通知を表示」の設定値に関わらず表示）。
-                    // チェックボックスOFF: プロファイル適用イベントを通常のシステム通知（トースト）として扱い、
-                    //   「通知を表示」のレベル設定にのみ従う（警告扱いではないため実質「すべて」選択時のみ表示）。
-                    if (profileSettingsService.ProfileChangedNotification)
-                    {
-                        ShowProfileSwitchNotification(prolog);
-                    }
-                    else
-                    {
-                        ShowSystemNotification(prolog, false);
-                    }
+                    // 修正前:
+                    // if (appSettingsService.ProfileChangedNotification)
+                    // {
+                    //     ShowProfileSwitchNotification(message);
+                    // }
+
+                    // 修正後（判定をメソッド側に委譲し、シンプルに1行で呼ぶ）:
+                    ShowProfileSwitchNotification(prolog);
                 }
                 catch { }
             }));
