@@ -432,36 +432,27 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        // 機能2: プロファイル切替通知。判定基準は ProfileChangedNotification のみ。出力先は独自デスクトップウィンドウのみ。
-        // 機能: プロファイル変更通知の表示処理
         // 機能2: プロファイル切替通知の表示処理
-        // - ProfileChangedNotification が ON: 独自デスクトップウィンドウを表示
-        // - ProfileChangedNotification が OFF かつ Notifications が「すべて(2)」: トースト通知を表示
+        // - ProfileChangedNotification が ON: 独自デスクトップウィンドウ（ProfileNotificationWindow）を表示
+        // - ProfileChangedNotification が OFF かつ Notifications 設定が「すべて(2)」: Windows トースト通知を表示
+        //   （※Notifications 設定が「警告のみ(1)」または「なし(0)」の場合は抑制）
+        // 機能2: プロファイル切替通知の表示処理
+        // - ProfileChangedNotification が ON: 独自デスクトップウィンドウ（ProfileNotificationWindow）を表示
+        // - ProfileChangedNotification が OFF かつ Notifications 設定が「すべて(2)」: Windows トースト通知を表示
+        //   （※Notifications 設定が「警告のみ(1)」または「なし(0)」の場合は抑制）
         private void ShowProfileSwitchNotification(string message)
         {
             if (appSettingsService.ProfileChangedNotification)
             {
                 // 1. チェックボックスが ON -> 独自デスクトップウィンドウを表示
-                Dispatcher.BeginInvoke((Action)(() =>
-                {
-                    try
-                    {
-                        var win = new ProfileNotificationWindow(message);
-                        win.Show();
-                    }
-                    catch (Exception ex)
-                    {
-                        DS4Windows.AppLogger.LogDebug($"[ProfileNotification] ウィンドウ表示エラー: {ex.Message}");
-                    }
-                }));
+                ProfileNotificationWindow.ShowNotification(message);
             }
             else if (appSettingsService.Notifications == 2)
             {
-                // 2. チェックボックスが OFF かつ 通知設定が「すべて」 -> トースト通知を表示
+                // 2. チェックボックスが OFF かつ 通知設定が「すべて(2)」 -> トースト通知を表示
                 ShowSystemNotification(message, false);
             }
         }
-
         private void SetupEvents()
         {
             App root = Application.Current as App;

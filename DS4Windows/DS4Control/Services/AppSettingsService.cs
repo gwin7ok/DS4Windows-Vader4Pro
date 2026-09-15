@@ -265,6 +265,12 @@ namespace DS4Windows.Services
             set { if (Global.Notifications != value) { Global.Notifications = value; NotifyChanged(nameof(Notifications)); } }
         }
 
+        public bool ProfileChangedNotification
+        {
+            get => config.ProfileChangedNotification;
+            set => config.ProfileChangedNotification = value;
+        }
+
         public bool SwipeProfiles
         {
             get => Global.SwipeProfiles;

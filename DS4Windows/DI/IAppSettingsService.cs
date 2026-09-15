@@ -51,6 +51,10 @@ namespace DS4Windows.DI
         // ---- Phase5-Step13-7: 通知レベル・スワイプ操作設定 ----
         int Notifications { get; set; }
         bool SwipeProfiles { get; set; }
+        /// <summary>
+        /// プロファイル切替時に独自デスクトップ通知ウィンドウを表示するかどうか
+        /// </summary>
+        bool ProfileChangedNotification { get; set; }
 
         // ---- Phase5-Step14: プロファイル編集画面・SpecialAction カラム幅の永続化 ----
         int ProfileEditorLeftWidth { get; set; }
