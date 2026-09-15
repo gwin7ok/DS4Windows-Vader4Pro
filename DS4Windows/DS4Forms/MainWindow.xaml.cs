@@ -370,11 +370,19 @@ namespace DS4WinWPF.DS4Forms
         // AppLogger.TrayIconLog イベントのアダプタ
         private void ShowSystemNotification(object sender, DS4Windows.DebugEventArgs e)
         {
+            DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowSystemNotification(event) 呼び出し: Data='{e?.Data}', Warning={e?.Warning}, Temporary={e?.Temporary}");
+
             if (e.Temporary)
+            {
+                DS4Windows.AppLogger.LogDebug("[Diag-Toast] Temporary=true のため抑制");
                 return;
+            }
 
             if (!string.IsNullOrEmpty(e.Data) && (e.Data.StartsWith("[DI]") || e.Data.StartsWith("[Legacy]")))
+            {
+                DS4Windows.AppLogger.LogDebug("[Diag-Toast] [DI]/[Legacy] 接頭辞のため抑制");
                 return;
+            }
 
             Dispatcher.BeginInvoke((Action)(() => ShowSystemNotification(e.Data, e.Warning)));
         }
@@ -382,8 +390,11 @@ namespace DS4WinWPF.DS4Forms
         // 機能1: システム通知の本体。判定基準は Global.Notifications のみ。出力先はトースト（notifyIcon）のみ。
         private void ShowSystemNotification(string message, bool isWarning)
         {
-            if (appSettingsService.Notifications == 2 ||
-                (appSettingsService.Notifications == 1 && isWarning))
+            int notifLevel = appSettingsService.Notifications;
+            bool levelPass = notifLevel == 2 || (notifLevel == 1 && isWarning);
+            DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowSystemNotification(message) message='{message}', isWarning={isWarning}, Notifications設定={notifLevel}, レベル判定={levelPass}, notifyIcon.IsCreated={notifyIcon?.IsCreated}");
+
+            if (levelPass)
             {
                 if (notifyIcon.IsCreated)
                 {
@@ -392,11 +403,17 @@ namespace DS4WinWPF.DS4Forms
                         string title = TrayIconViewModel.ballonTitle;
                         notifyIcon.ShowNotification(title, message, !isWarning ? H.NotifyIcon.Core.NotificationIcon.Info :
                         H.NotifyIcon.Core.NotificationIcon.Warning);
+                        DS4Windows.AppLogger.LogDebug("[Diag-Toast] notifyIcon.ShowNotification 呼び出し成功（例外なし）");
                     }
-                    catch (System.InvalidOperationException)
+                    catch (Exception ex)
                     {
-                        // Ignore
+                        // 診断のため、原因を必ずログに残す（従来は握りつぶしていた）
+                        DS4Windows.AppLogger.LogDebug($"[Diag-Toast] notifyIcon.ShowNotification で例外発生: {ex.GetType().Name}: {ex.Message}");
                     }
+                }
+                else
+                {
+                    DS4Windows.AppLogger.LogDebug("[Diag-Toast] notifyIcon.IsCreated=false のため表示スキップ");
                 }
             }
         }

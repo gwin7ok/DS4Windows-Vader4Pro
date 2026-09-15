@@ -72,12 +72,17 @@ namespace DS4Windows
 
         public static void LogToTray(string data, bool warning = false, bool ignoreSettings = false)
         {
+            Logger.Debug($"[Diag-Toast] LogToTray 呼び出し: data='{data}', warning={warning}, ignoreSettings={ignoreSettings}, TrayIconLog購読者数={TrayIconLog?.GetInvocationList()?.Length ?? 0}");
             if (TrayIconLog != null)
             {
                 if (ignoreSettings)
                     TrayIconLog(ignoreSettings, new DebugEventArgs(data, warning));
                 else
                     TrayIconLog(null, new DebugEventArgs(data, warning));
+            }
+            else
+            {
+                Logger.Debug("[Diag-Toast] TrayIconLog イベントに購読者がいないため発火されず");
             }
         }
 
