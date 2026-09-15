@@ -37,7 +37,7 @@ namespace DS4Windows
 
         private static void RegisterInRegistry()
         {
-            string? exePath = Environment.ProcessPath;
+            string exePath = Environment.ProcessPath;
             if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
                 return;
 
