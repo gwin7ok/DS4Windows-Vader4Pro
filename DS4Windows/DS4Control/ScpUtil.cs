@@ -3142,7 +3142,9 @@ namespace DS4Windows
         /// <summary>
         /// 指定したコントローラースロットに対してプロファイルを安全に適用する共通窓口メソッド。
         /// 手動選択・保存時ホットリロード・スペシャルアクション・自動プロファイル・接続時・Rename時等の全適用経路を一本化します。
-        /// 設定（Global.Notifications）に従い、同一の独自ウィンドウデスクトップ通知を一元制御します。
+        /// 設定（Global.ProfileChangedNotification）に従い、同一の独自ウィンドウデスクトップ通知を一元制御します。
+        /// （Phase5-Step14 フェーズDにて、判定基準を Global.Notifications から ProfileChangedNotification に暫定是正済み。
+        /// フェーズGにて IProfileApplicationService への完全委譲に置き換え予定）
         /// </summary>
         public static bool ApplyProfileToSlot(int slotIndex, string profileName, ProfileChangeSource source = ProfileChangeSource.Manual)
         {
@@ -3160,8 +3162,16 @@ namespace DS4Windows
             }
             catch { }
 
-            // ★通知設定の有効・無効を一元反映（Notifications != 0 であれば通知を表示）
-            bool shouldDisplayNotification = Global.Notifications != 0;
+            // ★通知設定の有効・無効を一元反映（Phase5-Step14 フェーズD暫定是正: 契機5統合に伴い、
+            //   従来 Global.Notifications を使用していたが、これは「通知を表示」というシステム通知の
+            //   重大度設定であり、プロファイル切替通知専用の設定ではない。正しくは
+            //   「Display profile switch notification」チェックボックス（ProfileChangedNotification）
+            //   を基準とすべきであり、本フェーズで契機5（ControlService.cs）を本メソッド経由に統合するにあたり
+            //   従来の契機5の正しい判定基準を退行させないため暫定是正した。
+            //   TODO: フェーズG（Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md §4.7）にて、
+            //   本メソッド自体を IProfileApplicationService.ApplyProfile への委譲に書き換え、
+            //   本行は削除される予定（案①）。
+            bool shouldDisplayNotification = Global.ProfileChangedNotification;
 
             // 引数仕様: (deviceIndex, profileName, isTemp: false, launchProgram: false, service, source, prolog, shouldDisplay: shouldDisplayNotification)
             return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, prolog, shouldDisplayNotification);

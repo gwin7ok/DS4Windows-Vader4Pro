@@ -2163,14 +2163,10 @@ namespace DS4Windows
                     _profileSettings.SetLinkedProfileCheck(index, false);
                 }
 
-                // プロファイル適用
-                string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (index + 1).ToString(), profileToApply, "N/A");
-                bool display = _profileSettings.ProfileChangedNotification;
-
-                DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: About to call ApplyProfile with '{profileToApply}'");
-                profileLoaded = Global.ApplyProfile(index, profileToApply, false, false, this,
-                    DS4Windows.ProfileChangeSource.ControlService, prolog, display);
-                DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: ApplyProfile returned {profileLoaded}");
+                // プロファイル適用（Phase5-Step14 フェーズD: 共通窓口 Global.ApplyProfileToSlot 経由に統一。契機5統合）
+                DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: About to call ApplyProfileToSlot with '{profileToApply}'");
+                profileLoaded = Global.ApplyProfileToSlot(index, profileToApply, DS4Windows.ProfileChangeSource.ControlService);
+                DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: ApplyProfileToSlot returned {profileLoaded}");
             }
 
             if (profileLoaded || useAutoProfile)

@@ -4,9 +4,9 @@
 - **Target Branch**: `gwin7ok/DS4Windows-Vader4Pro` (`For-DI-migration-work`)
 - **Base Branch**: `gwin7ok/DS4Windows-Vader4Pro` (`For-DI-migration-work`)
 - **Author**: Agent (Claude-based assistant)
-- **Status**: 計画策定完了 (Ready for Implementation) ／ フェーズE（通知機能の完全分離、新設）・フェーズF改訂（案①採用）が2026-09-14付でユーザー承認済み（§7・§4.5・§4.6）。実装は未着手
+- **Status**: 計画策定完了 (Ready for Implementation) ／ フェーズD（契機5統合、新設）・フェーズF（通知機能の完全分離）・フェーズG（通知判定基準の統一・案①採用）が2026-09-14付でユーザー承認済み。**フェーズDから実装着手**
 - **Created Date**: 2026-09-14
-- **Last Updated**: 2026-09-14（ユーザー承認を受け、フェーズEを新規挿入（通知機能の完全分離）、旧フェーズEをフェーズFへ改称のうえ案①ベースに全面改訂。§3.1に契機7・契機8を正式統合）
+- **Last Updated**: 2026-09-14（契機5＝HotPlugの共通窓口統合を新規フェーズDとしてフェーズCの直後に挿入。既存フェーズD〜Gを1つずつ繰り下げ（D→E, E→F, F→G, G→H）。§3.1に契機7・契機8を正式統合）
 
 ---
 
@@ -20,10 +20,11 @@
    - 4.1 [フェーズA: 共通適用メソッド Global.ApplyProfileToSlot の新設](#41-フェーズa-共通適用メソッド-globalapplyprofiletoslot-の新設)
    - 4.2 [フェーズB: 4段階トランザクション同期メソッドおよびガードの実装](#42-フェーズb-4段階トランザクション同期メソッドおよびガードの実装)
    - 4.3 [フェーズC: プロファイル保存契機（契機2）および手動選択（契機1）の統合](#43-フェーズc-プロファイル保存契機契機2および手動選択契機1の統合)
-   - 4.4 [フェーズD: Rename（名前変更）契機（契機6）の統合](#44-フェーズd-rename名前変更契機契機6の統合)
-   - 4.5 [フェーズE: 通知機能の完全分離（システム通知とプロファイル切替通知の独立実装）](#45-フェーズe-通知機能の完全分離システム通知とプロファイル切替通知の独立実装2026-09-14新設)
-   - 4.6 [フェーズF: 通知判定基準の統一（案①実装）およびDI経由契機の整合性確認](#46-フェーズf-通知判定基準の統一案実装およびdi経由契機の整合性確認2026-09-14改訂)
-   - 4.7 [フェーズG: 総合テスト・実機検証・完了報告](#47-フェーズg-総合テスト実機検証完了報告)
+   - 4.4 [フェーズD: 契機5（初回接続時／HotPlug）の共通窓口統合](#44-フェーズd-契機5初回接続時hotplugの共通窓口統合2026-09-14新設)
+   - 4.5 [フェーズE: Rename（名前変更）契機（契機6）の統合](#45-フェーズe-rename名前変更契機契機6の統合)
+   - 4.6 [フェーズF: 通知機能の完全分離（システム通知とプロファイル切替通知の独立実装）](#46-フェーズf-通知機能の完全分離システム通知とプロファイル切替通知の独立実装2026-09-14新設2026-09-14改称旧フェーズe)
+   - 4.7 [フェーズG: 通知判定基準の統一（案①実装）およびDI経由契機の整合性確認](#47-フェーズg-通知判定基準の統一案実装およびdi経由契機の整合性確認2026-09-14改訂2026-09-14さらに改称旧フェーズf)
+   - 4.8 [フェーズH: 総合テスト・実機検証・完了報告](#48-フェーズh-総合テスト実機検証完了報告)
 5. [完了基準 (Definition of Done)](#5-完了基準-definition-of-done)
 6. [リスク分析と対策](#6-リスク分析と対策)
 7. [（2026-09-14追記）実地確認による追加発見事項と是正方針](#7-2026-09-14追記実地確認による追加発見事項と是正方針)
@@ -58,7 +59,7 @@
 ## 3. アーキテクチャ設計
 
 ### 3.1 共通適用窓口 Global.ApplyProfileToSlot の設計
-コントローラーへプロファイルを安全に適用する単一の静的窓口を `Global`（`DS4Control/ScpUtil.cs`）に新設し、アプリ全体の 7 つの適用契機をすべてここを通過させる（**注**: 契機8「ホットキー経由」は既存プロファイルの再通知に過ぎずプロファイル適用処理そのものではないため、`ApplyProfileToSlot`の集約対象には含めない。§4.5参照）。（**2026-09-14改訂**: 実地確認により発見された契機7・8を正式に統合。詳細な発見経緯は §7.2 事実3、§4.5 を参照）
+コントローラーへプロファイルを安全に適用する単一の静的窓口を `Global`（`DS4Control/ScpUtil.cs`）に新設し、アプリ全体の 7 つの適用契機をすべてここを通過させる（**注**: 契機8「ホットキー経由」は既存プロファイルの再通知に過ぎずプロファイル適用処理そのものではないため、`ApplyProfileToSlot`の集約対象には含めない。§4.6参照）。（**2026-09-14改訂**: 実地確認により発見された契機7・8を正式に統合。詳細な発見経緯は §7.2 事実3、§4.6 を参照）
 
 ```csharp
 public static bool ApplyProfileToSlot(int slotIndex, string profileName, ProfileChangeSource source = ProfileChangeSource.Manual)
@@ -72,9 +73,9 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 5. **初回接続時 (HotPlug)**: `ControlService.cs` (`PrepareConnectedInputController`)
 6. **Rename時 (Rename)**: `MainWindow.xaml.cs` (`RenameProfileBtn_Click` 経由)
 7. **トレイアイコン メニューからの選択 (TrayIconMenu)**（**2026-09-14追加**）: `MainWindow.xaml.cs` (`TrayIconVM_ProfileSelected`)
-8. **ホットキー経由の切替 (Hotkey)**（**2026-09-14追加**）: `MainWindow.xaml.cs` (`ShowHotkeyNotification` 経由で `AppLogger.LogProfileChanged` を直接呼び出し。§4.5・§7参照)
+8. **ホットキー経由の切替 (Hotkey)**（**2026-09-14追加**）: `MainWindow.xaml.cs` (`ShowHotkeyNotification` 経由で `AppLogger.LogProfileChanged` を直接呼び出し。§4.6・§7参照)
 
-> 契機7・8は、実地確認（§7・§4.5）により当初の棚卸しに漏れていたことが判明し、2026-09-14付でユーザー承認のうえ正式に契機一覧へ統合した。契機3・4・7は、いずれも既に `IProfileApplicationService`（DIサービス）経由で `Global.ApplyProfileToSlot` を介さずに実装されている点に注意（§4.6改訂版参照）。契機8はプロファイル適用そのものではなく通知イベント発火のみに関わる特殊な契機であり、§4.5のフェーズEで是正する。「共通窓口をすべて通過させる」という設計方針自体は維持しつつ、実装上は §4.6 で述べる通り `Global.ApplyProfileToSlot` を `IProfileApplicationService` への薄い委譲として書き直すことで、静的経路・DI経路のどちらから入っても最終的に同一の実処理・同一の通知判定基準を通るようにする。
+> 契機7・8は、実地確認（§7・§4.6）により当初の棚卸しに漏れていたことが判明し、2026-09-14付でユーザー承認のうえ正式に契機一覧へ統合した。契機3・4・7は、いずれも既に `IProfileApplicationService`（DIサービス）経由で `Global.ApplyProfileToSlot` を介さずに実装されている点に注意（§4.7改訂版参照）。契機8はプロファイル適用そのものではなく通知イベント発火のみに関わる特殊な契機であり、§4.6のフェーズFで是正する。契機5（初回接続時／HotPlug）は当初 `ApplyProfileToSlot` を経由していなかったが、フェーズD（§4.4）で統合済みである。「共通窓口をすべて通過させる」という設計方針自体は維持しつつ、実装上は §4.7 で述べる通り `Global.ApplyProfileToSlot` を `IProfileApplicationService` への薄い委譲として書き直すことで、静的経路・DI経路のどちらから入っても最終的に同一の実処理・同一の通知判定基準を通るようにする。
 
 ---
 
@@ -142,7 +143,45 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 
 ---
 
-### 4.4 フェーズD: Rename（名前変更）契機（契機6）の統合
+### 4.4 フェーズD: 契機5（初回接続時／HotPlug）の共通窓口統合 【2026-09-14新設】
+
+> **新設の経緯**: §3.1で契機5として当初から契機一覧に列挙されていたにもかかわらず、実地確認（§7、および本ドキュメント更新の過程での再調査）の結果、`ControlService.cs`（`PrepareConnectedInputControllerSettingEvents`）が共通窓口 `Global.ApplyProfileToSlot` を経由せず、旧来の `Global.ApplyProfile`（8引数の静的メソッド）を直接呼び出し続けていることが判明した。これは本計画の目的（§1.1）に照らして明確な抜け漏れであるため、ユーザー承認のうえ新規フェーズDとしてフェーズC直後に挿入する。既存のフェーズD（Rename統合）以降は全てフェーズを1つずつ繰り下げる。
+
+* **目的**: 契機5（`ControlService.cs` の初回接続時プロファイル適用）を、他の契機と同じく共通窓口 `Global.ApplyProfileToSlot` 経由に統一する。
+* **対象ファイル**:
+  1. `DS4Windows/DS4Control/ControlService.cs`（`PrepareConnectedInputControllerSettingEvents`。主対象）
+  2. `DS4Windows/DS4Control/ScpUtil.cs`（`Global.ApplyProfileToSlot`。付随的な暫定是正、下記参照）
+* **現状の実装（変更前）**:
+  ```csharp
+  // ControlService.cs（PrepareConnectedInputControllerSettingEvents 内）
+  string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (index + 1).ToString(), profileToApply, "N/A");
+  bool display = _profileSettings.ProfileChangedNotification;
+
+  profileLoaded = Global.ApplyProfile(index, profileToApply, false, false, this,
+      DS4Windows.ProfileChangeSource.ControlService, prolog, display);
+  ```
+* **作業内容**:
+  1. 上記の直接呼び出しを、以下のように `Global.ApplyProfileToSlot` 呼び出しへ置き換える。
+     ```csharp
+     profileLoaded = Global.ApplyProfileToSlot(index, profileToApply, DS4Windows.ProfileChangeSource.ControlService);
+     ```
+     - `this`（`ControlService` インスタンス）は `Program.rootHub`（`App.xaml.cs` にてDIコンテナから解決された同一のシングルトンインスタンス）と常に一致するため、`ApplyProfileToSlot` 内部で `Program.rootHub` を用いても実行時の挙動に差異は生じない。
+     - 通知メッセージ（`prolog`）は `ApplyProfileToSlot` が内部で統一フォーマットにより生成するため、明示的な組み立ては不要になる。バッテリー表示欄が `"N/A"` から空文字列に変わる軽微な表示差分が生じるが、これは契機1・2・6と表示形式を揃える意図した副次効果であり、実害はない。
+  2. **付随的な暫定是正（No Feature Drop対応、必須）**: `Global.ApplyProfileToSlot` は現時点で `Global.Notifications`（誤った基準）を用いて通知表示可否を判定している（§7参照、フェーズGで完全是正予定）。契機5は従来 `_profileSettings.ProfileChangedNotification`（正しい基準）を用いていたため、本フェーズの統合をそのまま行うと契機5の通知判定が一時的に誤った基準に巻き込まれ、退行（regression）となる。これは `.github/copilot-instructions.md` §2.2「現在の機能の完全維持 (No Feature Drop)」に反するため、フェーズGでの完全委譲化を待たず、本フェーズの一部として `ApplyProfileToSlot` 内の該当行のみ先行是正する。
+     ```csharp
+     // 変更前: bool shouldDisplayNotification = Global.Notifications != 0;
+     // 変更後（フェーズDによる暫定是正）:
+     bool shouldDisplayNotification = Global.ProfileChangedNotification;
+     ```
+     この一行修正は、フェーズGで計画されている `IProfileApplicationService` への完全委譲によって置き換えられる暫定措置である。フェーズGの作業内容・完了検証はこれを前提に更新済み（§4.7参照）。
+* **完了検証**:
+  - `dotnet build` が警告・エラー 0 件で成功すること。
+  - 全単体テスト（169件）がすべて PASS すること。
+  - 実機にて、コントローラー初回接続時・再接続時にプロファイルが正しく適用され、`display`（`ProfileChangedNotification`）の設定通りに独自通知ウィンドウの表示・非表示が切り替わること（暫定是正により退行がないことの確認）。
+
+---
+
+### 4.5 フェーズE: Rename（名前変更）契機（契機6）の統合
 * **目的**: 接続中プロファイルの名前変更時に、内部パス・UI ComboBox・動作状態をシームレスに追従させる。
 * **対象ファイル**: `DS4Windows/DS4Forms/MainWindow.xaml.cs`
 * **作業内容**:
@@ -152,7 +191,7 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 
 ---
 
-### 4.5 フェーズE: 通知機能の完全分離（システム通知とプロファイル切替通知の独立実装）【2026-09-14新設】
+### 4.6 フェーズF: 通知機能の完全分離（システム通知とプロファイル切替通知の独立実装）【2026-09-14新設・2026-09-14改称（旧フェーズE）】
 
 #### 背景（実地確認による裏付け）
 
@@ -206,9 +245,9 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 5. **`Log.cs` の意味づけ純化**: `LogProfileChanged` の `displayNotification` 引数のXMLドキュメントコメントを、「UIに表示するか否か」ではなく「このプロファイル変更をイベントとして通知対象とするか否か（サイレント内部処理を除外するためのフラグ。既定は`true`）」に書き換える。実装（`if (displayNotification) { ProfileChanged?.Invoke(...) }`）自体は変更不要。
 6. 契機1・2・5・6・7・8のいずれも、最終的に `AppLogger.ProfileChanged` イベント経由で `OnProfileChanged` → `ShowProfileSwitchNotification` に到達し、同一の判定（`ProfileChangedNotification`）を受けることを確認する。
 
-#### 本フェーズがフェーズF（§4.6、旧フェーズE）に与える影響
+#### 本フェーズがフェーズG（§4.7、通知判定基準の統一）に与える影響
 
-本フェーズの実装により、`displayNotification` パラメータの役割が「表示可否の最終判定結果」から「プロファイル変更イベントを発火してよいか（通常は常に`true`）」という単純な意味に変わる。これにより、フェーズFで計画している `Global.ApplyProfileToSlot` → `IProfileApplicationService.ApplyProfile` への委譲実装がシンプルになる（`displayNotification: null` による自動解決を待つ必要がなく、単純に `true` を渡せばよくなる。フェーズFの該当箇所は本フェーズ完了を前提に更新済み）。**このため、本フェーズはフェーズFより先に実施する。**
+本フェーズの実装により、`displayNotification` パラメータの役割が「表示可否の最終判定結果」から「プロファイル変更イベントを発火してよいか（通常は常に`true`）」という単純な意味に変わる。これにより、フェーズGで計画している `Global.ApplyProfileToSlot` → `IProfileApplicationService.ApplyProfile` への委譲実装がシンプルになる（単純に `true` を渡せばよくなる。フェーズGの該当箇所は本フェーズ完了を前提に更新済み）。**このため、本フェーズはフェーズGより先に実施する。**
 
 #### 完了検証
 
@@ -220,11 +259,9 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 
 ---
 
-### 4.6 フェーズF: 通知判定基準の統一（案①実装）およびDI経由契機の整合性確認 【2026-09-14改訂】
+### 4.7 フェーズG: 通知判定基準の統一（案①実装）およびDI経由契機の整合性確認 【2026-09-14改訂・2026-09-14さらに改称（旧フェーズF）】
 
-> **改訂の経緯**: 当初のフェーズEは「`DefaultProfileSwitcher`/`AutoProfileService` の呼び出しを `Global.ApplyProfileToSlot` に差し替える」内容であった。しかし §7 の実地確認により、これら2箇所（および契機7 `TrayIconVM_ProfileSelected`）は既に `IProfileApplicationService`（DIサービス、Pure DI準拠）経由で正しく実装されており、かつ通知判定基準（`ProfileChangedNotification`）も正しいことが判明した。一方、`Global.ApplyProfileToSlot` 自身（契機1・2・6が経由）は誤った判定基準（`Global.Notifications`）を使用していた。2026-09-14付でユーザーより **案①（`Global.ApplyProfileToSlot` を `IProfileApplicationService.ApplyProfile` への薄い委譲に書き直す）** の採用が承認されたため、本フェーズ（旧フェーズE）の目的・対象・作業内容を以下の通り全面的に差し替える。差し替え前の当初計画（`Global.ApplyProfileToSlot` への差し替え）は撤回する。
->
-> **（2026-09-14 さらに改訂・フェーズEを新設し番号を1つ繰り下げ）**: §4.5として「通知機能の完全分離」フェーズを新設し本フェーズの前に挿入したため、本フェーズは旧「フェーズE」からフェーズFへ改称した。フェーズE（通知機能の完全分離）が先に完了することで、本フェーズが `IProfileApplicationService.ApplyProfile` へ渡す `displayNotification` 引数は、通知表示可否の判定結果ではなく「プロファイル変更イベントを発火するか否か」という単純な意味に純化される（詳細は §4.5 参照）。
+> **改訂の経緯（要約）**: 本フェーズは当初「フェーズE」として計画され、その後の改訂・新設フェーズの挿入により「フェーズF」を経て「フェーズG」に改称された（新設順: 契機5統合フェーズ→§4.4、通知機能の完全分離フェーズ→§4.6、いずれも本フェーズの前に挿入）。当初の計画は「`DefaultProfileSwitcher`/`AutoProfileService` の呼び出しを `Global.ApplyProfileToSlot` に差し替える」内容であったが、§7 の実地確認により、これら2箇所（および契機7 `TrayIconVM_ProfileSelected`）は既に `IProfileApplicationService`（DIサービス、Pure DI準拠）経由で正しく実装されており、かつ通知判定基準（`ProfileChangedNotification`）も正しいことが判明した。一方、`Global.ApplyProfileToSlot` 自身（契機1・2・5・6が経由）は誤った判定基準（`Global.Notifications`。契機5統合時にフェーズDで`ProfileChangedNotification`へ暫定是正済み、§4.4参照）を使用していた。2026-09-14付でユーザーより **案①（`Global.ApplyProfileToSlot` を `IProfileApplicationService.ApplyProfile` への薄い委譲に書き直す）** の採用が承認されたため、本フェーズの目的・対象・作業内容を以下の通り全面的に差し替える。差し替え前の当初計画（`Global.ApplyProfileToSlot` への差し替え）は撤回する。
 
 * **目的**: `Global.ApplyProfileToSlot` を `IProfileApplicationService.ApplyProfile` への薄い委譲（シム）として書き直し、プロファイル切替通知の表示判定基準を `IProfileSettingsService.ProfileChangedNotification` の1箇所に真に一本化する。あわせて、契機3・4・7（DIサービス経由の既存実装）が無改修のまま整合していることを確認する。
 * **対象ファイル**:
@@ -232,11 +269,12 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
   2. `DS4Windows/Actions/DefaultProfileSwitcher.cs`（**変更なし**。既存の `IProfileApplicationService` 経由実装を維持することを回帰テストで確認するのみ）
   3. `DS4Windows/DS4Control/Services/AutoProfileService.cs`（**変更なし**。同上）
   4. `DS4Windows/DS4Forms/MainWindow.xaml.cs`（`TrayIconVM_ProfileSelected`。**変更なし**。同上）
+  5. `DS4Windows/DS4Control/ControlService.cs`（`PrepareConnectedInputControllerSettingEvents`。**変更なし**。フェーズDで既に `Global.ApplyProfileToSlot` 経由に統合済みのため、本フェーズの委譲化がそのまま自動的に波及することを確認するのみ）
 * **作業内容**:
-  1. `Global.ApplyProfileToSlot` 内の以下の独自実装を削除する。
+  1. `Global.ApplyProfileToSlot` 内の以下の実装（フェーズDで暫定是正済みの版。§4.4参照）を削除する。
      ```csharp
-     // ★通知設定の有効・無効を一元反映（Notifications != 0 であれば通知を表示）
-     bool shouldDisplayNotification = Global.Notifications != 0;
+     // ★通知設定の有効・無効を一元反映（フェーズDで ProfileChangedNotification に暫定是正済み）
+     bool shouldDisplayNotification = Global.ProfileChangedNotification;
      return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, prolog, shouldDisplayNotification);
      ```
   2. 代わりに、DIコンテナから `IProfileApplicationService` を解決し、これへ委譲する形に書き換える。
@@ -251,9 +289,9 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
      return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, prolog,
          displayNotification: true);
      ```
-     - `displayNotification` は §4.5改訂の結果、「表示可否の判定結果」ではなく「イベントを発火してよいか（＝サイレント内部処理でないか）」という単純な意味になるため、通常の手動操作・保存操作である契機1・2・6では常に `true` を渡す。実際に画面へ表示するかどうかは、§4.5で新設する `ShowProfileSwitchNotification` が `ProfileChangedNotification` を見て自律的に判定する。
+     - `displayNotification` は §4.6改訂の結果、「表示可否の判定結果」ではなく「イベントを発火してよいか（＝サイレント内部処理でないか）」という単純な意味になるため、通常の手動操作・保存操作である契機1・2・5・6では常に `true` を渡す。実際に画面へ表示するかどうかは、§4.6で新設する `ShowProfileSwitchNotification` が `ProfileChangedNotification` を見て自律的に判定する。
   3. フェーズAで実装済みのスロット境界チェック・空文字列チェック（`Global.ApplyProfileToSlot` 冒頭のガード）は変更せず残置する。
-  4. `DefaultProfileSwitcher.cs`・`AutoProfileService.cs`・`MainWindow.xaml.cs`（`TrayIconVM_ProfileSelected`）は無改修のまま据え置く。
+  4. `DefaultProfileSwitcher.cs`・`AutoProfileService.cs`・`MainWindow.xaml.cs`（`TrayIconVM_ProfileSelected`）・`ControlService.cs`（契機5、フェーズD後）は無改修のまま据え置く。
 * **完了検証**:
   - `dotnet build` が警告・エラー 0 件で成功すること。
   - 全単体テスト（169件）がすべて PASS すること。
@@ -261,7 +299,9 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 
 ---
 
-### 4.7 フェーズG: 総合テスト・実機検証・完了報告
+
+
+### 4.8 フェーズH: 総合テスト・実機検証・完了報告
 * **作業内容**:
   1. 保存クラッシュ防止、Rename 追従、ホットリロード、手動切り替えの全シナリオを実機検証。
   2. `Phase5-Step14-ProfileSync-And-ApplyUnified-Status.md` の更新と完了報告。
@@ -275,7 +315,7 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 2. **Rename完全追従**:
    接続中のプロファイルをリネームしても、コントローラーの動作・ComboBox表示・内部パス（`Global.ProfilePath`）の整合性が 100% 維持されること。
 3. **一本化の達成**:
-   全ての適用契機（7契機、§3.1参照。契機8は通知イベントのみに関わるため対象外）が、`Global.ApplyProfileToSlot` を経由するもの・`IProfileApplicationService.ApplyProfile` を直接経由するものの別を問わず、最終的に同一の実処理・同一の通知判定基準（`IProfileSettingsService.ProfileChangedNotification`）を通過していること（**2026-09-14改訂**: §4.6（旧§4.5）の改訂に伴い、「`Global.ApplyProfileToSlot` の物理的な通過」ではなく「判定ロジックの実質的な一本化」を基準とする）。
+   全ての適用契機（7契機、§3.1参照。契機8は通知イベントのみに関わるため対象外）が、`Global.ApplyProfileToSlot` を経由するもの・`IProfileApplicationService.ApplyProfile` を直接経由するものの別を問わず、最終的に同一の実処理・同一の通知判定基準（`IProfileSettingsService.ProfileChangedNotification`）を通過していること（**2026-09-14改訂**: §4.7の改訂に伴い、「`Global.ApplyProfileToSlot` の物理的な通過」ではなく「判定ロジックの実質的な一本化」を基準とする）。
 4. **全テスト合格**:
    `dotnet test ./DS4WindowsTests/DS4Windows.Actions.Tests.csproj` が 169 passed / 0 failed であること。
 5. **警告ゼロ**:
@@ -349,7 +389,7 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 
 ### 7.3 是正方針（2026-09-14 ユーザー承認済み）
 
-§4.6（旧「フェーズE」、現「フェーズF」）は、現状の計画のまま実行すると（`DefaultProfileSwitcher`/`AutoProfileService` を `IProfileApplicationService` から `Global.ApplyProfileToSlot` 呼び出しへ差し替える）、以下の**2つの後退**を生む恐れがあるため、実装前に方針の見直しが必要と判断した。
+§4.7（フェーズG、当初「フェーズE」）は、現状の計画のまま実行すると（`DefaultProfileSwitcher`/`AutoProfileService` を `IProfileApplicationService` から `Global.ApplyProfileToSlot` 呼び出しへ差し替える）、以下の**2つの後退**を生む恐れがあるため、実装前に方針の見直しが必要と判断した。
 
 1. `.github/copilot-instructions.md` §3.1「Pure DI（純粋コンストラクタ注入）の堅持」に反し、既にDIサービス経由で正しく動作している箇所を、わざわざ新設の static メソッド呼び出しに巻き戻すことになる。
 2. 正しく `ProfileChangedNotification` を参照している判定を、誤った `Global.Notifications` 判定に置き換えてしまう回帰を生む。
@@ -358,10 +398,10 @@ public static bool ApplyProfileToSlot(int slotIndex, string profileName, Profile
 
 | 案 | 内容 | 長所 | 短所 |
 |---|---|---|---|
-| **案①（採用）** | `Global.ApplyProfileToSlot` 自体を `IProfileApplicationService.ApplyProfile` への薄い委譲（シム）として書き直す。`shouldDisplayNotification` の独自算出をやめる（フェーズE完了後は `displayNotification: true` を渡すだけでよい。§4.5・§4.6参照）。フェーズF（旧「フェーズE」）は「`DefaultProfileSwitcher`/`AutoProfileService` を `Global.ApplyProfileToSlot` へ差し替える」のではなく、**現状維持（既にDIサービス経由のため対応不要）** に変更する。 | Pure DI原則に合致。判定基準を1箇所（`IProfileApplicationService`）に真に一本化できる。§2.1のフォールバック/シム維持原則（静的経路を薄いラッパーとして残す）にも合致。 | `Global.ApplyProfileToSlot` の実装（フェーズAで新設したばかりのコード）に手を入れる必要がある。 |
+| **案①（採用）** | `Global.ApplyProfileToSlot` 自体を `IProfileApplicationService.ApplyProfile` への薄い委譲（シム）として書き直す。`shouldDisplayNotification` の独自算出をやめる（フェーズF完了後は `displayNotification: true` を渡すだけでよい。§4.6・§4.7参照）。フェーズG（当初「フェーズE」）は「`DefaultProfileSwitcher`/`AutoProfileService` を `Global.ApplyProfileToSlot` へ差し替える」のではなく、**現状維持（既にDIサービス経由のため対応不要）** に変更する。 | Pure DI原則に合致。判定基準を1箇所（`IProfileApplicationService`）に真に一本化できる。§2.1のフォールバック/シム維持原則（静的経路を薄いラッパーとして残す）にも合致。 | `Global.ApplyProfileToSlot` の実装（フェーズAで新設したばかりのコード）に手を入れる必要がある。 |
 | 案②（不採用） | `Global.ApplyProfileToSlot` 内の一行 `Global.Notifications != 0` を `Global.ProfileChangedNotification` に置き換えるのみ。 | 変更行数が最小。 | 「2つの実装が同じ関心事を別々に持つ」という構造的重複自体は解消されない。将来また同種の齟齬が再発するリスクが残る。 |
 
-**2026-09-14、ユーザーより案①の採用が承認された。** あわせて、フェーズF（旧「フェーズE」）の対象・作業内容の見直し（上表の通り）、契機7（トレイアイコン選択）を §3.1 の正式な契機一覧へ統合すること、および**「通知機能の完全分離」を新規フェーズE（§4.5）としてフェーズFの前に挿入すること**も承認された。具体的な実装内容は §4.5・§4.6（改訂版）に統合済み。**本追記時点ではコードは一切変更しておらず、次段階として §4.5（フェーズE）→§4.6（フェーズF）の順に実装着手を予定する。**
+**2026-09-14、ユーザーより案①の採用が承認された。** あわせて、フェーズG（当初「フェーズE」）の対象・作業内容の見直し（上表の通り）、契機7（トレイアイコン選択）を §3.1 の正式な契機一覧へ統合すること、**「通知機能の完全分離」を新規フェーズF（§4.6）としてフェーズGの前に挿入すること**、および**「契機5（HotPlug）の共通窓口統合」を新規フェーズD（§4.4）としてフェーズCの直後・（Rename統合の）フェーズEの前に挿入すること**も承認された。具体的な実装内容は §4.4・§4.6・§4.7（改訂版）に統合済み。**次段階として §4.4（フェーズD）→§4.5（フェーズE）→§4.6（フェーズF）→§4.7（フェーズG）の順に実装を進める。**
 
 ### 7.4 フェーズC実装状況の実地確認結果（ドキュメント記載との齟齬）
 
