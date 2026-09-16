@@ -18,6 +18,7 @@ using System.Windows.Controls.Primitives;
 using NonFormTimer = System.Timers.Timer;
 using DS4WinWPF.DS4Forms.ViewModels;
 using DS4Windows;
+using DS4Windows.DI;
 using System.ComponentModel;
 using System.Windows.Forms;
 using Application = System.Windows.Application;
@@ -470,8 +471,14 @@ namespace DS4WinWPF.DS4Forms
 
             profileSettingsVM.LeftStickDriftXAxisChanged += UpdateReadingsLSDrift;
             profileSettingsVM.LeftStickDriftYAxisChanged += UpdateReadingsLSDrift;
-            profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
+profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             profileSettingsVM.RightStickDriftYAxisChanged += UpdateReadingsRSDrift;
+
+            // サブ設定変更バブリングによる Apply ボタン活性化
+            if (Global.ProfileSettingsServiceInstance != null)
+            {
+                Global.ProfileSettingsServiceInstance.ProfileSettingChanged += ProfileSettingsService_ProfileSettingChanged;
+            }
         }
 
         private void UnregisterEvents()
@@ -499,6 +506,12 @@ namespace DS4WinWPF.DS4Forms
             profileSettingsVM.RightStickDriftXAxisChanged -= UpdateReadingsRSDrift;
             profileSettingsVM.RightStickDriftYAxisChanged -= UpdateReadingsRSDrift;
 
+            // サブ設定変更バブリングの購読解除
+            if (Global.ProfileSettingsServiceInstance != null)
+            {
+                Global.ProfileSettingsServiceInstance.ProfileSettingChanged -= ProfileSettingsService_ProfileSettingChanged;
+            }
+
             inputTimer.Stop();
             inputTimer.Elapsed -= InputDS4;
             inputTimer = null;
@@ -506,6 +519,16 @@ namespace DS4WinWPF.DS4Forms
             StopEditorBindings();
         }
 
+        private void ProfileSettingsService_ProfileSettingChanged(object sender, DS4Windows.DI.ProfileSettingChangedEventArgs e)
+        {
+            if (e.DeviceIndex == deviceNum)
+            {
+                Dispatcher.BeginInvoke((System.Action)(() =>
+                {
+                    applyBtn.IsEnabled = true;
+                }));
+            }
+        }
         /// <summary>
         /// Place touchpad button mode options UserControl in active Touchpad TabItem.
         /// Applicable TabItem control needs to contain a ContentControl

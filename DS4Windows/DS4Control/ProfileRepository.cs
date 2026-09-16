@@ -20,6 +20,7 @@ using System;
 using System.IO;
 using System.Xml.Serialization;
 using DS4WinWPF.DS4Control.DTOXml;
+using DS4Windows.DI;
 
 namespace DS4Windows.DS4Control
 {
@@ -31,6 +32,13 @@ namespace DS4Windows.DS4Control
 
     public class ProfileRepository : IProfileRepository
     {
+        private readonly IProfileSettingsService _profileSettings;
+
+        public ProfileRepository(IProfileSettingsService profileSettings = null)
+        {
+            _profileSettings = profileSettings;
+        }
+
         public bool LoadProfile(string filePath, int deviceIndex, BackingStore destination)
         {
             try
@@ -45,6 +53,11 @@ namespace DS4Windows.DS4Control
                     {
                         dto.DeviceIndex = deviceIndex;
                         dto.MapTo(destination);
+
+                        // プロファイル読み込み完了後、サブ設定オブジェクトの変更バブリングを再配線
+                        var profileSettings = _profileSettings ?? Global.ProfileSettingsServiceInstance;
+                        profileSettings?.WireSubSettingsEvents(deviceIndex);
+
                         return true;
                     }
                 }
