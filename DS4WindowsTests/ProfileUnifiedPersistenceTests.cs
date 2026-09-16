@@ -55,11 +55,11 @@ namespace DS4WindowsTests
                 }
             };
 
-            // ジャイロコントロールのトグル設定を変更
-            service.GyroControlsInf[0].TrigToggle = true;
+            // ジャイロコントロールのトグル設定を変更（TriggerToggle プロパティ）
+            service.GyroControlsInf[0].TriggerToggle = true;
 
             Assert.True(eventFired);
-            Assert.Equal("GyroControls_TrigToggle", changedProperty);
+            Assert.Equal("GyroControls_TriggerToggle", changedProperty);
         }
 
         [Fact]
