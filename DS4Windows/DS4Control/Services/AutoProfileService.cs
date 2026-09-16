@@ -114,7 +114,7 @@ namespace DS4Windows
                                 // Halt ガード（§5.2）はサービス内に内包され、Program.rootHub 直参照は排除。
                                 // displayNotification は null を指定して _profileSettings.ProfileChangedNotification を自動解決（Step 4）。
                                 _profileAppService.ApplyProfile(j, tempname, isTemp: true, launchProgram: true,
-                                    source: ProfileChangeSource.AutoProfile, prolog: prolog, displayNotification: null);
+                                    source: ProfileChangeSource.AutoProfile, prolog: prolog);
                             }
                             else if (AutoProfileDebugLogLevel > 0)
                             {
@@ -166,7 +166,7 @@ namespace DS4Windows
                                 // Step 3 & Step 4 申し送り事項:
                                 // 一時プロファイル解除復帰（isTemp: false）、displayNotification: null で自動解決
                                 _profileAppService.ApplyProfile(j, defaultProfile, isTemp: false, launchProgram: false,
-                                    source: ProfileChangeSource.AutoProfile, prolog: prolog, displayNotification: null);
+                                    source: ProfileChangeSource.AutoProfile, prolog: prolog);
                             }
                             else if (AutoProfileDebugLogLevel > 0)
                             {

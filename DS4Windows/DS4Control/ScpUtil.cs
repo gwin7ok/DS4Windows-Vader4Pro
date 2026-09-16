@@ -3171,7 +3171,6 @@ namespace DS4Windows
             //   TODO: フェーズG（Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md §4.7）にて、
             //   本メソッド自体を IProfileApplicationService.ApplyProfile への委譲に書き換え、
             //   本行は削除される予定（案①）。
-            bool shouldDisplayNotification = Global.ProfileChangedNotification;
 
             // 引数仕様: (deviceIndex, profileName, isTemp: false, launchProgram: false, service, source, prolog,)
             // 内部の ApplyProfile 呼び出しから display 引数を削除
@@ -3190,8 +3189,8 @@ namespace DS4Windows
         /// <param name="prolog">ログメッセージのプロローグ（nullの場合は自動生成）</param>
         /// <param name="displayNotification">通知を表示するか</param>
         /// <returns>プロファイル読み込み成功したか</returns>
-        public static bool ApplyProfile(int device, string profile, bool isTemp, bool launchProgram,
-                    ControlService ctrl, ProfileChangeSource source, string prolog = null)
+        public static bool ApplyProfile(int device, string profileName, bool isTemp, bool launchProgram,
+                    ControlService control, ProfileChangeSource source = ProfileChangeSource.Unknown, string prolog = null)
         {
             // Debug: ApplyProfile呼び出しログ
             string stackTrace = new System.Diagnostics.StackTrace(1, true).ToString();
@@ -3215,7 +3214,7 @@ namespace DS4Windows
             }
 
             if (result)
-                CompleteProfileApplication(device, profileName, isTemp, control, source, prolog, displayNotification);
+                CompleteProfileApplication(device, profileName, isTemp, control, source, prolog);
             else
             {
                 AppLogger.LogDebug($"ApplyProfile: Profile load FAILED for '{profileName}'");
@@ -3226,7 +3225,7 @@ namespace DS4Windows
         }
         #endregion
         internal static void CompleteProfileApplication(int device, string profileName, bool isTemp,
-            ControlService control, ProfileChangeSource source, string prolog, bool displayNotification)
+            ControlService control, ProfileChangeSource source, string prolog)
         {
             AppLogger.LogDebug($"ApplyProfile: Profile loaded successfully. Updating state...");
             SelectedProfile[device] = profileName;
