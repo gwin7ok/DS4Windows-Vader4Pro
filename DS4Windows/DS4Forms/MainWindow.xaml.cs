@@ -42,7 +42,7 @@ using DS4WinWPF.DS4Forms.ViewModels;
 using DS4Windows;
 using DS4WinWPF.DS4Control;
 using DS4WinWPF.Translations;
-using H.NotifyIcon.Core;
+
 
 namespace DS4WinWPF.DS4Forms
 {
@@ -366,25 +366,29 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        // 機能1: システム通知（Global.Notifications基準、トースト通知のみ）
-        // AppLogger.TrayIconLog イベントのアダプタ
-        private void ShowSystemNotification(object sender, DS4Windows.DebugEventArgs e)
+        // 構想1: 情報通知の本体。切替のきっかけは Global.Notifications のみ。outputDestination is modern toast only.
+        private void ShowSystemNotification(string message, bool isWarning)
         {
-            DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowSystemNotification(event) 呼び出し: Data='{e?.Data}', Warning={e?.Warning}, Temporary={e?.Temporary}");
+            int notifLevel = appSettingsService.Notifications;
+            bool levelPass = notifLevel == 2 || (notifLevel == 1 && isWarning);
+            DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowSystemNotification(message) message='{message}', isWarning={isWarning}, Notifications設定={notifLevel}, levelPass={levelPass}");
 
-            if (e.Temporary)
+            if (levelPass)
             {
-                DS4Windows.AppLogger.LogDebug("[Diag-Toast] Temporary=true のため抑制");
-                return;
-            }
+                string title = TrayIconViewModel.balloonTitle;
 
-            if (!string.IsNullOrEmpty(e.Data) && (e.Data.StartsWith("[DI]") || e.Data.StartsWith("[Legacy]")))
-            {
-                DS4Windows.AppLogger.LogDebug("[Diag-Toast] [DI]/[Legacy] 接頭辞のため抑制");
-                return;
+                // Windows 10/11 modern toast notification
+                try
+                {
+                    AppNotificationRegistration.ShowModernToast(title, message);
+                    DS4Windows.AppLogger.LogDebug("[Diag-Toast] AppNotificationRegistration.ShowModernToast call succeeded");
+                }
+                catch (Exception ex)
+                {
+                    // legacy fallback は撤去済みのため、失敗時は通知が表示されない旨をログに記録
+                    DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowModernToast exception, notification is not shown: {ex.GetType().Name}: {ex.Message}");
+                }
             }
-
-            Dispatcher.BeginInvoke((Action)(() => ShowSystemNotification(e.Data, e.Warning)));
         }
 
         // 機能1: システム通知の本体。判定基準は Global.Notifications のみ。出力先はトースト（notifyIcon）のみ。

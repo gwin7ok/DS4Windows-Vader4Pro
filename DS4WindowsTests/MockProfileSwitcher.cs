@@ -1,55 +1,55 @@
 using System;
-using System.Collections.Generic;
 using DS4Windows;
 using DS4Windows.Actions;
+using DS4Windows.Services;
 
 namespace DS4WindowsTests
 {
-    /// <summary>
-    /// C4 ProfileSwitchAction 単体テスト用の IProfileSwitcher モック
-    /// </summary>
     public class MockProfileSwitcher : IProfileSwitcher
     {
-        public class SwitchCall
-        {
-            public int DeviceIndex { get; set; }
-            public SpecialAction Action { get; set; }
-        }
+        public int SwitchProfileCalledCount { get; private set; }
+        public int RestoreProfileCalledCount { get; private set; }
+        public int ApplyManualProfileCalledCount { get; private set; }
+        public int ClearStateCalledCount { get; private set; }
 
-        public List<SwitchCall> SwitchProfileCalls { get; } = new List<SwitchCall>();
-        public List<int> RestoreProfileCalls { get; } = new List<int>();
-        public List<int> ClearStateCalls { get; } = new List<int>();
+        public int LastDeviceIndex { get; private set; }
+        public SpecialAction LastAction { get; private set; }
+        public string LastProfileName { get; private set; }
+        public bool LastLaunchProgram { get; private set; }
+        public bool LastXinputChange { get; private set; }
+        public ProfileChangeSource LastSource { get; private set; }
+        public string LastProlog { get; private set; }
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
-            SwitchProfileCalls.Add(new SwitchCall
-            {
-                DeviceIndex = deviceIndex,
-                Action = action
-            });
+            SwitchProfileCalledCount++;
+            LastDeviceIndex = deviceIndex;
+            LastAction = action;
         }
 
         public void RestoreProfile(int deviceIndex)
         {
-            RestoreProfileCalls.Add(deviceIndex);
+            RestoreProfileCalledCount++;
+            LastDeviceIndex = deviceIndex;
         }
 
         public void ApplyManualProfile(int deviceIndex, string profileName, bool launchProgram,
             bool xinputChange, ControlService control, ProfileChangeSource source,
-            string prolog, bool showNotification)
+            string prolog)
         {
+            ApplyManualProfileCalledCount++;
+            LastDeviceIndex = deviceIndex;
+            LastProfileName = profileName;
+            LastLaunchProgram = launchProgram;
+            LastXinputChange = xinputChange;
+            LastSource = source;
+            LastProlog = prolog;
         }
 
         public void ClearState(int deviceIndex)
         {
-            ClearStateCalls.Add(deviceIndex);
-        }
-
-        public void Reset()
-        {
-            SwitchProfileCalls.Clear();
-            RestoreProfileCalls.Clear();
-            ClearStateCalls.Clear();
+            ClearStateCalledCount++;
+            LastDeviceIndex = deviceIndex;
         }
     }
 }
