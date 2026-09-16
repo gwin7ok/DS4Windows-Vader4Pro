@@ -20,7 +20,7 @@ using System;
 using DS4Windows.StickModifiers;
 using DS4WinWPF.DS4Control;
 using Sensorit.Base;
-
+using DS4Windows.InputDevices;
 namespace DS4Windows
 {
     // ==========================================
@@ -1139,6 +1139,106 @@ namespace DS4Windows
         {
             TwoStageModeChanged = null;
             TriggerEffectChanged = null;
+        }
+    }
+
+    public class RumbleSettings
+    {
+        public const bool DEFAULT_ENABLE_RUMBLE = true;
+        public const byte DEFAULT_RUMBLE_LIGHT = 50;
+        public const byte DEFAULT_RUMBLE_HEAVY = 50;
+        public const bool DEFAULT_ENABLE_RESCALE = false;
+        public const byte DEFAULT_HAPTIC_POWER = 100;
+
+        private bool enableRumble = DEFAULT_ENABLE_RUMBLE;
+        private byte rumbleLight = DEFAULT_RUMBLE_LIGHT;
+        private byte rumbleHeavy = DEFAULT_RUMBLE_HEAVY;
+        private DualSenseDevice.RumbleEmulationMode emulationMode = DualSenseDevice.RumbleEmulationMode.Accurate;
+        private bool enableGenericRumbleRescale = DEFAULT_ENABLE_RESCALE;
+        private byte hapticPowerLevel = DEFAULT_HAPTIC_POWER;
+
+        public bool EnableRumble
+        {
+            get => enableRumble;
+            set
+            {
+                if (enableRumble == value) return;
+                enableRumble = value;
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public byte RumbleLight
+        {
+            get => rumbleLight;
+            set
+            {
+                if (rumbleLight == value) return;
+                rumbleLight = value;
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public byte RumbleHeavy
+        {
+            get => rumbleHeavy;
+            set
+            {
+                if (rumbleHeavy == value) return;
+                rumbleHeavy = value;
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public DualSenseDevice.RumbleEmulationMode EmulationMode
+        {
+            get => emulationMode;
+            set
+            {
+                if (emulationMode == value) return;
+                emulationMode = value;
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public bool EnableGenericRumbleRescale
+        {
+            get => enableGenericRumbleRescale;
+            set
+            {
+                if (enableGenericRumbleRescale == value) return;
+                enableGenericRumbleRescale = value;
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public byte HapticPowerLevel
+        {
+            get => hapticPowerLevel;
+            set
+            {
+                if (hapticPowerLevel == value) return;
+                hapticPowerLevel = value;
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public event EventHandler RumbleSettingsChanged;
+
+        public void Reset()
+        {
+            enableRumble = DEFAULT_ENABLE_RUMBLE;
+            rumbleLight = DEFAULT_RUMBLE_LIGHT;
+            rumbleHeavy = DEFAULT_RUMBLE_HEAVY;
+            emulationMode = DualSenseDevice.RumbleEmulationMode.Accurate;
+            enableGenericRumbleRescale = DEFAULT_ENABLE_RESCALE;
+            hapticPowerLevel = DEFAULT_HAPTIC_POWER;
+            RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ResetEvents()
+        {
+            RumbleSettingsChanged = null;
         }
     }
 }
