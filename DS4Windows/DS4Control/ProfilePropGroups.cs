@@ -351,7 +351,7 @@ namespace DS4Windows
         }
     }
 
-    public class GyroMouseInfo
+    public class GyroMouseInfo : ProfileSubSettingBase
     {
         public enum SmoothingMethod : byte
         {
@@ -385,6 +385,7 @@ namespace DS4Windows
                 if (minCutoff == value) return;
                 minCutoff = value;
                 MinCutoffChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event GyroMouseInfoEventHandler MinCutoffChanged;
@@ -397,6 +398,7 @@ namespace DS4Windows
                 if (beta == value) return;
                 beta = value;
                 BetaChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event GyroMouseInfoEventHandler BetaChanged;
@@ -408,6 +410,7 @@ namespace DS4Windows
             {
                 if (jitterCompensation == value) return;
                 jitterCompensation = value;
+                RaisePropertyChanged();
             }
         }
 
@@ -420,23 +423,27 @@ namespace DS4Windows
             smoothingWeight = 0.5;
             minThreshold = DEFAULT_MIN_THRESHOLD;
             jitterCompensation = JITTER_COMPENSATION_DEFAULT;
+            RaiseAllPropertiesChanged();
         }
 
         public void ResetSmoothing()
         {
             enableSmoothing = false;
             ResetSmoothingMethods();
+            RaisePropertyChanged(nameof(enableSmoothing));
         }
 
         public void ResetSmoothingMethods()
         {
             smoothingMethod = SmoothingMethod.None;
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public void DetermineSmoothMethod(string identier)
         {
             ResetSmoothingMethods();
             smoothingMethod = SmoothingMethodParse(identier);
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public static SmoothingMethod SmoothingMethodParse(string identifier)
@@ -484,7 +491,7 @@ namespace DS4Windows
         }
     }
 
-    public class GyroMouseStickInfo
+    public class GyroMouseStickInfo : ProfileSubSettingBase
     {
         public enum SmoothingMethod : byte
         {
@@ -549,6 +556,7 @@ namespace DS4Windows
                 if (minCutoff == value) return;
                 minCutoff = value;
                 MinCutoffChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event GyroMouseStickInfoEventHandler MinCutoffChanged;
@@ -561,6 +569,7 @@ namespace DS4Windows
                 if (beta == value) return;
                 beta = value;
                 BetaChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event GyroMouseStickInfoEventHandler BetaChanged;
@@ -572,6 +581,7 @@ namespace DS4Windows
             {
                 if (jitterCompensation == value) return;
                 jitterCompensation = value;
+                RaisePropertyChanged();
             }
         }
 
@@ -590,23 +600,27 @@ namespace DS4Windows
             useSmoothing = false;
             smoothWeight = SMOOTHING_WEIGHT_DEFAULT;
             jitterCompensation = JITTER_COMPENSATION_DEFAULT;
+            RaiseAllPropertiesChanged();
         }
 
         public void ResetSmoothing()
         {
             useSmoothing = false;
             ResetSmoothingMethods();
+            RaisePropertyChanged(nameof(useSmoothing));
         }
 
         public void ResetSmoothingMethods()
         {
             smoothingMethod = SmoothingMethod.None;
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public void DetermineSmoothMethod(string identier)
         {
             ResetSmoothingMethods();
             smoothingMethod = SmoothingMethodParse(identier);
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public static SmoothingMethod SmoothingMethodParse(string identifier)
@@ -1046,7 +1060,7 @@ namespace DS4Windows
         }
     }
 
-    public class TouchMouseStickInfo
+    public class TouchMouseStickInfo : ProfileSubSettingBase
     {
         public enum SmoothingMethod : byte
         {
@@ -1114,6 +1128,7 @@ namespace DS4Windows
                 if (minCutoff == value) return;
                 minCutoff = value;
                 MinCutoffChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event TouchMouseStickInfoEventHandler MinCutoffChanged;
@@ -1126,6 +1141,7 @@ namespace DS4Windows
                 if (beta == value) return;
                 beta = value;
                 BetaChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event TouchMouseStickInfoEventHandler BetaChanged;
@@ -1137,6 +1153,7 @@ namespace DS4Windows
             {
                 if (value) smoothingMethod = SmoothingMethod.OneEuro;
                 else smoothingMethod = SmoothingMethod.None;
+                RaisePropertyChanged();
             }
         }
 
@@ -1157,10 +1174,20 @@ namespace DS4Windows
             beta = DEFAULT_BETA;
             smoothingMethod = SmoothingMethod.None;
             RemoveRefreshEvents();
+            RaiseAllPropertiesChanged();
         }
 
-        public void ResetSmoothing() => ResetSmoothingMethods();
-        public void ResetSmoothingMethods() => smoothingMethod = SmoothingMethod.None;
+        public void ResetSmoothing()
+        {
+            ResetSmoothingMethods();
+            RaisePropertyChanged(nameof(smoothingMethod));
+        }
+
+        public void ResetSmoothingMethods()
+        {
+            smoothingMethod = SmoothingMethod.None;
+            RaisePropertyChanged(nameof(smoothingMethod));
+        }
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
@@ -1201,7 +1228,7 @@ namespace DS4Windows
         HipFireExclusiveButtons,
     }
 
-    public class FlickStickSettings
+    public class FlickStickSettings : ProfileSubSettingBase
     {
         public const double DEFAULT_FLICK_THRESHOLD = 0.9;
         public const double DEFAULT_FLICK_TIME = 0.1;
@@ -1221,6 +1248,58 @@ namespace DS4Windows
 
         public delegate void FlickStickSettingsEventHandler(FlickStickSettings sender, EventArgs args);
 
+        public double FlickThreshold
+        {
+            get => flickThreshold;
+            set
+            {
+                if (Math.Abs(flickThreshold - value) > 0.0001)
+                {
+                    flickThreshold = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double FlickTime
+        {
+            get => flickTime;
+            set
+            {
+                if (Math.Abs(flickTime - value) > 0.0001)
+                {
+                    flickTime = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double RealWorldCalibration
+        {
+            get => realWorldCalibration;
+            set
+            {
+                if (Math.Abs(realWorldCalibration - value) > 0.0001)
+                {
+                    realWorldCalibration = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double MinAngleThreshold
+        {
+            get => minAngleThreshold;
+            set
+            {
+                if (Math.Abs(minAngleThreshold - value) > 0.0001)
+                {
+                    minAngleThreshold = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
         public double MinCutoff
         {
             get => minCutoff;
@@ -1229,6 +1308,7 @@ namespace DS4Windows
                 if (minCutoff == value) return;
                 minCutoff = value;
                 MinCutoffChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event FlickStickSettingsEventHandler MinCutoffChanged;
@@ -1241,6 +1321,7 @@ namespace DS4Windows
                 if (beta == value) return;
                 beta = value;
                 BetaChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event FlickStickSettingsEventHandler BetaChanged;
@@ -1253,6 +1334,7 @@ namespace DS4Windows
             minAngleThreshold = DEFAULT_MIN_ANGLE_THRESHOLD;
             minCutoff = DEFAULT_MINCUTOFF;
             beta = DEFAULT_BETA;
+            RaiseAllPropertiesChanged();
         }
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
