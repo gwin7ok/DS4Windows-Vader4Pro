@@ -23,6 +23,79 @@ using Sensorit.Base;
 
 namespace DS4Windows
 {
+    // ==========================================
+    // パターン A: ProfileActions および Sensitivity
+    // ==========================================
+
+    public class ProfileActions
+    {
+        public const int MAX_ACTIONS = 6;
+        public string[] actions = new string[MAX_ACTIONS];
+        public string[] actionExtras = new string[MAX_ACTIONS];
+
+        public event EventHandler ActionsChanged;
+
+        public string GetAction(int index) => index >= 0 && index < MAX_ACTIONS ? actions[index] : string.Empty;
+        
+        public void SetAction(int index, string value)
+        {
+            if (index < 0 || index >= MAX_ACTIONS) return;
+            if (actions[index] == value) return;
+            actions[index] = value;
+            ActionsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void Reset()
+        {
+            Array.Clear(actions, 0, actions.Length);
+            Array.Clear(actionExtras, 0, actionExtras.Length);
+            ActionsChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public class Sensitivity
+    {
+        public const int DEFAULT_SENSITIVITY = 0;
+
+        public int xSensitivity = DEFAULT_SENSITIVITY;
+        public int ySensitivity = DEFAULT_SENSITIVITY;
+        public int XSensitivity
+        {
+            get => xSensitivity;
+            set
+            {
+                if (xSensitivity == value) return;
+                xSensitivity = value;
+                SensitivityChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public int YSensitivity
+        {
+            get => ySensitivity;
+            set
+            {
+                if (ySensitivity == value) return;
+                ySensitivity = value;
+                SensitivityChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public event EventHandler SensitivityChanged;
+
+        public void Reset()
+        {
+            xSensitivity = DEFAULT_SENSITIVITY;
+            ySensitivity = DEFAULT_SENSITIVITY;
+            SensitivityChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+
+    // ==========================================
+    // パターン B: ネストされたサブ設定クラス群
+    // ==========================================
+
     public class SquareStickInfo
     {
         public const double DEFAULT_ROUNDNESS = 5.0;
@@ -123,8 +196,13 @@ namespace DS4Windows
         public const int DEFAULT_MAX_ZONE = 100;
         public const double DEFAULT_MAX_OUTPUT = 100.0;
 
+        // 外部からの直接アクセスに対応するpublicフィールド
         public byte deadZone;
+        public int antiDeadZone;
+        public int maxZone = DEFAULT_MAX_ZONE;
+        public double maxOutput = DEFAULT_MAX_OUTPUT;
 
+        // イベント通知やプロパティ経由のアクセスに対応するプロパティ群
         public byte DeadZone
         {
             get => deadZone;
@@ -137,8 +215,6 @@ namespace DS4Windows
         }
         public event EventHandler DeadZoneChanged;
 
-        public int antiDeadZone;
-        public int maxZone = DEFAULT_MAX_ZONE;
         public int MaxZone
         {
             get => maxZone;
@@ -150,8 +226,6 @@ namespace DS4Windows
             }
         }
         public event EventHandler MaxZoneChanged;
-
-        public double maxOutput = DEFAULT_MAX_OUTPUT;
 
         public double MaxOutput
         {
@@ -169,8 +243,8 @@ namespace DS4Windows
         {
             deadZone = 0;
             antiDeadZone = 0;
-            MaxZone = DEFAULT_MAX_ZONE;
-            MaxOutput = DEFAULT_MAX_OUTPUT;
+            maxZone = DEFAULT_MAX_ZONE;
+            maxOutput = DEFAULT_MAX_OUTPUT;
         }
 
         public void ResetEvents()
@@ -199,7 +273,6 @@ namespace DS4Windows
         public bool enableSmoothing = false;
         public double smoothingWeight = 0.5;
         public SmoothingMethod smoothingMethod;
-
 
         public double minCutoff = DEFAULT_MINCUTOFF;
         public double beta = DEFAULT_BETA;
@@ -285,7 +358,6 @@ namespace DS4Windows
                     result = SmoothingMethod.None;
                     break;
             }
-
             return result;
         }
 
@@ -300,21 +372,13 @@ namespace DS4Windows
             {
                 result = "weighted-average";
             }
-
             return result;
         }
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
 
         public void RemoveRefreshEvents()
@@ -379,8 +443,7 @@ namespace DS4Windows
         public OutputStickAxes outputStickDir = DEFAULT_OUTPUT_STICK_AXES;
         public bool jitterCompensation = JITTER_COMPENSATION_DEFAULT;
 
-        public delegate void GyroMouseStickInfoEventHandler(GyroMouseStickInfo sender,
-            EventArgs args);
+        public delegate void GyroMouseStickInfoEventHandler(GyroMouseStickInfo sender, EventArgs args);
 
         public double MinCutoff
         {
@@ -465,7 +528,6 @@ namespace DS4Windows
                     result = SmoothingMethod.None;
                     break;
             }
-
             return result;
         }
 
@@ -480,24 +542,14 @@ namespace DS4Windows
                 case SmoothingMethod.OneEuro:
                     result = "one-euro";
                     break;
-                default:
-                    break;
             }
-
             return result;
         }
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
 
         public void RemoveRefreshEvents()
@@ -506,17 +558,8 @@ namespace DS4Windows
             MinCutoffChanged = null;
         }
 
-        public bool OutputHorizontal()
-        {
-            return outputStickDir == OutputStickAxes.XY ||
-                outputStickDir == OutputStickAxes.X;
-        }
-
-        public bool OutputVertical()
-        {
-            return outputStickDir == OutputStickAxes.XY ||
-                outputStickDir == OutputStickAxes.Y;
-        }
+        public bool OutputHorizontal() => outputStickDir == OutputStickAxes.XY || outputStickDir == OutputStickAxes.X;
+        public bool OutputVertical() => outputStickDir == OutputStickAxes.XY || outputStickDir == OutputStickAxes.Y;
     }
 
     public class GyroDirectionalSwipeInfo
@@ -654,7 +697,6 @@ namespace DS4Windows
             height = HEIGHT_DEFAULT;
             xcenter = XCENTER_DEFAULT;
             ycenter = YCENTER_DEFAULT;
-
             snapToCenter = SNAP_CENTER_DEFAULT;
             antiRadius = ANTI_RADIUS_DEFAULT;
         }
@@ -703,10 +745,6 @@ namespace DS4Windows
             }
         }
         public event EventHandler ModeChanged;
-
-        public LightbarSettingInfo()
-        {
-        }
     }
 
     public class SteeringWheelSmoothingInfo
@@ -762,18 +800,10 @@ namespace DS4Windows
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
     }
-
 
     public class TouchpadRelMouseSettings
     {
@@ -841,7 +871,6 @@ namespace DS4Windows
         public const double ANTI_DEADZONE_DEFAULT = 0.40;
         public const bool TRACKBALL_MODE_DEFAULT = true;
         public const double TRACKBALL_FRICTION_DEFAULT = 10.0;
-        public const int TRACKBALL_INIT_FICTION = 10;
         public const StickOutCurve.Curve OUTPUT_CURVE_DEFAULT = StickOutCurve.Curve.Linear;
         public const double ANG_DEGREE_DEFAULT = 0.0;
         public const double ANG_RAD_DEFAULT = ANG_DEGREE_DEFAULT * Math.PI / 180.0;
@@ -868,8 +897,7 @@ namespace DS4Windows
         public StickOutCurve.Curve outputCurve;
         public double rotationRad = ANG_RAD_DEFAULT;
 
-        public delegate void TouchMouseStickInfoEventHandler(TouchMouseStickInfo sender,
-            EventArgs args);
+        public delegate void TouchMouseStickInfoEventHandler(TouchMouseStickInfo sender, EventArgs args);
 
         public double MinCutoff
         {
@@ -900,14 +928,8 @@ namespace DS4Windows
             get => smoothingMethod != SmoothingMethod.None;
             set
             {
-                if (value)
-                {
-                    smoothingMethod = SmoothingMethod.OneEuro;
-                }
-                else
-                {
-                    smoothingMethod = SmoothingMethod.None;
-                }
+                if (value) smoothingMethod = SmoothingMethod.OneEuro;
+                else smoothingMethod = SmoothingMethod.None;
             }
         }
 
@@ -930,27 +952,13 @@ namespace DS4Windows
             RemoveRefreshEvents();
         }
 
-        public void ResetSmoothing()
-        {
-            ResetSmoothingMethods();
-        }
-
-        public void ResetSmoothingMethods()
-        {
-            smoothingMethod = SmoothingMethod.None;
-        }
+        public void ResetSmoothing() => ResetSmoothingMethods();
+        public void ResetSmoothingMethods() => smoothingMethod = SmoothingMethod.None;
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
 
         public void RemoveRefreshEvents()
@@ -959,17 +967,8 @@ namespace DS4Windows
             MinCutoffChanged = null;
         }
 
-        public bool OutputHorizontal()
-        {
-            return outputStickDir == OutputStickAxes.XY ||
-                outputStickDir == OutputStickAxes.X;
-        }
-
-        public bool OutputVertical()
-        {
-            return outputStickDir == OutputStickAxes.XY ||
-                outputStickDir == OutputStickAxes.Y;
-        }
+        public bool OutputHorizontal() => outputStickDir == OutputStickAxes.XY || outputStickDir == OutputStickAxes.X;
+        public bool OutputVertical() => outputStickDir == OutputStickAxes.XY || outputStickDir == OutputStickAxes.Y;
     }
 
     public enum StickMode : uint
@@ -1013,8 +1012,7 @@ namespace DS4Windows
         public double minCutoff = DEFAULT_MINCUTOFF;
         public double beta = DEFAULT_BETA;
 
-        public delegate void FlickStickSettingsEventHandler(FlickStickSettings sender,
-           EventArgs args);
+        public delegate void FlickStickSettingsEventHandler(FlickStickSettings sender, EventArgs args);
 
         public double MinCutoff
         {
@@ -1046,22 +1044,14 @@ namespace DS4Windows
             flickTime = DEFAULT_FLICK_TIME;
             realWorldCalibration = DEFAULT_REAL_WORLD_CALIBRATION;
             minAngleThreshold = DEFAULT_MIN_ANGLE_THRESHOLD;
-
             minCutoff = DEFAULT_MINCUTOFF;
             beta = DEFAULT_BETA;
         }
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
 
         public void RemoveRefreshEvents()
@@ -1133,12 +1123,8 @@ namespace DS4Windows
         }
         public event EventHandler TriggerEffectChanged;
 
-        public InputDevices.TriggerEffectSettings effectSettings =
-            new InputDevices.TriggerEffectSettings();
-        public ref InputDevices.TriggerEffectSettings TrigEffectSettings
-        {
-            get => ref effectSettings;
-        }
+        public InputDevices.TriggerEffectSettings effectSettings = new InputDevices.TriggerEffectSettings();
+        public ref InputDevices.TriggerEffectSettings TrigEffectSettings => ref effectSettings;
 
         public void ResetSettings()
         {
