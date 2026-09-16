@@ -245,5 +245,10 @@ namespace DS4Windows.DI
 
         void ResetToDefaults(int deviceIndex);
         void ResetAllToDefaults();
+
+        /// <summary>
+        /// 指定スロット（-1 の場合は全スロット）のネストされたサブ設定オブジェクト群の変更バブリングイベントを配線します。
+        /// </summary>
+        void WireSubSettingsEvents(int deviceIndex = -1);
     }
 }

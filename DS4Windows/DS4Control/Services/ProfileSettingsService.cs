@@ -19,9 +19,10 @@ namespace DS4Windows
         // (データの二重管理を避けるため、専用バックアップ配列は持たない)
         private readonly BackingStore _config;
 
-        public ProfileSettingsService(BackingStore config = null)
+public ProfileSettingsService()
         {
-            _config = config ?? Global.store;
+            // ネストされた各サブ設定オブジェクトの変更通知を購読して親イベントへバブリング
+            WireSubSettingsEvents(-1);
         }
 
         public CultureInfo ConfigDecimalCulture { get; } = new CultureInfo("en-US");
@@ -552,6 +553,77 @@ namespace DS4Windows
         {
             AppLogger.LogToGui($"[DI] ProfileSettingsService.SettingChanged: Slot {deviceIndex}, {settingName}", false, true);
             ProfileSettingChanged?.Invoke(this, new ProfileSettingChangedEventArgs(deviceIndex, settingName, oldValue, newValue));
+        }
+
+        /// <summary>
+        /// ネストされたサブ設定オブジェクト群（スティック、トリガー、ジャイロ、タッチパッド等）の
+        /// OnSubPropertyChanged イベントを購読し、ProfileSettingChanged を発火させるように配線します。
+        /// </summary>
+        public void WireSubSettingsEvents(int deviceIndex = -1)
+        {
+            int start = deviceIndex >= 0 ? deviceIndex : 0;
+            int end = deviceIndex >= 0 ? deviceIndex + 1 : ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
+            for (int dev = start; dev < end && dev < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; dev++)
+            {
+                int currentDev = dev;
+
+                // スティックデッドゾーン (AxisDeadZoneInfo)
+                var lsMod = LSModInfo != null && LSModInfo.Length > currentDev ? LSModInfo[currentDev] : null;
+                if (lsMod != null)
+                {
+                    if (lsMod.xAxisDeadInfo != null)
+                        lsMod.xAxisDeadInfo.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"LS_X_{prop}");
+                    if (lsMod.yAxisDeadInfo != null)
+                        lsMod.yAxisDeadInfo.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"LS_Y_{prop}");
+                }
+
+                var rsMod = RSModInfo != null && RSModInfo.Length > currentDev ? RSModInfo[currentDev] : null;
+                if (rsMod != null)
+                {
+                    if (rsMod.xAxisDeadInfo != null)
+                        rsMod.xAxisDeadInfo.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"RS_X_{prop}");
+                    if (rsMod.yAxisDeadInfo != null)
+                        rsMod.yAxisDeadInfo.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"RS_Y_{prop}");
+                }
+
+                // トリガーデッドゾーン (TriggerDeadZoneZInfo)
+                var l2Mod = L2ModInfo != null && L2ModInfo.Length > currentDev ? L2ModInfo[currentDev] : null;
+                if (l2Mod != null)
+                    l2Mod.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"L2_{prop}");
+
+                var r2Mod = R2ModInfo != null && R2ModInfo.Length > currentDev ? R2ModInfo[currentDev] : null;
+                if (r2Mod != null)
+                    r2Mod.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"R2_{prop}");
+
+                // ジャイロ設定 (GyroControlsInfo)
+                var gyroCtrl = GyroControlsInf != null && GyroControlsInf.Length > currentDev ? GyroControlsInf[currentDev] : null;
+                if (gyroCtrl != null)
+                    gyroCtrl.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"GyroControls_{prop}");
+
+                // タッチパッド絶対座標設定 (TouchpadAbsMouseSettings)
+                var touchAbs = TouchAbsMouse != null && TouchAbsMouse.Length > currentDev ? TouchAbsMouse[currentDev] : null;
+                if (touchAbs != null)
+                    touchAbs.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"TouchAbs_{prop}");
+
+                // スムージング設定 (GyroMouseInfo, GyroMouseStickInfo, TouchMouseStickInfo)
+                var gyroMouse = GyroMouseInfo != null && GyroMouseInfo.Length > currentDev ? GyroMouseInfo[currentDev] : null;
+                if (gyroMouse != null)
+                    gyroMouse.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"GyroMouse_{prop}");
+
+                var gyroStick = GyroMouseStickInf != null && GyroMouseStickInf.Length > currentDev ? GyroMouseStickInf[currentDev] : null;
+                if (gyroStick != null)
+                    gyroStick.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"GyroMouseStick_{prop}");
+
+                var touchStick = TouchMouseStickInf != null && TouchMouseStickInf.Length > currentDev ? TouchMouseStickInf[currentDev] : null;
+                if (touchStick != null)
+                    touchStick.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"TouchMouseStick_{prop}");
+            }
+        }
+
+        private void OnSubSettingChanged(int deviceIndex, string settingName)
+        {
+            ProfileSettingChanged?.Invoke(this, new ProfileSettingChangedEventArgs(deviceIndex, settingName, null, null));
         }
     }
 }
