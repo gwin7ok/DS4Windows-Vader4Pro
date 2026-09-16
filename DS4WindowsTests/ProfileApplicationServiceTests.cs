@@ -19,15 +19,22 @@ namespace DS4WindowsTests
                 DispatchedSlots.Add(deviceIndex);
             }
         }
+
         private record ApplyCall(int DeviceIndex, string ProfileName, bool IsTemp,
                     bool LaunchProgram, ProfileChangeSource Source, string Prolog);
         private record RestoreCall(int Slot, ProfileChangeSource Source);
         private record ClearPendingCall(int Slot);
+
         private class MockProfileAppService : IProfileApplicationService
         {
             public int CallCount { get; set; }
             public string LastProfile { get; set; }
             public ProfileChangeSource LastSource { get; set; }
+
+            // 追加: テストで検証するための呼び出し履歴リスト
+            public List<ApplyCall> ApplyCalls { get; } = new List<ApplyCall>();
+            public List<int> RestoreCalls { get; } = new List<int>();
+            public List<int> ClearPendingCalls { get; } = new List<int>();
 
             public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
                 bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Manual,
@@ -36,18 +43,21 @@ namespace DS4WindowsTests
                 CallCount++;
                 LastProfile = profileName;
                 LastSource = source;
+                ApplyCalls.Add(new ApplyCall(deviceIndex, profileName, isTemp, launchProgram, source, prolog));
                 return true;
             }
 
-            public void ApplyFromAction(int deviceIndex, SpecialAction action) { }
-
+            public void ApplyFromAction(int deviceIndex, SpecialAction action)
+            {
+                // 必要に応じて記録。アクションからの適用も ApplyCalls に含める場合
+                // ApplyCalls.Add(new ApplyCall(deviceIndex, action.details, false, false, ProfileChangeSource.MappingAction, null));
+            }
 
             public bool RestoreFromAction(int deviceIndex)
             {
                 RestoreCalls.Add(deviceIndex);
                 return true;
             }
-
 
             public void ClearPendingRestore(int deviceIndex)
             {
