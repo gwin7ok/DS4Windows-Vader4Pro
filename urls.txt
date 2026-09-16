@@ -570,6 +570,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/doc/d
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/doc/moonlight_support.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/doc/test-plans/special-action-save.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/DI-App-Wide-Migration-Plan.md
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Notification-Legacy-Path-Cleanup-Report.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase0-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase1-C3-MacroAction-Design.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase1-C3-MacroAction-Implementation.md
@@ -707,6 +708,7 @@ https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Fix-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-Plan.md
+https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-Profile-Configuration-Synchronization-and-Unified-Persistence-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-ProfileSettings-XmlSave-Verification-Checklist.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md
 https://github.com/gwin7ok/DS4Windows-Vader4Pro/blob/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-ProfileSync-And-ApplyUnified-Status.md
