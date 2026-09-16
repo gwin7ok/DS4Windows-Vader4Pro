@@ -5296,7 +5296,7 @@ namespace DS4Windows
                                                 d.HaltReportingRunAction(() =>
                                                 {
                                                     Global.ApplyProfile(device, action.details, action.IsTemporaryProfileAction, true, ctrl,
-                                                        DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
+                                                        DS4Windows.ProfileChangeSource.MappingAction, prolog);
 
                                                     if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
                                                     {

@@ -130,12 +130,12 @@ namespace DS4Windows.Actions
             if (appService != null)
             {
                 appService.ApplyProfile(deviceIndex, profileName, false, launchProgram,
-                    source, prolog, showNotification);
+                    source, prolog);
             }
             else
             {
                 Global.ApplyProfile(deviceIndex, profileName, launchProgram, xinputChange,
-                    control, source, prolog, showNotification);
+                    control, source, prolog);
             }
         }
 

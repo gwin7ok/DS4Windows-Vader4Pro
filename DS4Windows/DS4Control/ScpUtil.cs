@@ -3191,7 +3191,7 @@ namespace DS4Windows
         /// <param name="displayNotification">通知を表示するか</param>
         /// <returns>プロファイル読み込み成功したか</returns>
         public static bool ApplyProfile(int device, string profile, bool isTemp, bool launchProgram,
-                    ControlService ctrl, ProfileChangeSource source = ProfileChangeSource.Default, string prolog = null)
+                    ControlService ctrl, ProfileChangeSource source, string prolog = null)
         {
             // Debug: ApplyProfile呼び出しログ
             string stackTrace = new System.Diagnostics.StackTrace(1, true).ToString();
