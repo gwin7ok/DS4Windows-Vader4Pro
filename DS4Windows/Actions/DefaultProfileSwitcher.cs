@@ -1,42 +1,48 @@
 using System;
 using DS4Windows;
 using DS4Windows.DI;
+using DS4Windows.Services;
 
 namespace DS4Windows.Actions
 {
     public class DefaultProfileSwitcher : IProfileSwitcher
     {
-        private readonly IAppSettingsService appSettingsService;
+        private readonly IProfileApplicationService profileAppService;
 
         public DefaultProfileSwitcher()
         {
         }
 
-        public DefaultProfileSwitcher(IAppSettingsService appSettingsService)
+        public DefaultProfileSwitcher(IProfileApplicationService profileAppService)
         {
-            this.appSettingsService = appSettingsService;
+            this.profileAppService = profileAppService;
         }
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
-            // TODO: DI移行に伴う実装
+            profileAppService?.ApplyFromAction(deviceIndex, action);
         }
 
         public void RestoreProfile(int deviceIndex)
         {
-            // TODO: DI移行に伴う実装
+            profileAppService?.RestoreFromAction(deviceIndex);
         }
 
-        public void ApplyManualProfile(int deviceIndex, string profileName, bool launchProgram,
-            bool xinputChange, ControlService control, ProfileChangeSource source,
-            string prolog)
+        public void ApplyManualProfile(
+            int deviceIndex,
+            string profileName,
+            bool isTemp = false,
+            bool launchProgram = true,
+            ControlService control = null,
+            ProfileChangeSource source = ProfileChangeSource.MappingAction,
+            string prolog = "")
         {
-            // TODO: DI移行に伴う実装
+            profileAppService?.ApplyProfile(deviceIndex, profileName, isTemp, launchProgram, source, prolog);
         }
 
         public void ClearState(int deviceIndex)
         {
-            // TODO: DI移行に伴う実装
+            profileAppService?.ClearPendingRestore(deviceIndex);
         }
     }
 }

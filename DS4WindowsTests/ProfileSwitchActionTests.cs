@@ -16,6 +16,45 @@ namespace DS4WindowsTests
             public MockOutputContext(int device) { Device = device; }
         }
 
+        private class MockProfileSwitcher : IProfileSwitcher
+        {
+            public record SwitchCall(int DeviceIndex, SpecialAction Action);
+
+            public List<SwitchCall> SwitchProfileCalls { get; } = new List<SwitchCall>();
+            public List<int> RestoreProfileCalls { get; } = new List<int>();
+
+            public void SwitchProfile(int deviceIndex, SpecialAction action)
+            {
+                SwitchProfileCalls.Add(new SwitchCall(deviceIndex, action));
+            }
+
+            public void RestoreProfile(int slot)
+            {
+                RestoreProfileCalls.Add(slot);
+            }
+
+            public void ClearState(int slot)
+            {
+            }
+
+            public void ApplyManualProfile(
+                int deviceIndex,
+                string profileName,
+                bool isTemp = false,
+                bool launchProgram = true,
+                ControlService control = null,
+                ProfileChangeSource source = ProfileChangeSource.MappingAction,
+                string prolog = "")
+            {
+            }
+
+            public void Reset()
+            {
+                SwitchProfileCalls.Clear();
+                RestoreProfileCalls.Clear();
+            }
+        }
+
         [Fact]
         public void T1_Execute_CallsProfileSwitcherWithCorrectDeviceAndAction()
         {
