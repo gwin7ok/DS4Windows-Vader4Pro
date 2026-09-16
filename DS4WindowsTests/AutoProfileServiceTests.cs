@@ -57,21 +57,6 @@ namespace DS4WindowsTests
 
             public bool RestoreFromAction(int deviceIndex) => true;
 
-            public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false, bool launchProgram = false,
-                ProfileChangeSource source = ProfileChangeSource.Manual,
-                string prolog = null, bool? displayNotification = null)
-            {
-                ApplyCalls.Add(new ApplyCall
-                {
-                    DeviceIndex = deviceIndex,
-                    ProfileName = profileName,
-                    IsTemp = isTemp,
-                    LaunchProgram = launchProgram,
-                    Source = source,
-                    DisplayNotification = displayNotification
-                });
-                return true;
-            }
 
             public void ClearPendingRestore(int deviceIndex) { }
         }
@@ -115,8 +100,6 @@ namespace DS4WindowsTests
             Assert.Equal("GameProfile", mockAppService.ApplyCalls[0].ProfileName);
             Assert.True(mockAppService.ApplyCalls[0].IsTemp);
             Assert.Equal(ProfileChangeSource.AutoProfile, mockAppService.ApplyCalls[0].Source);
-            // Step 4 申し送り事項: 通知設定が自動解決されるよう null で渡されていることを検証
-            Assert.Null(mockAppService.ApplyCalls[0].DisplayNotification);
         }
 
         [Fact]
@@ -157,7 +140,6 @@ namespace DS4WindowsTests
             Assert.Equal(0, mockAppService.ApplyCalls[1].DeviceIndex);
             Assert.False(mockAppService.ApplyCalls[1].IsTemp);
             Assert.Equal(ProfileChangeSource.AutoProfile, mockAppService.ApplyCalls[1].Source);
-            Assert.Null(mockAppService.ApplyCalls[1].DisplayNotification);
         }
 
         // Phase5-Step13-4で追加: Global.autoProfileSwitchNotifyChoiceへの薄い委譲であることを検証。

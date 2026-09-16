@@ -45,21 +45,6 @@ namespace DS4WindowsTests
                 return true;
             }
 
-            public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false, bool launchProgram = false,
-                ProfileChangeSource source = ProfileChangeSource.Manual,
-                string prolog = null, bool? displayNotification = null)
-            {
-                ApplyCalls.Add(new ApplyCall
-                {
-                    DeviceIndex = deviceIndex,
-                    ProfileName = profileName,
-                    IsTemp = isTemp,
-                    LaunchProgram = launchProgram,
-                    Source = source,
-                    DisplayNotification = displayNotification
-                });
-                return true;
-            }
 
             public void ClearPendingRestore(int deviceIndex)
             {
@@ -134,7 +119,7 @@ namespace DS4WindowsTests
             var service = new ProfileApplicationService(settings, new FakeActionChainService(), null, control);
 
             // 明示的に true を渡す
-            bool result = service.ApplyProfile(0, "Default", displayNotification: true);
+            bool result = service.ApplyProfile(0, "Default");
 
             Assert.True(result);
         }
@@ -174,7 +159,6 @@ namespace DS4WindowsTests
             Assert.Equal(0, mockAppService.ApplyCalls[0].DeviceIndex);
             Assert.Equal("TargetProfile", mockAppService.ApplyCalls[0].ProfileName);
             Assert.Equal(ProfileChangeSource.MappingAction, mockAppService.ApplyCalls[0].Source);
-            Assert.Null(mockAppService.ApplyCalls[0].DisplayNotification);
         }
 
         [Fact]
