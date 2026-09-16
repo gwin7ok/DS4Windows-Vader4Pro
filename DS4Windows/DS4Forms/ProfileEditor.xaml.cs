@@ -1122,14 +1122,7 @@ profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             specialActionsTab.DataContext = null;
             lightbarRect.DataContext = null;
 
-            deviceNum = device;
-
-            // Special Actions リストの読み込みとチェック状態の復元
-            List<string> currentActionsList = Global.ProfileActions != null && Global.ProfileActions.Length > deviceNum
-                ? Global.ProfileActions[deviceNum]
-                : null;
-            string currentProfileActions = currentActionsList != null ? string.Join("/", currentActionsList) : string.Empty;
-            specialActionsVM.LoadActions(false, currentProfileActions);
+deviceNum = device;
 
             if (profile != null)
             {
@@ -1156,6 +1149,13 @@ profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
                 }
             }
 
+            // プロファイルロード完了後に、XMLから読み込まれた ProfileActions を使ってリストを初期化・復元
+            List<string> currentActionsList = Global.ProfileActions != null && Global.ProfileActions.Length > deviceNum
+                ? Global.ProfileActions[deviceNum]
+                : null;
+            string currentProfileActions = currentActionsList != null ? string.Join("/", currentActionsList) : string.Empty;
+            specialActionsVM.LoadActions(currentProfile == null, currentProfileActions);
+
             ColorByBatteryPerCheck();
 
             if (device < Global.TEST_PROFILE_INDEX)
@@ -1175,7 +1175,6 @@ profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             axialLSStickControl.UseDevice(Global.LSModInfo[device]);
             axialRSStickControl.UseDevice(Global.RSModInfo[device]);
 
-            specialActionsVM.LoadActions(currentProfile == null);
             mappingListVM.UpdateMappings();
             profileSettingsVM.UpdateLateProperties();
             profileSettingsVM.PopulateTouchDisInver(touchDisInvertBtn.ContextMenu);
@@ -1448,11 +1447,13 @@ profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             }
         }
 
-        private void SaveBtn_Click(object sender, RoutedEventArgs e)
+private void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
-            ExecuteSaveOrApply(isApply: false);
+            if (ExecuteSaveOrApply(isApply: false))
+            {
+                Close();
+            }
         }
-
         private void ApplyBtn_Click(object sender, RoutedEventArgs e)
         {
             ExecuteSaveOrApply(isApply: true);
