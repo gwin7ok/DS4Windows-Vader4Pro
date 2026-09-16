@@ -62,7 +62,6 @@ namespace DS4Windows
 
         public class AxisDeadZoneInfo
         {
-            // DeadZone value from 0-127 (old bad convention)
             public int deadZone = DEFAULT_DEADZONE;
             public int antiDeadZone = DEFAULT_ANTIDEADZONE;
             public int maxZone = DEFAULT_MAXZONE;
@@ -77,7 +76,6 @@ namespace DS4Windows
             }
         }
 
-        // DeadZone value from 0-127 (old bad convention)
         public int deadZone;
         public int antiDeadZone;
         public int maxZone = DEFAULT_MAXZONE;
@@ -125,7 +123,6 @@ namespace DS4Windows
         public const int DEFAULT_MAX_ZONE = 100;
         public const double DEFAULT_MAX_OUTPUT = 100.0;
 
-        // Trigger deadzone is expressed in axis units (bad old convention)
         public byte deadZone;
 
         public byte DeadZone
@@ -372,7 +369,6 @@ namespace DS4Windows
         public int vertScale = DEFAULT_VERTICAL_SCALE;
         public bool maxOutputEnabled;
         public double maxOutput = DEFAULT_MAX_OUTPUT;
-        // Flags representing invert axis choices
         public uint inverted = DEFAULT_INVERTED;
         public bool useSmoothing;
         public double smoothWeight = SMOOTHING_WEIGHT_DEFAULT;
@@ -385,7 +381,6 @@ namespace DS4Windows
 
         public delegate void GyroMouseStickInfoEventHandler(GyroMouseStickInfo sender,
             EventArgs args);
-
 
         public double MinCutoff
         {
@@ -533,7 +528,7 @@ namespace DS4Windows
         }
 
         public const string DEFAULT_TRIGGERS = "-1";
-        public const int DEFAULT_GYRO_DIR_SPEED = 80; // degrees per second
+        public const int DEFAULT_GYRO_DIR_SPEED = 80;
         public const bool DEFAULT_TRIGGER_COND = true;
         public const bool DEFAULT_TRIGGER_TURNS = true;
         public const XAxisSwipe DEFAULT_X_AXIS = XAxisSwipe.Yaw;
@@ -582,8 +577,6 @@ namespace DS4Windows
 
     public class ButtonMouseInfo
     {
-        // 1.0 = 100%
-        //public const double MOUSESTICKANTIOFFSET = 0.0128;
         public const double MOUSESTICKANTIOFFSET = 0.008;
         public const int DEFAULT_BUTTON_SENS = 25;
         public const double DEFAULT_BUTTON_VERTICAL_SCALE = 1.0;
@@ -688,7 +681,7 @@ namespace DS4Windows
         public DS4Color m_FlashLed;
         public double rainbow;
         public double maxRainbowSat = DEFAULT_MAX_RAINBOW_SAT;
-        public int flashAt; // Battery % when flashing occurs. <0 means disabled
+        public int flashAt;
         public byte flashType;
         public int chargingType;
     }
@@ -713,14 +706,6 @@ namespace DS4Windows
 
         public LightbarSettingInfo()
         {
-            /*ModeChanged += (sender, e) =>
-            {
-                if (mode != LightbarMode.DS4Win)
-                {
-                    ds4winSettings = null;
-                }
-            };
-            */
         }
     }
 
@@ -847,19 +832,8 @@ namespace DS4Windows
             Y
         }
 
-        //public enum OutputCurve : ushort
-        //{
-        //    Linear,
-        //    EnhancedPrecision,
-        //    Quadratic,
-        //    Cubic,
-        //    EaseoutQuad,
-        //    EaseoutCubic,
-        //}
-
         public const double DEFAULT_MINCUTOFF = 0.8;
         public const double DEFAULT_BETA = 0.7;
-        //public const string DEFAULT_SMOOTH_TECHNIQUE = "one-euro";
         public const OutputStick DEFAULT_OUTPUT_STICK = OutputStick.RightStick;
         public const OutputStickAxes DEFAULT_OUTPUT_STICK_AXES = OutputStickAxes.XY;
         public const int DEFAULT_DEADZONE = 0;
@@ -883,9 +857,7 @@ namespace DS4Windows
         public int vertScale = DEFAULT_VERT_SCALE;
         public bool maxOutputEnabled = DEFAULT_MAX_OUTPUT_ENABLED;
         public double maxOutput = DEFAULT_MAX_OUTPUT;
-        // Flags representing invert axis choices
         public uint inverted = DEFAULT_INVERTED;
-        //public bool useSmoothing;
         public SmoothingMethod smoothingMethod;
         public double minCutoff = DEFAULT_MINCUTOFF;
         public double beta = DEFAULT_BETA;
@@ -893,7 +865,6 @@ namespace DS4Windows
         public OutputStickAxes outputStickDir = DEFAULT_OUTPUT_STICK_AXES;
         public bool trackballMode = TRACKBALL_MODE_DEFAULT;
         public double trackballFriction = TRACKBALL_FRICTION_DEFAULT;
-        //public double trackballAccel = 0.0;
         public StickOutCurve.Curve outputCurve;
         public double rotationRad = ANG_RAD_DEFAULT;
 
@@ -950,20 +921,17 @@ namespace DS4Windows
             outputStickDir = DEFAULT_OUTPUT_STICK_AXES;
             trackballMode = TRACKBALL_MODE_DEFAULT;
             trackballFriction = TRACKBALL_FRICTION_DEFAULT;
-            //trackballAccel = TRACKBALL_RADIUS * trackballFriction / TRACKBALL_INERTIA;
             outputCurve = OUTPUT_CURVE_DEFAULT;
             rotationRad = ANG_RAD_DEFAULT;
 
             minCutoff = DEFAULT_MINCUTOFF;
             beta = DEFAULT_BETA;
             smoothingMethod = SmoothingMethod.None;
-            //useSmoothing = false;
             RemoveRefreshEvents();
         }
 
         public void ResetSmoothing()
         {
-            //useSmoothing = false;
             ResetSmoothingMethods();
         }
 
@@ -971,36 +939,6 @@ namespace DS4Windows
         {
             smoothingMethod = SmoothingMethod.None;
         }
-
-        //public void DetermineSmoothMethod(string identier)
-        //{
-        //    ResetSmoothingMethods();
-
-        //    switch (identier)
-        //    {
-        //        case "one-euro":
-        //            smoothingMethod = SmoothingMethod.OneEuro;
-        //            break;
-        //        default:
-        //            smoothingMethod = SmoothingMethod.None;
-        //            break;
-        //    }
-        //}
-
-        //public string SmoothMethodIdentifier()
-        //{
-        //    string result = "none";
-        //    switch (smoothingMethod)
-        //    {
-        //        case SmoothingMethod.OneEuro:
-        //            result = "one-euro";
-        //            break;
-        //        default:
-        //            break;
-        //    }
-
-        //    return result;
-        //}
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
@@ -1060,7 +998,7 @@ namespace DS4Windows
     public class FlickStickSettings
     {
         public const double DEFAULT_FLICK_THRESHOLD = 0.9;
-        public const double DEFAULT_FLICK_TIME = 0.1;  // In seconds
+        public const double DEFAULT_FLICK_TIME = 0.1;
         public const double DEFAULT_REAL_WORLD_CALIBRATION = 5.3;
         public const double DEFAULT_MIN_ANGLE_THRESHOLD = 0.0;
 
@@ -1068,7 +1006,7 @@ namespace DS4Windows
         public const double DEFAULT_BETA = 0.4;
 
         public double flickThreshold = DEFAULT_FLICK_THRESHOLD;
-        public double flickTime = DEFAULT_FLICK_TIME; // In seconds
+        public double flickTime = DEFAULT_FLICK_TIME;
         public double realWorldCalibration = DEFAULT_REAL_WORLD_CALIBRATION;
         public double minAngleThreshold = DEFAULT_MIN_ANGLE_THRESHOLD;
 
@@ -1168,7 +1106,6 @@ namespace DS4Windows
         public const int DEFAULT_HIP_TIME = 100;
         public const InputDevices.TriggerEffects DEFAULT_TRIGGER_EFFECT = InputDevices.TriggerEffects.None;
 
-        //public TriggerMode mode = TriggerMode.Normal;
         public TwoStageTriggerMode twoStageMode = DEFAULT_TRIG_MODE;
         public TwoStageTriggerMode TwoStageMode
         {
@@ -1205,7 +1142,6 @@ namespace DS4Windows
 
         public void ResetSettings()
         {
-            //mode = TriggerMode.Normal;
             twoStageMode = DEFAULT_TRIG_MODE;
             hipFireMS = DEFAULT_HIP_TIME;
             triggerEffect = DEFAULT_TRIGGER_EFFECT;
