@@ -36,7 +36,11 @@ namespace DS4Windows
 
             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                 (deviceIndex + 1).ToString(), action.details, device != null ? $"{device.Battery}" : "N/A");
-            bool display = _profileSettings?.ProfileChangedNotification ?? false;
+            // 修正前:
+            // bool display = _profileSettings?.ProfileChangedNotification ?? false;
+
+            // 修正後（バックエンドはUI設定を覗き見せず、通常のプロファイル切替イベントとして true で発行する）:
+            bool display = true;
 
             Task.Run(() =>
             {
@@ -104,14 +108,15 @@ namespace DS4Windows
             try
             {
                 DS4Device device = _control?.DS4Controllers?[deviceIndex];
-                bool shouldDisplay = displayNotification ?? _profileSettings?.ProfileChangedNotification ?? false;
-
+                // バックエンドは UI 表示制御を持たず、明示的な抑制指定がない限り素直にイベントを発行する
+                // （実際の表示可否・出力先の判断は、UI層の ShowProfileSwitchNotification に一元委ねる）
+                bool shouldDisplay = displayNotification ?? true;
                 Action applyAction = () =>
-                {
-                    Global.ApplyProfile(deviceIndex, profileName, isTemp, launchProgram,
-                        _control, source, prolog, shouldDisplay);
-                    success = true;
-                };
+                   {
+                       Global.ApplyProfile(deviceIndex, profileName, isTemp, launchProgram,
+                           _control, source, prolog, shouldDisplay);
+                       success = true;
+                   };
 
                 if (device != null)
                 {

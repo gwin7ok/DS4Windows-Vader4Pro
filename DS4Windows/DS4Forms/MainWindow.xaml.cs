@@ -432,25 +432,30 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        // 機能2: プロファイル切替通知の表示処理
-        // - ProfileChangedNotification が ON: 独自デスクトップウィンドウ（ProfileNotificationWindow）を表示
-        // - ProfileChangedNotification が OFF かつ Notifications 設定が「すべて(2)」: Windows トースト通知を表示
-        //   （※Notifications 設定が「警告のみ(1)」または「なし(0)」の場合は抑制）
-        // 機能2: プロファイル切替通知の表示処理
-        // - ProfileChangedNotification が ON: 独自デスクトップウィンドウ（ProfileNotificationWindow）を表示
-        // - ProfileChangedNotification が OFF かつ Notifications 設定が「すべて(2)」: Windows トースト通知を表示
-        //   （※Notifications 設定が「警告のみ(1)」または「なし(0)」の場合は抑制）
+        // 機能2: プロファイル切替通知の表示制御（通知仕様を一元管理）
         private void ShowProfileSwitchNotification(string message)
         {
-            if (appSettingsService.ProfileChangedNotification)
+            bool isProfileWinOn = appSettingsService.ProfileChangedNotification;
+            int notifLevel = appSettingsService.Notifications;
+
+            DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowProfileSwitchNotification 呼び出し: message='{message}', ProfileChangedNotification={isProfileWinOn}, Notifications={notifLevel}");
+
+            if (isProfileWinOn)
             {
-                // 1. チェックボックスが ON -> 独自デスクトップウィンドウを表示
+                // ケース 1, 2, 3: チェックボックスが ON -> 独自デスクトップウィンドウを表示
+                DS4Windows.AppLogger.LogDebug("[Diag-Toast] 独自ウィンドウ表示へ分岐");
                 ProfileNotificationWindow.ShowNotification(message);
             }
-            else if (appSettingsService.Notifications == 2)
+            else if (notifLevel == 2)
             {
-                // 2. チェックボックスが OFF かつ 通知設定が「すべて(2)」 -> トースト通知を表示
+                // ケース 4: チェックボックスが OFF かつ 通知設定が「すべて(2)」 -> トースト通知を表示
+                DS4Windows.AppLogger.LogDebug("[Diag-Toast] トースト通知(ShowSystemNotification)へ分岐");
                 ShowSystemNotification(message, false);
+            }
+            else
+            {
+                // ケース 5, 6: 抑制（非表示）
+                DS4Windows.AppLogger.LogDebug("[Diag-Toast] プロファイル変更通知を抑制（非表示）");
             }
         }
         private void SetupEvents()
