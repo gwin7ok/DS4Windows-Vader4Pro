@@ -258,16 +258,17 @@ namespace DS4Windows
     public class TriggerDeadZoneZInfo : ProfileSubSettingBase
     {
         // Default Dead Zone value
-        public const int DEFAULT_DEADZONE = 0;
+        public const byte DEFAULT_DEADZONE = 0;
         // Default Max Zone value
-        public const int DEFAULT_MAXZONE = 100;
+        public const int DEFAULT_MAX_ZONE = 100;
         // Default Max Output value
-        public const double DEFAULT_MAXOUTPUT = 100.0;
+        public const double DEFAULT_MAX_OUTPUT = 100.0;
 
-        private int _deadZone = DEFAULT_DEADZONE;
-        private int _antiDeadZone = DEFAULT_DEADZONE;
-        private int _maxZone = DEFAULT_MAXZONE;
-        private double _maxOutput = DEFAULT_MAXOUTPUT;
+        // ref / out で渡されるため public フィールドとして保持
+        public byte deadZone = DEFAULT_DEADZONE;
+        public byte antiDeadZone = DEFAULT_DEADZONE;
+        public int maxZone = DEFAULT_MAX_ZONE;
+        public double maxOutput = DEFAULT_MAX_OUTPUT;
 
         public delegate void DeadZoneChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
         public event DeadZoneChangedHandler DeadZoneChanged;
@@ -281,72 +282,62 @@ namespace DS4Windows
         public delegate void MaxOutputChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
         public event MaxOutputChangedHandler MaxOutputChanged;
 
-        public int deadZone
+        public byte DeadZone
         {
-            get => _deadZone;
+            get => deadZone;
             set
             {
-                if (_deadZone == value) return;
-                _deadZone = value;
+                if (deadZone == value) return;
+                deadZone = value;
                 DeadZoneChanged?.Invoke(this, EventArgs.Empty);
                 RaisePropertyChanged();
-                RaisePropertyChanged(nameof(DeadZone));
             }
         }
 
-        public int antiDeadZone
+        public byte AntiDeadZone
         {
-            get => _antiDeadZone;
+            get => antiDeadZone;
             set
             {
-                if (_antiDeadZone == value) return;
-                _antiDeadZone = value;
+                if (antiDeadZone == value) return;
+                antiDeadZone = value;
                 AntiDeadZoneChanged?.Invoke(this, EventArgs.Empty);
                 RaisePropertyChanged();
-                RaisePropertyChanged(nameof(AntiDeadZone));
             }
         }
 
-        public int maxZone
+        public int MaxZone
         {
-            get => _maxZone;
+            get => maxZone;
             set
             {
-                if (_maxZone == value) return;
-                _maxZone = value;
+                if (maxZone == value) return;
+                maxZone = value;
                 MaxZoneChanged?.Invoke(this, EventArgs.Empty);
                 RaisePropertyChanged();
-                RaisePropertyChanged(nameof(MaxZone));
             }
         }
 
-        public double maxOutput
+        public double MaxOutput
         {
-            get => _maxOutput;
+            get => maxOutput;
             set
             {
-                if (Math.Abs(_maxOutput - value) > 0.0001)
+                if (Math.Abs(maxOutput - value) > 0.0001)
                 {
-                    _maxOutput = value;
+                    maxOutput = value;
                     MaxOutputChanged?.Invoke(this, EventArgs.Empty);
                     RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(MaxOutput));
                 }
             }
         }
 
-        // PascalCase 互換プロパティ
-        public int DeadZone { get => deadZone; set => deadZone = value; }
-        public int AntiDeadZone { get => antiDeadZone; set => antiDeadZone = value; }
-        public int MaxZone { get => maxZone; set => maxZone = value; }
-        public double MaxOutput { get => maxOutput; set => maxOutput = value; }
-
         public void Reset()
         {
-            _deadZone = DEFAULT_DEADZONE;
-            _antiDeadZone = DEFAULT_DEADZONE;
-            _maxZone = DEFAULT_MAXZONE;
-            _maxOutput = DEFAULT_MAXOUTPUT;
+            deadZone = DEFAULT_DEADZONE;
+            antiDeadZone = DEFAULT_DEADZONE;
+            maxZone = DEFAULT_MAX_ZONE;
+            maxOutput = DEFAULT_MAX_OUTPUT;
             RaiseAllPropertiesChanged();
         }
 
