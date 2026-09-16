@@ -1142,7 +1142,7 @@ namespace DS4Windows
         }
     }
 
-    public class RumbleSettings
+    public class RumbleSettings : ProfileSubSettingBase
     {
         public const bool DEFAULT_ENABLE_RUMBLE = true;
         public const byte DEFAULT_RUMBLE_LIGHT = 50;
@@ -1164,6 +1164,7 @@ namespace DS4Windows
             {
                 if (enableRumble == value) return;
                 enableRumble = value;
+                RaisePropertyChanged();
                 RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1175,6 +1176,7 @@ namespace DS4Windows
             {
                 if (rumbleLight == value) return;
                 rumbleLight = value;
+                RaisePropertyChanged();
                 RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1186,6 +1188,7 @@ namespace DS4Windows
             {
                 if (rumbleHeavy == value) return;
                 rumbleHeavy = value;
+                RaisePropertyChanged();
                 RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1197,6 +1200,7 @@ namespace DS4Windows
             {
                 if (emulationMode == value) return;
                 emulationMode = value;
+                RaisePropertyChanged();
                 RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1208,6 +1212,7 @@ namespace DS4Windows
             {
                 if (enableGenericRumbleRescale == value) return;
                 enableGenericRumbleRescale = value;
+                RaisePropertyChanged();
                 RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1219,6 +1224,7 @@ namespace DS4Windows
             {
                 if (hapticPowerLevel == value) return;
                 hapticPowerLevel = value;
+                RaisePropertyChanged();
                 RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -1233,6 +1239,7 @@ namespace DS4Windows
             emulationMode = DualSenseDevice.RumbleEmulationMode.Accurate;
             enableGenericRumbleRescale = DEFAULT_ENABLE_RESCALE;
             hapticPowerLevel = DEFAULT_HAPTIC_POWER;
+            RaisePropertyChanged(string.Empty);
             RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
         }
 
