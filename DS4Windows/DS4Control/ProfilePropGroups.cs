@@ -53,41 +53,42 @@ namespace DS4Windows
         }
     }
 
-    public class Sensitivity
+public class Sensitivity : ProfileSubSettingBase
     {
-        public const int DEFAULT_SENSITIVITY = 0;
+        private double _xSensitivity = 1.0;
+        private double _ySensitivity = 1.0;
 
-        public int xSensitivity = DEFAULT_SENSITIVITY;
-        public int ySensitivity = DEFAULT_SENSITIVITY;
-        public int XSensitivity
+        public double XSensitivity
         {
-            get => xSensitivity;
+            get => _xSensitivity;
             set
             {
-                if (xSensitivity == value) return;
-                xSensitivity = value;
-                SensitivityChanged?.Invoke(this, EventArgs.Empty);
+                if (Math.Abs(_xSensitivity - value) > 0.0001)
+                {
+                    _xSensitivity = value;
+                    RaisePropertyChanged();
+                }
             }
         }
 
-        public int YSensitivity
+        public double YSensitivity
         {
-            get => ySensitivity;
+            get => _ySensitivity;
             set
             {
-                if (ySensitivity == value) return;
-                ySensitivity = value;
-                SensitivityChanged?.Invoke(this, EventArgs.Empty);
+                if (Math.Abs(_ySensitivity - value) > 0.0001)
+                {
+                    _ySensitivity = value;
+                    RaisePropertyChanged();
+                }
             }
         }
-
-        public event EventHandler SensitivityChanged;
 
         public void Reset()
         {
-            xSensitivity = DEFAULT_SENSITIVITY;
-            ySensitivity = DEFAULT_SENSITIVITY;
-            SensitivityChanged?.Invoke(this, EventArgs.Empty);
+            _xSensitivity = 1.0;
+            _ySensitivity = 1.0;
+            RaiseAllPropertiesChanged();
         }
     }
 
