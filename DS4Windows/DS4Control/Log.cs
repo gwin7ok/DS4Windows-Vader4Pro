@@ -24,6 +24,9 @@ namespace DS4Windows
     public class AppLogger
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        // 2026-09: MainWindowの購読先を INotificationService.NotificationTriggered へ移行済みのため、
+        // このイベント自体は発火されなくなった。次回クリーンアップで削除予定（Phase5-Step14 通知経路統合参照）。
+        [Obsolete("MainWindowの購読先をINotificationService.NotificationTriggeredへ移行済み。次回クリーンアップで削除予定。")]
         public static event EventHandler<DebugEventArgs> TrayIconLog;
         public static event EventHandler<DebugEventArgs> GuiLog;
         // 型付きプロファイル変更イベント
@@ -72,17 +75,24 @@ namespace DS4Windows
 
         public static void LogToTray(string data, bool warning = false, bool ignoreSettings = false)
         {
-            Logger.Debug($"[Diag-Toast] LogToTray 呼び出し: data='{data}', warning={warning}, ignoreSettings={ignoreSettings}, TrayIconLog購読者数={TrayIconLog?.GetInvocationList()?.Length ?? 0}");
-            if (TrayIconLog != null)
+            // ignoreSettings: 現状も無効（無機能）のパラメータ。旧実装でも受信側(MainWindow)が
+            // sender引数を一切参照していなかったため実質未配線だった。今回のリファクタでも
+            // 意図的に配線しない（挙動を変えないため）。将来対応が必要になった場合は、
+            // INotificationService.SendNotification 側にも同等の引数追加を検討すること。
+            Logger.Debug($"[Diag-Toast] LogToTray 呼び出し: data='{data}', warning={warning}, ignoreSettings={ignoreSettings}");
+
+            try
             {
-                if (ignoreSettings)
-                    TrayIconLog(ignoreSettings, new DebugEventArgs(data, warning));
-                else
-                    TrayIconLog(null, new DebugEventArgs(data, warning));
+                // title は意図的に空文字を渡す。表示本体(MainWindow.ShowSystemNotification)は
+                // イベント側のタイトルを使わず常に TrayIconViewModel.ballonTitle を自前解決するため、
+                // ここでUI層のクラスへ依存を持ち込む必要がない（下位層→上位層参照の禁止に抵触しないため）。
+                // temporary は旧実装でも LogToTray からは常に false 固定だった（このメソッド自体に
+                // temporary パラメータが存在しなかったため）。挙動を変えないためここでも false 固定とする。
+                Global.NotificationServiceInstance.SendNotification(string.Empty, data, warning: warning, temporary: false);
             }
-            else
+            catch (Exception ex)
             {
-                Logger.Debug("[Diag-Toast] TrayIconLog イベントに購読者がいないため発火されず");
+                Logger.Debug($"[Diag-Toast] LogToTray から SendNotification 呼び出しで例外発生: {ex.GetType().Name}: {ex.Message}");
             }
         }
 

@@ -41,12 +41,62 @@ namespace DS4WindowsTests
                 NotificationEventArgs eventArgs = null;
                 service.NotificationTriggered += (s, e) => eventArgs = e;
 
-                service.SendNotification("TitleTest", "MessageTest", true);
+                service.SendNotification("TitleTest", "MessageTest", isToast: true);
 
                 Assert.NotNull(eventArgs);
                 Assert.Equal("TitleTest", eventArgs.Title);
                 Assert.Equal("MessageTest", eventArgs.Message);
+                Assert.False(eventArgs.Warning);
+                Assert.False(eventArgs.Temporary);
                 Assert.True(eventArgs.IsToast);
+            }
+            finally
+            {
+                Global.Notifications = origNotifications;
+            }
+        }
+
+        [Fact]
+        public void SendNotification_ShouldPropagateWarningFlag()
+        {
+            var origNotifications = Global.Notifications;
+            try
+            {
+                var service = new AppNotificationService();
+                service.NotificationsEnabled = true;
+
+                NotificationEventArgs eventArgs = null;
+                service.NotificationTriggered += (s, e) => eventArgs = e;
+
+                service.SendNotification("TitleTest", "MessageTest", warning: true);
+
+                Assert.NotNull(eventArgs);
+                Assert.True(eventArgs.Warning);
+                Assert.False(eventArgs.Temporary);
+            }
+            finally
+            {
+                Global.Notifications = origNotifications;
+            }
+        }
+
+        [Fact]
+        public void SendNotification_ShouldPropagateTemporaryFlag()
+        {
+            var origNotifications = Global.Notifications;
+            try
+            {
+                var service = new AppNotificationService();
+                service.NotificationsEnabled = true;
+
+                NotificationEventArgs eventArgs = null;
+                service.NotificationTriggered += (s, e) => eventArgs = e;
+
+                service.SendNotification("TitleTest", "MessageTest", temporary: true);
+
+                Assert.NotNull(eventArgs);
+                Assert.False(eventArgs.Warning);
+                Assert.True(eventArgs.Temporary);
             }
             finally
             {
@@ -65,6 +115,7 @@ namespace DS4WindowsTests
                 service.NotificationTriggered += (s, e) => eventFired = true;
 
                 service.NotificationsEnabled = false;
+                // warning/temporary はデフォルト値(false)のまま。シグネチャ拡張後も本テストの意図（無効時は発火しない）に影響しない。
                 service.SendNotification("TitleTest", "MessageTest");
 
                 Assert.False(eventFired);

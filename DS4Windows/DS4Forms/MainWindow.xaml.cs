@@ -79,6 +79,7 @@ namespace DS4WinWPF.DS4Forms
         private readonly DS4Windows.DI.IProfileApplicationService profileAppService;
         private readonly DS4Windows.DI.IOutputSlotService outputSlotService;
         private readonly DS4Windows.DI.IProfileRepository profileRepo;
+        private readonly DS4Windows.DI.INotificationService notificationService;
         private readonly ControlService controlService;
         private ProfileEditor editor;
         private int previousTabIndex = 0;
@@ -114,6 +115,7 @@ namespace DS4WinWPF.DS4Forms
             profileAppService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileApplicationService>();
             outputSlotService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IOutputSlotService>() ?? Global.OutputSlotServiceInstance;
             profileRepo = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>() ?? Global.ProfileRepositoryInstance;
+            notificationService = DS4WinWPF.AppHost.GetService<DS4Windows.DI.INotificationService>() ?? Global.NotificationServiceInstance;
             controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? Program.rootHub;
 
             // Initialize log settings ComboBox
@@ -367,10 +369,10 @@ namespace DS4WinWPF.DS4Forms
         }
 
         // 構想1: 情報通知の本体。切替のきっかけは Global.Notifications のみ。outputDestination is modern toast only.
-        // 1. イベント登録用のオーバーロード（エラー CS0123 を解消）
-        private void ShowSystemNotification(object sender, DebugEventArgs e)
+        // 1. イベント登録用のオーバーロード（購読先を INotificationService.NotificationTriggered へ変更、Phase5-Step14）
+        private void ShowSystemNotification(object sender, DS4Windows.DI.NotificationEventArgs e)
         {
-            ShowSystemNotification(e.Data, e.Warning);
+            ShowSystemNotification(e.Message, e.Warning);
         }
 
         // 2. 通知実行の本体（エラー CS0117 を解消）
@@ -429,7 +431,7 @@ namespace DS4WinWPF.DS4Forms
             controlService.PreServiceStop += PrepareForServiceStop;
             //root.rootHubtest.RunningChanged += ControlServiceChanged;
             conLvViewModel.ControllerCol.CollectionChanged += ControllerCol_CollectionChanged;
-            AppLogger.TrayIconLog += ShowSystemNotification;
+            notificationService.NotificationTriggered += ShowSystemNotification;
 
             // 型付きプロファイル変更イベントを購読
             AppLogger.ProfileChanged += OnProfileChanged;

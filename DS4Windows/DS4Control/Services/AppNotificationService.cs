@@ -19,15 +19,15 @@ namespace DS4Windows
             set => Global.FlashWhenLate = value;
         }
 
-        public void SendNotification(string title, string message, bool isToast = true)
+        public void SendNotification(string title, string message, bool warning = false, bool temporary = false, bool isToast = true)
         {
             if (!NotificationsEnabled)
                 return;
 
             if (AppLogger.IsTraceEnabled)
-                AppLogger.LogTrace($"[DI] AppNotificationService.SendNotification: '{title}' - '{message}'");
+                AppLogger.LogTrace($"[DI] AppNotificationService.SendNotification: '{title}' - '{message}' (warning={warning}, temporary={temporary})");
 
-            NotificationTriggered?.Invoke(this, new NotificationEventArgs(title, message, isToast));
+            NotificationTriggered?.Invoke(this, new NotificationEventArgs(title, message, warning, temporary, isToast));
         }
     }
 }
