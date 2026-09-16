@@ -259,6 +259,7 @@ namespace DS4Windows
     {
         // Default Dead Zone value
         public const byte DEFAULT_DEADZONE = 0;
+        public const int DEFAULT_ANTIDEADZONE = 0;
         // Default Max Zone value
         public const int DEFAULT_MAX_ZONE = 100;
         // Default Max Output value
@@ -266,7 +267,7 @@ namespace DS4Windows
 
         // ref / out で渡されるため public フィールドとして保持
         public byte deadZone = DEFAULT_DEADZONE;
-        public byte antiDeadZone = DEFAULT_DEADZONE;
+        public int antiDeadZone = DEFAULT_ANTIDEADZONE;
         public int maxZone = DEFAULT_MAX_ZONE;
         public double maxOutput = DEFAULT_MAX_OUTPUT;
 
@@ -294,7 +295,7 @@ namespace DS4Windows
             }
         }
 
-        public byte AntiDeadZone
+        public int AntiDeadZone
         {
             get => antiDeadZone;
             set
@@ -335,7 +336,7 @@ namespace DS4Windows
         public void Reset()
         {
             deadZone = DEFAULT_DEADZONE;
-            antiDeadZone = DEFAULT_DEADZONE;
+            antiDeadZone = DEFAULT_ANTIDEADZONE;
             maxZone = DEFAULT_MAX_ZONE;
             maxOutput = DEFAULT_MAX_OUTPUT;
             RaiseAllPropertiesChanged();
