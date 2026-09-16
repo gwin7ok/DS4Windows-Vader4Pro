@@ -34,7 +34,6 @@ namespace DS4Windows.DI
         bool[] UseDInputOnlyArray { get; set; }
         bool[] LinkedProfileCheckArray { get; set; }
 
-
         bool GetTouchpadActive(int deviceIndex);
         void SetTouchpadActive(int deviceIndex, bool value);
 
@@ -218,10 +217,11 @@ namespace DS4Windows.DI
         /// <summary>
         /// プロファイルに永続化されているエミュレートコントローラー種別（&lt;OutputContDevice&gt;）。
         /// Global.OutContType（m_Config.outputDevType）への読み取り専用の薄い委譲。
-        /// Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク1）: 従来 IOutputSlotService.GetOutputDeviceType
-        /// が参照していたGlobal非連動の孤立配列に代わる、正しい参照先として新設。
         /// </summary>
         OutContType[] OutContType { get; }
+
+        // ---- 課題④: ProfileActions インターフェースプロパティ ----
+        List<string>[] ProfileActions { get; set; }
 
         bool UseDs3PitchRollSim { get; set; }
         bool[] LowerRCOn { get; }
@@ -250,5 +250,10 @@ namespace DS4Windows.DI
         /// 指定スロット（-1 の場合は全スロット）のネストされたサブ設定オブジェクト群の変更バブリングイベントを配線します。
         /// </summary>
         void WireSubSettingsEvents(int deviceIndex = -1);
+
+        /// <summary>
+        /// 課題①: 指定スロット（-1 の場合は全スロット）のネストされたサブ設定オブジェクト群のイベント購読を解除します。
+        /// </summary>
+        void UnwireSubSettingsEvents(int deviceIndex = -1);
     }
 }

@@ -5,6 +5,7 @@ using System.Globalization;
 using DS4Windows.DI;
 using DS4Windows.DS4Control;
 using DS4Windows.InputDevices;
+using DS4WinWPF.DS4Control;
 using static DS4Windows.Mouse;
 
 namespace DS4Windows
@@ -14,6 +15,9 @@ namespace DS4Windows
         private readonly object _syncLock = new object();
         public const int TEST_PROFILE_ITEM_COUNT = 9;
         public const int MAX_DS4_CONTROLLER_COUNT = 8;
+
+        // 課題①: スロットごとのサブ設定イベント購読解除アクション一覧
+        private readonly Dictionary<int, List<Action>> _subSettingsUnwireMap = new Dictionary<int, List<Action>>();
 
         // Step10-2-A: m_Config(BackingStore)委譲用。Global.storeと同一インスタンスを参照する
         // (データの二重管理を避けるため、専用バックアップ配列は持たない)
@@ -501,9 +505,29 @@ namespace DS4Windows
         public sbyte[] LeftStickDriftYAxis => SafeConfig?.leftStickDriftYAxis;
         public bool[] EnableOutputDataToDS4 => SafeConfig?.enableOutputDataToDS4;
 
-        // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク1）:
-        // Global.OutContType（ScpUtil.cs）と同一の _config.outputDevType への読み取り専用委譲。
+        // Issue7是正: Global.OutContType と同一の _config.outputDevType への読み取り専用委譲。
         public OutContType[] OutContType => SafeConfig?.outputDevType;
+
+        // 課題④: ProfileActions のインターフェース実装
+        public List<string>[] ProfileActions
+        {
+            get => SafeConfig?.profileActions ?? Global.ProfileActions;
+            set
+            {
+                if (SafeConfig != null)
+                {
+                    SafeConfig.profileActions = value;
+                }
+                if (value != null && Global.ProfileActions != null)
+                {
+                    for (int i = 0; i < Math.Min(value.Length, Global.ProfileActions.Length); i++)
+                    {
+                        Global.ProfileActions[i] = value[i];
+                    }
+                }
+                OnProfileSettingChanged(-1, nameof(ProfileActions), null, value);
+            }
+        }
 
         public bool UseDs3PitchRollSim
         {
@@ -585,79 +609,206 @@ namespace DS4Windows
         }
 
         /// <summary>
-        /// ネストされたサブ設定オブジェクト群（スティック、トリガー、ジャイロ、タッチパッド等）の
-        /// OnSubPropertyChanged イベントを購読し、ProfileSettingChanged を発火させるように配線します。
+        /// 課題①: 指定スロット（-1 の場合は全スロット）のネストされたサブ設定オブジェクト群のイベント購読を安全に全解除します。
         /// </summary>
-        public void WireSubSettingsEvents(int deviceIndex = -1)
+        public void UnwireSubSettingsEvents(int deviceIndex = -1)
         {
-            try
+            lock (_syncLock)
             {
                 int start = deviceIndex >= 0 ? deviceIndex : 0;
                 int end = deviceIndex >= 0 ? deviceIndex + 1 : ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
 
                 for (int dev = start; dev < end && dev < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; dev++)
                 {
-                    int currentDev = dev;
-
-                    // スティックデッドゾーン (AxisDeadZoneInfo)
-                    StickDeadZoneInfo lsMod = null;
-                    try { lsMod = LSModInfo != null && LSModInfo.Length > currentDev ? LSModInfo[currentDev] : null; } catch { }
-                    if (lsMod != null)
+                    if (_subSettingsUnwireMap.TryGetValue(dev, out var unwireList))
                     {
-                        if (lsMod.xAxisDeadInfo != null)
-                            lsMod.xAxisDeadInfo.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"LS_X_{prop}");
-                        if (lsMod.yAxisDeadInfo != null)
-                            lsMod.yAxisDeadInfo.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"LS_Y_{prop}");
+                        foreach (var unwire in unwireList)
+                        {
+                            try
+                            {
+                                unwire?.Invoke();
+                            }
+                            catch
+                            {
+                                // 購読解除時の例外は握りつぶし、後続の解除を安全に継続
+                            }
+                        }
+                        unwireList.Clear();
+                        _subSettingsUnwireMap.Remove(dev);
                     }
+                }
+            }
+        }
 
-                    StickDeadZoneInfo rsMod = null;
-                    try { rsMod = RSModInfo != null && RSModInfo.Length > currentDev ? RSModInfo[currentDev] : null; } catch { }
-                    if (rsMod != null)
+        /// <summary>
+        /// ネストされたサブ設定オブジェクト群（スティック、トリガー、ジャイロ、タッチパッド等）の
+        /// OnSubPropertyChanged イベントを購読し、ProfileSettingChanged を発火させるように配線します。
+        /// 課題①: 冒頭で UnwireSubSettingsEvents を実行し、100% の冪等性を保証します。
+        /// </summary>
+        public void WireSubSettingsEvents(int deviceIndex = -1)
+        {
+            try
+            {
+                // 課題①: 既存の購読を全解除してから再登録（冪等化）
+                UnwireSubSettingsEvents(deviceIndex);
+
+                lock (_syncLock)
+                {
+                    int start = deviceIndex >= 0 ? deviceIndex : 0;
+                    int end = deviceIndex >= 0 ? deviceIndex + 1 : ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
+                    for (int dev = start; dev < end && dev < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; dev++)
                     {
-                        if (rsMod.xAxisDeadInfo != null)
-                            rsMod.xAxisDeadInfo.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"RS_X_{prop}");
-                        if (rsMod.yAxisDeadInfo != null)
-                            rsMod.yAxisDeadInfo.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"RS_Y_{prop}");
+                        int currentDev = dev;
+                        var unwireList = new List<Action>();
+
+                        // スティックデッドゾーン (AxisDeadZoneInfo)
+                        StickDeadZoneInfo lsMod = null;
+                        try { lsMod = LSModInfo != null && LSModInfo.Length > currentDev ? LSModInfo[currentDev] : null; } catch { }
+                        if (lsMod != null)
+                        {
+                            if (lsMod.xAxisDeadInfo != null)
+                            {
+                                Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"LS_X_{prop}");
+                                lsMod.xAxisDeadInfo.OnSubPropertyChanged += h;
+                                unwireList.Add(() => lsMod.xAxisDeadInfo.OnSubPropertyChanged -= h);
+                            }
+                            if (lsMod.yAxisDeadInfo != null)
+                            {
+                                Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"LS_Y_{prop}");
+                                lsMod.yAxisDeadInfo.OnSubPropertyChanged += h;
+                                unwireList.Add(() => lsMod.yAxisDeadInfo.OnSubPropertyChanged -= h);
+                            }
+                        }
+
+                        StickDeadZoneInfo rsMod = null;
+                        try { rsMod = RSModInfo != null && RSModInfo.Length > currentDev ? RSModInfo[currentDev] : null; } catch { }
+                        if (rsMod != null)
+                        {
+                            if (rsMod.xAxisDeadInfo != null)
+                            {
+                                Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"RS_X_{prop}");
+                                rsMod.xAxisDeadInfo.OnSubPropertyChanged += h;
+                                unwireList.Add(() => rsMod.xAxisDeadInfo.OnSubPropertyChanged -= h);
+                            }
+                            if (rsMod.yAxisDeadInfo != null)
+                            {
+                                Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"RS_Y_{prop}");
+                                rsMod.yAxisDeadInfo.OnSubPropertyChanged += h;
+                                unwireList.Add(() => rsMod.yAxisDeadInfo.OnSubPropertyChanged -= h);
+                            }
+                        }
+
+                        // トリガーデッドゾーン (TriggerDeadZoneZInfo)
+                        TriggerDeadZoneZInfo l2Mod = null;
+                        try { l2Mod = L2ModInfo != null && L2ModInfo.Length > currentDev ? L2ModInfo[currentDev] : null; } catch { }
+                        if (l2Mod != null)
+                        {
+                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"L2_{prop}");
+                            l2Mod.OnSubPropertyChanged += h;
+                            unwireList.Add(() => l2Mod.OnSubPropertyChanged -= h);
+                        }
+
+                        TriggerDeadZoneZInfo r2Mod = null;
+                        try { r2Mod = R2ModInfo != null && R2ModInfo.Length > currentDev ? R2ModInfo[currentDev] : null; } catch { }
+                        if (r2Mod != null)
+                        {
+                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"R2_{prop}");
+                            r2Mod.OnSubPropertyChanged += h;
+                            unwireList.Add(() => r2Mod.OnSubPropertyChanged -= h);
+                        }
+
+                        // ジャイロ設定 (GyroControlsInfo)
+                        GyroControlsInfo gyroCtrl = null;
+                        try { gyroCtrl = GyroControlsInf != null && GyroControlsInf.Length > currentDev ? GyroControlsInf[currentDev] : null; } catch { }
+                        if (gyroCtrl != null)
+                        {
+                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"GyroControls_{prop}");
+                            gyroCtrl.OnSubPropertyChanged += h;
+                            unwireList.Add(() => gyroCtrl.OnSubPropertyChanged -= h);
+                        }
+
+                        // タッチパッド絶対座標設定 (TouchpadAbsMouseSettings)
+                        TouchpadAbsMouseSettings touchAbs = null;
+                        try { touchAbs = TouchAbsMouse != null && TouchAbsMouse.Length > currentDev ? TouchAbsMouse[currentDev] : null; } catch { }
+                        if (touchAbs != null)
+                        {
+                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"TouchAbs_{prop}");
+                            touchAbs.OnSubPropertyChanged += h;
+                            unwireList.Add(() => touchAbs.OnSubPropertyChanged -= h);
+                        }
+
+                        // スムージング設定
+                        GyroMouseInfo gyroMouse = null;
+                        try { gyroMouse = GyroMouseInfo != null && GyroMouseInfo.Length > currentDev ? GyroMouseInfo[currentDev] : null; } catch { }
+                        if (gyroMouse != null)
+                        {
+                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"GyroMouse_{prop}");
+                            gyroMouse.OnSubPropertyChanged += h;
+                            unwireList.Add(() => gyroMouse.OnSubPropertyChanged -= h);
+                        }
+
+                        GyroMouseStickInfo gyroStick = null;
+                        try { gyroStick = GyroMouseStickInf != null && GyroMouseStickInf.Length > currentDev ? GyroMouseStickInf[currentDev] : null; } catch { }
+                        if (gyroStick != null)
+                        {
+                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"GyroMouseStick_{prop}");
+                            gyroStick.OnSubPropertyChanged += h;
+                            unwireList.Add(() => gyroStick.OnSubPropertyChanged -= h);
+                        }
+
+                        TouchMouseStickInfo touchStick = null;
+                        try { touchStick = TouchMouseStickInf != null && TouchMouseStickInf.Length > currentDev ? TouchMouseStickInf[currentDev] : null; } catch { }
+                        if (touchStick != null)
+                        {
+                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"TouchMouseStick_{prop}");
+                            touchStick.OnSubPropertyChanged += h;
+                            unwireList.Add(() => touchStick.OnSubPropertyChanged -= h);
+                        }
+
+                        // 課題②: StickOutputSetting 配下の DeltaAccelSettings / FlickStickSettings のバブリング配線
+                        StickOutputSetting lsOut = null;
+                        try { lsOut = LSOutputSettings != null && LSOutputSettings.Length > currentDev ? LSOutputSettings[currentDev] : null; } catch { }
+                        if (lsOut != null && lsOut.outputSettings != null)
+                        {
+                            if (lsOut.outputSettings.controlSettings?.deltaAccelSettings != null)
+                            {
+                                var delta = lsOut.outputSettings.controlSettings.deltaAccelSettings;
+                                Action<string> hDelta = (prop) => OnSubSettingChanged(currentDev, $"LS_DeltaAccel_{prop}");
+                                delta.OnSubPropertyChanged += hDelta;
+                                unwireList.Add(() => delta.OnSubPropertyChanged -= hDelta);
+                            }
+                            if (lsOut.outputSettings.flickSettings != null)
+                            {
+                                var flick = lsOut.outputSettings.flickSettings;
+                                Action<string> hFlick = (prop) => OnSubSettingChanged(currentDev, $"LS_FlickStick_{prop}");
+                                flick.OnSubPropertyChanged += hFlick;
+                                unwireList.Add(() => flick.OnSubPropertyChanged -= hFlick);
+                            }
+                        }
+
+                        StickOutputSetting rsOut = null;
+                        try { rsOut = RSOutputSettings != null && RSOutputSettings.Length > currentDev ? RSOutputSettings[currentDev] : null; } catch { }
+                        if (rsOut != null && rsOut.outputSettings != null)
+                        {
+                            if (rsOut.outputSettings.controlSettings?.deltaAccelSettings != null)
+                            {
+                                var delta = rsOut.outputSettings.controlSettings.deltaAccelSettings;
+                                Action<string> hDelta = (prop) => OnSubSettingChanged(currentDev, $"RS_DeltaAccel_{prop}");
+                                delta.OnSubPropertyChanged += hDelta;
+                                unwireList.Add(() => delta.OnSubPropertyChanged -= hDelta);
+                            }
+                            if (rsOut.outputSettings.flickSettings != null)
+                            {
+                                var flick = rsOut.outputSettings.flickSettings;
+                                Action<string> hFlick = (prop) => OnSubSettingChanged(currentDev, $"RS_FlickStick_{prop}");
+                                flick.OnSubPropertyChanged += hFlick;
+                                unwireList.Add(() => flick.OnSubPropertyChanged -= hFlick);
+                            }
+                        }
+
+                        _subSettingsUnwireMap[currentDev] = unwireList;
                     }
-
-                    // トリガーデッドゾーン (TriggerDeadZoneZInfo)
-                    TriggerDeadZoneZInfo l2Mod = null;
-                    try { l2Mod = L2ModInfo != null && L2ModInfo.Length > currentDev ? L2ModInfo[currentDev] : null; } catch { }
-                    if (l2Mod != null)
-                        l2Mod.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"L2_{prop}");
-
-                    TriggerDeadZoneZInfo r2Mod = null;
-                    try { r2Mod = R2ModInfo != null && R2ModInfo.Length > currentDev ? R2ModInfo[currentDev] : null; } catch { }
-                    if (r2Mod != null)
-                        r2Mod.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"R2_{prop}");
-
-                    // ジャイロ設定 (GyroControlsInfo)
-                    GyroControlsInfo gyroCtrl = null;
-                    try { gyroCtrl = GyroControlsInf != null && GyroControlsInf.Length > currentDev ? GyroControlsInf[currentDev] : null; } catch { }
-                    if (gyroCtrl != null)
-                        gyroCtrl.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"GyroControls_{prop}");
-
-                    // タッチパッド絶対座標設定 (TouchpadAbsMouseSettings)
-                    TouchpadAbsMouseSettings touchAbs = null;
-                    try { touchAbs = TouchAbsMouse != null && TouchAbsMouse.Length > currentDev ? TouchAbsMouse[currentDev] : null; } catch { }
-                    if (touchAbs != null)
-                        touchAbs.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"TouchAbs_{prop}");
-
-                    // スムージング設定
-                    GyroMouseInfo gyroMouse = null;
-                    try { gyroMouse = GyroMouseInfo != null && GyroMouseInfo.Length > currentDev ? GyroMouseInfo[currentDev] : null; } catch { }
-                    if (gyroMouse != null)
-                        gyroMouse.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"GyroMouse_{prop}");
-
-                    GyroMouseStickInfo gyroStick = null;
-                    try { gyroStick = GyroMouseStickInf != null && GyroMouseStickInf.Length > currentDev ? GyroMouseStickInf[currentDev] : null; } catch { }
-                    if (gyroStick != null)
-                        gyroStick.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"GyroMouseStick_{prop}");
-
-                    TouchMouseStickInfo touchStick = null;
-                    try { touchStick = TouchMouseStickInf != null && TouchMouseStickInf.Length > currentDev ? TouchMouseStickInf[currentDev] : null; } catch { }
-                    if (touchStick != null)
-                        touchStick.OnSubPropertyChanged += (prop) => OnSubSettingChanged(currentDev, $"TouchMouseStick_{prop}");
                 }
             }
             catch (Exception ex)
