@@ -1,125 +1,117 @@
-# プロファイル全設定項目 保存機能 実機テストチェックリスト
+# Phase 5 Step 14: プロファイル設定 XML 保存・実機検証チェックリスト
+(Profile Settings XML Save Verification Checklist)
 
-## 1. 概要
-プロファイル編集画面（`ProfileEditor`）において各種設定を変更し保存を実行した際、設定値が `Profiles/[プロファイル名].xml` へ正確に書き込まれているかを網羅的に検証するための実機テスト仕様書です。
+## 1. 概要と目的
 
----
-
-## 2. テスト共通プロトコル
-
-### ■ 事前準備
-1. テスト専用のプロファイル（例: `TestSaveCheck.xml`）を新規作成する。
-2. 作成した直後の XML ファイルを退避または Git でクリーンな状態として記録する。
-3. XML 差分確認ツール（VS Code の差分比較機能、WinMerge 等）を準備する。
-
-### ■ テスト実行手順
-1. プロファイル編集画面で対象の設定項目を変更する。
-2. 画面下部の **「Save（保存）」** または **「Apply（適用）」** ボタンを押下する。
-3. テキストエディタまたは差分ツールで `Profiles/TestSaveCheck.xml` を再読み込みする。
-4. 対象の XML タグの値が、UI上で変更した値に正しく更新されているかを確認する。
-   - 正しく反映されている ➔ **PASS**
-   - タグ自体が出力されない、あるいは変更前の値のまま ➔ **FAIL**
+本チェックリストは、Phase 5 Step 14 で実装された「プロファイル設定の双方向同期およびサブ設定バブリング通知基盤」が、実際の GUI 操作（ProfileEditor）を通じて正しく機能し、プロファイル XML ファイルへ漏れなく永続化（保存）されることを実機（コントローラー）を用いて確認・担保するための手順書です。
 
 ---
 
-## 3. テストチェックマトリクス
+## 2. 検証環境および事前準備
 
-### カテゴリA: Special Actions（特殊アクション）タブ 【既知の不具合確認】
-| ID | UI設定項目名 | 操作内容（変更例） | 期待されるXMLタグ | 重要度 | 結果 | 備考 |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| A-01 | **Special Action 有効/無効** | 任意の複数アクションのチェックボックスを ON/OFF | `<ProfileActions>` | **特大** | [ ] | スラッシュ区切り文字列が更新されるか |
+### 2.1 テスト環境
+- アプリケーション: 本ブランチでビルドした DS4Windows 実行バイナリ
+- 接続デバイス: DualSense / Vader 4 Pro / DS4 コントローラー（有線または Bluetooth）
+- プロファイル保存先: `%APPDATA%\DS4Windows\Profiles\`
 
----
-
-### カテゴリB: Controls / Mapping（ボタンマッピング）タブ
-| ID | UI設定項目名 | 操作内容（変更例） | 期待されるXMLタグ | 重要度 | 結果 | 備考 |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| B-01 | **Output Controller Type** | Xbox 360 ⇄ DualShock 4 を切り替え | `<PadOutDevType>` | 中 | [ ] | 出力仮想デバイス種類 |
-| B-02 | **通常ボタン割り当て** | ×ボタンを「Key A」等に変更 | `<Control>` / `<Button>` | 低 | [ ] | 単一キーマッピング |
-| B-03 | **マクロ割り当て** | 任意のボタンに複数キーのマクロを記録 | `<Macro>` | 高 | [ ] | キーストローク配列の保存 |
-| B-04 | **Shift Modifier 割り当て** | Shift Trigger設定 ＋ Shift時キー割り当て | `<ShiftControl>` | **特大** | [ ] | 修飾キー押下時のマッピング |
-| B-05 | **Vader 4 Pro 背面ボタン (M1〜M4)** | M1〜M4 に任意の入力を割り当て | `<Vader4ProControllerOpts>` / `<Control>` | **特大** | [ ] | Vader 4 Pro 拡張マッピング |
-| B-06 | **Vader 4 Pro 追加ボタン (C / Z)** | C / Z に任意の入力を割り当て | `<Vader4ProControllerOpts>` / `<Control>` | **特大** | [ ] | 前面追加ボタンマッピング |
+### 2.2 事前準備
+1. DS4Windows を起動し、対象コントローラーが認識されていることを確認する。
+2. テスト専用の新規プロファイル（名前例: `Test_Sync_Profile`）を作成する。
+3. 検証中はテキストエディタで `%APPDATA%\DS4Windows\Profiles\Test_Sync_Profile.xml` を開き、保存処理の都度 XML の内容をリロードして確認する。
 
 ---
 
-### カテゴリC: Left Stick / Right Stick（スティック詳細）タブ
-| ID | UI設定項目名 | 操作内容（変更例） | 期待されるXMLタグ | 重要度 | 結果 | 備考 |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| C-01 | **DeadZone / MaxZone** | スライダー値をデフォルトから変更 | `<LSDeadZone>`, `<RSDeadZone>`, `<LSMaxZone>` | 低 | [ ] | 基本デッドゾーン設定 |
-| C-02 | **AntiDeadZone / MaxOutput** | スライダー値を変更 | `<LSAntiDeadZone>`, `<LSMaxOutput>` | 低 | [ ] | 出力レンジ調整 |
-| C-03 | **Output Curve（出力カーブ）** | Linear ➔ Enhanced Precision 等に変更 | `<LSCurve>`, `<RSCurve>` | 中 | [ ] | 応答カーブ列挙値 |
-| C-04 | **Custom Curve（ベジェ曲線）** | カーブエディタでカスタム曲線を編集 | `<LSCustomCurve>`, `<RSCustomCurve>` | **特大** | [ ] | 外部エディタからの値反映 |
-| C-05 | **DeadZone Type** | Radial ⇄ Axial を切り替え | `<LSDeadZoneType>` | 中 | [ ] | デッドゾーン形状 |
-| C-06 | **軸別設定 (`AxialStickUserControl`)** | X/Y 個別のデッドゾーン・MaxZoneを変更 | `<LSAxialDeadOptions>`, `<RSAxialDeadOptions>` | **特大** | [ ] | 独立UserControlからの値吸い上げ |
-| C-07 | **Snap to Axial** | チェックボックスを ON にする | `<LSSnap>`, `<RSSnap>` | 中 | [ ] | 軸スナップ設定 |
-| C-08 | **Invert / Vertical Scale** | 軸反転ON、感度スケール値を変更 | `<LSInvert>`, `<LSSens>` | 低 | [ ] | 反転および感度スケール |
-| C-09 | **Flick Stick モード** | Flick Stick を有効化し各パラメータ変更 | `<LSFlickStick>`, `<FlickThreshold>` | 高 | [ ] | フリックスティック詳細設定 |
+## 3. 実機検証チェック項目（全9カテゴリ ＋ UI連動）
+
+### 【共通】 UI 変更検知（Dirty 連動）確認
+- [ ] **UI-01: サブ設定変更時の「適用」ボタン即時活性化**
+  - **手順**: ProfileEditor で各タブの詳細設定（デッドゾーン、ジャイロ、タッチパッド等）の値を1箇所変更する。
+  - **期待結果**: 即座に画面下部の「適用（Apply）」ボタンが活性化（クリック可能状態）になること。
 
 ---
 
-### カテゴリD: L2 / R2 Trigger（トリガー）タブ
-| ID | UI設定項目名 | 操作内容（変更例） | 期待されるXMLタグ | 重要度 | 結果 | 備考 |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| D-01 | **Trigger DeadZone / MaxZone** | スライダー値を変更 | `<L2DeadZone>`, `<R2DeadZone>` | 低 | [ ] | トリガー有効ストローク範囲 |
-| D-02 | **Trigger AntiDeadZone / Sens** | スライダー値を変更 | `<L2AntiDeadZone>`, `<L2Sens>` | 低 | [ ] | トリガー立ち上がり感度 |
-| D-03 | **Trigger Output Curve** | カーブ形状を変更 | `<L2Curve>`, `<R2Curve>` | 中 | [ ] | トリガー応答カーブ |
-| D-04 | **Two Stage Trigger Mode** | Hair Trigger / Normal 等に変更 | `<L2TwoStageMode>`, `<R2TwoStageMode>` | **特大** | [ ] | 2段階トリガー動作モード |
-| D-05 | **Trigger Effect / Force Feedback** | 抵抗値や振動モードを変更 | `<TriggerEffect>` / `<Vader4Pro...>` | **特大** | [ ] | フォースフィードバック設定 |
+### 【カテゴリ 1】 ProfileActions（Special Actions）の双方向同期
+- [ ] **PA-01: Special Action のチェック有効化と保存**
+  - **手順**: 「Special Actions」タブで任意のアクション（例: 2つ）にチェックを入れ、「保存」ボタンを押す。
+  - **期待結果**: XML 内の `<ProfileActions>` タグに `アクション名1/アクション名2` の形式で記録されること。
+- [ ] **PA-02: Special Action のチェック解除と保存**
+  - **手順**: 先ほどチェックしたうちの1つのチェックを外し、「保存」を押す。
+  - **期待結果**: XML 内の `<ProfileActions>` タグから解除したアクション名が消え、残りのアクション名のみになること。
+- [ ] **PA-03: プロファイル再読込時のチェック状態復元**
+  - **手順**: 別のプロファイルに切り替えた後、再度 `Test_Sync_Profile` を開く。
+  - **期待結果**: XML に記録されていたアクションのみに正しくチェックが入っていること。
 
 ---
 
-### カテゴリE: Touchpad（タッチパッド）タブ
-| ID | UI設定項目名 | 操作内容（変更例） | 期待されるXMLタグ | 重要度 | 結果 | 備考 |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| E-01 | **Touchpad Output Mode** | Mouse ⇄ Controls ⇄ Passthru 変更 | `<TouchpadOutputMode>` | 中 | [ ] | 動作モード切り替え |
-| E-02 | **Trackball Mode / Friction** | トラックボールON、摩擦係数変更 | `<TrackballMode>`, `<TrackballFriction>` | 中 | [ ] | 慣性シミュレーション設定 |
-| E-03 | **Sensitivity / Invert** | 感度スライダー変更、反転チェックON | `<TouchSensitivity>`, `<TouchInvert>` | 低 | [ ] | カーソル移動感度・反転 |
-| E-04 | **Touch Button (`TouchButtonUserControl`)** | タッチ領域のボタン割り当てを変更 | `<TouchButtonAllocations>` | **特大** | [ ] | 独立UserControlからの値吸い上げ |
+### 【カテゴリ 2】 Sensitivity（6軸感度）の双方向同期
+- [ ] **SE-01: スティック・トリガー感度の個別変更と XML 反映**
+  - **手順**: スティックタブおよびトリガータブで感度スライダー（LS, RS, L2, R2 等）を変更して保存する。
+  - **期待結果**: XML 内の `<Sens>` タグに `LS|RS|L2|R2|SX|SZ`（例: `1.2|1|0.8|1|1|1`）のパイプ区切り形式で即時反映されること。
+- [ ] **SE-02: 感度設定の再読込と復元**
+  - **手順**: プロファイルを再読込する。
+  - **期待結果**: 各感度スライダーが XML 内の数値どおりに復元されること。
 
 ---
 
-### カテゴリF: Gyro / Sixaxis（ジャイロ）タブ
-| ID | UI設定項目名 | 操作内容（変更例） | 期待されるXMLタグ | 重要度 | 結果 | 備考 |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| F-01 | **Gyro Output Mode** | Mouse ⇄ Controls ⇄ Directional Swipe 変更 | `<GyroOutputMode>` | 中 | [ ] | ジャイロ割り当て先 |
-| F-02 | **Gyro Sensitivity / Invert** | X/Y感度・反転チェック変更 | `<GyroSens>`, `<GyroInvert>` | 低 | [ ] | ジャイロ追従感度 |
-| F-03 | **Gyro DeadZone / MaxZone** | スライダー値を変更 | `<GyroDeadZone>`, `<GyroMaxZone>` | 低 | [ ] | 不感帯・最大有効角速度 |
-| F-04 | **Gyro Smoothing (One Euro Filter)** | スムージング方式・MinCutoff/Beta変更 | `<GyroSmoothing>`, `<GyroMinCutoff>` | 高 | [ ] | フィルタリングパラメータ |
-| F-05 | **Gyro Trigger (有効化ボタン)** | 「L2押下時のみ有効」等に設定 | `<GyroTrigger>` | 中 | [ ] | ジャイロ作動条件 |
+### 【カテゴリ 3】 GyroControlsSettings（ジャイロ設定）のバブリング
+- [ ] **GC-01: ジャイロコントロールのトグル設定保存**
+  - **手順**: 「Gyro」タブでジャイロコントロールの「Toggle」チェックを変更し、トリガーキーを設定して保存する。
+  - **期待結果**: XML 内にジャイロコントロールのトリガーおよびトグル状態が正しく更新されること。
 
 ---
 
-### カテゴリG: Lightbar（ライトバー）タブ
-| ID | UI設定項目名 | 操作内容（変更例） | 期待されるXMLタグ | 重要度 | 結果 | 備考 |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| G-01 | **Lightbar Mode** | Custom ⇄ Battery Status 変更 | `<LightbarMode>` | 低 | [ ] | LED点灯モード |
-| G-02 | **Custom Color (RGB)** | カラーピッカーで色数値を変更 | `<LedColor>` / `<CustomLed>` | 低 | [ ] | 発光色データ（HEX/RGB） |
-| G-03 | **Flash Type / Flash At** | 点滅パターン・点滅開始残量変更 | `<FlashType>`, `<FlashAt>` | 低 | [ ] | バッテリー低下時警告点滅 |
-| G-04 | **Charging Rainbow** | 充電中レインボー点滅を ON にする | `<ChargingType>` | 低 | [ ] | 充電時イルミネーション |
+### 【カテゴリ 4】 TouchpadAbsMouseSettings（絶対座標マウス）
+- [ ] **TP-01: タッチパッド絶対座標設定の保存**
+  - **手順**: 「Touchpad」タブで出力モードを絶対座標マウスに切り替え、「Snap to Center」や MaxZone の数値を変更して保存する。
+  - **期待結果**: XML 内の `<TouchPadAbsMouse>` 関連タグに変更後の値が正しく書き込まれること。
 
 ---
 
-### カテゴリH: Other / Miscellaneous（その他・デバイス固有）タブ
-| ID | UI設定項目名 | 操作内容（変更例） | 期待されるXMLタグ | 重要度 | 結果 | 備考 |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| H-01 | **Idle Disconnect** | 自動切断時間を変更（例: 5分） | `<IdleDisconnect>` | 低 | [ ] | 無操作タイムアウト時間 |
-| H-02 | **Bluetooth Poll Rate** | ポーリングレート（例: 1ms/1000Hz）変更 | `<BTPollRate>` | 低 | [ ] | 通信更新頻度 |
-| H-03 | **Touchpad Jitter Compensation** | ジッター補正を ON/OFF | `<TouchJitterCompensation>` | 低 | [ ] | タッチ微小振動抑制 |
-| H-04 | **Button Mouse Sensitivity** | ボタン割り当て時のマウス感度変更 | `<ButtonMouseSens>` | 低 | [ ] |  |
-| H-05 | **Vader 4 Pro モーター振動強度** | グリップおよびトリガーモーター強度変更 | `<Vader4ProControllerOpts>` 配下 | **特大** | [ ] | Vader 4 Pro 独自DTO保持項目 |
+### 【カテゴリ 5】 LS/RS OutputSettings（FlickStick）
+- [ ] **FS-01: フリックスティック詳細設定の保存**
+  - **手順**: スティック出力モードを「Flick Stick」に設定し、FlickThreshold や RealWorldCalibration の値を変更して保存する。
+  - **期待結果**: XML 内の `<FlickStickSettings>` 要素に変更値が正確に保存されること。
 
 ---
 
-## 4. 最重点確認項目（優先実施推奨）
+### 【カテゴリ 6】 AxialDeadOptions（スティック軸デッドゾーン）
+- [ ] **AD-01: X軸/Y軸個別デッドゾーンの保存**
+  - **手順**: スティックのデッドゾーンタイプを「Axial」に設定し、X軸・Y軸それぞれの DeadZone および AntiDeadZone を異なる値に変更して保存する。
+  - **期待結果**: XML 内の `<LSAxialDeadOptions>` / `<RSAxialDeadOptions>` に変更値が分離して保存されること。
 
-実機テストを実施する際は、データ欠落の可能性が極めて高い以下の **4大リスク箇所** を優先して検証してください。
+---
 
-1. **A-01: `<ProfileActions>`**（既知の不具合確認）:
-   - チェックボックス変更後に保存した際、XML内の文字列が即時反映されるか。
-2. **B-05, B-06, H-05: Vader 4 Pro 独自設定（`Vader4ProControllerOpts`）**:
-   - 本フォークで拡張された背面ボタン（M1〜M4）、前面追加ボタン（C, Z）、モーター振動パラメータが正しく保存されるか。
-3. **C-06: 軸別スティック設定（`AxialStickUserControl`）**:
-   - 親 ViewModel と別コントロールで編集された X/Y 軸の個別デッドゾーンが、親の保存処理に反映されるか。
-4. **B-04: シフト修飾マッピング（`ShiftControl`）**:
-   - 修飾キー押下時の特殊マッピングが、DTO変換時にクリアされずに保持されるか。
+### 【カテゴリ 7】 各種スムージング設定（Gyro / TouchStick）
+- [ ] **SM-01: OneEuro スムージング係数の保存**
+  - **手順**: ジャイロマウスのスムージング設定で MinCutoff や Beta の値を初期値から変更して保存する。
+  - **期待結果**: XML 内のスムージング関連タグに設定値が反映されること。
+
+---
+
+### 【カテゴリ 8】 DeltaAccelSettings（スティックデルタ加速度）
+- [ ] **DA-01: デルタ加速度設定の保存**
+  - **手順**: スティック詳細設定画面から Delta Acceleration を有効化し、Multiplier や EasingDuration を変更して保存する。
+  - **期待結果**: XML 内の `<LSDeltaAccelSettings>` / `<RSDeltaAccelSettings>` に変更値が保存されること。
+
+---
+
+### 【カテゴリ 9】 DualSense RumbleSettings（ランブル・ハプティック）
+- [ ] **RB-01: ランブルエミュレーションおよび強度設定の保存**
+  - **手順**: DualSense 接続時、「Controller Readings / Options」から Rumble Emulation Mode や Haptic Power Level を変更して保存する。
+  - **期待結果**: XML 内の `<DualSenseControllerSettings>` 要素に変更後のモード・強度が保存されること。
+
+---
+
+## 4. 合否判定基準
+
+1. **完全性**: 上記全 10 項目において、UI で変更した値が XML 内に 1 箇所の漏れもなく保存されていること。
+2. **無回帰**: 既存のプロファイルを開いて保存した際に、意図しない設定項目の消失や破損（XML パースエラー）が発生しないこと。
+3. **即時性**: 設定を変更した瞬間に「適用（Apply）」ボタンが活性化し、UI とモデルの同期がリアルタイムに行われていること。
+
+---
+
+## 5. 実機検証結果記録欄
+
+| 実施日 | 検証者 | 使用コントローラー | 判定 (PASS/FAIL) | 備考・特記事項 |
+|---|---|---|---|---|
+|        |        |                    |                  |                |
