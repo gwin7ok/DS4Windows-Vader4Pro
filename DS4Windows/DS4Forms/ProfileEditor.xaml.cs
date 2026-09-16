@@ -26,6 +26,7 @@ using MessageBox = System.Windows.MessageBox;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using UserControl = System.Windows.Controls.UserControl;
+using DS4Windows.Actions;
 
 namespace DS4WinWPF.DS4Forms
 {
@@ -274,7 +275,7 @@ namespace DS4WinWPF.DS4Forms
             profileRepository = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>()
                 ?? new DS4Windows.ProfileRepository();
             profileSwitcher = DS4WinWPF.AppHost.GetService<DS4Windows.Actions.IProfileSwitcher>()
-                ?? new DS4Windows.Actions.DefaultProfileSwitcher();
+                ?? new DefaultProfileSwitcher();
             controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? DS4Windows.Program.rootHub;
 
             // SpecialActionsリスト表示前にカルチャを明示的に再設定
@@ -1995,7 +1996,7 @@ namespace DS4WinWPF.DS4Forms
 
                 if (index >= 0)
                 {
-                    Dispatcher.BeginInvoke((Action)(() =>
+                    Dispatcher.BeginInvoke((System.Action)(() =>
                     {
                         mappingListVM.SelectedIndex = index;
                         ShowControlBindingWindow();

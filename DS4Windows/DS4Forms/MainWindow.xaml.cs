@@ -367,26 +367,30 @@ namespace DS4WinWPF.DS4Forms
         }
 
         // 構想1: 情報通知の本体。切替のきっかけは Global.Notifications のみ。outputDestination is modern toast only.
+        // 1. イベント登録用のオーバーロード（エラー CS0123 を解消）
+        private void ShowSystemNotification(object sender, DebugEventArgs e)
+        {
+            ShowSystemNotification(e.Data, e.Warning);
+        }
+
+        // 2. 通知実行の本体（エラー CS0117 を解消）
         private void ShowSystemNotification(string message, bool isWarning)
         {
             int notifLevel = appSettingsService.Notifications;
             bool levelPass = notifLevel == 2 || (notifLevel == 1 && isWarning);
-            DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowSystemNotification(message) message='{message}', isWarning={isWarning}, Notifications設定={notifLevel}, levelPass={levelPass}");
 
             if (levelPass)
             {
-                string title = TrayIconViewModel.balloonTitle;
+                // TrayIconViewModel.balloonTitle の代わりに "DS4Windows" を直接指定
+                string title = "DS4Windows";
 
-                // Windows 10/11 modern toast notification
                 try
                 {
                     AppNotificationRegistration.ShowModernToast(title, message);
-                    DS4Windows.AppLogger.LogDebug("[Diag-Toast] AppNotificationRegistration.ShowModernToast call succeeded");
                 }
                 catch (Exception ex)
                 {
-                    // legacy fallback は撤去済みのため、失敗時は通知が表示されない旨をログに記録
-                    DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowModernToast exception, notification is not shown: {ex.GetType().Name}: {ex.Message}");
+                    DS4Windows.AppLogger.LogDebug($"[Diag-Toast] ShowModernToast exception: {ex.Message}");
                 }
             }
         }

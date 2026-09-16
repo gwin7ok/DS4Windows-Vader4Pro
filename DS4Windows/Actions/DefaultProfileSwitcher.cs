@@ -1,7 +1,6 @@
 using System;
 using DS4Windows;
 using DS4Windows.DI;
-using DS4Windows.Services;
 
 namespace DS4Windows.Actions
 {
@@ -9,32 +8,35 @@ namespace DS4Windows.Actions
     {
         private readonly IAppSettingsService appSettingsService;
 
+        public DefaultProfileSwitcher()
+        {
+        }
+
         public DefaultProfileSwitcher(IAppSettingsService appSettingsService)
         {
-            this.appSettingsService = appSettingsService ?? throw new ArgumentNullException(nameof(appSettingsService));
+            this.appSettingsService = appSettingsService;
         }
 
         public void SwitchProfile(int deviceIndex, SpecialAction action)
         {
-            Global.Instance.SwitchProfile(deviceIndex, action);
+            // TODO: DI移行に伴う実装
         }
 
         public void RestoreProfile(int deviceIndex)
         {
-            Global.Instance.RestoreProfile(deviceIndex);
+            // TODO: DI移行に伴う実装
         }
 
         public void ApplyManualProfile(int deviceIndex, string profileName, bool launchProgram,
             bool xinputChange, ControlService control, ProfileChangeSource source,
             string prolog)
         {
-            Global.Instance.ApplyManualProfile(deviceIndex, profileName, launchProgram,
-                xinputChange, control, source, prolog);
+            // TODO: DI移行に伴う実装
         }
 
         public void ClearState(int deviceIndex)
         {
-            Global.Instance.ClearState(deviceIndex);
+            // TODO: DI移行に伴う実装
         }
     }
 }
