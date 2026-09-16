@@ -26,8 +26,12 @@ namespace DS4Windows
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         // 2026-09: MainWindowの購読先を INotificationService.NotificationTriggered へ移行済みのため、
         // このイベント自体は発火されなくなった。次回クリーンアップで削除予定（Phase5-Step14 通知経路統合参照）。
+        // CS0067（未使用イベント）を意図的に抑制する。削除ではなく[Obsolete]付きで一旦残す判断は
+        // 過渡期の安全策（3.3原則4）であり、警告放置ではなく明示的な抑制であることを示す。
         [Obsolete("MainWindowの購読先をINotificationService.NotificationTriggeredへ移行済み。次回クリーンアップで削除予定。")]
+#pragma warning disable CS0067 // 発火元を撤去済み。次回クリーンアップでイベント自体を削除するまでの意図的な残置。
         public static event EventHandler<DebugEventArgs> TrayIconLog;
+#pragma warning restore CS0067
         public static event EventHandler<DebugEventArgs> GuiLog;
         // 型付きプロファイル変更イベント
         public static event EventHandler<ProfileChangedEventArgs> ProfileChanged;
