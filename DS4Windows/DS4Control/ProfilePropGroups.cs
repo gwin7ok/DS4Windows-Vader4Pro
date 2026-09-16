@@ -21,6 +21,7 @@ using DS4Windows.StickModifiers;
 using DS4WinWPF.DS4Control;
 using Sensorit.Base;
 using DS4Windows.InputDevices;
+
 namespace DS4Windows
 {
     // ==========================================
@@ -53,7 +54,7 @@ namespace DS4Windows
         }
     }
 
-public class Sensitivity : ProfileSubSettingBase
+    public class Sensitivity : ProfileSubSettingBase
     {
         private double _xSensitivity = 1.0;
         private double _ySensitivity = 1.0;
@@ -91,7 +92,6 @@ public class Sensitivity : ProfileSubSettingBase
             RaiseAllPropertiesChanged();
         }
     }
-
 
     // ==========================================
     // パターン B: ネストされたサブ設定クラス群
@@ -134,19 +134,82 @@ public class Sensitivity : ProfileSubSettingBase
         public const double DEFAULT_OUTER_BIND_DEAD = 75.0;
         public const bool DEFAULT_OUTER_BIND_INVERT = false;
 
-        public class AxisDeadZoneInfo
+        public class AxisDeadZoneInfo : ProfileSubSettingBase
         {
-            public int deadZone = DEFAULT_DEADZONE;
-            public int antiDeadZone = DEFAULT_ANTIDEADZONE;
-            public int maxZone = DEFAULT_MAXZONE;
-            public double maxOutput = DEFAULT_MAXOUTPUT;
+            private int _deadZone;
+            private int _antiDeadZone;
+            private int _maxZone = 100;
+            private double _maxOutput = 100.0;
+
+            public int deadZone
+            {
+                get => _deadZone;
+                set
+                {
+                    if (_deadZone != value)
+                    {
+                        _deadZone = value;
+                        RaisePropertyChanged();
+                        RaisePropertyChanged(nameof(DeadZone));
+                    }
+                }
+            }
+
+            public int antiDeadZone
+            {
+                get => _antiDeadZone;
+                set
+                {
+                    if (_antiDeadZone != value)
+                    {
+                        _antiDeadZone = value;
+                        RaisePropertyChanged();
+                        RaisePropertyChanged(nameof(AntiDeadZone));
+                    }
+                }
+            }
+
+            public int maxZone
+            {
+                get => _maxZone;
+                set
+                {
+                    if (_maxZone != value)
+                    {
+                        _maxZone = value;
+                        RaisePropertyChanged();
+                        RaisePropertyChanged(nameof(MaxZone));
+                    }
+                }
+            }
+
+            public double maxOutput
+            {
+                get => _maxOutput;
+                set
+                {
+                    if (Math.Abs(_maxOutput - value) > 0.0001)
+                    {
+                        _maxOutput = value;
+                        RaisePropertyChanged();
+                        RaisePropertyChanged(nameof(MaxOutput));
+                    }
+                }
+            }
+
+            // PascalCase 互換プロパティ
+            public int DeadZone { get => deadZone; set => deadZone = value; }
+            public int AntiDeadZone { get => antiDeadZone; set => antiDeadZone = value; }
+            public int MaxZone { get => maxZone; set => maxZone = value; }
+            public double MaxOutput { get => maxOutput; set => maxOutput = value; }
 
             public void Reset()
             {
-                deadZone = DEFAULT_DEADZONE;
-                antiDeadZone = DEFAULT_ANTIDEADZONE;
-                maxZone = DEFAULT_MAXZONE;
-                maxOutput = DEFAULT_MAXOUTPUT;
+                _deadZone = 0;
+                _antiDeadZone = 0;
+                _maxZone = 100;
+                _maxOutput = 100.0;
+                RaiseAllPropertiesChanged();
             }
         }
 
@@ -192,67 +255,107 @@ public class Sensitivity : ProfileSubSettingBase
         public int timeout = DEFAULT_TIMEOUT;
     }
 
-    public class TriggerDeadZoneZInfo
+    public class TriggerDeadZoneZInfo : ProfileSubSettingBase
     {
-        public const int DEFAULT_MAX_ZONE = 100;
-        public const double DEFAULT_MAX_OUTPUT = 100.0;
+        // Default Dead Zone value
+        public const int DEFAULT_DEADZONE = 0;
+        // Default Max Zone value
+        public const int DEFAULT_MAXZONE = 100;
+        // Default Max Output value
+        public const double DEFAULT_MAXOUTPUT = 100.0;
 
-        // 外部からの直接アクセスに対応するpublicフィールド
-        public byte deadZone;
-        public int antiDeadZone;
-        public int maxZone = DEFAULT_MAX_ZONE;
-        public double maxOutput = DEFAULT_MAX_OUTPUT;
+        private int _deadZone = DEFAULT_DEADZONE;
+        private int _antiDeadZone = DEFAULT_DEADZONE;
+        private int _maxZone = DEFAULT_MAXZONE;
+        private double _maxOutput = DEFAULT_MAXOUTPUT;
 
-        // イベント通知やプロパティ経由のアクセスに対応するプロパティ群
-        public byte DeadZone
+        public delegate void DeadZoneChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
+        public event DeadZoneChangedHandler DeadZoneChanged;
+
+        public delegate void AntiDeadZoneChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
+        public event AntiDeadZoneChangedHandler AntiDeadZoneChanged;
+
+        public delegate void MaxZoneChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
+        public event MaxZoneChangedHandler MaxZoneChanged;
+
+        public delegate void MaxOutputChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
+        public event MaxOutputChangedHandler MaxOutputChanged;
+
+        public int deadZone
         {
-            get => deadZone;
+            get => _deadZone;
             set
             {
-                if (deadZone == value) return;
-                deadZone = value;
+                if (_deadZone == value) return;
+                _deadZone = value;
                 DeadZoneChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(DeadZone));
             }
         }
-        public event EventHandler DeadZoneChanged;
 
-        public int MaxZone
+        public int antiDeadZone
         {
-            get => maxZone;
+            get => _antiDeadZone;
             set
             {
-                if (maxZone == value) return;
-                maxZone = value;
+                if (_antiDeadZone == value) return;
+                _antiDeadZone = value;
+                AntiDeadZoneChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(AntiDeadZone));
+            }
+        }
+
+        public int maxZone
+        {
+            get => _maxZone;
+            set
+            {
+                if (_maxZone == value) return;
+                _maxZone = value;
                 MaxZoneChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(MaxZone));
             }
         }
-        public event EventHandler MaxZoneChanged;
 
-        public double MaxOutput
+        public double maxOutput
         {
-            get => maxOutput;
+            get => _maxOutput;
             set
             {
-                if (maxOutput == value) return;
-                maxOutput = value;
-                MaxOutputChanged?.Invoke(this, EventArgs.Empty);
+                if (Math.Abs(_maxOutput - value) > 0.0001)
+                {
+                    _maxOutput = value;
+                    MaxOutputChanged?.Invoke(this, EventArgs.Empty);
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(MaxOutput));
+                }
             }
         }
-        public event EventHandler MaxOutputChanged;
+
+        // PascalCase 互換プロパティ
+        public int DeadZone { get => deadZone; set => deadZone = value; }
+        public int AntiDeadZone { get => antiDeadZone; set => antiDeadZone = value; }
+        public int MaxZone { get => maxZone; set => maxZone = value; }
+        public double MaxOutput { get => maxOutput; set => maxOutput = value; }
 
         public void Reset()
         {
-            deadZone = 0;
-            antiDeadZone = 0;
-            maxZone = DEFAULT_MAX_ZONE;
-            maxOutput = DEFAULT_MAX_OUTPUT;
+            _deadZone = DEFAULT_DEADZONE;
+            _antiDeadZone = DEFAULT_DEADZONE;
+            _maxZone = DEFAULT_MAXZONE;
+            _maxOutput = DEFAULT_MAXOUTPUT;
+            RaiseAllPropertiesChanged();
         }
 
         public void ResetEvents()
         {
+            DeadZoneChanged = null;
+            AntiDeadZoneChanged = null;
             MaxZoneChanged = null;
             MaxOutputChanged = null;
-            DeadZoneChanged = null;
         }
     }
 
@@ -598,24 +701,87 @@ public class Sensitivity : ProfileSubSettingBase
         }
     }
 
-    public class GyroControlsInfo
+    public class GyroControlsInfo : ProfileSubSettingBase
     {
         public const string DEFAULT_TRIGGERS = "-1";
         public const bool DEFAULT_TRIGGER_COND = true;
         public const bool DEFAULT_TRIGGER_TURNS = true;
         public const bool DEFAULT_TRIGGER_TOGGLE = false;
 
-        public string triggers = DEFAULT_TRIGGERS;
-        public bool triggerCond = DEFAULT_TRIGGER_COND;
-        public bool triggerTurns = DEFAULT_TRIGGER_TURNS;
-        public bool triggerToggle = DEFAULT_TRIGGER_TOGGLE;
+        private string _triggers = DEFAULT_TRIGGERS;
+        private bool _triggerCond = DEFAULT_TRIGGER_COND;
+        private bool _triggerTurns = DEFAULT_TRIGGER_TURNS;
+        private bool _triggerToggle = DEFAULT_TRIGGER_TOGGLE;
+
+        public string triggers
+        {
+            get => _triggers;
+            set
+            {
+                if (_triggers != value)
+                {
+                    _triggers = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(Triggers));
+                }
+            }
+        }
+
+        public bool triggerCond
+        {
+            get => _triggerCond;
+            set
+            {
+                if (_triggerCond != value)
+                {
+                    _triggerCond = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(TriggerCond));
+                }
+            }
+        }
+
+        public bool triggerTurns
+        {
+            get => _triggerTurns;
+            set
+            {
+                if (_triggerTurns != value)
+                {
+                    _triggerTurns = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(TriggerTurns));
+                }
+            }
+        }
+
+        public bool triggerToggle
+        {
+            get => _triggerToggle;
+            set
+            {
+                if (_triggerToggle != value)
+                {
+                    _triggerToggle = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(TriggerToggle));
+                }
+            }
+        }
+
+        // PascalCase 互換プロパティ
+        public string Triggers { get => triggers; set => triggers = value; }
+        public bool TriggerCond { get => triggerCond; set => triggerCond = value; }
+        public bool TriggerTurns { get => triggerTurns; set => triggerTurns = value; }
+        public bool TriggerToggle { get => triggerToggle; set => triggerToggle = value; }
 
         public void Reset()
         {
-            triggers = DEFAULT_TRIGGERS;
-            triggerCond = DEFAULT_TRIGGER_COND;
-            triggerTurns = DEFAULT_TRIGGER_TURNS;
-            triggerToggle = DEFAULT_TRIGGER_TOGGLE;
+            _triggers = DEFAULT_TRIGGERS;
+            _triggerCond = DEFAULT_TRIGGER_COND;
+            _triggerTurns = DEFAULT_TRIGGER_TURNS;
+            _triggerToggle = DEFAULT_TRIGGER_TOGGLE;
+            RaiseAllPropertiesChanged();
         }
     }
 
@@ -822,21 +988,69 @@ public class Sensitivity : ProfileSubSettingBase
         }
     }
 
-    public class TouchpadAbsMouseSettings
+    public class TouchpadAbsMouseSettings : ProfileSubSettingBase
     {
-        public const int DEFAULT_MAXZONE_X = 90;
-        public const int DEFAULT_MAXZONE_Y = 90;
+        public const int DEFAULT_MAXZONE_X = 100;
+        public const int DEFAULT_MAXZONE_Y = 100;
         public const bool DEFAULT_SNAP_CENTER = false;
 
-        public int maxZoneX = DEFAULT_MAXZONE_X;
-        public int maxZoneY = DEFAULT_MAXZONE_Y;
-        public bool snapToCenter = DEFAULT_SNAP_CENTER;
+        private int _maxZoneX = DEFAULT_MAXZONE_X;
+        private int _maxZoneY = DEFAULT_MAXZONE_Y;
+        private bool _snapToCenter = DEFAULT_SNAP_CENTER;
+
+        public int maxZoneX
+        {
+            get => _maxZoneX;
+            set
+            {
+                if (_maxZoneX != value)
+                {
+                    _maxZoneX = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(MaxZoneX));
+                }
+            }
+        }
+
+        public int maxZoneY
+        {
+            get => _maxZoneY;
+            set
+            {
+                if (_maxZoneY != value)
+                {
+                    _maxZoneY = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(MaxZoneY));
+                }
+            }
+        }
+
+        public bool snapToCenter
+        {
+            get => _snapToCenter;
+            set
+            {
+                if (_snapToCenter != value)
+                {
+                    _snapToCenter = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(SnapToCenter));
+                }
+            }
+        }
+
+        // PascalCase 互換プロパティ
+        public int MaxZoneX { get => maxZoneX; set => maxZoneX = value; }
+        public int MaxZoneY { get => maxZoneY; set => maxZoneY = value; }
+        public bool SnapToCenter { get => snapToCenter; set => snapToCenter = value; }
 
         public void Reset()
         {
-            maxZoneX = DEFAULT_MAXZONE_X;
-            maxZoneY = DEFAULT_MAXZONE_Y;
-            snapToCenter = DEFAULT_SNAP_CENTER;
+            _maxZoneX = DEFAULT_MAXZONE_X;
+            _maxZoneY = DEFAULT_MAXZONE_Y;
+            _snapToCenter = DEFAULT_SNAP_CENTER;
+            RaiseAllPropertiesChanged();
         }
     }
 
