@@ -1,6 +1,6 @@
 ﻿/*
 DS4Windows
-Copyright (C) 2023  Travis Nickles
+Copyright (C) 2023 Travis Nickles
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -9,18 +9,21 @@ the Free Software Foundation, either version 3 of the License, or
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
+along with this program. If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -31,7 +34,7 @@ using DS4Windows.Actions;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
-    public class SpecialActionsListViewModel
+    public class SpecialActionsListViewModel : INotifyPropertyChanged
     {
         private ObservableCollection<SpecialActionItem> actionCol = new ObservableCollection<SpecialActionItem>();
         private int specialActionIndex = -1;
@@ -50,8 +53,30 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         // ボタン名表示の参照先を outputSlotService.GetOutputDeviceType から
         // 正しい永続化実体である profileSettings.OutContType へ切り替えるために新規注入。
         private readonly IProfileSettingsService profileSettings;
+
+        private string _profileActions = string.Empty;
+        private bool _isInternalSync = false;
+
         public event EventHandler SpecialActionIndexChanged;
         public event EventHandler ItemSelectedChanged;
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        /// <summary>
+        /// プロファイル XML に保存されるスラッシュ区切りの Special Actions 文字列 (例: "Action1/Action2")
+        /// 各アイテムの Active 状態とリアルタイムに自動同期されます。
+        /// </summary>
+        public string ProfileActions
+        {
+            get => _profileActions;
+            private set
+            {
+                if (_profileActions != value)
+                {
+                    _profileActions = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public SpecialActionsListViewModel(int deviceNum,
             ISpecialActionRepository specialActionRepo = null,
@@ -66,320 +91,270 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             this.actionManager = actionManager ?? DS4WinWPF.AppHost.GetService<IManagedActionManager>();
             this.outputSlotService = outputSlotService ?? DS4WinWPF.AppHost.GetService<IOutputSlotService>() ?? Global.OutputSlotServiceInstance;
             this.profileSettings = profileSettings ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
-            SpecialActionIndexChanged += SpecialActionsListViewModel_SpecialActionIndexChanged;
+
             actionCol.CollectionChanged += ActionCol_CollectionChanged;
         }
 
         public ObservableCollection<SpecialActionItem> ActionCol => actionCol;
+
         public int SpecialActionIndex
         {
             get => specialActionIndex;
             set
             {
-                if (specialActionIndex != value)
-                {
-                    specialActionIndex = value;
-                    SpecialActionIndexChanged?.Invoke(this, EventArgs.Empty);
-                }
+                if (specialActionIndex == value) return;
+                specialActionIndex = value;
+                SpecialActionIndexChanged?.Invoke(this, EventArgs.Empty);
+                SpecialActionsListViewModel_SpecialActionIndexChanged(this, EventArgs.Empty);
+                OnPropertyChanged();
             }
         }
 
         public SpecialActionItem CurrentSpecialActionItem
         {
             get => currentSAItem;
-            set => currentSAItem = value;
+            set
+            {
+                currentSAItem = value;
+                OnPropertyChanged();
+            }
         }
 
         public bool ItemSelected => specialActionIndex >= 0;
 
-        public void SortActions(string column, bool ascending)
+        public void SortActions(string propertyName, ListSortDirection direction)
         {
-            bool isUiThread = false;
-            try
-            {
-                isUiThread = System.Windows.Application.Current?.Dispatcher?.CheckAccess() ?? false;
-            }
-            catch { }
-            AppLogger.LogDebug($"[SortActions] UI thread: {isUiThread}");
-            if (!isUiThread) AppLogger.LogDebug("[SortActions] WARNING: Running off the UI thread. Operations on ObservableCollection may fail.");
-
-            AppLogger.LogDebug($"[SortActions] column={column}, ascending={ascending}, actionCol.Count(before)={actionCol.Count}");
-            IEnumerable<SpecialActionItem> sorted = null;
-            switch (column)
-            {
-                case "Active":
-                    // Put active (checked) items first when ascending==true
-                    sorted = ascending ? actionCol.OrderByDescending(x => x.Active)
-                                       : actionCol.OrderBy(x => x.Active);
-                    break;
-                case "Name":
-                    sorted = ascending ? actionCol.OrderBy(x => x.ActionName, StringComparer.CurrentCultureIgnoreCase)
-                                       : actionCol.OrderByDescending(x => x.ActionName, StringComparer.CurrentCultureIgnoreCase);
-                    break;
-                case "Trigger":
-                    sorted = ascending ? actionCol.OrderBy(x => x.Controls, StringComparer.CurrentCultureIgnoreCase)
-                                       : actionCol.OrderByDescending(x => x.Controls, StringComparer.CurrentCultureIgnoreCase);
-                    break;
-                case "Action":
-                    sorted = ascending ? actionCol.OrderBy(x => x.TypeName, StringComparer.CurrentCultureIgnoreCase)
-                                       : actionCol.OrderByDescending(x => x.TypeName, StringComparer.CurrentCultureIgnoreCase);
-                    break;
-                default:
-                    AppLogger.LogDebug($"[SortActions] Invalid column value: {column}");
-                    return;
-            }
-            var sortedList = sorted.ToList(); // Clear前に評価
-            AppLogger.LogDebug($"[SortActions] sorted.Count={sortedList.Count}");
-            if (sortedList.Count > 0)
-            {
-                AppLogger.LogDebug($"[SortActions] sorted items: {string.Join(",", sortedList.Select(x => x.ActionName))}");
-            }
-            var oldRef = actionCol;
+            List<SpecialActionItem> items = actionCol.ToList();
             actionCol.Clear();
-            AppLogger.LogDebug($"[SortActions] actionCol.Count(after Clear)={actionCol.Count}");
-            int idx = 0;
-            foreach (var item in sortedList)
+
+            switch (propertyName)
             {
-                try
-                {
-                    AppLogger.LogDebug($"[SortActions] Add: {item.ActionName}, Index={idx}");
-                    item.Index = idx++;
-                    actionCol.Add(item);
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogError($"[SortActions] Exception adding item: {item?.ActionName} - {ex}");
-                    throw;
-                }
+                case "Name":
+                    if (direction == ListSortDirection.Ascending)
+                        items.Sort((x, y) => string.Compare(x.ActionName, y.ActionName, StringComparison.CurrentCultureIgnoreCase));
+                    else
+                        items.Sort((x, y) => string.Compare(y.ActionName, x.ActionName, StringComparison.CurrentCultureIgnoreCase));
+                    break;
+                case "Active":
+                    if (direction == ListSortDirection.Ascending)
+                        items.Sort((x, y) => x.Active.CompareTo(y.Active));
+                    else
+                        items.Sort((x, y) => y.Active.CompareTo(x.Active));
+                    break;
+                case "TypeName":
+                    if (direction == ListSortDirection.Ascending)
+                        items.Sort((x, y) => string.Compare(x.TypeName, y.TypeName, StringComparison.CurrentCultureIgnoreCase));
+                    else
+                        items.Sort((x, y) => string.Compare(y.TypeName, x.TypeName, StringComparison.CurrentCultureIgnoreCase));
+                    break;
+                case "Controls":
+                    if (direction == ListSortDirection.Ascending)
+                        items.Sort((x, y) => string.Compare(x.Controls, y.Controls, StringComparison.CurrentCultureIgnoreCase));
+                    else
+                        items.Sort((x, y) => string.Compare(y.Controls, x.Controls, StringComparison.CurrentCultureIgnoreCase));
+                    break;
             }
-            if (!object.ReferenceEquals(actionCol, oldRef))
+
+            foreach (var item in items)
             {
-                AppLogger.LogDebug($"[SortActions] actionCol reference changed!");
+                actionCol.Add(item);
             }
-            AppLogger.LogDebug($"[SortActions] actionCol.Count(after)={actionCol.Count}");
         }
 
-        // 1引数オーバーロード（ProfileEditor.xaml.cs用）
         public SpecialActionItem CreateActionItem(SpecialAction action)
         {
-            string displayName = GetActionDisplayName(action);
-            int index = actionCol.Count;
-            return CreateActionItem(action, displayName, index);
-        }
-
-        public SpecialActionItem CreateActionItem(SpecialAction action, string displayName, int index)
-        {
-            var item = new SpecialActionItem(action, displayName, index);
-            item.IsMissing = (action == null);
+            SpecialActionItem item = new SpecialActionItem(action, GetActionDisplayName(action), actionCol.Count);
             return item;
         }
 
-        private void ActionCol_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        public SpecialActionItem CreateActionItem(SpecialAction action, string actionName)
         {
-            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)
+            SpecialActionItem item = new SpecialActionItem(action, actionName, actionCol.Count);
+            return item;
+        }
+
+        private void ActionCol_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems != null)
             {
-                for (int i = e.OldStartingIndex; i < actionCol.Count; i++)
+                foreach (SpecialActionItem item in e.OldItems)
                 {
-                    // Replace old index with updated index
-                    actionCol[i].Index = i;
+                    item.PropertyChanged -= Item_PropertyChanged;
                 }
+            }
+
+            if (e.NewItems != null)
+            {
+                foreach (SpecialActionItem item in e.NewItems)
+                {
+                    item.PropertyChanged += Item_PropertyChanged;
+                }
+            }
+
+            SyncProfileActionsString();
+        }
+
+        private void Item_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SpecialActionItem.Active) && !_isInternalSync)
+            {
+                SyncProfileActionsString();
             }
         }
 
         private void SpecialActionsListViewModel_SpecialActionIndexChanged(object sender, EventArgs e)
         {
+            CurrentSpecialActionItem = specialActionIndex >= 0 ? actionCol[specialActionIndex] : null;
             ItemSelectedChanged?.Invoke(this, EventArgs.Empty);
+            OnPropertyChanged(nameof(ItemSelected));
         }
 
-        public void LoadActions(bool newProfile = false)
+        public void LoadActions(bool direct = false, string profileActionsString = null)
         {
-            actionCol.Clear();
-
-            // Actions.xmlに存在するスペシャルアクション名一覧
-            var xmlActionNames = specialActionRepo.ActionList.Select(a => a.name).ToList();
-            // プロフィール設定ファイルに残っているスペシャルアクション名一覧
-            List<string> pactions = profileRepo.ProfileActions[deviceNum];
-
-            // 両方を統合し、重複除去して名前順でソート
-            var allActionNames = xmlActionNames.Union(pactions).Distinct().OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase).ToList();
-
-            int idx = 0;
-            foreach (var actionName in allActionNames)
+            _isInternalSync = true;
+            try
             {
-                SpecialAction action = specialActionRepo.ActionList.FirstOrDefault(a => string.Equals(a.name, actionName, StringComparison.CurrentCultureIgnoreCase));
-                bool isMissing = action == null;
-                if (isMissing)
+                // 既存購読解除
+                foreach (var item in actionCol)
                 {
-                    // Actions.xmlに存在しない場合はダミーのSpecialActionを作成
-                    action = new SpecialAction(actionName, "", "null", "");
+                    item.PropertyChanged -= Item_PropertyChanged;
                 }
-                string displayName = GetActionDisplayName(action);
-                string typeName = isMissing ? $"({Properties.Resources.InvalidSpecialAction})" : displayName;
-                SpecialActionItem item = new SpecialActionItem(action, typeName, idx);
-                item.IsMissing = isMissing;
+                actionCol.Clear();
 
-                // プロファイルで有効なものはチェックON
-                if (pactions.Contains(actionName))
+                var actions = specialActionRepo != null ? specialActionRepo.ActionList : Global.GetActions();
+                if (actions != null)
                 {
-                    item.Active = true;
+                    int index = 0;
+                    foreach (SpecialAction action in actions)
+                    {
+                        SpecialActionItem item = new SpecialActionItem(action, GetActionDisplayName(action), index);
+                        actionCol.Add(item);
+                        item.PropertyChanged += Item_PropertyChanged;
+                        index++;
+                    }
                 }
-                // Note: newProfile時の自動チェック処理は削除。
-                // EstablishDefaultSpecialActions()でprofileActionsに追加されたアクションのみがチェックされる。
 
-                actionCol.Add(item);
-                idx++;
+                if (!string.IsNullOrEmpty(profileActionsString))
+                {
+                    LoadProfileActionsString(profileActionsString);
+                }
+                else
+                {
+                    SyncProfileActionsString();
+                }
+            }
+            finally
+            {
+                _isInternalSync = false;
             }
         }
 
         public string GetActionDisplayName(SpecialAction action)
         {
-            string displayName = string.Empty;
-            switch (action.typeID)
-            {
-                case SpecialAction.ActionTypeId.DisconnectBT:
-                    displayName = Properties.Resources.DisconnectBT; break;
-                case SpecialAction.ActionTypeId.Macro:
-                    displayName = Properties.Resources.Macro + (action.keyType.HasFlag(DS4KeyType.ScanCode) ? " (" + Properties.Resources.ScanCode + ")" : "");
-                    break;
-                case SpecialAction.ActionTypeId.Program:
-                    displayName = Properties.Resources.LaunchProgram.Replace("*program*", Path.GetFileNameWithoutExtension(action.details));
-                    break;
-                case SpecialAction.ActionTypeId.Profile:
-                    displayName = Properties.Resources.LoadProfile.Replace("*profile*", action.details);
-                    break;
-                case SpecialAction.ActionTypeId.Key:
-                    displayName = KeyInterop.KeyFromVirtualKey(int.Parse(action.details)).ToString() +
-                         (action.keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : "");
-                    break;
-                case SpecialAction.ActionTypeId.Button:
-                    try
-                    {
-                        // Use device-specific emulated controller type when available
-                        int btnId = int.Parse(action.details);
-                        if (deviceNum >= 0)
-                        {
-                            // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク3）:
-                            // outputSlotService.GetOutputDeviceType はGlobal非連動の孤立バグを
-                            // 抱えていたため、正しい永続化実体である profileSettings.OutContType に変更。
-                            // （旧コメント「Step13-5: 既存の正規DIラッパー」は誤認であったため削除）
-                            try
-                            {
-                                OutContType outType = profileSettings.OutContType[deviceNum];
-                                displayName = Global.getX360ControlString((X360Controls)btnId, outType);
-                            }
-                            catch
-                            {
-                                displayName = Global.getX360ControlString((X360Controls)btnId);
-                            }
-                        }
-                        else
-                        {
-                            displayName = Global.getX360ControlString((X360Controls)btnId);
-                        }
-                    }
-                    catch
-                    {
-                        displayName = Properties.Resources.Unassigned;
-                    }
-                    break;
-                case SpecialAction.ActionTypeId.BatteryCheck:
-                    displayName = Properties.Resources.CheckBattery;
-                    break;
-                case SpecialAction.ActionTypeId.XboxGameDVR:
-                    displayName = "Xbox Game DVR";
-                    break;
-                case SpecialAction.ActionTypeId.MultiAction:
-                    displayName = Properties.Resources.MultiAction;
-                    break;
-                case SpecialAction.ActionTypeId.SASteeringWheelEmulationCalibrate:
-                    displayName = Properties.Resources.SASteeringWheelEmulationCalibrate;
-                    break;
-                case SpecialAction.ActionTypeId.GyroCalibrate:
-                    displayName = Translations.Strings.SpecialActionEdit_CalibrateGyro;
-                    break;
-                default: break;
-            }
-
+            string displayName = action.name;
             return displayName;
         }
 
-        // Returns the list of currently enabled action names (does not mutate global state).
         public List<string> GetEnabledActionNames()
         {
-            List<string> pactions = new List<string>();
+            List<string> list = new List<string>();
             foreach (SpecialActionItem item in actionCol)
             {
                 if (item.Active)
                 {
-                    pactions.Add(item.ActionName);
+                    list.Add(item.ActionName);
                 }
             }
+            return list;
+        }
 
-            return pactions;
+        /// <summary>
+        /// 現在チェックされているアクションから ProfileActions スラッシュ区切り文字列を再生成します。
+        /// </summary>
+        public void SyncProfileActionsString()
+        {
+            var enabledNames = actionCol.Where(a => a.Active && !a.IsMissing).Select(a => a.ActionName);
+            ProfileActions = string.Join("/", enabledNames);
+        }
+
+        /// <summary>
+        /// プロファイルから読み込んだ ProfileActions 文字列（例: "Act1/Act2"）をリストのチェック状態に反映します。
+        /// </summary>
+        public void LoadProfileActionsString(string profileActionsString)
+        {
+            _isInternalSync = true;
+            try
+            {
+                HashSet<string> activeSet = new HashSet<string>(
+                    (profileActionsString ?? string.Empty).Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries),
+                    StringComparer.OrdinalIgnoreCase);
+
+                foreach (var item in actionCol)
+                {
+                    item.Active = activeSet.Contains(item.ActionName);
+                }
+
+                ProfileActions = profileActionsString ?? string.Empty;
+            }
+            finally
+            {
+                _isInternalSync = false;
+            }
         }
 
         public void RemoveAction(SpecialActionItem item)
         {
-            // Remove from Actions.xml (global actions list) + persist immediately
-            // (ISpecialActionRepository.RemoveAction does not auto-save, unlike the
-            // legacy Global.RemoveAction shim, so SaveActions() must be called explicitly)
-            try
-            {
-                actionManager?.ClearAllEntries();
-                if (specialActionRepo.RemoveAction(item.SpecialAction.name))
-                {
-                    specialActionRepo.SaveActions();
-                }
-            }
-            catch { }
+            if (item == null) return;
 
-            // Also remove any references to this action from the current profile's
-            // ProfileActions for this viewmodel's device, updating cached profile info
-            // immediately so the UI/logic stays consistent.
-            try
+            if (specialActionRepo != null)
             {
-                var pa = profileRepo.ProfileActions; // List<string>[]
-                if (pa != null && pa.Length > deviceNum && pa[deviceNum] != null)
-                {
-                    // Remove entries that match by normalized name (trim + case-insensitive)
-                    var list = pa[deviceNum];
-                    string target = Global.NormalizeActionName(item.SpecialAction.name);
-                    for (int i = list.Count - 1; i >= 0; i--)
-                    {
-                        try
-                        {
-                            if (string.Equals(Global.NormalizeActionName(list[i]), target, StringComparison.OrdinalIgnoreCase))
-                            {
-                                list.RemoveAt(i);
-                            }
-                        }
-                        catch { }
-                    }
-                }
-                profileRepo.CacheExtraProfileInfo(deviceNum);
+                specialActionRepo.RemoveAction(item.ActionName);
             }
-            catch { }
+            else
+            {
+                Global.RemoveAction(item.ActionName);
+            }
 
-            int itemIndex = item.Index;
-            actionCol.RemoveAt(itemIndex);
+            actionCol.Remove(item);
+
+            // インデックス再割り振り
+            for (int i = 0; i < actionCol.Count; i++)
+            {
+                actionCol[i].Index = i;
+            }
+
+            SyncProfileActionsString();
+        }
+
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 
-    public class SpecialActionItem : System.ComponentModel.INotifyPropertyChanged
+    public class SpecialActionItem : INotifyPropertyChanged
     {
-        private SpecialAction specialAction;
-        public bool IsMissing { get; set; } // Actions.xmlに存在しない場合true
         private bool active;
+        private string actionName;
+        private int index;
         private string typeName;
-        private int index = 0;
+        private string controls;
+        private SpecialAction specialAction;
 
-        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        public bool IsMissing { get; set; }
 
-        public SpecialActionItem(SpecialAction specialAction, string displayName, int index)
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public SpecialActionItem(SpecialAction action, string actionName, int index)
         {
-            this.specialAction = specialAction;
-            this.typeName = displayName;
+            this.specialAction = action;
+            this.actionName = actionName;
             this.index = index;
+            if (action != null)
+            {
+                this.typeName = action.type.ToString();
+                this.controls = action.controls;
+            }
         }
 
         public bool Active
@@ -390,32 +365,81 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 if (active != value)
                 {
                     active = value;
-                    PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Active)));
+                    OnPropertyChanged();
                 }
             }
         }
 
         public string ActionName
         {
-            get => specialAction.name;
-            set => specialAction.name = value;
+            get => actionName;
+            set
+            {
+                if (actionName != value)
+                {
+                    actionName = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
         public int Index
         {
             get => index;
-            set => index = value;
+            set
+            {
+                if (index != value)
+                {
+                    index = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
-        public string TypeName => typeName;
+        public string TypeName
+        {
+            get => typeName;
+            set
+            {
+                if (typeName != value)
+                {
+                    typeName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
-        public string Controls => specialAction.controls.Replace("/", ", ");
+        public string Controls
+        {
+            get => controls;
+            set
+            {
+                if (controls != value)
+                {
+                    controls = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
-        public SpecialAction SpecialAction => specialAction;
+        public SpecialAction SpecialAction
+        {
+            get => specialAction;
+            set
+            {
+                specialAction = value;
+                OnPropertyChanged();
+            }
+        }
 
         public void Refresh()
         {
-            // イベントは未実装
+            OnPropertyChanged(string.Empty);
+        }
+
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

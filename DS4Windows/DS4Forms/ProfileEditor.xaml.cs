@@ -214,7 +214,8 @@ namespace DS4WinWPF.DS4Forms
 
             // 1) ViewModel-side sort execution
             AppLogger.LogDebug($"[SortSpecialActionsList] Calling specialActionsVM.SortActions");
-            specialActionsVM.SortActions(columnName, asc);
+            ListSortDirection sortDirection = asc ? ListSortDirection.Ascending : ListSortDirection.Descending;
+            specialActionsVM.SortActions(columnName, sortDirection);
             AppLogger.LogDebug($"[SortSpecialActionsList] specialActionsVM.SortActions completed");
 
             // 2) CollectionView の準備と状態ログ
@@ -1099,6 +1100,14 @@ namespace DS4WinWPF.DS4Forms
             lightbarRect.DataContext = null;
 
             deviceNum = device;
+
+            // Special Actions リストの読み込みとチェック状態の復元
+            List<string> currentActionsList = Global.ProfileActions != null && Global.ProfileActions.Length > deviceNum
+                ? Global.ProfileActions[deviceNum]
+                : null;
+            string currentProfileActions = currentActionsList != null ? string.Join("/", currentActionsList) : string.Empty;
+            specialActionsVM.LoadActions(false, currentProfileActions);
+
             if (profile != null)
             {
                 currentProfile = profile;
@@ -1364,56 +1373,66 @@ namespace DS4WinWPF.DS4Forms
         /// <summary>
         /// プロファイル保存および適用の共通処理ルート。
         /// UI上の選択値をSSOTに反映してXMLに保存し、親画面へ保存完了通知（ProfileSaved）を送信します。
-        /// （※プロファイル一覧の全体再同期やコントローラーへのホットリロードは親画面側で一括実行されます）
         /// </summary>
-        /// <param name="closeWindow">保存後に画面を閉じるかどうか（保存: true / 適用: false）</param>
+        /// <param name="isApply">保存（false）か適用（true）か</param>
         /// <returns>保存成否</returns>
-        private bool ExecuteSaveOrApply(bool closeWindow)
+        private bool ExecuteSaveOrApply(bool isApply = false)
         {
             string profileName = profileNameTxt.Text.Trim();
-            if (string.IsNullOrWhiteSpace(profileName))
+            if (string.IsNullOrEmpty(profileName))
             {
+                MessageBox.Show(Properties.Resources.ValidName, "DS4Windows",
+                    MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return false;
             }
 
-            // 1. UI上の Emulated Controller 選択値を SSOT へダイレクト反映
-            OutContType selectedContType = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
-            Global.OutContType[deviceNum] = selectedContType;
-            if (Global.ProfileSettingsServiceInstance != null)
+            // Phase 5 Step 14: SpecialActionsListViewModel から有効なアクション名リストを取得し、Global.ProfileActions に確実に反映
+            if (specialActionsVM != null)
             {
-                Global.ProfileSettingsServiceInstance.OutContType[deviceNum] = selectedContType;
+                specialActionsVM.SyncProfileActionsString();
+                Global.ProfileActions[deviceNum] = specialActionsVM.GetEnabledActionNames();
             }
 
-            if (profileSettingsVM != null)
+            SaveSplitterAndColumnWidths();
+
+            bool saved = false;
+            if (profileRepository != null)
             {
-                profileSettingsVM.ControllerTypeIndex = outConTypeCombo.SelectedIndex;
-                profileSettingsVM.TempControllerIndex = outConTypeCombo.SelectedIndex;
+                saved = profileRepository.SaveProfile(deviceNum, profileName);
+            }
+            else
+            {
+                saved = Global.SaveProfile(deviceNum, profileName);
             }
 
-            // 2. ディスク上の [Profile名].xml へ保存
-            bool saveSuccess = Global.SaveProfile(deviceNum, profileName);
-            if (!saveSuccess)
+            if (saved)
             {
-                AppLogger.LogToGui($"Failed to save profile: {profileName}", true);
+                AppLogger.LogToGui($"[DI] Profile '{profileName}' saved successfully.", false);
+                if (!isApply)
+                {
+                    ProfileSaved?.Invoke(this, profileName);
+                }
+                else
+                {
+                    Global.ApplyProfileToSlot(deviceNum, profileName, ProfileChangeSource.Manual);
+                }
+                return true;
+            }
+            else
+            {
+                AppLogger.LogToGui($"[DI] Failed to save profile '{profileName}'.", true);
                 return false;
             }
-
-            // 3. 親画面へプロファイル保存完了を通知
-            // （MainWindow.Editor_ProfileSaved がディスク全XML同期とホットリロードを一括実行します）
-            ProfileSaved?.Invoke(this, profileName);
-
-            // 4. 保存ボタン時は画面を閉じ、適用ボタン時は開いたまま作業継続
-            if (closeWindow)
-            {
-                this.Close();
-            }
-
-            return true;
         }
 
         private void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
-            ExecuteSaveOrApply(closeWindow: true);
+            ExecuteSaveOrApply(isApply: false);
+        }
+
+        private void ApplyBtn_Click(object sender, RoutedEventArgs e)
+        {
+            ExecuteSaveOrApply(isApply: true);
         }
 
         #endregion
@@ -1910,9 +1929,14 @@ namespace DS4WinWPF.DS4Forms
 
         private void SpecialActionCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            // Export is intentionally not invoked here; Apply/Save will handle persistence.
+            // Phase 5 Step 14: ViewModel 側の ProfileActions 文字列を即時再同期
+            if (specialActionsVM != null)
+            {
+                specialActionsVM.SyncProfileActionsString();
+                Global.ProfileActions[deviceNum] = specialActionsVM.GetEnabledActionNames();
+            }
+            applyBtn.IsEnabled = true;
         }
-
         private void Ds4LightbarColorBtn_MouseEnter(object sender, MouseEventArgs e)
         {
             highlightControlDisplayLb.Content = "Click the lightbar for color picker";
@@ -2294,10 +2318,6 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        private void ApplyBtn_Click(object sender, RoutedEventArgs e)
-        {
-            ExecuteSaveOrApply(closeWindow: false);
-        }
         private void TriggerFullPullBtn_Click(object sender, RoutedEventArgs e)
         {
             Button btn = sender as Button;
