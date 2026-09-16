@@ -19,7 +19,10 @@ namespace DS4WindowsTests
                 DispatchedSlots.Add(deviceIndex);
             }
         }
-
+        private record ApplyCall(int DeviceIndex, string ProfileName, bool IsTemp,
+                    bool LaunchProgram, ProfileChangeSource Source, string Prolog);
+        private record RestoreCall(int Slot, ProfileChangeSource Source);
+        private record ClearPendingCall(int Slot);
         private class MockProfileAppService : IProfileApplicationService
         {
             public int CallCount { get; set; }
