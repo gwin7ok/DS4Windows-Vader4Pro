@@ -94,24 +94,15 @@ namespace DS4Windows
         /// UIへの実際の表示可否（トースト／独自ウィンドウのどちらで出すか、あるいは出さないか）は、
         /// 本イベントの購読側（MainWindow.OnProfileChanged）が ProfileChangedNotification 設定を見て別途判定する。
         /// </param>
-        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null, bool displayNotification = true)
+        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null)
         {
-            // NLog Debugレベルで出力（NLog.configで制御可能）
-            Logger.Debug($"LogProfileChanged CALLED: device={deviceIndex}, profile={profileName}, isTemp={isTemp}, source={source}, display={displayNotification}");
+            Logger.Debug($"LogProfileChanged CALLED: device={deviceIndex}, profile={profileName}, isTemp={isTemp}, source={source}");
 
             try
             {
-                // originalMessageは呼び出し側で出力されるのでここでは出力しない（重複防止）
-
-                if (displayNotification)
-                {
-                    Logger.Debug("LogProfileChanged: Invoking ProfileChanged event");
-                    ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
-                }
-                else
-                {
-                    Logger.Debug("LogProfileChanged: Skipping notification (displayNotification=false)");
-                }
+                // ★ displayNotification による不要なスキップを完全撤廃し、プロファイル適用イベントを常に発行する
+                Logger.Debug("LogProfileChanged: Invoking ProfileChanged event");
+                ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
             }
             catch { }
         }

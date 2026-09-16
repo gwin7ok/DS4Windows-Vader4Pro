@@ -3146,7 +3146,7 @@ namespace DS4Windows
         /// （Phase5-Step14 フェーズDにて、判定基準を Global.Notifications から ProfileChangedNotification に暫定是正済み。
         /// フェーズGにて IProfileApplicationService への完全委譲に置き換え予定）
         /// </summary>
-        public static bool ApplyProfileToSlot(int slotIndex, string profileName, ProfileChangeSource source = ProfileChangeSource.Manual)
+        public static bool ApplyProfileToSlot(int slotIndex, string profileName, ProfileChangeSource source)
         {
             if (slotIndex < 0 || slotIndex >= ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
                 return false;
@@ -3173,8 +3173,9 @@ namespace DS4Windows
             //   本行は削除される予定（案①）。
             bool shouldDisplayNotification = Global.ProfileChangedNotification;
 
-            // 引数仕様: (deviceIndex, profileName, isTemp: false, launchProgram: false, service, source, prolog, shouldDisplay: shouldDisplayNotification)
-            return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, prolog, shouldDisplayNotification);
+            // 引数仕様: (deviceIndex, profileName, isTemp: false, launchProgram: false, service, source, prolog,)
+            // 内部の ApplyProfile 呼び出しから display 引数を削除
+            return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, null);
         }
 
         /// <summary>
@@ -3189,8 +3190,8 @@ namespace DS4Windows
         /// <param name="prolog">ログメッセージのプロローグ（nullの場合は自動生成）</param>
         /// <param name="displayNotification">通知を表示するか</param>
         /// <returns>プロファイル読み込み成功したか</returns>
-        public static bool ApplyProfile(int device, string profileName, bool isTemp, bool launchProgram,
-            ControlService control, ProfileChangeSource source, string prolog = null, bool displayNotification = true)
+        public static bool ApplyProfile(int device, string profile, bool isTemp, bool launchProgram,
+                    ControlService ctrl, ProfileChangeSource source = ProfileChangeSource.Default, string prolog = null)
         {
             // Debug: ApplyProfile呼び出しログ
             string stackTrace = new System.Diagnostics.StackTrace(1, true).ToString();
@@ -3251,7 +3252,7 @@ namespace DS4Windows
             AppLogger.LogDebug($"ApplyProfile: Calling LogProfileChanged...");
             try
             {
-                AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow, displayNotification);
+                AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow);
             }
             catch (Exception ex)
             {

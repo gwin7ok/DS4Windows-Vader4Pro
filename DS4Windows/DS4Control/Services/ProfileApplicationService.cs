@@ -36,11 +36,6 @@ namespace DS4Windows
 
             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                 (deviceIndex + 1).ToString(), action.details, device != null ? $"{device.Battery}" : "N/A");
-            // 修正前:
-            // bool display = _profileSettings?.ProfileChangedNotification ?? false;
-
-            // 修正後（バックエンドはUI設定を覗き見せず、通常のプロファイル切替イベントとして true で発行する）:
-            bool display = true;
 
             Task.Run(() =>
             {
@@ -49,14 +44,14 @@ namespace DS4Windows
                     device.HaltReportingRunAction(() =>
                     {
                         Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
-                            ProfileChangeSource.MappingAction, prolog, display);
+                            ProfileChangeSource.MappingAction, prolog);
                         _actionChain?.DispatchNextActions(deviceIndex, action);
                     });
                 }
                 else
                 {
                     Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
-                        ProfileChangeSource.MappingAction, prolog, display);
+                        ProfileChangeSource.MappingAction, prolog);
                     _actionChain?.DispatchNextActions(deviceIndex, action);
                 }
             });
@@ -89,8 +84,8 @@ namespace DS4Windows
         }
 
         public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
-            bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Manual,
-            string prolog = null, bool? displayNotification = null)
+                    bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Manual,
+                    string prolog = null)
         {
             if (string.IsNullOrWhiteSpace(profileName))
             {
@@ -108,21 +103,16 @@ namespace DS4Windows
             try
             {
                 DS4Device device = _control?.DS4Controllers?[deviceIndex];
-                // バックエンドは UI 表示制御を持たず、明示的な抑制指定がない限り素直にイベントを発行する
-                // （実際の表示可否・出力先の判断は、UI層の ShowProfileSwitchNotification に一元委ねる）
-                bool shouldDisplay = displayNotification ?? true;
+
                 Action applyAction = () =>
-                   {
-                       Global.ApplyProfile(deviceIndex, profileName, isTemp, launchProgram,
-                           _control, source, prolog, shouldDisplay);
-                       success = true;
-                   };
+                {
+                    Global.ApplyProfile(deviceIndex, profileName, isTemp, launchProgram,
+                        _control, source, prolog);
+                    success = true;
+                };
 
                 if (device != null)
                 {
-                    // SpecialAction (MappingAction) からの呼び出し時は、入力スレッド自身が実行しているため、
-                    // HaltReportingRunAction を呼ぶと自己待機タイムアウトを起こす。
-                    // そのため直接 applyAction を実行し、UI/手動操作時のみ Halt 待機を行う。
                     if (source == ProfileChangeSource.MappingAction)
                     {
                         applyAction();
@@ -137,7 +127,7 @@ namespace DS4Windows
                     applyAction();
                 }
 
-                AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyProfile: Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, displayNotification={shouldDisplay}, success={success}");
+                AppLogger.LogTrace($"[DI] ProfileApplicationService.ApplyProfile: Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, success={success}");
                 if (!success)
                 {
                     AppLogger.LogWarn($"[DI] ProfileApplicationService.ApplyProfile Result: FAILED for Slot {deviceIndex}, Profile '{profileName}', isTemp={isTemp}, source={source}");
