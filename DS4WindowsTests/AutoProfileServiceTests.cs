@@ -37,19 +37,24 @@ namespace DS4WindowsTests
 
         private class MockProfileAppService : IProfileApplicationService
         {
-            public class ApplyCall
+            public int ApplyCount { get; private set; }
+            public string LastAppliedProfile { get; private set; }
+            public int LastDeviceIndex { get; private set; }
+            public ProfileChangeSource LastSource { get; private set; }
+
+            public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
+                bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Manual,
+                string prolog = null)
             {
-                public int DeviceIndex { get; set; }
-                public string ProfileName { get; set; }
-                public bool IsTemp { get; set; }
-                public bool LaunchProgram { get; set; }
-                public ProfileChangeSource Source { get; set; }
-                public bool? DisplayNotification { get; set; }
+                ApplyCount++;
+                LastAppliedProfile = profileName;
+                LastDeviceIndex = deviceIndex;
+                LastSource = source;
+                return true;
             }
 
-            public List<ApplyCall> ApplyCalls { get; } = new List<ApplyCall>();
-
             public void ApplyFromAction(int deviceIndex, SpecialAction action) { }
+
             public bool RestoreFromAction(int deviceIndex) => true;
 
             public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false, bool launchProgram = false,

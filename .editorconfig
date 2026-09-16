@@ -9,6 +9,13 @@ indent_size = 4
 insert_final_newline = false
 trim_trailing_whitespace = true
 
+
+# Roslyn コードスタイル推奨 (IDExxxx) を問題タブから一括非表示にする
+dotnet_analyzer_diagnostic.category-Style.severity = none
+dotnet_diagnostic.IDE0090.severity = none
+dotnet_diagnostic.IDE0028.severity = none
+dotnet_diagnostic.IDE0300.severity = none
+
 # C# code style rules
 csharp_new_line_before_open_brace = all
 csharp_new_line_before_else = true

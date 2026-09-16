@@ -22,21 +22,22 @@ namespace DS4WindowsTests
 
         private class MockProfileAppService : IProfileApplicationService
         {
-            public class ApplyCall
+            public int CallCount { get; set; }
+            public string LastProfile { get; set; }
+            public ProfileChangeSource LastSource { get; set; }
+
+            public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
+                bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Manual,
+                string prolog = null)
             {
-                public int DeviceIndex { get; set; }
-                public string ProfileName { get; set; }
-                public bool IsTemp { get; set; }
-                public bool LaunchProgram { get; set; }
-                public ProfileChangeSource Source { get; set; }
-                public bool? DisplayNotification { get; set; }
+                CallCount++;
+                LastProfile = profileName;
+                LastSource = source;
+                return true;
             }
 
-            public List<ApplyCall> ApplyCalls { get; } = new List<ApplyCall>();
-            public List<int> RestoreCalls { get; } = new List<int>();
-            public List<int> ClearPendingCalls { get; } = new List<int>();
-
             public void ApplyFromAction(int deviceIndex, SpecialAction action) { }
+
 
             public bool RestoreFromAction(int deviceIndex)
             {
