@@ -1,0 +1,1727 @@
+[
+  {
+    "path": "DS4Windows/Actions/DefaultControllerRegistry.cs",
+    "blob": "8c77a4e84327fbd590241fe4fddcb019ad7cac98",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/DefaultMacroPlayer.cs",
+    "blob": "a81187f67d94f4c3759510c554954d886fe7d11d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/DefaultProcessLauncher.cs",
+    "blob": "7a01f65cd672d2d76c3bf4d43efba93b38f92733",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/DefaultProfileSwitcher.cs",
+    "blob": "e5ee3aef9bcf6ecffb8e31ebea6ee9c22bb6ccd2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IActionBinding.cs",
+    "blob": "afae7f09355ac0442013b68c3aceae2a5aaacfb2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IActionController.cs",
+    "blob": "af97daf368da1b9b5ae1fdde7479ec461f85f45a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IActionRegistry.cs",
+    "blob": "ae1773aa1c984d98d7cb392fec319f785770369c",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IControllerRegistry.cs",
+    "blob": "3a1c4ce6bcea8559c40382f7c00f394b104a9671",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IInputAction.cs",
+    "blob": "479e87f5b8903489b159a392bd843ea86c067c05",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IMacroPlayer.cs",
+    "blob": "6b1c42964a6f29705d385e4d63ca551c2e3c3e1d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IOutputAction.cs",
+    "blob": "95a9559cdb606d755e325e0c588f6a634f222404",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IOutputContext.cs",
+    "blob": "1e1107d79a6aa8bdb93944a7b1c4e227333c0e3e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IOutputHandler.cs",
+    "blob": "74a9b9731bb9121f927b48129e3d37e63df8099d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IProcessLauncher.cs",
+    "blob": "f8a2e0bb3a62410f12cef138af619f7c0b87bb06",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IProfileSwitcher.cs",
+    "blob": "368f1a849ef3212f4c86127cc02a040b5b942257",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/IRepeater.cs",
+    "blob": "0e790094c860ee4d3dadf25f087d15607f42ac17",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/ITriggerContext.cs",
+    "blob": "5bfcb2c35e2022c1bf30d04384b4b5f66a850487",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/KeyActionBinding.cs",
+    "blob": "3e4a5ff7e1ee02c1502f095f8575d6d09c323ba3",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/KeyButtonActionControllerAdapter.cs",
+    "blob": "7a21625ade6c4fdb9f7ac05eeb72bec4e36cf84d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/KeyInputAction.cs",
+    "blob": "06e3d58e5be04d8841e5260a4ff2185fa664133e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/KeyOutputAction.cs",
+    "blob": "6a047efbd8dd3d0411ea8803bdc67cb837c00e41",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/LaunchProcessAction.cs",
+    "blob": "d90f99a5c236c7f81b8ff9bbce17676f9404b974",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/LaunchProcessActionAdapter.cs",
+    "blob": "a7b96b62e5353fb1ecbf89d0c5cde5c467f82629",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/MacroAction.cs",
+    "blob": "b2288c8ad17165db2b69854912960f8c64f97b85",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/MacroActionAdapter.cs",
+    "blob": "5cb1e7c03548be4dd03ecc7458bf6fa7295ec166",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/MouseOutputAction.cs",
+    "blob": "15884af5fdce1f58ad7c9f186fb8546322763afe",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/OutputContextImpl.cs",
+    "blob": "0d9c888133f46a19415517f1a723447c08c76c84",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/ProfileSwitchAction.cs",
+    "blob": "81e5168e5b6ebc75538c06125f4020d2b8f5558d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/ProfileSwitchActionAdapter.cs",
+    "blob": "3a7f83f50f76715b452d8bcee92062625ce9e0bc",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/RepeatHelperToIRepeaterAdapter.cs",
+    "blob": "416beaa9d5b39afd47b10474a20baa8be63467b7",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Actions/TriggerContextImpl.cs",
+    "blob": "4fdad6ad0541e2e5d96e87baa44769b041bc343f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/ApiDTO/GitHubRelease.cs",
+    "blob": "15baccb705458328c0f07b695629fefe73f2ad32",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/App.xaml.cs",
+    "blob": "7b75dc898c3ceb869a8cb385dcfd4104a681c305",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/ArgumentParser.cs",
+    "blob": "ab1f48729fd6ee9d429d9be7629cc88a0ae4d9ce",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/AutoProfileChecker.cs",
+    "blob": "69ef13bfae7755fb2aab959ed6888a4ada90687e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/AutoProfileHolder.cs",
+    "blob": "ecd7f11759865beae9858a9a78381519e409a89a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/BezierCurveEditor/BezierCurve.cs",
+    "blob": "efd65c21cbfc47eb3aa2a0e490eb49d55301b1c4",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/AppHost.cs",
+    "blob": "a9822d1fbacbeee7db17020f10353b51e8f04f67",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IAppSettingsService.cs",
+    "blob": "8c23af01898d3faf18a70f4db101f5b7b209526d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IAppearanceSettingsService.cs",
+    "blob": "bbf703b96a27d9d61ba5d443613c8506d5b515a2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IAutoProfileService.cs",
+    "blob": "f04e720abd6e86849b89881598a43e99507d37e2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IDeviceStateService.cs",
+    "blob": "aa2194ad934d20e7e72ba34a9171ab6b55016eb3",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IEnvironmentService.cs",
+    "blob": "c0390952d879eed255ceb03940b188a5360c392c",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IMappingActionDispatcher.cs",
+    "blob": "f2f51c7b385a6413e5552371f1852d1e83a7f6a6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/INotificationService.cs",
+    "blob": "c433380af592bfa4078b742968e8d5efa6db1380",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IOutputSlotService.cs",
+    "blob": "7584584079f41d9d51eb90beafb8b908c01c8c46",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IOutputSlotStore.cs",
+    "blob": "fc98ad9bc8f5790c70e121cae3120436ac530a22",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IPathService.cs",
+    "blob": "dabd4cf3f44513761d98201b6d006f844da045e1",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IProfileActionChainService.cs",
+    "blob": "fe57f4377f6e52c32ffd3369d8a7a0e568a6c42e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IProfileActionProvider.cs",
+    "blob": "1b2a33688ce6142a8845b0406b4ce19abe55b9f2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IProfileApplicationService.cs",
+    "blob": "2437cde651168ed33e4421f7620d32ec207e400f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IProfileRepository.cs",
+    "blob": "576680a92112d0d0e17b2f1a8764c3458ee83fbc",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IProfileSettingsService.cs",
+    "blob": "fa94b10a35b2a798833baedaa30bab6f1254a995",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IProfileXmlStore.cs",
+    "blob": "e5fdb56c64d2ee9239fddd87b6e453878652b914",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/ISpecialActionRepository.cs",
+    "blob": "1cf5e2f6e10070e83c822a69661adb72793d1365",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IUdpServerService.cs",
+    "blob": "c2251f38001dccfb5f98a851a00207639e8b18c9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/IViewModelFactory.cs",
+    "blob": "a89072d54b7dd46256c0912420e4d6474fd26e69",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/ServiceProviderHolder.cs",
+    "blob": "ca0ad8175765cc36da31bf1843a7791e61bc29c7",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DI/ServiceRegistration.cs",
+    "blob": "b9dee38198a90880cf94026c9da5a4f9e1f71aa0",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Action.cs",
+    "blob": "a5df6b9a7ab49856c1315cbab77c6a3f6a1f81ec",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ActionFactory.cs",
+    "blob": "206449889ab496e5558287633b8aa0bd4ba95cd5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ActionManager.cs",
+    "blob": "92c369750443df95090cd33f8c694c6c73267690",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ActionRegistry.cs",
+    "blob": "8e6857ae61b8a1db28ea3d472e2a72fc1addd8c2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ControlService.cs",
+    "blob": "076e56f1817789d164b5c3291c3e030caa9219d6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ControlServiceDeviceOptions.cs",
+    "blob": "171c8030ab7e54c915e101a564a971ed549b709d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ControllerSlotManager.cs",
+    "blob": "caa3f5a7382182370d9794c1daf8cd7591cb1830",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DS4LightBar.cs",
+    "blob": "03260d2779c3c89948160db89f77cca82d48319d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DS4OutDevice.cs",
+    "blob": "704e51356cd7357736b2d746faa797d87368e019",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DS4OutDevices/DS4OutDeviceBasic.cs",
+    "blob": "3a139fa401077322ed9bd23534af1a6ca100f6f5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DS4OutDevices/DS4OutDeviceExt.cs",
+    "blob": "aa24b4466c36f2ca6a20177f14fdf02e93874cf9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DS4OutDevices/DS4OutDeviceExtras.cs",
+    "blob": "4aa37c9071f50b07816429eb479cb7e0c13bb1eb",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DS4OutDevices/DS4OutDeviceFactory.cs",
+    "blob": "ac4c2f34748bc6d659396c2bede5b2267500c4e2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DS4StateFieldMapping.cs",
+    "blob": "3da1ac732c0f8263bbff744f4ef4458d0a76623a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/ActionsDTO.cs",
+    "blob": "ee5d118817ac1fae868a9c0909dde0cbc05b29e0",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/AppSettingsDTO.cs",
+    "blob": "48655610a18c8b94052fc250153250fe269c75fc",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/AutoProfilesDTO.cs",
+    "blob": "6183801a9b59d8213df9b0b7d4be61671d5e2eac",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/DS4ControllerOptsDTO.cs",
+    "blob": "581be14dfd5d748da191cfe13add7e0505c9e332",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/DualSenseControllerOptsDTO.cs",
+    "blob": "ab85355bdbdfed5c3851a23c40cdfe08111899db",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/IDTO.cs",
+    "blob": "a90a74a9751a989ef1304d6699c42e8d21bcd58f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/JoyConControllerOptsDTO.cs",
+    "blob": "eb3335b0c9df4bccec9206bb6de916c0c375ffde",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/LinkedProfilesDTO.cs",
+    "blob": "dcca6b61d7293b2bc5714a938ee235ad1553c90b",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/OutputSlotPersistDTO.cs",
+    "blob": "ca3d5605658795f46c6a4f1efe9b85e56bdb7717",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/ProfileDTO.cs",
+    "blob": "8bfa32b35106eec8426f256359cdd3bad75b71e2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/SwitchProControllerOptsDTO.cs",
+    "blob": "124f40b7fe3c01763ed1fef02a7dbf9e43d1ee93",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/Vader4ProControllerOptsDTO.cs",
+    "blob": "ddb1ea8b6e76f9c609e8b5e34d9b14013a7b8eed",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DTOXml/XmlDataUtilities.cs",
+    "blob": "315f31097c4ca88f91c65227691350dbef3c3c81",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Debouncer.cs",
+    "blob": "6d755c851ba735ae1b72b1de928fc8c8f7844118",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DefaultActionFactory.cs",
+    "blob": "9c6ca09732a867cc8b0d300cfe1847bd735fe511",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DefaultActionManager.cs",
+    "blob": "7c554528399cd926cd9a2267dd02745eafc50174",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DefaultKeyActionCreator.cs",
+    "blob": "024b3bfa68d1fb51bda972510d2107577f1b4281",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DefaultKeyButtonActionControllerFactory.cs",
+    "blob": "dde82cd53fdce94371917349734cd9856b0045e5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DeltaAccelSettings.cs",
+    "blob": "831e97c0b639b6c741953ae1c71c868344addfe6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/DeviceRuntimeState.cs",
+    "blob": "9836219c9b9072c0306346a7057b090f499c0bad",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/FakeTrackball.cs",
+    "blob": "80befa46f9d146201b74c2d043a579b6748e3b1d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/HidHideAPIDevice.cs",
+    "blob": "19bf67c90ca3f0900c020383fecadfd2b5c3a737",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/IActionFactory.cs",
+    "blob": "488901f608813c4f23e4e660a692bedc30e7c6f6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/IInstanceIdentifiable.cs",
+    "blob": "953fed90c03a184e8e9d26a5d59b45abc73d3151",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/IKeyActionCreator.cs",
+    "blob": "5d0be448fcad9db045d839987dfc5188d64edc32",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/IKeyButtonActionControllerFactory.cs",
+    "blob": "7fb0e279c914993c22e965582ffdcdf304eb6497",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/IManagedActionManager.cs",
+    "blob": "6296ab1a3ae2af6bb0114299829febb12fb7ff4b",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ITouchpadBehaviour.cs",
+    "blob": "10262f0b7c9b35735e12654d62ecf03a1d0d4247",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/InputMethods.cs",
+    "blob": "172509aee659477871a10b47e22e18920388fd24",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/KeyAction.cs",
+    "blob": "f4e04f9e87270a45a4cbf96a2bbef26760586487",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/KeyActionAdapter.cs",
+    "blob": "29d6b5544bd3335d95ce1c706f8d79b1c352178c",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/KeyButtonActionController.cs",
+    "blob": "362dbf98029eff2c287f564ef32051338ae0109d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Log.cs",
+    "blob": "58c19bf4aed353dcc022dc8dc32fb417e9377924",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/MacroManager.cs",
+    "blob": "155f13a4c4d7ea52ca7b7f12fdcd60e85e12c7bf",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/MacroParser.cs",
+    "blob": "545eebf417deb3ac2b619f0ea0bce4ff95d0ef65",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Mapping.cs",
+    "blob": "621607955c231c34c6538057d832783f634a7ca0",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Mouse.cs",
+    "blob": "2a6dbffa2a7bfedf253cd2131c34dc323cd27dc9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/MouseCursor.cs",
+    "blob": "c468dffc3157ceaa85f12f848a76aa495e5e30b6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/MouseWheel.cs",
+    "blob": "733b0576134f645968843ecc33f3904221125fc0",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutSlotDevice.cs",
+    "blob": "fec109429a369e8fa90312774fc95e51c2e324c4",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputDevice.cs",
+    "blob": "9bdc2e300ea3a5a870502e47ff6d0495c02e3cd9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputKBM/FakerInputHandler.cs",
+    "blob": "f242c7e996dd1622f12f2e6bdfecf3a487012b4d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputKBM/FakerInputMapping.cs",
+    "blob": "c13d76a09a4dbdaecb5b447830d9d33980c0b0c5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputKBM/SendInputHandler.cs",
+    "blob": "fc615ed0fffb06ec48c0774deabc1bccafcf0901",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputKBM/SendInputMapping.cs",
+    "blob": "94444920d2432bf1102bd48e90390bc3ee76af12",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputKBM/VirtualKBMBase.cs",
+    "blob": "dde6ffaebe6d3c17f3b65962ea26b3429286741a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputKBM/VirtualKBMFactory.cs",
+    "blob": "f02f7ea7644422a2f073fd772556590c4ca7f0f3",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputKBM/VirtualKBMMapping.cs",
+    "blob": "562646b859f8f9cb1bd56ee31776b25bd6ebec2c",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputSlotManager.cs",
+    "blob": "ea77d69606f863eb186640dfc6dd10ddc14186d5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/OutputSlotPersist.cs",
+    "blob": "abc94c5dfbaf71465cd8dd38a5f00b029f8b093f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/PresetOption.cs",
+    "blob": "ffec2ab782b062acb747e5e3a40d0f50c605cc66",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/PressActionController.cs",
+    "blob": "378680a4c78c2b59e88ffa3185d7cc8aba02ce61",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ProfileMigration.cs",
+    "blob": "e48bf0e6306b126294bb1a67df2f32c730678904",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ProfilePropGroups.cs",
+    "blob": "a21f6aef31d3632a36da1b3681d328e2d1c82357",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ProfileRepository.cs",
+    "blob": "3fe6a8594b4d1bc6b78c2a31e937b666f21330d3",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ProfileSubSettingBase.cs",
+    "blob": "de995a3b9d4e0c2b19c0213844231013f8c83233",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Program.cs",
+    "blob": "bdc88c215ad85f8f67cd35637f2fd442f262b978",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ReleasePolicy.cs",
+    "blob": "7266f2b34e96470396eb39799db7f73132eaa41b",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/RepeatHelper.cs",
+    "blob": "14102d4c6b4e167eaa6d43343e489ccdc3872ede",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ScpUtil.cs",
+    "blob": "52ce83b52e1da0f5da8f2586a1d2862a5ea27e44",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/SensitivitySettings.cs",
+    "blob": "0c8efda97f0f9e152ffe3a2bc0a273e30b461012",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/AppNotificationRegistration.cs",
+    "blob": "edf68d3484651ef6bb167e86dd6ba3fd7ef73e31",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/AppNotificationService.cs",
+    "blob": "a309ab7e28e9817106210305ed3ab84792430897",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/AppSettingsService.cs",
+    "blob": "fb936cda282d7d76092fd2342b66bdf238ee9951",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/AppearanceSettingsService.cs",
+    "blob": "0087dc5d1c4b12d081be502baa22d6d73e37d9da",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/AutoProfileService.cs",
+    "blob": "236922eb07ef1600fb2879b1645a93ed614876d6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/DefaultElevatedProcessLauncher.cs",
+    "blob": "ea5bc22b8f516cce1015d4036b9bdd036b74bca9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/DefaultProcessInspector.cs",
+    "blob": "d6da24a57003aef7497a5af87633d1fa7cc5cd0f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/DeviceStateService.cs",
+    "blob": "3b7202dd5b23173ed3385a777cf57df145dfce1a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/Ds4DeviceRegistryAdapter.cs",
+    "blob": "7ec3393fac266e319af9dd1d0a3f091166c55e2d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/EnvironmentService.cs",
+    "blob": "4e01475868509850aafe994c9c75c999567f298f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/IDeviceStateAccessor.cs",
+    "blob": "7325efc5552c64e9c2192cb851369ccd5d96c229",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/IDs4DeviceRegistry.cs",
+    "blob": "09a64bec1280d6d820e6fbbaffd295a773408f99",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/IElevatedProcessLauncher.cs",
+    "blob": "7e2cfbb3fa011c856c136d0c93015cf8a6a4f64a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/IProcessInspector.cs",
+    "blob": "09b9f614b16f8bf6eb57ab0b0c0d52cd295e072f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/IVirtualKBM.cs",
+    "blob": "9b0dd10370d1f45e230cf9216b7e4560295b2d35",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/MappingActionDispatcher.cs",
+    "blob": "dd9ce86db17f6ef489d6c0b0c0854211385c8163",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/OutputKBMHandlerAdapter.cs",
+    "blob": "f1ed173bcb7b1016773b3d80904458d2880922a5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/OutputSlotService.cs",
+    "blob": "e39e6c9f1fd76bc86c3e7f22f2806c622a429923",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/OutputSlotStore.cs",
+    "blob": "f7d6b92e2b48e6e413d9599a8f7953c3ae1b0e6e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/PathService.cs",
+    "blob": "a02567afc5d59f6b9ddcf695b58878dbf7b7a97e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/ProfileActionChainService.cs",
+    "blob": "797dfd5831dd9d206630814c10aedad304df5822",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/ProfileActionProvider.cs",
+    "blob": "464355f09418f4d2717ec3765accdb0aedc5b89c",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/ProfileApplicationService.cs",
+    "blob": "4bbf6bb0b44a9acd0575774055d50667d3ee6827",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/ProfileRepository.cs",
+    "blob": "00260170969200a016ebdc94adff6de296f5c269",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/ProfileSettingsService.cs",
+    "blob": "e1a1a9e8e8397b27f01a8f31e6c2077cc90d47af",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/ProfileXmlStore.cs",
+    "blob": "b0d06c4ce35eccfdadd0e483b75baaa7ca6ef453",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/SpecialActionRepository.cs",
+    "blob": "900cfdbd6fc6c3035c31579c59f0a0d7e99af811",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/UdpServerService.cs",
+    "blob": "d9298953d765a8517eb6f23da026687ec5ea7417",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Services/ViewModelFactory.cs",
+    "blob": "6bb15ae9378820f70f2fea96d6df073382577470",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/SpecialActionBase.cs",
+    "blob": "e3cce211057ea8cd44a67c4d4ef502fbbcccc140",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/StickOutCurve.cs",
+    "blob": "32736c1837cc5ddf0c5e2d681e15f43ca8d48874",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/SyntheticDispatcher.cs",
+    "blob": "970da44e073c2bbfda544654f7a45b48da6511ad",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ToggleActionController.cs",
+    "blob": "e4a6403ed8638c5a37881b37630aaada29528512",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/ToggleController.cs",
+    "blob": "781a4173e6f19fbe6de399fe8a3995263885b580",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Trigger.cs",
+    "blob": "d2ece00ceb15272cb56c53aa959073a566752f52",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/UdpServer.cs",
+    "blob": "2d703579ee343bca0f09c9955ed9df18708d3b8d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Util.cs",
+    "blob": "96e86549f743d5b51623db9496c77dc0696aaf24",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/WindowPlacementHelper.cs",
+    "blob": "293de6119fb4e085a0282c61ef6ce60739ed5ae9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Control/Xbox360OutDevice.cs",
+    "blob": "6d2496822a7b45b351b33da0bcf4eba66d11dd18",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/About.xaml.cs",
+    "blob": "fd2e8da9cadeb9994921243a3afad0c14b1dfd9e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/AutoProfiles.xaml.cs",
+    "blob": "90482000b4177d9835afb00a09c810524c74d614",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/AxialStickUserControl.xaml.cs",
+    "blob": "d6762f810f1c5c4122ecd25e9bfc06a14642168a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/BindingWindow.xaml.cs",
+    "blob": "abd9b5db6b13e938e828c192613ea8523e2819e7",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ChangelogWindow.xaml.cs",
+    "blob": "e774264a4e8fee58bbbab6ac21de5fc8879659c5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ColorPickerWindow.xaml.cs",
+    "blob": "ae5f0f9635d475928ce0e4ebe5a1eae872fea0ed",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ControllerReadingsControl.xaml.cs",
+    "blob": "b14d2bf5516d058a53fe5a64c0219797aaaa72d3",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ControllerRegisterOptionsWindow.xaml.cs",
+    "blob": "60c476378fc864f97d0882329a496dbc513438fb",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/Converters/EscapeAccessKeysConverter.cs",
+    "blob": "8fc8a03406aaf03dfafe015eb031deffbb3ace81",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/Converters/InvertBoolToVisibilityConverter.cs",
+    "blob": "482bb4f273e2048abfdd804e9af3ee84639cf9d4",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/Converters/MissingToGrayConverter.cs",
+    "blob": "65153231302f6d0963c28478fc781cec64309f74",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/DupBox.xaml.cs",
+    "blob": "0702e1e95f48c49489f9a27ab4b082fd570b4b32",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/FirstLaunchUtilWindow.xaml.cs",
+    "blob": "0761028626691b3fe46ea94dee01504b1b154990",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/LanguagePackControl.xaml.cs",
+    "blob": "024323edb592bc677493050b14e99ff20260f1d6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/LanguageSelectDialog.xaml.cs",
+    "blob": "63548ab3f4f2e6ea67cded0eb9556c8125c2598d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/LightbarMacroCreator.xaml.cs",
+    "blob": "9039e87f58f15002e5485a3886a662929a52d9db",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/LogMessageDisplay.xaml.cs",
+    "blob": "ad1df013e8fb62d112eda09e30dde9ba7cbdcc8a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/MainWindow.xaml.cs",
+    "blob": "e2cfb14469fe1ec995194ef1a28e38b7e75cc9c9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/OutputSlotManagerControl.xaml.cs",
+    "blob": "132183d641feb39ed90bc3aed1b2bdea97f66858",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/PluginOutDevWindow.xaml.cs",
+    "blob": "e7e3ed5fe7db3ec13abb44cf3844745164c34778",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/PresetOptionWindow.xaml.cs",
+    "blob": "940ccda454d17370f9d4469c1d708b9fc277c295",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ProfileEditor.xaml.cs",
+    "blob": "a1fe872280ebc38cb07575e28fbb32786bd9f3f6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ProfileNotificationWindow.xaml.cs",
+    "blob": "7cf3d1b6aa0c1d9b1dd79ddf5fcc8cb0becb19c1",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/RecordBox.xaml.cs",
+    "blob": "3b717842b0d77e6dff62f0039ec0ec70aa46f1b4",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/RecordBoxWindow.xaml.cs",
+    "blob": "c6b1e5c11bbcd5635c6a84d7c826819ba51a9f17",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/RenameProfileWindow.xaml.cs",
+    "blob": "4e8b6e2ff333d3490f56a8fd9ed50deadcf03d16",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/SaveWhere.xaml.cs",
+    "blob": "6892aa3266b6e49f5daf80a151fbddf49e0e2f5e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/SpecialActionEditor.xaml.cs",
+    "blob": "961305e5e313117841d7c4e5baaa3ad9953ff6dd",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/StickCalibrationWindow.xaml.cs",
+    "blob": "983c1ffcb85c41537ef7abd68f6d19867b28aca6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/Themes/_.cs",
+    "blob": "6808ae3ca6fc929849e8534b19c545f439804d55",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/TouchButtonUserControl.xaml.cs",
+    "blob": "b808631cb8698e3609ff07914d5cd94519224014",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/UpdaterWindow.xaml.cs",
+    "blob": "859d1aa4bc88e7248a31decbb2c85906aae44cb3",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/UtilMethods.cs",
+    "blob": "0693dca37271b7d4aaec3b02780b65b6012be297",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/AboutViewModel.cs",
+    "blob": "488d95d569ffed3fe3e3af72255c266092fd0fa0",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/AutoProfilesViewModel.cs",
+    "blob": "2331fcc617650851a0572348c5445fa9af370825",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/AxialStickControlViewModel.cs",
+    "blob": "d1687489bd532d9ee9795a4223b5ae7b26f20750",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/BindingWindowViewModel.cs",
+    "blob": "44f99a17991f7a47d66758ab772d7eb352b1800e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/ChangelogViewModel.cs",
+    "blob": "8b2fbb8fae01b3636117d959b9bc4ec530176653",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/ControllerListViewModel.cs",
+    "blob": "fd14659b134886324e8da776a488f610c7a1fc66",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/ControllerRegDeviceOptsViewModel.cs",
+    "blob": "62c1ae61595fb9d72fac3b96a6dfc6049144b6a4",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/ControllersViewModel.cs",
+    "blob": "2555ec756a028f37aae3e6c3cec6f32a403a25f1",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/CurrentOutDeviceViewModel.cs",
+    "blob": "3779aa814a2a19343ee4a5284999ffd5388600b6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/FirstLauchUtilViewModel.cs",
+    "blob": "be2fa490ad167a33a7754a50db9ac6533a376ce4",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/LanguagePackViewModel.cs",
+    "blob": "82f652933d64938cf461fcaa1b804db71df45f2f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/LightbarMacroViewModel.cs",
+    "blob": "8fd0a02774e148062a6b6d3c03e45db915b1f6ec",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/LogViewModel.cs",
+    "blob": "3348b544be1258e8e737bd6a542564d063670171",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/MainWindowsViewModel.cs",
+    "blob": "ccedad23e2620f7b9609c1acd44123f61ed1f6e9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/MappingListViewModel.cs",
+    "blob": "1171c45b8ed76235eb308f2156d84e943fbdd3e6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/PresetOptionViewModel.cs",
+    "blob": "301d5433a813324e6e9f3b61fd12aae4c4326d02",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/ProfileSettingsViewModel.cs",
+    "blob": "d0409b06f35c3fdc4138edd1d97d3809dc115451",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/RecordBoxViewModel.cs",
+    "blob": "9d0306419971d7cdbf7d03efe3937a6ec72f2031",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/RenameProfileViewModel.cs",
+    "blob": "9fe5321c75847fba885b9dc36da722098cc2927e",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SettingsViewModel.cs",
+    "blob": "0e22919685bd810d3286dc46840750724c66dfe5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActEditorViewModel.cs",
+    "blob": "005e69d783bbc6c394ecca48822a48de9722bdb6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActions/CheckBatteryViewModel.cs",
+    "blob": "9adc57704270f964689d5143ce0e04961159364b",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActions/LaunchProgramViewModel.cs",
+    "blob": "640ff65753ee58b4b65f9b66f7d4dd7a8cd3ef19",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActions/LoadProfileViewModel.cs",
+    "blob": "91cfc21e32b92e285b9dd244c4b9861bd91820b8",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActions/MacroViewModel.cs",
+    "blob": "3a553147d1354ad594129c157734ea9e05907ab8",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActions/MultiActButtonViewModel.cs",
+    "blob": "b2be7a841243bdd68c60ac11473054023317ac31",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActions/PressKeyViewModel.cs",
+    "blob": "ad27dbceb72093243d6fc26ee124f0323afa06d2",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActions/SpecialActionViewModel.cs",
+    "blob": "739a237f755375fd5763e86fec38757d309072f9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/SpecialActionsListViewModel.cs",
+    "blob": "a42f7924e9c4fe5e79141333a4190c714589848c",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/TouchButtonUserControlViewModel.cs",
+    "blob": "ada90ccaaad68c7404f1b37001da6b06bf89e087",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/TrayIconViewModel.cs",
+    "blob": "4990b1cf564e18a2a8f16732641ee77016245e8c",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/UpdaterWindowViewModel.cs",
+    "blob": "ab93407fe9f77068b7c6366068fa3907aeabd4f3",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/Util/EnumChoiceSelection.cs",
+    "blob": "8c5ae189afa6bb9fa60c1c061eab4d94d4a8fba6",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/Util/EventHandlers.cs",
+    "blob": "d867e9ad6ebd49fc00bc251e8c12e35ef49b1ec4",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/ViewModels/Util/NotifyDataErrorBase.cs",
+    "blob": "d1ea325a5512b0f76bb5f522f451d94595482fe9",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Forms/WelcomeDialog.xaml.cs",
+    "blob": "2b99c1b87d85b7067c9957304a3c809581035b19",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/Crc32.cs",
+    "blob": "e78928c488ad719bed71a421f7aa60503c955371",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/DS4Device.cs",
+    "blob": "e4309d2e74c3ab7a7b5cfbe1c29aae3aba44fc5f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/DS4Devices.cs",
+    "blob": "ede097d61d1286342513a863f790d94f16c7df39",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/DS4Sixaxis.cs",
+    "blob": "7b11b34fd3622db1e64f7bb8cc6a98421b345704",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/DS4State.cs",
+    "blob": "95b823658e1122a75a5dc04de3da275b9fc2dd52",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/DS4StateExposed.cs",
+    "blob": "9200722517741700b494b71166ad0cb0d0c28ccb",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/DS4Touchpad.cs",
+    "blob": "bf96ba3d8c153fb3a9b075753d1e9d4f63fb29ef",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/InputDevices/DS3Device.cs",
+    "blob": "7a27d1739b9f7d363762fa79d11c84ce7208e31f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/InputDevices/DualSenseDevice.cs",
+    "blob": "ca9c505029396dc8da28bb43c3430f32aa8d36bd",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/InputDevices/InputDeviceFactory.cs",
+    "blob": "6198c4fbdf17e0abc3f0d9670e0b75183f34554b",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/InputDevices/JoyConDevice.cs",
+    "blob": "25891677d046273af5e410b50af58fb4fd412381",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/InputDevices/SwitchProDevice.cs",
+    "blob": "068bc1f1532bf05c450fc51ccc0fbaf97830dd48",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/InputDevices/TriggerEffects.cs",
+    "blob": "b2c3ab4d546adfe4642de87335774f0bea1b0332",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/InputDevices/Vader4ProDevice.cs",
+    "blob": "a133111a3a2d441aa022551666ed1bf611f9871a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DS4Library/InputDevices/Vader4ProReport.cs",
+    "blob": "05b5596189e374a5de1c74adf3251dce0b2847b7",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/DateTimeJsonConverter.cs",
+    "blob": "d644e64031793e1e121a2aa10e97bc9e4fa24c26",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/GlobalSuppressions.cs",
+    "blob": "06c05edc38fbf79d35cc94e915f9d71b3871290d",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/HidLibrary/Extensions.cs",
+    "blob": "13980aaea981bbb464537c4ff3a5f1729a078614",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/HidLibrary/HidDevice.cs",
+    "blob": "96f16ae42a4e3e5587dc1e68ccc8ed7583cb1ff7",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/HidLibrary/HidDeviceAttributes.cs",
+    "blob": "77cbd32ad9fc5781eca268877ad759dda3bcf738",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/HidLibrary/HidDeviceCapabilities.cs",
+    "blob": "71efe714cebaeb6820cf38a156da5e55f3292a73",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/HidLibrary/HidDevices.cs",
+    "blob": "cd97aa6e18c189c13655f20f87b93dc599f8e52b",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/HidLibrary/NativeMethods.cs",
+    "blob": "7a4002904028b5b0710ec9708d2e2122ac8cd9ce",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/KeyboardSettings.cs",
+    "blob": "e9c9c0357edac990b015d851cf9b21f8ea27a35a",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/LogItem.cs",
+    "blob": "1f3f7e0324ef24219ca55bd6589b3597d6634a40",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/LogRotator.cs",
+    "blob": "b844d31e7b54fe92142f0208f15237faccc794b1",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/LogWriter.cs",
+    "blob": "6bfe948be7418eda2c8dbfb43755834406468a84",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/LoggerHolder.cs",
+    "blob": "21b114da6cab259da7cbf1500f461e7c8ed81dfa",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Notifications/NotificationService.cs",
+    "blob": "bc2efd63840f41d47a85abdf8b190241258abefc",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/OneEuroFilter.cs",
+    "blob": "ba0e070f06d0678bf6f0d6cbbfd3b5a19b3e7060",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/ProfileEntity.cs",
+    "blob": "3b0c00915a6a67305877660e91f1e2fa9887f06f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/ProfileList.cs",
+    "blob": "3913327a63b93067cdef61144b59c6321bcb0875",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Properties/AssemblyInfo.cs",
+    "blob": "98a8e29c98fae75a9bb3fe295237380a853ffba3",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Properties/Resources.Designer.cs",
+    "blob": "c684ca63ba6a5ec640948126ab253d9f41a77e13",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Properties/Settings.Designer.cs",
+    "blob": "9b02aafc7c8c3fa6d18699109bf8f40ee56faa97",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/ReaderWriteLockSlimWrappers.cs",
+    "blob": "14d943d5210abe05f5f87a63c034b11e68042740",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/StartupMethods.cs",
+    "blob": "5d1939ceac4566100ad50d19773b56f204cb68a0",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/StatusLogMsg.cs",
+    "blob": "8ae7806d5a1a9119c3939a480f47e85c9ec8e7db",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/Translations/Strings.Designer.cs",
+    "blob": "bff4fdca720e74a077437d10e73a7963409e94f5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/UpdaterElevatedHelper.cs",
+    "blob": "9a1ef5c45478118b9f5a5b348aebe59bfa2ed346",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/UpdaterInstallTrace.cs",
+    "blob": "0367b27aa202edc96f61a2572428ec28ec1d8256",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/UpdaterInstaller.cs",
+    "blob": "fca144ddfe8222160bf2f621e583528e50298bba",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/VJoyFeeder/vJoyFeeder.cs",
+    "blob": "80b1dbfc8153488eb4af5400eadf6ca47f3dd01f",
+    "scope": "production"
+  },
+  {
+    "path": "DS4Windows/WindowLayoutDefaults.cs",
+    "blob": "642af2d6f9acc32ff4f9b78f0b9b40c1170f44b5",
+    "scope": "production"
+  },
+  {
+    "path": "DS4WindowsTests/ActionControllerTests/FakeDeterministicRepeater.cs",
+    "blob": "6505a56b05fd57446b9fba519fd163b6a1b2a768",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ActionControllerTests/MockManagedActionManager.cs",
+    "blob": "4fd5548cdb54607c21b7fab468f4c82df6cf8036",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ActionControllerTests/TestActionControllerTests.cs",
+    "blob": "862a53837b1e4877d36e784749b137d4ac3d26aa",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ActionControllerTests/ToggleAndPressedOnceTests.cs",
+    "blob": "2d28b4e63b7116fdaf0a0137b7cdac6e55c8c0c6",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/AppSettingsServiceTests.cs",
+    "blob": "e82024fc16fe87e97772ddefb8d28a08b76e6640",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/AutoProfileServiceTests.cs",
+    "blob": "ee95f8a47d9e820012806dad6beb7e3dbc3e5e11",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/AutoProfilesViewModelTests.cs",
+    "blob": "7bfcef3f356bace6ec2b62f415b1dbdac6bdc253",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/CompositionRootTests.cs",
+    "blob": "4ba3a2df36d257f90a2d61a1ddfbe9c0447e0e35",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ControlTabAndSpecialActionKeyTests.cs",
+    "blob": "aff80d6b02123d021450d81c719607bedd886150",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ControllerListViewModelTests.cs",
+    "blob": "22ad26b99b63efc65bad6a4c330dc31576691159",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/DefaultActionManagerTests.cs",
+    "blob": "a161a950742dcd7e3adc809c780adac79d4c4f62",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/DeviceStateServiceTests.cs",
+    "blob": "5f683aea03c03f0ee713f0e0bf828efadb093f4e",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/Ds4DeviceRegistryTests.cs",
+    "blob": "eb91a5adcd2ae143540e9fa38429d5cd43b2df0b",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/EnvironmentServiceTests.cs",
+    "blob": "7155e5ad949c5920886aee3e3d56c6ed52373b52",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/LaunchProcessActionTests.cs",
+    "blob": "6d6e3f41ffb921c5fc34d3c2a6fb30e01a74b5e2",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/LogToTrayNotificationBridgeTests.cs",
+    "blob": "8d408f17e3d9468ce61bade8ee459e4f273c97d7",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/MacroActionTests.cs",
+    "blob": "aed17510ac196333592245c4a6cdcb5669a9a537",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/MappingSpecialActionSuppressionTests.cs",
+    "blob": "ee04a3f3c54382fa49bc72a896bd27a358918daf",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/MockMacroPlayer.cs",
+    "blob": "94349940c3825fbf06f8db5097bc0a19f1550313",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/MockNotificationService.cs",
+    "blob": "32c01beb3bfa65ac4fb88e5bf0973948707eaeed",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/MockProcessLauncher.cs",
+    "blob": "efbdaa870287099143b7bd2ef8bdce72df3a2f29",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/MockProfileSwitcher.cs",
+    "blob": "f01ed24aba9741550a3174a02409491894cd1451",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/MockVirtualKBM.cs",
+    "blob": "95617a41427425143615f8192b079c0de09fd53b",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/NotificationServiceTests.cs",
+    "blob": "39fee1212d28b28d6796f76df5fbf2718118c39d",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/OutputSlotServiceTests.cs",
+    "blob": "aca0fb6f09ef4402a9c12ca68e584cf7d3cbfcbe",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/PathServiceTests.cs",
+    "blob": "fc39035650fdac59793e4058079141d2be6cd264",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/PatternAViewModelTests.cs",
+    "blob": "f2fb65b52d2ab2207511d7e1a0e46ba5282a595a",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/PatternBViewModelTests.cs",
+    "blob": "1fe8473688c1b489ecd2ff8d32e2ff41c767116b",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/PatternCViewModelTests.cs",
+    "blob": "7abb652d9245b9645187c852ef55cc6b3ce0269d",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/Phase3ServiceRegistrationTests.cs",
+    "blob": "2b5ac6ff3fffa822520770ce43897e8ff1e0ab8c",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProcessInspectorTests.cs",
+    "blob": "264a33bafcbfef65d35d394a2ab91b1b6950223a",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileActionChainServiceTests.cs",
+    "blob": "b75b66ecf1848c081e749a0583a46437d7beccf2",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileActionsSyncTests.cs",
+    "blob": "80056f91edb6622650d800b2f9b1c1662bb8cece",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileApplicationServiceTests.cs",
+    "blob": "b7442b0ce6b90259767035f6884da06a050d1a2a",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileRepositoryTests.cs",
+    "blob": "085437a8ceab9a947c782a0d6bd04e628a0096d3",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileSettingsServiceSubSettingsTests.cs",
+    "blob": "43d170e874894fe81ba6f5bdf508f7259ed5adfe",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileSettingsServiceTests.cs",
+    "blob": "c8291f21340d3549455e7dc4d9bdda227e91a855",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileSettingsViewModelTests.cs",
+    "blob": "76bc5da7cef4815e343ec2cca61ff09b36d4c4ca",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileSwitchActionTests.cs",
+    "blob": "87c0ab7f59f71c881ac0b4aaa331a6e730d00e78",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileUnifiedPersistenceTests.cs",
+    "blob": "9bc4209378c3a5d78fcd96c1e91fa1133e305135",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/ProfileXmlStoreTests.cs",
+    "blob": "70a50c6f7368420e3c40bc763322f85752547e85",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/SensitivitySettingsTests.cs",
+    "blob": "013e5d8cc36e4ca2f9f3d1a71ae1c4a64a332097",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/SettingsViewModelWatchpoint2Tests.cs",
+    "blob": "e7aeb7069f28f690fa3e947b0897d7186a7c67ba",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/SpecialActionRepositoryTests.cs",
+    "blob": "9f8096d6b4892b6b5c8d3aa9bdbc0ad5fc902691",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/SpecialActionsListViewModelTests.cs",
+    "blob": "b8a96f5414fdb0777958ba11dde65b8235d3143a",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/UdpServerServiceTests.cs",
+    "blob": "ebba75d11884e0f59dbb0eab5d61e64af3d2e617",
+    "scope": "test"
+  },
+  {
+    "path": "DS4WindowsTests/VirtualKBMTests.cs",
+    "blob": "0c26e864999dea81d93ffb5a35dc761ee84ac872",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/ActionManagerSmokeTests.cs",
+    "blob": "be5eee89b83146717529f119cf7cdc7081ba9f3f",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/AppSettingsDtoTests.cs",
+    "blob": "e5cc2da70ac2408e5753d11da24e0a7f5caae96b",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/DispatchTriggerTests.cs",
+    "blob": "5bd7d27f6bfba9236774d4adc0db6ec724850a9c",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/MappingControllerDisposeBehaviorTests.cs",
+    "blob": "beb0ea5688f7ded1a1d9c8671accbbababa2756c",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/MappingControllerLifecycleTests.cs",
+    "blob": "8b88cbc856c6dbb5bc9c006bd691f3b06630632a",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/ScpUtilIntegrationTests.cs",
+    "blob": "4dcfe66a83502102f25e8ef6bb7b4401a756feac",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/StressDispatchRaceTests.cs",
+    "blob": "5f282702bb03ef11d7184d19c80927b47f919764",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/TestHelpers.cs",
+    "blob": "15db043bc70aff891675f0afc867829a483941d3",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/TestSpecialActionUtils.cs",
+    "blob": "a85148487ce4d7b87e01b4379d6841c5668b083a",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/ToggleRepeatStopTests.cs",
+    "blob": "a5a15ac03794f2121c0d84fa1c9b010b6e8639ce",
+    "scope": "test"
+  },
+  {
+    "path": "StandaloneTests/XmlCompatibilityCheckerTests.cs",
+    "blob": "c1435871142229540d77d4c2358f09a90ab691f6",
+    "scope": "test"
+  },
+  {
+    "path": "utils/emit-missing-action-test/Program.cs",
+    "blob": "028da77db36a3b02c817c0669c1f923dc4a5b626",
+    "scope": "other"
+  }
+]
