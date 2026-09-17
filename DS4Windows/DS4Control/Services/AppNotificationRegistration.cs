@@ -57,12 +57,12 @@ namespace DS4Windows
 
         /// <summary>
         /// Windows 10 / 11 のモダン トースト通知を発行します。
-        /// （エディタの言語サーバーでのCS0234誤認を完全防止するため動的解決を使用）
+        /// （TagにユニークIDを付与することで、Windows標準の最大3個までのスタック積み上げ表示に対応）
         /// </summary>
         public static void ShowModernToast(string title, string message)
         {
             string toastXmlString = $@"
-<toast>
+<toast duration=""short"">
     <visual>
         <binding template=""ToastGeneric"">
             <text>{EscapeXml(title)}</text>
@@ -84,6 +84,12 @@ namespace DS4Windows
             xmlDocType.GetMethod("LoadXml", new[] { typeof(string) })?.Invoke(xmlDoc, new object[] { toastXmlString });
 
             object toast = Activator.CreateInstance(toastType, new object[] { xmlDoc });
+
+            // ★ユニークなTagとGroupを付与し、OSに別通知としてスタック（最大3個の積み上げ）認識させる
+            string uniqueTag = Guid.NewGuid().ToString("N");
+            toastType.GetProperty("Tag")?.SetValue(toast, uniqueTag);
+            toastType.GetProperty("Group")?.SetValue(toast, "DS4WNotifications");
+
             object notifier = toastManagerType.GetMethod("CreateToastNotifier", new[] { typeof(string) })?.Invoke(null, new object[] { AppId });
             notifier?.GetType().GetMethod("Show", new[] { toastType })?.Invoke(notifier, new object[] { toast });
         }
