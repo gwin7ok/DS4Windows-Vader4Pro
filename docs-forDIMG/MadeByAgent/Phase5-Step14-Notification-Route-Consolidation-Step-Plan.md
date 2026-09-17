@@ -147,3 +147,62 @@
 - **結論**:
   - 現在のDS4Windowsの「独自ウィンドウ通知（`ProfileNotificationWindow`）」は1個のみ表示する設計となっており、要望を実現するには独自ウィンドウ側のスタック化改修が必要。
   - 実機検証の結果、現状の1個ずつの表示で実用上問題ないと判断されたため、トースト関連は「ユニークIDを発行するが、OS仕様に委ねる」形で据え置きとした。
+
+## 【追記2】プロファイル適用通知の二重表示バグ修正と実機確認結果
+
+上記【追記】の対応（カスケードループ解決）完了後のコードレビューにて、`ProfileApplicationService.ApplyFromAction`に別の副作用が残存していることが判明したため、追加で修正・実機確認を行った。
+
+### 発見した問題
+
+`ApplyFromAction`が、Halt区間を短縮する対応の過程で、既存の自動通知経路（`CompleteProfileApplication`→`LogProfileChanged`→`MainWindow.OnProfileChanged`→`ShowProfileSwitchNotification`）とは別に、Halt解除後に独立した`AppLogger.LogToTray(prolog, false, true)`呼び出しを追加していた。
+
+`ShowProfileSwitchNotification`自体は元々仕様通りの排他分岐（独自ウィンドウON→ウィンドウのみ／OFFかつ「すべて」→トーストのみ）を実装済みだったが、この追加の`LogToTray`呼び出しはその分岐を経由せず独立して`Global.Notifications != 0`のときにトーストを発火してしまう実装だった。このため、**通知設定が「すべて」の場合、SpecialActionによるプロファイル切替（手動切替は対象外）に限り、以下のいずれかの二重表示が発生していた**:
+
+- 独自ウィンドウ通知ON：独自ウィンドウ ＋ トーストが両方表示される
+- 独自ウィンドウ通知OFF：トーストが2回連続で表示される
+
+### 修正内容
+
+`ProfileApplicationService.ApplyFromAction`から、Halt解除後の独立した`LogToTray`呼び出しブロックを削除。`HaltReportingRunAction`内の`Global.ApplyProfile`呼び出しには、`prolog: null`ではなく元のメッセージ文字列（`action.details`とバッテリー残量から組み立て済みのプロログ）をそのまま渡すよう変更した。
+
+これにより、通知の発火経路は`CompleteProfileApplication`が発火する`LogProfileChanged`イベント経由の単一経路のみとなる。`MainWindow.OnProfileChanged`は`Dispatcher.BeginInvoke`で非同期化済みのため、`Global.ApplyProfile`呼び出しが引き続きHalt区間内にあっても、実際の重い通知ウィンドウ生成処理はHalt解除後にディスパッチされる。「Halt区間を1〜2msに保つ」という目的は維持したまま、二重表示のみを解消した。
+
+### 仕様（確定）
+
+- 独自ウィンドウ通知チェックがON → プロファイル適用通知は独自ウィンドウによる通知のみ表示する。
+- 独自ウィンドウ通知チェックがOFF かつ 通知レベルが「すべて」 → トースト通知でプロファイル適用通知を表示する。
+- 上記以外（チェックOFF かつ 通知レベルが「なし」または「警告のみ」）→ プロファイル適用通知は表示しない。
+
+### 実機確認結果
+
+上記修正を適用のうえ実機テストを実施し、**仕様通りに通知が表示されること（二重表示が解消されたこと）を確認した**。
+
+## 【追記3】コントローラー接続中のWindows全体重量化の原因究明と解決（ShowModernToastリフレクションキャッシュ化）
+
+### 発生していた不具合
+
+コントローラーを接続してプロファイルが読み込まれた後、**コントローラーを切断するまでの間ずっと**、Windows全体の動作が重くなり、定期的にマウスポインタが「作業中」状態（ビジーカーソル）になり、マウスの動きへの追随も悪化するという現象が報告された。単発の操作ではなく、コントローラー接続中は継続的に発生する点が特徴だった。
+
+### 調査
+
+`AppNotificationRegistration.ShowModernToast`（`DS4Windows/DS4Control/Services/AppNotificationRegistration.cs`）を確認したところ、呼び出しのたびに以下のリフレクション処理をキャッシュなしで毎回実行していることが判明した。
+
+- `ResolveWinRTType`が3回呼ばれ、いずれも`AppDomain.CurrentDomain.GetAssemblies()`で**ロード済み全アセンブリを毎回列挙**して`GetType()`検索する実装だった。
+- `Activator.CreateInstance`によるCOMオブジェクト生成に加え、`GetMethod("LoadXml")`／`GetProperty("Tag")`／`GetMethod("CreateToastNotifier")`／`GetMethod("Show")`と、5回以上のリフレクション呼び出しが毎回行われていた。
+- この処理は`MainWindow.ShowSystemNotification`から`Dispatcher.BeginInvoke`経由でUIスレッド上に同期実行されるため、**WPFのUIスレッドをその都度ブロックする**構造になっていた。
+
+Phase5-Step14の通知経路統合により、プロファイル切替をはじめとする各種通知がすべてこの`ShowModernToast`一本を経由するようになったため、通知が発生するたびにこの重い処理が繰り返し実行され、これがコントローラー接続中に継続する重さの原因と特定した。
+
+### 修正内容
+
+`ShowModernToast`内で解決していた`Type`・`MethodInfo`・`PropertyInfo`を、`static`フィールドとして**初回呼び出し時に一度だけ解決してキャッシュ**する方式に変更した（`EnsureWinRTMembersResolved()`を新設し、二重チェックロッキングで初期化）。
+
+- 型解決に失敗した場合（WinRT非対応環境等）はキャッシュを確定させず、次回呼び出し時にも再解決を試みる、従来通りのフォールバック挙動を維持した。
+- `ToastNotifier`型が解決できなかった場合に備え、`Show`メソッドが未キャッシュなら従来通り実行時に`notifier.GetType().GetMethod("Show", ...)`で取得するフォールバックも残した。
+- 公開シグネチャ（`ShowModernToast(string,string)`）は変更していないため、呼び出し元（`MainWindow.xaml.cs`）への影響はない。
+
+### 実機確認結果
+
+上記修正を適用のうえ実機テストを実施し、**以前はコントローラー接続中ずっと発生していたWindows全体の重さ・マウスポインタの追随悪化が一切発生しなくなったことを確認した**。機能面（トースト通知・独自ウィンドウ通知の表示、プロファイル切替の正常動作）についても問題は見られなかった。
+
+本件は一旦解決とする。
