@@ -24,43 +24,9 @@ namespace DS4Windows
         private readonly BackingStore _config;
         private BackingStore SafeConfig => _config ?? Global.store;
 
-        // RumbleSettings ネストオブジェクト配列（各スロットごとの Dirty 検知・サブ設定モデル）
-        private readonly RumbleSettings[] _rumbleSettings = new RumbleSettings[TEST_PROFILE_ITEM_COUNT];
-
         public ProfileSettingsService(BackingStore backingStore = null)
         {
             _config = backingStore ?? Global.store;
-            InitRumbleSettings();
-        }
-
-        private void InitRumbleSettings()
-        {
-            for (int i = 0; i < TEST_PROFILE_ITEM_COUNT; i++)
-            {
-                int slot = i;
-                var r = new RumbleSettings();
-                if (SafeConfig != null)
-                {
-                    if (SafeConfig.rumble != null && SafeConfig.rumble.Length > slot)
-                        r.RumbleBoost = SafeConfig.rumble[slot];
-                    if (SafeConfig.rumbleAutostopTime != null && SafeConfig.rumbleAutostopTime.Length > slot)
-                        r.RumbleAutostopTime = SafeConfig.rumbleAutostopTime[slot];
-                }
-
-                // サブ設定側の変更を BackingStore（SafeConfig）およびサービス側へ双方向同期
-                r.RumbleSettingsChanged += (sender, args) =>
-                {
-                    if (SafeConfig != null)
-                    {
-                        if (SafeConfig.rumble != null && SafeConfig.rumble.Length > slot)
-                            SafeConfig.rumble[slot] = r.RumbleBoost;
-                        if (SafeConfig.rumbleAutostopTime != null && SafeConfig.rumbleAutostopTime.Length > slot)
-                            SafeConfig.rumbleAutostopTime[slot] = r.RumbleAutostopTime;
-                    }
-                };
-
-                _rumbleSettings[slot] = r;
-            }
         }
 
         public CultureInfo ConfigDecimalCulture { get; } = new CultureInfo("en-US");
@@ -421,11 +387,6 @@ namespace DS4Windows
             set
             {
                 if (SafeConfig != null) SafeConfig.rumble = value;
-                if (value != null)
-                {
-                    for (int i = 0; i < Math.Min(value.Length, _rumbleSettings.Length); i++)
-                        _rumbleSettings[i].RumbleBoost = value[i];
-                }
             }
         }
 
@@ -435,15 +396,11 @@ namespace DS4Windows
             set
             {
                 if (SafeConfig != null) SafeConfig.rumbleAutostopTime = value;
-                if (value != null)
-                {
-                    for (int i = 0; i < Math.Min(value.Length, _rumbleSettings.Length); i++)
-                        _rumbleSettings[i].RumbleAutostopTime = value[i];
-                }
             }
         }
 
-        public RumbleSettings[] RumbleSettings => _rumbleSettings;
+        // 選択肢A: BackingStore への直接委譲（純粋な薄いパススルー）
+        public RumbleSettings[] RumbleSettings => SafeConfig?.rumbleSettings;
 
         public DualSenseDevice.RumbleEmulationMode[] DualSenseRumbleEmulationMode
         {
@@ -480,16 +437,16 @@ namespace DS4Windows
                 !UseGenericRumbleStrRescaleForDualSenses[deviceIndex])
                 return 100;
 
-            if (deviceIndex >= 0 && deviceIndex < _rumbleSettings.Length)
-                return _rumbleSettings[deviceIndex].RumbleBoost;
+            if (SafeConfig?.rumbleSettings != null && deviceIndex >= 0 && deviceIndex < SafeConfig.rumbleSettings.Length)
+                return SafeConfig.rumbleSettings[deviceIndex].RumbleBoost;
 
             return SafeConfig?.rumble != null ? SafeConfig.rumble[deviceIndex] : (byte)100;
         }
 
         public int GetRumbleAutostopTime(int deviceIndex)
         {
-            if (deviceIndex >= 0 && deviceIndex < _rumbleSettings.Length)
-                return _rumbleSettings[deviceIndex].RumbleAutostopTime;
+            if (SafeConfig?.rumbleSettings != null && deviceIndex >= 0 && deviceIndex < SafeConfig.rumbleSettings.Length)
+                return SafeConfig.rumbleSettings[deviceIndex].RumbleAutostopTime;
 
             return SafeConfig?.rumbleAutostopTime != null ? SafeConfig.rumbleAutostopTime[deviceIndex] : 0;
         }
@@ -503,9 +460,9 @@ namespace DS4Windows
 
         public void SetRumbleAutostopTime(int index, int value)
         {
-            if (index >= 0 && index < _rumbleSettings.Length)
+            if (SafeConfig?.rumbleSettings != null && index >= 0 && index < SafeConfig.rumbleSettings.Length)
             {
-                _rumbleSettings[index].RumbleAutostopTime = value;
+                SafeConfig.rumbleSettings[index].RumbleAutostopTime = value;
             }
             if (SafeConfig != null && SafeConfig.rumbleAutostopTime != null && index < SafeConfig.rumbleAutostopTime.Length)
             {
@@ -662,9 +619,9 @@ namespace DS4Windows
                     {
                         _linkedProfileCheck[deviceIndex] = false;
                     }
-                    if (deviceIndex < _rumbleSettings.Length)
+                    if (SafeConfig?.rumbleSettings != null && deviceIndex < SafeConfig.rumbleSettings.Length)
                     {
-                        _rumbleSettings[deviceIndex].Reset();
+                        SafeConfig.rumbleSettings[deviceIndex].Reset();
                     }
                     OnProfileSettingChanged(deviceIndex, "ResetToDefaults", null, null);
                 }

@@ -4652,6 +4652,16 @@ namespace DS4Windows
             new GyroControlsInfo(), new GyroControlsInfo(), new GyroControlsInfo(),
             new GyroControlsInfo(), new GyroControlsInfo(), new GyroControlsInfo(),
         };
+
+        public RumbleSettings[] rumbleSettings = new RumbleSettings[Global.TEST_PROFILE_ITEM_COUNT]
+                {
+            new RumbleSettings(), new RumbleSettings(),
+            new RumbleSettings(), new RumbleSettings(),
+            new RumbleSettings(), new RumbleSettings(),
+            new RumbleSettings(), new RumbleSettings(),
+            new RumbleSettings(),
+                };
+
         public string[] sATriggers = new string[Global.TEST_PROFILE_ITEM_COUNT]
         { BackingStore.DEFAULT_SA_TRIGGERS, BackingStore.DEFAULT_SA_TRIGGERS, BackingStore.DEFAULT_SA_TRIGGERS,
           BackingStore.DEFAULT_SA_TRIGGERS, BackingStore.DEFAULT_SA_TRIGGERS, BackingStore.DEFAULT_SA_TRIGGERS,
@@ -4939,13 +4949,22 @@ namespace DS4Windows
 
                 ds4controlSettings[i] = new ControlSettingsGroup(ds4settings[i]);
 
+                // RumbleSettings の変更を生配列 rumble / rumbleAutostopTime に連動させる
+                int slot = i;
+                rumbleSettings[slot].RumbleSettingsChanged += (sender, e) =>
+                {
+                    if (rumble != null && slot < rumble.Length)
+                        rumble[slot] = rumbleSettings[slot].RumbleBoost;
+                    if (rumbleAutostopTime != null && slot < rumbleAutostopTime.Length)
+                        rumbleAutostopTime[slot] = rumbleSettings[slot].RumbleAutostopTime;
+                };
+
                 EstablishDefaultSpecialActions(i);
                 CacheExtraProfileInfo(i);
             }
 
             SetupDefaultColors();
         }
-
         public void EstablishDefaultSpecialActions(int idx)
         {
             // Do not overwrite an existing profileActions list. Only seed a default
