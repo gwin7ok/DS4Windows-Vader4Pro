@@ -1,63 +1,64 @@
-# Phase 5 - Step 14: Profile Configuration Synchronization and Unified Persistence Plan[cite: 2]
+# Phase 5 - Step 14: Profile Configuration Synchronization and Unified Persistence Plan
 
-## 1. アーキテクチャ原則と方針 (Architecture Principles & Guidelines)[cite: 2]
-本ドキュメントは、プロファイル設定画面（ProfileEditor）における一部の設定項目（ProfileActions やネストされたサブ設定オブジェクトなど）の変更値がプロファイル設定ファイル（XML）へ正しくシリアライズ・保存されない不具合に対する、根本的かつ統一的な解決に向けた全体設計・実装計画である[cite: 2]。
+## 1. アーキテクチャ原則と方針 (Architecture Principles & Guidelines)
+本ドキュメントは、プロファイル設定画面（ProfileEditor）における一部の設定項目（ProfileActions やネストされたサブ設定オブジェクトなど）の変更値がプロファイル設定ファイル（XML）へ正しくシリアライズ・保存されない不具合に対する、根本的かつ統一的な解決に向けた全体設計・実装計画である。
 
-理想のDI化移行後（DI-App-Wide-Migration-Plan.md）のレイヤーアーキテクチャおよびモデル図の設計思想に基づき、以下の原則を遵守する[cite: 2]。
+理想のDI化移行後（DI-App-Wide-Migration-Plan.md）のレイヤーアーキテクチャおよびモデル図の設計思想に基づき、以下の原則を遵守する。
 
-* DI/レイヤー分離の遵守: UI層（ProfileEditor.xaml.cs 等）にシリアライズ形式の知識や個別書き戻しコードを置かない[cite: 2]。
-* 一元的な変更検知（Dirty Tracking）: すべての設定項目（通常プロパティ、ネストオブジェクト、コレクション・特殊文字列）の変更が、モデル層で一意に検知される仕組みを構築する[cite: 2]。
-
----
-
-## 2. 課題の背景と原因 (Background & Problem Statement)[cite: 2]
-プロファイル編集画面の一部の設定変更（例: スペシャルアクションの有効/無効チェック、ネストされた詳細設定など）が保存されない原因は以下の通りである[cite: 2]。
-
-* データ同期・バインディングの欠損: UI上でリストやネストプロパティが変更された際、XMLシリアライズの対象となる結合文字列（例: ProfileActions のスラッシュ区切りなど）や親モデルへの変更通知（Dirtyフラグの伝搬）が自動で行われていない[cite: 2]。
-* 責務の分散: 個別のUIビハインドコード（ProfileEditor.xaml.cs）やコントロール固有のイベントに処理が依存しており、永続化レイヤーとUI層の間で状態の乖離が発生している[cite: 2]。
+* DI/レイヤー分離の遵守: UI層（ProfileEditor.xaml.cs 等）にシリアライズ形式の知識や個別書き戻しコードを置かない。
+* 一元的な変更検知（Dirty Tracking）: すべての設定項目（通常プロパティ、ネストオブジェクト、コレクション・特殊文字列）の変更が、モデル層で一意に検知される仕組みを構築する。
 
 ---
 
-## 3. 対象となる全 9 カテゴリの詳細実装設計 (Target Settings Categories & Breakdown)[cite: 2]
+## 2. 課題の背景と原因 (Background & Problem Statement)
+プロファイル編集画面の一部の設定変更（例: スペシャルアクションの有効/無効チェック、ネストされた詳細設定など）が保存されない原因は以下の通りである。
 
-不具合が顕現している項目および、同種の構造的リスク（同期漏れ・ネスト非連動）を抱えている全 9 カテゴリを統一管理の対象とする[cite: 2]。
-
-### パターン A: コレクション・区切り文字列の双方向マッピング[cite: 2]
-対象: ProfileActions, Sensitivity[cite: 2]
-
-* ProfileActions の詳細設計:[cite: 2]
-  * 課題: UIの ObservableCollection<SpecialActionItem> のチェック状態（IsActive 等）が変化した際、XMLの <ProfileActions> タグ用文字列（例: name1/name2/name3）が自動生成されない[cite: 2]。
-  * 解決策:[cite: 2]
-    - コレクション側、またはモデルのプロパティセッターに自動結合ロジック（UpdateProfileActionsString()）を実装[cite: 2]。
-    - 各 SpecialActionItem の PropertyChanged イベントを監視し、変更があった瞬間に ProfileActions 文字列を再構築して Dirty フラグを立てる[cite: 2]。
-* Sensitivity の詳細設計:[cite: 2]
-  * 課題: 6つの感度値（LS, RS, L2, R2, SX, SZ）がパイプ区切り文字列（1|1|1|1|1|1）として保存されるが、個別スライダー変更時に即時文字列へ反映されない[cite: 2]。
-  * 解決策: 個別プロパティ変更時に内部で配列または結合文字列を自動更新するセッターパイプラインを共通化[cite: 2]。
+* データ同期・バインディングの欠損: UI上でリストやネストプロパティが変更された際、XMLシリアライズの対象となる結合文字列（例: ProfileActions のスラッシュ区切りなど）や親モデルへの変更通知（Dirtyフラグの伝搬）が自動で行われていない。
+* 責務の分散: 個別のUIビハインドコード（ProfileEditor.xaml.cs）やコントロール固有のイベントに処理が依存しており、永続化レイヤーとUI層の間で状態の乖離が発生している。
 
 ---
 
-### パターン B: ネストされたサブオブジェクトの変更検知バブリング (Bubble-up)[cite: 2]
-対象:[cite: 2]
-* GyroControlsSettings[cite: 2]
-* TouchpadAbsMouseSettings[cite: 2]
-* LSOutputSettings / RSOutputSettings (FlickStick)[cite: 2]
-* LSAxialDeadOptions / RSAxialDeadOptions[cite: 2]
-* GyroMouseSmoothingSettings / GyroMouseStickSmoothingSettings[cite: 2]
-* LSDeltaAccelSettings / RSDeltaAccelSettings[cite: 2]
-* DualSenseControllerSettings.RumbleSettings[cite: 2]
+## 3. 対象となる全 9 カテゴリの詳細実装設計 (Target Settings Categories & Breakdown)
 
-* 詳細設計:[cite: 2]
-  * 課題: サブクラス内のプロパティ（例: AxialDeadOptions.DeadZoneX）が変更されても、親のプロファイルコンテナ側がそれを知るすべがないため、シリアライザが変更を検知できない[cite: 2]。
-  * 解決策:[cite: 2]
-    - すべてのネストされたサブ設定クラスが INotifyPropertyChanged を実装する[cite: 2]。
-    - サブクラスのインスタンス初期化時に、親プロファイルコンテナへの参照（またはイベントハンドラー SubObject_PropertyChanged）をバインドする[cite: 2]。
-    - 子プロパティが変更された際、親側へイベントをバブリング（転送）させ、親側の Dirty 状態を強制的に true にする共通ヘルパー基盤を導入する[cite: 2]。
+不具合が顕現している項目および、同種の構造的リスク（同期漏れ・ネスト非連動）を抱えている全 9 カテゴリを統一管理の対象とする。
+
+### パターン A: コレクション・区切り文字列の双方向マッピング
+対象: ProfileActions, Sensitivity
+
+* ProfileActions の詳細設計:
+  * 課題: UIの ObservableCollection<SpecialActionItem> のチェック状態（IsActive 等）が変化した際、XMLの <ProfileActions> タグ用文字列（例: name1/name2/name3）が自動生成されない。
+  * 解決策:
+    - コレクション側、またはモデルのプロパティセッターに自動結合ロジック（UpdateProfileActionsString()）を実装。
+    - 各 SpecialActionItem の PropertyChanged イベントを監視し、変更があった瞬間に ProfileActions 文字列を再構築して Dirty フラグを立てる。
+* Sensitivity の詳細設計:
+  * 課題: 6つの感度値（LS, RS, L2, R2, SX, SZ）がパイプ区切り文字列（1|1|1|1|1|1）として保存されるが、個別スライダー変更時に即時文字列へ反映されない。
+  * 解決策: 個別プロパティ変更時に内部で配列または結合文字列を自動更新するセッターパイプラインを共通化。
 
 ---
 
-## 4. 具体的なコードパターン（実装イメージ）[cite: 2]
+### パターン B: ネストされたサブオブジェクトの変更検知バブリング (Bubble-up)
+対象:
+* GyroControlsSettings
+* TouchpadAbsMouseSettings
+* LSOutputSettings / RSOutputSettings (FlickStick)
+* LSAxialDeadOptions / RSAxialDeadOptions
+* GyroMouseSmoothingSettings / GyroMouseStickSmoothingSettings
+* LSDeltaAccelSettings / RSDeltaAccelSettings
+* DualSenseControllerSettings.RumbleSettings
 
-### A. ネストオブジェクトの変更バブリングベースパターン[cite: 2]
+* 詳細設計:
+  * 課題: サブクラス内のプロパティ（例: AxialDeadOptions.DeadZoneX）が変更されても、親のプロファイルコンテナ側がそれを知るすべがないため、シリアライザが変更を検知できない。
+  * 解決策:
+    - すべてのネストされたサブ設定クラスが INotifyPropertyChanged を実装する。
+    - サブクラスのインスタンス初期化時に、親プロファイルコンテナへの参照（またはイベントハンドラー SubObject_PropertyChanged）をバインドする。
+    - 子プロパティが変更された際、親側へイベントをバブリング（転送）させ、親側の Dirty 状態を強制的に true にする共通ヘルパー基盤を導入する。
+
+---
+
+## 4. 具体的なコードパターン（実装イメージ）
+
+### A. ネストオブジェクトの変更バブリングベースパターン
+```csharp
 public abstract class ProfileSubSettingBase : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler PropertyChanged;
@@ -69,8 +70,10 @@ public abstract class ProfileSubSettingBase : INotifyPropertyChanged
         OnSubPropertyChanged?.Invoke(propertyName);
     }
 }
+```
 
-### B. ProfileActions の自動同期パターン[cite: 2]
+### B. ProfileActions の自動同期パターン
+```csharp
 public class ProfileConfigurationModel : INotifyPropertyChanged
 {
     private ObservableCollection<SpecialActionItem> _specialActions;
@@ -103,15 +106,17 @@ public class ProfileConfigurationModel : INotifyPropertyChanged
         RaisePropertyChanged(nameof(ProfileActions));
     }
 }
+```
 
 ---
 
-## 5. 段階的実装計画と具体的なファイル・手順 (Step-by-Step Implementation Roadmap)[cite: 2]
+## 5. 段階的実装計画と具体的なファイル・手順 (Step-by-Step Implementation Roadmap)
 
-* Step 1: ネストされた各サブ設定クラスへの ProfileSubSettingBase の継承とバブリング適用[cite: 2]
-  * 対象ファイルパス: DS4Windows/Config/GyroControlsSettings.cs, DS4Windows/Config/TouchpadAbsMouseSettings.cs, DS4Windows/Config/AxialDeadOptions.cs, DS4Windows/Config/RumbleSettings.cs 等[cite: 2]
-  * 内容: 各サブ設定クラスに ProfileSubSettingBase を継承させ、プロパティ変更時に RaisePropertyChanged() を呼び出すことでバブリングイベントを発火させる[cite: 2]。
+* Step 1: ネストされた各サブ設定クラスへの ProfileSubSettingBase の継承とバブリング適用
+  * 対象ファイルパス: DS4Windows/Config/GyroControlsSettings.cs, DS4Windows/Config/TouchpadAbsMouseSettings.cs, DS4Windows/Config/AxialDeadOptions.cs, DS4Windows/Config/RumbleSettings.cs 等
+  * 内容: 各サブ設定クラスに ProfileSubSettingBase を継承させ、プロパティ変更時に RaisePropertyChanged() を呼び出すことでバブリングイベントを発火させる。
   
+  ```csharp
   namespace DS4Windows
   {
       public class GyroControlsSettings : ProfileSubSettingBase
@@ -131,11 +136,13 @@ public class ProfileConfigurationModel : INotifyPropertyChanged
           }
       }
   }
+  ```
 
-* Step 2: 親コンテナ（BackingStore / ProfileDTO）でのサブ設定変更の購読（バブリング受取）[cite: 2]
-  * 対象ファイルパス: DS4Windows/BackingStore.cs, DS4WinWPF/DS4Control/DTOXml/ProfileDTO.cs[cite: 2]
-  * 内容: 子オブジェクト（サブ設定）のプロパティ変更イベント（OnSubPropertyChanged）を親クラス側で購読し、ファイル保存時の Dirty フラグを確実に連動させる[cite: 2]。
+* Step 2: 親コンテナ（BackingStore / ProfileDTO）でのサブ設定変更の購読（バブリング受取）
+  * 対象ファイルパス: DS4Windows/BackingStore.cs, DS4WinWPF/DS4Control/DTOXml/ProfileDTO.cs
+  * 内容: 子オブジェクト（サブ設定）のプロパティ変更イベント（OnSubPropertyChanged）を親クラス側で購読し、ファイル保存時の Dirty フラグを確実に連動させる。
   
+  ```csharp
   public class BackingStore
   {
       private GyroControlsSettings _gyroControls = new GyroControlsSettings();
@@ -163,15 +170,17 @@ public class ProfileConfigurationModel : INotifyPropertyChanged
       private void SubObject_OnSubPropertyChanged(string propertyName) => MarkAsDirty();
       private void MarkAsDirty() => IsDirty = true;
   }
+  ```
 
-* Step 3: ProfileSettingsViewModel および UI 層（ProfileEditor）との連動確認[cite: 2]
-  * 対象ファイルパス: DS4WinWPF/DS4Forms/ViewModels/ProfileSettingsViewModel.cs, DS4WinWPF/DS4Forms/ProfileEditor.xaml.cs[cite: 2]
-  * 内容: UIからの入力変更値が ViewModel を経由して各サブ設定のプロパティセッターへ確実に到達し、バブリングを通じてモデルまで変更が伝播することを確認[cite: 2]。
+* Step 3: ProfileSettingsViewModel および UI 層（ProfileEditor）との連動確認
+  * 対象ファイルパス: DS4WinWPF/DS4Forms/ViewModels/ProfileSettingsViewModel.cs, DS4WinWPF/DS4Forms/ProfileEditor.xaml.cs
+  * 内容: UIからの入力変更値が ViewModel を経由して各サブ設定のプロパティセッターへ確実に到達し、バブリングを通じてモデルまで変更が伝播することを確認。
 
-* Step 4: 統合ユニットテストによる永続化の検証[cite: 2]
-  * 対象ファイルパス: DS4WindowsTests/ProfileRepositoryTests.cs (または新規テストファイル)[cite: 2]
-  * 内容: ネストされたサブ設定の値を変更した状態で ProfileRepository.SaveProfile を実行し、生成される XML ファイルにその変更値が正しく出力されているかを自動テストで保証する[cite: 2]。
+* Step 4: 統合ユニットテストによる永続化の検証
+  * 対象ファイルパス: DS4WindowsTests/ProfileRepositoryTests.cs (または新規テストファイル)
+  * 内容: ネストされたサブ設定の値を変更した状態で ProfileRepository.SaveProfile を実行し、生成される XML ファイルにその変更値が正しく出力されているかを自動テストで保証する。
   
+  ```csharp
   [Fact]
   public void NestedSubSetting_Change_ShouldBePersistedToXml()
   {
@@ -191,9 +200,67 @@ public class ProfileConfigurationModel : INotifyPropertyChanged
 
       if (File.Exists(filePath)) File.Delete(filePath);
   }
+  ```
 
 ---
 
-## 6. 期待される効果 (Expected Benefits)[cite: 2]
-* 網羅性と堅牢性: 今回問題となった項目だけでなく、将来追加されるすべての設定項目に対しても一貫した保存・読込の信頼性を担保できる[cite: 2]。
-* 保守性の向上: DI移行計画の思想（責務の分離と明確なレイヤー依存関係）に合致し、コードの複雑性を大幅に軽減する[cite: 2]。
+## 6. 期待される効果 (Expected Benefits)
+* 網羅性と堅牢性: 今回問題となった項目だけでなく、将来追加されるすべての設定項目に対しても一貫した保存・読込の信頼性を担保できる。
+* 保守性の向上: DI移行計画の思想（責務の分離と明確なレイヤー依存関係）に合致し、コードの複雑性を大幅に軽減する。
+
+---
+
+## 7. 【追加計画】RumbleSettings の正式ネスト化とサブ設定宣言的配線リファクタリング（選択肢C）
+
+### 7.1 現状の課題と経緯
+1. **実プロファイルXML構造の維持**:
+   実プロファイル（例: `原神DS4_for_gwin.xml`）において、ランブル設定は以下のように表現されている。
+   - ルート直下の共通フラット設定: `<RumbleBoost>`, `<RumbleAutostopTime>`
+   - コントローラー個別設定内のネスト設定: `<DualSenseControllerSettings>` 配下の `<RumbleSettings>`（`<EmulationMode>`, `<EnableGenericRumbleRescale>`, `<HapticPowerLevel>`）
+2. **内部実装のねじれ**:
+   - `ProfilePropGroups.cs` の `RumbleSettings : ProfileSubSettingBase` は `new` されておらず UI からも未使用の「孤立クラス」であった。
+   - `ProfileSettingsService` 側ではルート直下相当のランブル設定がフラットな配列プロパティとして保持されていたが、セッターで `OnProfileSettingChanged` が呼ばれておらず、ランブル設定単体変更時の Dirty 検知（UI の Apply ボタン活性化）が欠落していた。
+   - `WireSubSettingsEvents` メソッド内で各サブ設定のイベント購読を1行ずつ手動記述していたため、購読漏れ（配線忘れ）が発生するリスクが存在していた。
+
+### 7.2 採択方針
+1. **RumbleSettings の正式ネストオブジェクト化**:
+   孤立クラスを廃止・放置せず、`ProfileSubSettingBase` を継承する正規のネスト設定オブジェクトとして再構築・統合する。
+2. **宣言的配線 ＋ 完全性検証テスト（選択肢C）の採用**:
+   本番コードは明示的登録リスト（ラムダ式アクセサ群）を反復処理する方式とし、テストプロジェクト側でリフレクションを用いて「到達可能なすべての `ProfileSubSettingBase` インスタンスが登録リストに含まれているか」を機械的・網羅的に検証する。
+3. **XMLファイル完全後方互換性の維持**:
+   内部オブジェクトモデルがネスト化されても、シリアライズ（保存）およびデシリアライズ（読込）時のXMLタグ配置・階層構造は従来通りを100%維持し、既存の全プロファイルXML（`原神DS4_for_gwin.xml` 等）との完全な相互互換性を担保する。
+
+### 7.3 詳細実装計画
+
+#### タスク 7.3.1: RumbleSettings の正規化と ProfileSettingsService 統合
+- **対象ファイル**:
+  - `DS4Windows/DS4Control/ProfilePropGroups.cs`
+  - `DS4Windows/DS4Control/Services/ProfileSettingsService.cs`
+  - `DS4Windows/DS4Control/DTOXml/ProfileDTO.cs` / `XmlDataUtilities.cs`
+- **内容**:
+  1. `RumbleSettings` クラスのプロパティ定義を整備し、`ProfileSubSettingBase` に基づく変更通知（Dirty通知）を正しく伝播させる。
+  2. `ProfileSettingsService` 内のフラットなランブル保持構造を `RumbleSettings` オブジェクトへ移行・集約する。
+  3. UIバインディング（ProfileEditor等）および外部公開プロパティは透過的なアクセサを提供し、既存UI/ViewModelとの互換性を維持する。
+  4. XMLの読込・保存時、ルート直下の `<RumbleBoost>`, `<RumbleAutostopTime>` および `<DualSenseControllerSettings>` 配下のタグと内部 `RumbleSettings` 間で過不足なくマッピングを行い、XMLスキーマを一切破壊しない。
+
+#### タスク 7.3.2: SubSettings 宣言的配線（Declarative Wiring）へのリファクタリング
+- **対象ファイル**:
+  - `DS4Windows/DS4Control/Services/ProfileSettingsService.cs`
+- **内容**:
+  1. `WireSubSettingsEvents` / `UnwireSubSettingsEvents` を手動個別記述からデータ駆動設計へ刷新。
+  2. サブ設定インスタンスへのアクセス式（ラベル、Getterラムダ）をまとめた宣言的登録リスト（例: `IEnumerable<Func<ProfileSettingsService, ProfileSubSettingBase>>`）を定義。
+  3. 購読・購読解除処理は、このリストを反復処理して `ProfileSubSettingBase.SettingChanged` を一括で結線・解除する構造に変更。
+
+#### タスク 7.3.3: 単体テストによる完全性検証テスト（Integrity Test）の実装
+- **対象ファイル**:
+  - `DS4WindowsTests/ProfileSettingsServiceSubSettingsTests.cs`
+- **内容**:
+  1. リフレクションを用いて `ProfileSettingsService`（および配下のネストオブジェクト・配列）から到達可能な `ProfileSubSettingBase` 派生インスタンスを再帰走査・収集するヘルパーをテストプロジェクト内に作成。
+  2. 「リフレクションで走査・検出されたサブ設定のインスタンス群」と「宣言的登録リストにより実際に配線されたインスタンス群」を照合・比較するアサーションを実装。
+  3. 未登録の `ProfileSubSettingBase` が存在する場合はテストを即座に失敗させ、今後の機能追加時における配線漏れをCI段階で自動検知・防止する。
+
+### 7.4 検証手順および完了基準
+- [ ] `DS4WindowsWPF.sln` の完全ビルドが警告・エラーなく通過すること。
+- [ ] 単体テスト（完全性検証テスト含む）がすべてパスすること。
+- [ ] 実プロファイル（`原神DS4_for_gwin.xml` 等）の読み込み・保存でXMLの差分・タグ構造の破壊が発生しないこと。
+- [ ] ProfileEditor 画面でランブル設定のみを変更した際、変更が即座に検知されプロファイル適用（Apply）が可能になること。
