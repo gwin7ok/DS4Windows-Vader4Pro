@@ -747,6 +747,7 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Watchpoints-Investigation-Report.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Plan.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Status.md
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step1-Global-Usage-Classification-Report.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step1-Plan.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step10-Plan.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step11-Plan.md
