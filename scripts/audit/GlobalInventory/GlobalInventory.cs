@@ -16,9 +16,13 @@ internal static class GlobalInventory
 
     private static string Git(params string[] args)
     {
-        var start = new ProcessStartInfo("git") { RedirectStandardOutput = true,
-            RedirectStandardError = true, StandardOutputEncoding = new UTF8Encoding(false, true),
-            UseShellExecute = false };
+        var start = new ProcessStartInfo("git")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = new UTF8Encoding(false, true),
+            UseShellExecute = false
+        };
         start.ArgumentList.Add("-C"); start.ArgumentList.Add(root);
         foreach (var arg in args) start.ArgumentList.Add(arg);
         using var process = Process.Start(start)!;
@@ -41,10 +45,15 @@ internal static class GlobalInventory
         return new { line = pos.Line + 1, column = pos.Character + 1, offset = node.SpanStart, length = node.Span.Length };
     }
     private static string Context(SyntaxNode node) => node.Ancestors().OfType<MemberDeclarationSyntax>()
-        .Select(n => n switch { MethodDeclarationSyntax m => m.Identifier.Text,
+        .Select(n => n switch
+        {
+            MethodDeclarationSyntax m => m.Identifier.Text,
             ConstructorDeclarationSyntax c => c.Identifier.Text + ".ctor",
-            PropertyDeclarationSyntax p => p.Identifier.Text, FieldDeclarationSyntax f => f.Declaration.Variables.First().Identifier.Text,
-            EventDeclarationSyntax e => e.Identifier.Text, _ => "" }).FirstOrDefault(n => n.Length > 0) ?? "<type>";
+            PropertyDeclarationSyntax p => p.Identifier.Text,
+            FieldDeclarationSyntax f => f.Declaration.Variables.First().Identifier.Text,
+            EventDeclarationSyntax e => e.Identifier.Text,
+            _ => ""
+        }).FirstOrDefault(n => n.Length > 0) ?? "<type>";
     private static string Usage(SimpleNameSyntax node)
     {
         SyntaxNode expression = node.Parent is MemberAccessExpressionSyntax ma && ma.Name == node ? ma : node;
@@ -154,10 +163,20 @@ internal static class GlobalInventory
             {
                 var syntax = symbol.DeclaringSyntaxReferences.First().GetSyntax();
                 var id = SymbolId(symbol);
-                members.TryAdd(id, new { id, name = symbol.Name, kind = symbol.Kind.ToString(), visibility = symbol.DeclaredAccessibility.ToString(),
-                    isStatic = symbol.IsStatic, isConst = symbol is IFieldSymbol { IsConst: true }, isReadOnly = symbol is IFieldSymbol { IsReadOnly: true },
-                    signature = symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), file = syntax.SyntaxTree.FilePath,
-                    position = Position(syntax), declaration = syntax.ToString() });
+                members.TryAdd(id, new
+                {
+                    id,
+                    name = symbol.Name,
+                    kind = symbol.Kind.ToString(),
+                    visibility = symbol.DeclaredAccessibility.ToString(),
+                    isStatic = symbol.IsStatic,
+                    isConst = symbol is IFieldSymbol { IsConst: true },
+                    isReadOnly = symbol is IFieldSymbol { IsReadOnly: true },
+                    signature = symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+                    file = syntax.SyntaxTree.FilePath,
+                    position = Position(syntax),
+                    declaration = syntax.ToString()
+                });
             }
             var stats = new Dictionary<string, int>();
             void Count(string status) => stats[status] = stats.GetValueOrDefault(status) + 1;
@@ -186,13 +205,25 @@ internal static class GlobalInventory
                     else if (qualified || aliasGlobal || possibleU) status = scope == "production" ? "unresolved" : "outside-production-candidate";
                     else status = "unbound-other-context";
                     Count(status);
-                    candidates.WriteLine(JsonSerializer.Serialize(new { id = path + ":" + name.SpanStart, variant, file = path, scope,
-                        member = name.Identifier.ValueText, position = Position(name), status, symbol = SymbolId(symbol),
-                        candidateSymbols = info.CandidateSymbols.Select(SymbolId), reason = info.CandidateReason.ToString(),
-                        form = qualified || aliasGlobal ? "Q" : "U", context = Context(name),
+                    candidates.WriteLine(JsonSerializer.Serialize(new
+                    {
+                        id = path + ":" + name.SpanStart,
+                        variant,
+                        file = path,
+                        scope,
+                        member = name.Identifier.ValueText,
+                        position = Position(name),
+                        status,
+                        symbol = SymbolId(symbol),
+                        candidateSymbols = info.CandidateSymbols.Select(SymbolId),
+                        reason = info.CandidateReason.ToString(),
+                        form = qualified || aliasGlobal ? "Q" : "U",
+                        context = Context(name),
                         containingType = name.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault()?.Identifier.Text,
-                        inLambda = name.Ancestors().Any(n => n is AnonymousFunctionExpressionSyntax), usage = Usage(name),
-                        text = tree.GetText().Lines.GetLineFromPosition(name.SpanStart).ToString() }, JsonOptions));
+                        inLambda = name.Ancestors().Any(n => n is AnonymousFunctionExpressionSyntax),
+                        usage = Usage(name),
+                        text = tree.GetText().Lines.GetLineFromPosition(name.SpanStart).ToString()
+                    }, JsonOptions));
                 }
                 foreach (Match match in Regex.Matches(sources[path], @"\bGlobal\s*\."))
                 {
@@ -201,8 +232,16 @@ internal static class GlobalInventory
                     var activeName = syntaxRoot.DescendantNodes().OfType<IdentifierNameSyntax>().FirstOrDefault(n => n.SpanStart == match.Index && n.Identifier.ValueText == "Global");
                     var disposition = activeName != null ? "code" : trivia.IsKind(SyntaxKind.DisabledTextTrivia) ? "inactive" :
                         trivia.RawKind != 0 ? "trivia-" + trivia.Kind() : "token-" + token.Kind();
-                    raw.WriteLine(JsonSerializer.Serialize(new { id = path + ":" + match.Index, variant, file = path, scope, offset = match.Index,
-                        line = tree.GetText().Lines.GetLineFromPosition(match.Index).LineNumber + 1, disposition }, JsonOptions));
+                    raw.WriteLine(JsonSerializer.Serialize(new
+                    {
+                        id = path + ":" + match.Index,
+                        variant,
+                        file = path,
+                        scope,
+                        offset = match.Index,
+                        line = tree.GetText().Lines.GetLineFromPosition(match.Index).LineNumber + 1,
+                        disposition
+                    }, JsonOptions));
                 }
                 foreach (var diagnostic in tree.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error))
                     diagnostics.WriteLine(JsonSerializer.Serialize(new { variant, phase = "parse", file = path, message = diagnostic.ToString() }));
@@ -212,13 +251,20 @@ internal static class GlobalInventory
             totals.Add(new { variant, defines, stats, compilationErrors = errors.Count, members = globalMembers.Count });
         }
         Write("members.json", members.Values);
-        Write("summary.json", new { revision = Revision, sourceTree = Git("rev-parse", Revision + ":DS4Windows").Trim(),
-            trackedCSharpFiles = sources.Count, productionFiles = sources.Keys.Count(p => Scope(p) == "production"), memberCount = members.Count,
-            selfTests = "passed", totals,
+        Write("summary.json", new
+        {
+            revision = Revision,
+            sourceTree = Git("rev-parse", Revision + ":DS4Windows").Trim(),
+            trackedCSharpFiles = sources.Count,
+            productionFiles = sources.Keys.Count(p => Scope(p) == "production"),
+            memberCount = members.Count,
+            selfTests = "passed",
+            totals,
             limitations = new[] { "Partial semantic model, not an MSBuild build. Compilation diagnostics must be reviewed.",
                 "Outside-production references require separate project/stub ownership review.", "Three preprocessor variants only; inactive text is retained separately.",
                 "Candidate ledger includes same-name unrelated identifiers; do not count all candidates as references.",
-                "No DI classification or hot-path correctness is inferred by this extractor." } });
+                "No DI classification or hot-path correctness is inferred by this extractor." }
+        });
         Console.WriteLine(JsonSerializer.Serialize(new { output = outDir, memberCount = members.Count, files = sources.Count, totals }, new JsonSerializerOptions { WriteIndented = true }));
         return 0;
     }
