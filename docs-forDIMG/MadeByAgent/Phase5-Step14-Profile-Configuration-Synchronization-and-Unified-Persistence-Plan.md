@@ -248,7 +248,7 @@ public class ProfileConfigurationModel : INotifyPropertyChanged
   - `DS4Windows/DS4Control/Services/ProfileSettingsService.cs`
 - **内容**:
   1. `WireSubSettingsEvents` / `UnwireSubSettingsEvents` を手動個別記述からデータ駆動設計へ刷新。
-  2. サブ設定インスタンスへのアクセス式（ラベル、Getterラムダ）をまとめた宣言的登録リスト（例: `IEnumerable<Func<ProfileSettingsService, ProfileSubSettingBase>>`）を定義。
+  2. サブ設定インスタンスへのアクセス式（ラベル、Getterラムダ）をまとめた宣言的登録リスト（例: `IEnumerable<Func<ProfileSettingsService, int, ProfileSubSettingBase>>`）を定義。
   3. 購読・購読解除処理は、このリストを反復処理して `ProfileSubSettingBase.SettingChanged` を一括で結線・解除する構造に変更。
 
 #### タスク 7.3.3: 単体テストによる完全性検証テスト（Integrity Test）の実装
@@ -260,7 +260,58 @@ public class ProfileConfigurationModel : INotifyPropertyChanged
   3. 未登録の `ProfileSubSettingBase` が存在する場合はテストを即座に失敗させ、今後の機能追加時における配線漏れをCI段階で自動検知・防止する。
 
 ### 7.4 検証手順および完了基準
-- [ ] `DS4WindowsWPF.sln` の完全ビルドが警告・エラーなく通過すること。
-- [ ] 単体テスト（完全性検証テスト含む）がすべてパスすること。
-- [ ] 実プロファイル（`原神DS4_for_gwin.xml` 等）の読み込み・保存でXMLの差分・タグ構造の破壊が発生しないこと。
-- [ ] ProfileEditor 画面でランブル設定のみを変更した際、変更が即座に検知されプロファイル適用（Apply）が可能になること。
+- [x] `DS4WindowsWPF.sln` の完全ビルドが警告・エラーなく通過すること。
+- [x] 単体テスト（完全性検証テスト含む）がすべてパスすること。
+- [x] 実プロファイル（`原神DS4_for_gwin.xml` 等）の読み込み・保存でXMLの差分・タグ構造の破壊が発生しないこと。
+- [x] ProfileEditor 画面でランブル設定のみを変更した際、変更が即座に検知されプロファイル適用（Apply）が可能になること。
+
+---
+
+## 8. 【追加計画2】RumbleSettings の BackingStore 移設による SSOT 化（選択肢A）および適用ボタンのフラグ制御撤廃
+
+### 8.1 課題と背景
+1. **プロファイル切替時の値非追従（新規リグレッション）**:
+   - タスク 7.3.1 において、`ProfileSettingsService` 内に独自インスタンスの並行配列 `_rumbleSettings` を保持し、コンストラクタで一度だけコピー初期化する設計としていた。
+   - しかし、実際のプロファイル読込処理（`ScpUtil.cs` 内の `LoadProfile`）は XML の `<RumbleBoost>` / `<RumbleAutostopTime>` の値を `BackingStore` の生配列（`rumble[device]` 等）に直接代入する。
+   - このため、プロファイルを切り替えても `_rumbleSettings` が置き去りになり、実機へ送信されるランブル設定値が新しいプロファイルの値に切り替わらない構造的不整合が発生していた。
+2. **他の8カテゴリとのアーキテクチャ乖離**:
+   - `gyroControlsInf` 等の他の8カテゴリはすべて `BackingStore` が配列の実体を保持し、`ProfileSettingsService` はそこへの「薄いパススルー」となっていた。RumbleSettings のみ並行コピー配列を持っていたことが根本原因であった。
+3. **適用ボタン（Apply）のフラグ制御によるユーザー体験阻害**:
+   - 変更検知フラグやイベント購読により `applyBtn.IsEnabled` の有効/無効を切り替えていたが、画面の初期ロード状態や特定の操作経路でボタンが無効のままとなり、ユーザーが意図したタイミングで適用できない問題が生じていた。
+
+### 8.2 採択方針
+1. **選択肢A（BackingStore への完全移設・SSOT化）の採用**:
+   - 他の8カテゴリと完全に同一の設計原則に統一する。
+   - `BackingStore` に `Global.TEST_PROFILE_ITEM_COUNT`（9スロット分）の `RumbleSettings[]` を正式配置し、インスタンス生成・保持を一元化する。
+   - `ProfileSettingsService.RumbleSettings` は `SafeConfig.rumbleSettings` への純粋な薄いパススルーとする。
+   - `LoadProfile`（XML読込）時に、`rumbleSettings[device]` のプロパティへも値を直接設定する。
+2. **適用ボタンのフラグ制御撤廃・常時有効化**:
+   - プロファイル保存は全項目をXMLへ完全上書き（フルライト）する冪等な処理であるため、ボタンの可否制御フラグおよび購読ハンドラを全撤去し、常にクリック可能な常時有効設計とする。
+
+### 8.3 詳細実装タスク
+
+#### タスク 8.3.1: BackingStore への RumbleSettings 配列移設と連動
+- **対象ファイル**: `DS4Windows/DS4Control/ScpUtil.cs`
+- **内容**:
+  1. `BackingStore` クラスのフィールドに `rumbleSettings` 配列（サイズ9）を定義し、全要素をインスタンス化。
+  2. `BackingStore` コンストラクタ内で、各スロットの `RumbleSettingsChanged` イベントを生配列 `rumble` / `rumbleAutostopTime` に連動させるリスナーを接続。
+  3. `LoadProfile` メソッド内で、`<RumbleBoost>` / `<RumbleAutostopTime>` をパースした際に `rumbleSettings[device]` にも即時代入する。
+
+#### タスク 8.3.2: ProfileSettingsService の薄いパススルー化
+- **対象ファイル**: `DS4Windows/DS4Control/Services/ProfileSettingsService.cs`
+- **内容**:
+  1. 独自の `_rumbleSettings` 配列、`InitRumbleSettings()` メソッド、手動双方向同期リスナーを完全削除。
+  2. `public RumbleSettings[] RumbleSettings => SafeConfig?.rumbleSettings;` のパススルー定義に変更。
+  3. `GetRumbleBoost` / `GetRumbleAutostopTime` / `SetRumbleAutostopTime` も `SafeConfig.rumbleSettings` を直接参照するよう簡素化。
+
+#### タスク 8.3.3: 適用ボタンの制御コード完全撤去
+- **対象ファイル**: `DS4Windows/DS4Forms/ProfileEditor.xaml.cs`
+- **内容**:
+  1. `SetupEvents` / `UnregisterEvents` から `ProfileSettingsService_ProfileSettingChanged` ハンドラの結線・解除コードを削除。
+  2. ハンドラメソッド自体、および各イベント内の `applyBtn.IsEnabled` 操作コードを全削除。
+  3. コンストラクタ等で `applyBtn.IsEnabled = true;` を常時担保。
+
+### 8.4 検証手順および完了基準
+- [x] ビルドおよび全単体テスト（178件）が成功すること。
+- [x] 実機検証にて、異なるランブル値を持つ2つのプロファイルを切り替えた際、UIおよび実機モーター出力（Test Heavy/Light）が正常に追従すること。
+- [x] 適用ボタンが変更有無にかかわらず常時利用可能であり、プロファイル保存・適用が確実に機能すること。

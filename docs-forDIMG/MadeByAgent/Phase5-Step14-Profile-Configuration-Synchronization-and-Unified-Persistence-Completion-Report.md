@@ -194,3 +194,34 @@
 - 孤立クラスの解消と、ランブル設定単体変更時の Dirty 検知欠落（Apply ボタン不活性問題）が完全に解決。
 - 配線処理のデータ駆動化とテストでの機械的検証により、将来新たなサブ設定が追加された際の「配線漏れ」をビルド/テスト段階で100%防止可能となった。
 - XMLファイル（`原神DS4_for_gwin.xml` 等）のスキーマ・入出力互換性は完全に維持されている。
+
+---
+
+## 9. 【追加完了】RumbleSettings の BackingStore 移設（選択肢A：SSOT化）および適用ボタン制御撤廃
+
+### 9.1 発生していた課題と根本原因
+- **プロファイル切替時の設定値非追従**:
+  - `ProfileSettingsService` 内に並行コピー配列 `_rumbleSettings` を持っていたため、プロファイル切替時に XML 読込（`LoadProfile`）が実行されても `BackingStore` の生配列のみが更新され、`_rumbleSettings` に値が伝播していなかった。
+  - その結果、プロファイルを切り替えても実機へ送られる振動強度が前回のプロファイル値のまま残留するリグレッションが発生していた。
+- **適用ボタンのフラグ制御による操作阻害**:
+  - `applyBtn.IsEnabled` のフラグ監視制御により、特定の画面遷移経路でボタンが無効化されたままになり、手動での任意タイミング保存が阻害されていた。
+
+### 9.2 実施内容
+1. **BackingStore への RumbleSettings 配列移設 (`ScpUtil.cs`)**:
+   - 他の8カテゴリ（`gyroControlsInf` 等）と同一パターンに揃え、`BackingStore` クラス自身に `public RumbleSettings[] rumbleSettings = new RumbleSettings[Global.TEST_PROFILE_ITEM_COUNT]` を定義し、9スロット分すべてインスタンス化。
+   - コンストラクタ内で `RumbleSettingsChanged` イベントを購読し、既存の生配列（`rumble` / `rumbleAutostopTime`）へ即時双方向連動させるリスナーを接続。
+2. **プロファイル読込部におけるネストオブジェクトへの直接代入 (`ScpUtil.cs`)**:
+   - `LoadProfile` 内の `<RumbleBoost>` / `<RumbleAutostopTime>` 読み込み処理において、生配列への代入と同時に `rumbleSettings[device].RumbleBoost` / `RumbleAutostopTime` にも値を代入するよう改修。
+3. **ProfileSettingsService の純粋な薄いパススルー化 (`ProfileSettingsService.cs`)**:
+   - 独自の並行配列 `_rumbleSettings`、`InitRumbleSettings()`、および手動同期リスナーを完全削除。
+   - `public RumbleSettings[] RumbleSettings => SafeConfig?.rumbleSettings;` のみの定義とし、全カテゴリで設計思想を一貫。
+4. **適用ボタンのフラグ制御撤廃・常時有効化 (`ProfileEditor.xaml.cs`)**:
+   - イベント購読による `applyBtn.IsEnabled` の操作コードおよびハンドラ（`ProfileSettingsService_ProfileSettingChanged`）を全撤去。
+   - プロファイル保存は全設定項目を完全上書き（フルライト）する冪等な仕様であるため、ボタンは常時有効（`IsEnabled = true`）としてユーザーがいつでも適用・保存できるように改善。
+
+### 9.3 テストおよび実機検証結果
+- **単体テスト**:
+  - 完全性検証テスト（`WireSubSettings_DeclarativeList_Completeness_IntegrityTest`）を含む全テスト（178件）が引き続き完全合格。
+- **実機検証（DualSense / 各種コントローラー）**:
+  - 異なる振動強度（例: 20% と 100%）のプロファイルを切り替えた際、UI上の表示（「Other」タブの振動欄）および「Test Heavy」「Test Light」での実機モーター振動出力が即座に正しく追従・切り替わることを確認。
+  - プロファイル設定変更時、適用ボタンがいつでもクリック可能であり、XMLファイルへの保存と実機への反映が正常に行われることを確認。
