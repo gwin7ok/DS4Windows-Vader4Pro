@@ -41,26 +41,19 @@ namespace DS4Windows
             {
                 if (device != null)
                 {
-                    // C案: HaltReporting の区間内ではプロファイルメモリ適用とアクションチェーンのみを高速実行（1〜2ms以内）
+                    // C案: HaltReporting の区間内ではプロファイルメモリ適用とアクションチェーンのみを高速実行（1〜2ms以内）。
+                    // 通知表示（独自ウィンドウ／トースト）は CompleteProfileApplication が発火する
+                    // LogProfileChanged イベント → MainWindow.OnProfileChanged（Dispatcher.BeginInvoke で
+                    // 非同期化済み）→ ShowProfileSwitchNotification の単一経路のみが担う。
+                    // 仕様: 独自ウィンドウ通知チェックがONなら独自ウィンドウのみ、OFFかつ通知レベルが
+                    // 「すべて」ならトーストのみを表示する排他分岐であり、ここで別途 LogToTray を
+                    // 呼び足すと同一切替に対して二重表示になるため、以前あった追加呼び出しは撤去した。
                     device.HaltReportingRunAction(() =>
                     {
                         Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
-                            ProfileChangeSource.MappingAction, null); // Halt内での重い通知ウィンドウ同期生成を抑止
+                            ProfileChangeSource.MappingAction, prolog);
                         _actionChain?.DispatchNextActions(deviceIndex, action);
                     });
-
-                    // Halt解除後に非同期で通知ウィンドウをディスパッチ
-                    if (!string.IsNullOrEmpty(prolog) && Global.Notifications != 0)
-                    {
-                        Task.Run(() =>
-                        {
-                            try
-                            {
-                                AppLogger.LogToTray(prolog, false, true);
-                            }
-                            catch { }
-                        });
-                    }
                 }
                 else
                 {
