@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
-using Microsoft.Win32.SafeHandles; 
+using Microsoft.Win32.SafeHandles;
 
 namespace DS4Windows
 {
@@ -217,7 +217,7 @@ namespace DS4Windows
             internal IntPtr Reserved;
         }
 
-        [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Auto)]
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         internal struct SP_DEVICE_INTERFACE_DETAIL_DATA
         {
             internal int Size;
@@ -290,7 +290,7 @@ namespace DS4Windows
             internal int hwProfile;
         }
 
-        internal static DEVPROPKEY DEVPKEY_Device_BusReportedDeviceDesc = 
+        internal static DEVPROPKEY DEVPKEY_Device_BusReportedDeviceDesc =
             new DEVPROPKEY { fmtid = new Guid(0x540b947e, 0x8b40, 0x45bc, 0xa8, 0xa2, 0x6a, 0x0b, 0x89, 0x4c, 0xbd, 0xa2), pid = 4 };
 
         internal static DEVPROPKEY DEVPKEY_Device_DeviceDesc =
@@ -320,7 +320,7 @@ namespace DS4Windows
         internal static DEVPROPKEY DEVPKEY_Device_InstanceId =
             new DEVPROPKEY { fmtid = new Guid(0x78c34fc8, 0x104a, 0x4aca, 0x9e, 0xa4, 0x52, 0x4d, 0x52, 0x99, 0x6e, 0x57), pid = 256 };
 
-        [DllImport("setupapi.dll", EntryPoint = "SetupDiGetDeviceRegistryProperty")]
+        [DllImport("setupapi.dll", CharSet = CharSet.Unicode, EntryPoint = "SetupDiGetDeviceRegistryPropertyW", SetLastError = true)]
         public static extern bool SetupDiGetDeviceRegistryProperty(IntPtr deviceInfoSet, ref SP_DEVINFO_DATA deviceInfoData, int propertyVal, ref int propertyRegDataType, byte[] propertyBuffer, int propertyBufferSize, ref int requiredSize);
 
         [DllImport("setupapi.dll", EntryPoint = "SetupDiGetDevicePropertyW", SetLastError = true)]
@@ -469,7 +469,7 @@ namespace DS4Windows
         static internal extern bool HidD_GetFeature(IntPtr hidDeviceObject, byte[] lpReportBuffer, int reportBufferLength);
 
         [DllImport("hid.dll", SetLastError = true)]
-        internal static extern Boolean HidD_GetInputReport(SafeFileHandle HidDeviceObject, Byte[] lpReportBuffer, Int32 ReportBufferLength);        
+        internal static extern Boolean HidD_GetInputReport(SafeFileHandle HidDeviceObject, Byte[] lpReportBuffer, Int32 ReportBufferLength);
 
         [DllImport("hid.dll")]
         static internal extern void HidD_GetHidGuid(ref Guid hidGuid);
@@ -491,7 +491,7 @@ namespace DS4Windows
 
         [DllImport("hid.dll")]
         static internal extern bool HidD_SetNumInputBuffers(IntPtr hidDeviceObject, int numberBuffers);
-        
+
         [DllImport("hid.dll")]
         static internal extern bool HidD_SetOutputReport(IntPtr hidDeviceObject, byte[] lpReportBuffer, int reportBufferLength);
 
