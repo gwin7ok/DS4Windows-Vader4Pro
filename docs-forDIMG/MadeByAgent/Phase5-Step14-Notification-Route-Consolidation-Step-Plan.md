@@ -103,3 +103,47 @@
 - `AppNotificationService.SendNotification`内部で直接`ShowModernToast`を呼ぶ設計（選択肢C）への変更は行わない。
 - `ignoreSettings`引数の実配線（本来の意図通りに機能させる改修）は行わない（既存の無効状態を維持するのみ）。
 - `Mapping.cs`等、非UIコードから`INotificationService`をコンストラクタ注入で直接呼ぶような新規利用の追加は行わない（既存呼び出し元は全て`AppLogger.LogToTray`経由のまま据え置く）。
+
+## 【追記】実装作業記録：カスケードループ問題の根本解決と通知分離・トースト仕様対応
+
+実機テストにおいて「プロファイル切替スペシャルアクション実行時に、切替が無限連鎖する（カスケードループ）」不具合が確認されたため、通知処理の見直しを含めた根本解決を実施した。あわせて、Windowsネイティブのトースト通知の表示仕様（スタック・積み上げ）に関する調査・対応も行った。
+
+### 1. プロファイル切替カスケードループの根本原因と解決
+複数の要因が重なって無限ループが発生していたため、以下の3段構えで完全な遮断を行った。
+
+#### ① WPF UI（ComboBox）の双方向イベント無限ループの完全遮断
+- **原因**: バックエンドから `Global_SelectedProfileChanged` イベントが発火した際、UI（`MainWindow` の ComboBox）の表示をプログラムから更新すると、WPFネイティブの `SelectionChanged` イベントが発火し、再度「手動切替が行われた」と誤認して `ApplyProfileToSlot` を無限に呼び出していた。
+- **解決策**:
+  - `CompositeDeviceModel.suppressSelectedIndexChanged` を統合抑制フラグとして昇格。
+  - `ControllerListViewModel` がインデックスを更新する際、`DispatcherPriority.ContextIdle` を用いてWPFのUIイベント完了までフラグを保持するように修正。
+  - `MainWindow.SelectProfCombo_SelectionChanged` 冒頭でこのフラグを参照し、バックエンド更新時は手動実行を確実にスキップするよう改修。
+
+#### ② アクションチェーンによるプロファイル切替の連鎖暴発抑止
+- **原因**: `ProfileApplicationService` 内で呼び出される `DispatchNextActions` が、新しいプロファイルにある「別のプロファイル切替アクション」を自動キックし、数秒で数十回の切替を引き起こしていた。
+- **解決策**: `ProfileActionChainService.cs` にて、チェーンの実行対象（`nextAction`）が `Profile` 種別の場合は処理を `continue` でスキップし、連鎖実行させないガードを追加。
+
+#### ③ 入力評価ループ（Mapping.cs）のデバウンス（ノイズ耐性）強化
+- **原因**: プロファイル切替時（`HaltReporting` 中のステートリセット時）に一瞬発生する「ゼロクリア（見かけ上のボタンOFF）」により、スペシャルアクションの誤爆防止ガード（`RequiresFreshPressAfterReset`）が1フレームで解除されてしまっていた。
+- **解決策**: `ActionManager` および `Mapping.cs` において、**「未成立（OFF）状態が連続 80ms 継続して初めてガードを解除する」** デバウンスロジックを導入。押しっぱなし状態での過渡ノイズによる再発火を完全に防止した。
+
+---
+
+### 2. プロファイル切替処理と通知処理の分離（シームレス化）
+- **原因**: プロファイル切替中（`HaltReportingRunAction` によるコントローラー一時停止中）に、重いWPF独自の通知ウィンドウ（`ProfileNotificationWindow`）を生成・表示させていたため、切替時に50〜200msのラグが発生し、ゲームプレイがフリーズするスタッターの原因となっていた。
+- **解決策**:
+  - `ProfileApplicationService.ApplyFromAction` 内において、`HaltReportingRunAction` 内の処理を「メモリ上のプロファイル適用」のみ（1〜2ms）に極小化。
+  - 画面への通知表示処理は、Halt解除後（コントローラーが操作可能になった後）に `Task.Run` で完全にバックグラウンドへ分離し、非同期で描画させるアーキテクチャに変更。
+
+---
+
+### 3. Windows標準トースト通知（Modern Toast）のスタック仕様検証
+- **要望**: Chromeなどのように、画面右下に最大3個まで通知が積み上がって表示されるようにしたい。
+- **調査・実装**:
+  - 従来のコードでは `Tag` が未指定だったため、OSが同一通知の更新とみなし上書き表示していた。
+  - `AppNotificationRegistration.ShowModernToast` の実装を改修し、トースト生成時にユニークな GUID を `Tag` プロパティに付与するよう修正。
+- **OSの仕様制限**:
+  - Windows 10/11 のOSシェル仕様により、標準トースト通知（WinRT API）は画面上には「常に1個ずつ順番に」しかポップアップしないことが判明。
+  - Chrome や Slack などが複数スタック表示できるのは、Windows標準通知ではなく「アプリ独自描画のカスタムウィンドウ通知」を使用しているため。
+- **結論**:
+  - 現在のDS4Windowsの「独自ウィンドウ通知（`ProfileNotificationWindow`）」は1個のみ表示する設計となっており、要望を実現するには独自ウィンドウ側のスタック化改修が必要。
+  - 実機検証の結果、現状の1個ずつの表示で実用上問題ないと判断されたため、トースト関連は「ユニークIDを発行するが、OS仕様に委ねる」形で据え置きとした。
