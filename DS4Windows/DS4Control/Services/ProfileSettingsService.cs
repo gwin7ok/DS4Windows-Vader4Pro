@@ -24,9 +24,43 @@ namespace DS4Windows
         private readonly BackingStore _config;
         private BackingStore SafeConfig => _config ?? Global.store;
 
+        // RumbleSettings ネストオブジェクト配列（各スロットごとの Dirty 検知・サブ設定モデル）
+        private readonly RumbleSettings[] _rumbleSettings = new RumbleSettings[TEST_PROFILE_ITEM_COUNT];
+
         public ProfileSettingsService(BackingStore backingStore = null)
         {
             _config = backingStore ?? Global.store;
+            InitRumbleSettings();
+        }
+
+        private void InitRumbleSettings()
+        {
+            for (int i = 0; i < TEST_PROFILE_ITEM_COUNT; i++)
+            {
+                int slot = i;
+                var r = new RumbleSettings();
+                if (SafeConfig != null)
+                {
+                    if (SafeConfig.rumble != null && SafeConfig.rumble.Length > slot)
+                        r.RumbleBoost = SafeConfig.rumble[slot];
+                    if (SafeConfig.rumbleAutostopTime != null && SafeConfig.rumbleAutostopTime.Length > slot)
+                        r.RumbleAutostopTime = SafeConfig.rumbleAutostopTime[slot];
+                }
+
+                // サブ設定側の変更を BackingStore（SafeConfig）およびサービス側へ双方向同期
+                r.RumbleSettingsChanged += (sender, args) =>
+                {
+                    if (SafeConfig != null)
+                    {
+                        if (SafeConfig.rumble != null && SafeConfig.rumble.Length > slot)
+                            SafeConfig.rumble[slot] = r.RumbleBoost;
+                        if (SafeConfig.rumbleAutostopTime != null && SafeConfig.rumbleAutostopTime.Length > slot)
+                            SafeConfig.rumbleAutostopTime[slot] = r.RumbleAutostopTime;
+                    }
+                };
+
+                _rumbleSettings[slot] = r;
+            }
         }
 
         public CultureInfo ConfigDecimalCulture { get; } = new CultureInfo("en-US");
@@ -380,8 +414,37 @@ namespace DS4Windows
         // ---- Step10-2-A-5: ライトバー・ランブル関連 (m_Config委譲) ----
         public LightbarSettingInfo[] LightbarSettingsInfo => SafeConfig?.lightbarSettingInfo;
         public bool[] InverseRumbleMotors => SafeConfig?.inverseRumbleMotors;
-        public byte[] RumbleBoost => SafeConfig?.rumble;
-        public int[] RumbleAutostopTime => SafeConfig?.rumbleAutostopTime;
+
+        public byte[] RumbleBoost
+        {
+            get => SafeConfig?.rumble;
+            set
+            {
+                if (SafeConfig != null) SafeConfig.rumble = value;
+                if (value != null)
+                {
+                    for (int i = 0; i < Math.Min(value.Length, _rumbleSettings.Length); i++)
+                        _rumbleSettings[i].RumbleBoost = value[i];
+                }
+            }
+        }
+
+        public int[] RumbleAutostopTime
+        {
+            get => SafeConfig?.rumbleAutostopTime;
+            set
+            {
+                if (SafeConfig != null) SafeConfig.rumbleAutostopTime = value;
+                if (value != null)
+                {
+                    for (int i = 0; i < Math.Min(value.Length, _rumbleSettings.Length); i++)
+                        _rumbleSettings[i].RumbleAutostopTime = value[i];
+                }
+            }
+        }
+
+        public RumbleSettings[] RumbleSettings => _rumbleSettings;
+
         public DualSenseDevice.RumbleEmulationMode[] DualSenseRumbleEmulationMode
         {
             get => SafeConfig?.dualSenseRumbleEmulationMode;
@@ -417,10 +480,19 @@ namespace DS4Windows
                 !UseGenericRumbleStrRescaleForDualSenses[deviceIndex])
                 return 100;
 
+            if (deviceIndex >= 0 && deviceIndex < _rumbleSettings.Length)
+                return _rumbleSettings[deviceIndex].RumbleBoost;
+
             return SafeConfig?.rumble != null ? SafeConfig.rumble[deviceIndex] : (byte)100;
         }
 
-        public int GetRumbleAutostopTime(int deviceIndex) => SafeConfig?.rumbleAutostopTime != null ? SafeConfig.rumbleAutostopTime[deviceIndex] : 0;
+        public int GetRumbleAutostopTime(int deviceIndex)
+        {
+            if (deviceIndex >= 0 && deviceIndex < _rumbleSettings.Length)
+                return _rumbleSettings[deviceIndex].RumbleAutostopTime;
+
+            return SafeConfig?.rumbleAutostopTime != null ? SafeConfig.rumbleAutostopTime[deviceIndex] : 0;
+        }
 
         public ref DS4Color GetMainColor(int deviceIndex) => ref SafeConfig.lightbarSettingInfo[deviceIndex].ds4winSettings.m_Led;
         public ref DS4Color GetLowColor(int deviceIndex) => ref SafeConfig.lightbarSettingInfo[deviceIndex].ds4winSettings.m_LowLed;
@@ -431,7 +503,11 @@ namespace DS4Windows
 
         public void SetRumbleAutostopTime(int index, int value)
         {
-            if (SafeConfig != null && SafeConfig.rumbleAutostopTime != null)
+            if (index >= 0 && index < _rumbleSettings.Length)
+            {
+                _rumbleSettings[index].RumbleAutostopTime = value;
+            }
+            if (SafeConfig != null && SafeConfig.rumbleAutostopTime != null && index < SafeConfig.rumbleAutostopTime.Length)
             {
                 SafeConfig.rumbleAutostopTime[index] = value;
                 DS4Device tempDev = Program.rootHub?.DS4Controllers?[index];
@@ -586,6 +662,10 @@ namespace DS4Windows
                     {
                         _linkedProfileCheck[deviceIndex] = false;
                     }
+                    if (deviceIndex < _rumbleSettings.Length)
+                    {
+                        _rumbleSettings[deviceIndex].Reset();
+                    }
                     OnProfileSettingChanged(deviceIndex, "ResetToDefaults", null, null);
                 }
             }
@@ -607,6 +687,44 @@ namespace DS4Windows
             AppLogger.LogToGui($"[DI] ProfileSettingsService.SettingChanged: Slot {deviceIndex}, {settingName}", false, true);
             ProfileSettingChanged?.Invoke(this, new ProfileSettingChangedEventArgs(deviceIndex, settingName, oldValue, newValue));
         }
+
+        // =========================================================================
+        // 宣言的配線（Declarative SubSetting Descriptor）
+        // =========================================================================
+        public sealed class SubSettingDescriptor
+        {
+            public string Prefix { get; }
+            public Func<ProfileSettingsService, int, ProfileSubSettingBase> Accessor { get; }
+
+            public SubSettingDescriptor(string prefix, Func<ProfileSettingsService, int, ProfileSubSettingBase> accessor)
+            {
+                Prefix = prefix;
+                Accessor = accessor;
+            }
+        }
+
+        /// <summary>
+        /// 全サブ設定の配線記述子リスト（完全性検証テストと実行時配線の双方で共通使用）
+        /// </summary>
+        public static readonly IReadOnlyList<SubSettingDescriptor> SubSettingDescriptors = new List<SubSettingDescriptor>
+        {
+            new SubSettingDescriptor("LS_X", (s, dev) => s.LSModInfo != null && s.LSModInfo.Length > dev ? s.LSModInfo[dev]?.xAxisDeadInfo : null),
+            new SubSettingDescriptor("LS_Y", (s, dev) => s.LSModInfo != null && s.LSModInfo.Length > dev ? s.LSModInfo[dev]?.yAxisDeadInfo : null),
+            new SubSettingDescriptor("RS_X", (s, dev) => s.RSModInfo != null && s.RSModInfo.Length > dev ? s.RSModInfo[dev]?.xAxisDeadInfo : null),
+            new SubSettingDescriptor("RS_Y", (s, dev) => s.RSModInfo != null && s.RSModInfo.Length > dev ? s.RSModInfo[dev]?.yAxisDeadInfo : null),
+            new SubSettingDescriptor("L2", (s, dev) => s.L2ModInfo != null && s.L2ModInfo.Length > dev ? s.L2ModInfo[dev] : null),
+            new SubSettingDescriptor("R2", (s, dev) => s.R2ModInfo != null && s.R2ModInfo.Length > dev ? s.R2ModInfo[dev] : null),
+            new SubSettingDescriptor("GyroControls", (s, dev) => s.GyroControlsInf != null && s.GyroControlsInf.Length > dev ? s.GyroControlsInf[dev] : null),
+            new SubSettingDescriptor("TouchAbs", (s, dev) => s.TouchAbsMouse != null && s.TouchAbsMouse.Length > dev ? s.TouchAbsMouse[dev] : null),
+            new SubSettingDescriptor("GyroMouse", (s, dev) => s.GyroMouseInfo != null && s.GyroMouseInfo.Length > dev ? s.GyroMouseInfo[dev] : null),
+            new SubSettingDescriptor("GyroMouseStick", (s, dev) => s.GyroMouseStickInf != null && s.GyroMouseStickInf.Length > dev ? s.GyroMouseStickInf[dev] : null),
+            new SubSettingDescriptor("TouchMouseStick", (s, dev) => s.TouchMouseStickInf != null && s.TouchMouseStickInf.Length > dev ? s.TouchMouseStickInf[dev] : null),
+            new SubSettingDescriptor("LS_DeltaAccel", (s, dev) => s.LSOutputSettings != null && s.LSOutputSettings.Length > dev ? s.LSOutputSettings[dev]?.outputSettings?.controlSettings?.deltaAccelSettings : null),
+            new SubSettingDescriptor("LS_FlickStick", (s, dev) => s.LSOutputSettings != null && s.LSOutputSettings.Length > dev ? s.LSOutputSettings[dev]?.outputSettings?.flickSettings : null),
+            new SubSettingDescriptor("RS_DeltaAccel", (s, dev) => s.RSOutputSettings != null && s.RSOutputSettings.Length > dev ? s.RSOutputSettings[dev]?.outputSettings?.controlSettings?.deltaAccelSettings : null),
+            new SubSettingDescriptor("RS_FlickStick", (s, dev) => s.RSOutputSettings != null && s.RSOutputSettings.Length > dev ? s.RSOutputSettings[dev]?.outputSettings?.flickSettings : null),
+            new SubSettingDescriptor("Rumble", (s, dev) => s.RumbleSettings != null && s.RumbleSettings.Length > dev ? s.RumbleSettings[dev] : null),
+        };
 
         /// <summary>
         /// 課題①: 指定スロット（-1 の場合は全スロット）のネストされたサブ設定オブジェクト群のイベント購読を安全に全解除します。
@@ -641,8 +759,8 @@ namespace DS4Windows
         }
 
         /// <summary>
-        /// ネストされたサブ設定オブジェクト群（スティック、トリガー、ジャイロ、タッチパッド等）の
-        /// OnSubPropertyChanged イベントを購読し、ProfileSettingChanged を発火させるように配線します。
+        /// ネストされたサブ設定オブジェクト群（スティック、トリガー、ジャイロ、タッチパッド、ランブル等）の
+        /// OnSubPropertyChanged イベントを購読し、ProfileSettingChanged を発火させるように宣言的リストに基づき配線します。
         /// 課題①: 冒頭で UnwireSubSettingsEvents を実行し、100% の冪等性を保証します。
         /// </summary>
         public void WireSubSettingsEvents(int deviceIndex = -1)
@@ -662,148 +780,24 @@ namespace DS4Windows
                         int currentDev = dev;
                         var unwireList = new List<Action>();
 
-                        // スティックデッドゾーン (AxisDeadZoneInfo)
-                        StickDeadZoneInfo lsMod = null;
-                        try { lsMod = LSModInfo != null && LSModInfo.Length > currentDev ? LSModInfo[currentDev] : null; } catch { }
-                        if (lsMod != null)
+                        foreach (var desc in SubSettingDescriptors)
                         {
-                            if (lsMod.xAxisDeadInfo != null)
+                            ProfileSubSettingBase subSetting = null;
+                            try
                             {
-                                Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"LS_X_{prop}");
-                                lsMod.xAxisDeadInfo.OnSubPropertyChanged += h;
-                                unwireList.Add(() => lsMod.xAxisDeadInfo.OnSubPropertyChanged -= h);
+                                subSetting = desc.Accessor(this, currentDev);
                             }
-                            if (lsMod.yAxisDeadInfo != null)
+                            catch
                             {
-                                Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"LS_Y_{prop}");
-                                lsMod.yAxisDeadInfo.OnSubPropertyChanged += h;
-                                unwireList.Add(() => lsMod.yAxisDeadInfo.OnSubPropertyChanged -= h);
+                                subSetting = null;
                             }
-                        }
 
-                        StickDeadZoneInfo rsMod = null;
-                        try { rsMod = RSModInfo != null && RSModInfo.Length > currentDev ? RSModInfo[currentDev] : null; } catch { }
-                        if (rsMod != null)
-                        {
-                            if (rsMod.xAxisDeadInfo != null)
+                            if (subSetting != null)
                             {
-                                Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"RS_X_{prop}");
-                                rsMod.xAxisDeadInfo.OnSubPropertyChanged += h;
-                                unwireList.Add(() => rsMod.xAxisDeadInfo.OnSubPropertyChanged -= h);
-                            }
-                            if (rsMod.yAxisDeadInfo != null)
-                            {
-                                Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"RS_Y_{prop}");
-                                rsMod.yAxisDeadInfo.OnSubPropertyChanged += h;
-                                unwireList.Add(() => rsMod.yAxisDeadInfo.OnSubPropertyChanged -= h);
-                            }
-                        }
-
-                        // トリガーデッドゾーン (TriggerDeadZoneZInfo)
-                        TriggerDeadZoneZInfo l2Mod = null;
-                        try { l2Mod = L2ModInfo != null && L2ModInfo.Length > currentDev ? L2ModInfo[currentDev] : null; } catch { }
-                        if (l2Mod != null)
-                        {
-                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"L2_{prop}");
-                            l2Mod.OnSubPropertyChanged += h;
-                            unwireList.Add(() => l2Mod.OnSubPropertyChanged -= h);
-                        }
-
-                        TriggerDeadZoneZInfo r2Mod = null;
-                        try { r2Mod = R2ModInfo != null && R2ModInfo.Length > currentDev ? R2ModInfo[currentDev] : null; } catch { }
-                        if (r2Mod != null)
-                        {
-                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"R2_{prop}");
-                            r2Mod.OnSubPropertyChanged += h;
-                            unwireList.Add(() => r2Mod.OnSubPropertyChanged -= h);
-                        }
-
-                        // ジャイロ設定 (GyroControlsInfo)
-                        GyroControlsInfo gyroCtrl = null;
-                        try { gyroCtrl = GyroControlsInf != null && GyroControlsInf.Length > currentDev ? GyroControlsInf[currentDev] : null; } catch { }
-                        if (gyroCtrl != null)
-                        {
-                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"GyroControls_{prop}");
-                            gyroCtrl.OnSubPropertyChanged += h;
-                            unwireList.Add(() => gyroCtrl.OnSubPropertyChanged -= h);
-                        }
-
-                        // タッチパッド絶対座標設定 (TouchpadAbsMouseSettings)
-                        TouchpadAbsMouseSettings touchAbs = null;
-                        try { touchAbs = TouchAbsMouse != null && TouchAbsMouse.Length > currentDev ? TouchAbsMouse[currentDev] : null; } catch { }
-                        if (touchAbs != null)
-                        {
-                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"TouchAbs_{prop}");
-                            touchAbs.OnSubPropertyChanged += h;
-                            unwireList.Add(() => touchAbs.OnSubPropertyChanged -= h);
-                        }
-
-                        // スムージング設定
-                        GyroMouseInfo gyroMouse = null;
-                        try { gyroMouse = GyroMouseInfo != null && GyroMouseInfo.Length > currentDev ? GyroMouseInfo[currentDev] : null; } catch { }
-                        if (gyroMouse != null)
-                        {
-                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"GyroMouse_{prop}");
-                            gyroMouse.OnSubPropertyChanged += h;
-                            unwireList.Add(() => gyroMouse.OnSubPropertyChanged -= h);
-                        }
-
-                        GyroMouseStickInfo gyroStick = null;
-                        try { gyroStick = GyroMouseStickInf != null && GyroMouseStickInf.Length > currentDev ? GyroMouseStickInf[currentDev] : null; } catch { }
-                        if (gyroStick != null)
-                        {
-                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"GyroMouseStick_{prop}");
-                            gyroStick.OnSubPropertyChanged += h;
-                            unwireList.Add(() => gyroStick.OnSubPropertyChanged -= h);
-                        }
-
-                        TouchMouseStickInfo touchStick = null;
-                        try { touchStick = TouchMouseStickInf != null && TouchMouseStickInf.Length > currentDev ? TouchMouseStickInf[currentDev] : null; } catch { }
-                        if (touchStick != null)
-                        {
-                            Action<string> h = (prop) => OnSubSettingChanged(currentDev, $"TouchMouseStick_{prop}");
-                            touchStick.OnSubPropertyChanged += h;
-                            unwireList.Add(() => touchStick.OnSubPropertyChanged -= h);
-                        }
-
-                        // 課題②: StickOutputSetting 配下の DeltaAccelSettings / FlickStickSettings のバブリング配線
-                        StickOutputSetting lsOut = null;
-                        try { lsOut = LSOutputSettings != null && LSOutputSettings.Length > currentDev ? LSOutputSettings[currentDev] : null; } catch { }
-                        if (lsOut != null && lsOut.outputSettings != null)
-                        {
-                            if (lsOut.outputSettings.controlSettings?.deltaAccelSettings != null)
-                            {
-                                var delta = lsOut.outputSettings.controlSettings.deltaAccelSettings;
-                                Action<string> hDelta = (prop) => OnSubSettingChanged(currentDev, $"LS_DeltaAccel_{prop}");
-                                delta.OnSubPropertyChanged += hDelta;
-                                unwireList.Add(() => delta.OnSubPropertyChanged -= hDelta);
-                            }
-                            if (lsOut.outputSettings.flickSettings != null)
-                            {
-                                var flick = lsOut.outputSettings.flickSettings;
-                                Action<string> hFlick = (prop) => OnSubSettingChanged(currentDev, $"LS_FlickStick_{prop}");
-                                flick.OnSubPropertyChanged += hFlick;
-                                unwireList.Add(() => flick.OnSubPropertyChanged -= hFlick);
-                            }
-                        }
-
-                        StickOutputSetting rsOut = null;
-                        try { rsOut = RSOutputSettings != null && RSOutputSettings.Length > currentDev ? RSOutputSettings[currentDev] : null; } catch { }
-                        if (rsOut != null && rsOut.outputSettings != null)
-                        {
-                            if (rsOut.outputSettings.controlSettings?.deltaAccelSettings != null)
-                            {
-                                var delta = rsOut.outputSettings.controlSettings.deltaAccelSettings;
-                                Action<string> hDelta = (prop) => OnSubSettingChanged(currentDev, $"RS_DeltaAccel_{prop}");
-                                delta.OnSubPropertyChanged += hDelta;
-                                unwireList.Add(() => delta.OnSubPropertyChanged -= hDelta);
-                            }
-                            if (rsOut.outputSettings.flickSettings != null)
-                            {
-                                var flick = rsOut.outputSettings.flickSettings;
-                                Action<string> hFlick = (prop) => OnSubSettingChanged(currentDev, $"RS_FlickStick_{prop}");
-                                flick.OnSubPropertyChanged += hFlick;
-                                unwireList.Add(() => flick.OnSubPropertyChanged -= hFlick);
+                                string prefix = desc.Prefix;
+                                Action<string> handler = (prop) => OnSubSettingChanged(currentDev, $"{prefix}_{prop}");
+                                subSetting.OnSubPropertyChanged += handler;
+                                unwireList.Add(() => subSetting.OnSubPropertyChanged -= handler);
                             }
                         }
 

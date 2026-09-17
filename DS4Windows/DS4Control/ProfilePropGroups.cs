@@ -37,7 +37,7 @@ namespace DS4Windows
         public event EventHandler ActionsChanged;
 
         public string GetAction(int index) => index >= 0 && index < MAX_ACTIONS ? actions[index] : string.Empty;
-        
+
         public void SetAction(int index, string value)
         {
             if (index < 0 || index >= MAX_ACTIONS) return;
@@ -1434,12 +1434,16 @@ namespace DS4Windows
     public class RumbleSettings : ProfileSubSettingBase
     {
         public const bool DEFAULT_ENABLE_RUMBLE = true;
+        public const byte DEFAULT_RUMBLE_BOOST = 100;
+        public const int DEFAULT_AUTOSTOP_TIME = 0;
         public const byte DEFAULT_RUMBLE_LIGHT = 50;
         public const byte DEFAULT_RUMBLE_HEAVY = 50;
         public const bool DEFAULT_ENABLE_RESCALE = false;
         public const byte DEFAULT_HAPTIC_POWER = 100;
 
         private bool enableRumble = DEFAULT_ENABLE_RUMBLE;
+        private byte rumbleBoost = DEFAULT_RUMBLE_BOOST;
+        private int rumbleAutostopTime = DEFAULT_AUTOSTOP_TIME;
         private byte rumbleLight = DEFAULT_RUMBLE_LIGHT;
         private byte rumbleHeavy = DEFAULT_RUMBLE_HEAVY;
         private DualSenseDevice.RumbleEmulationMode emulationMode = DualSenseDevice.RumbleEmulationMode.Accurate;
@@ -1453,6 +1457,30 @@ namespace DS4Windows
             {
                 if (enableRumble == value) return;
                 enableRumble = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public byte RumbleBoost
+        {
+            get => rumbleBoost;
+            set
+            {
+                if (rumbleBoost == value) return;
+                rumbleBoost = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public int RumbleAutostopTime
+        {
+            get => rumbleAutostopTime;
+            set
+            {
+                if (rumbleAutostopTime == value) return;
+                rumbleAutostopTime = value;
                 RaisePropertyChanged();
                 RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -1523,12 +1551,14 @@ namespace DS4Windows
         public void Reset()
         {
             enableRumble = DEFAULT_ENABLE_RUMBLE;
+            rumbleBoost = DEFAULT_RUMBLE_BOOST;
+            rumbleAutostopTime = DEFAULT_AUTOSTOP_TIME;
             rumbleLight = DEFAULT_RUMBLE_LIGHT;
             rumbleHeavy = DEFAULT_RUMBLE_HEAVY;
             emulationMode = DualSenseDevice.RumbleEmulationMode.Accurate;
             enableGenericRumbleRescale = DEFAULT_ENABLE_RESCALE;
             hapticPowerLevel = DEFAULT_HAPTIC_POWER;
-            RaisePropertyChanged(string.Empty);
+            RaiseAllPropertiesChanged();
             RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
         }
 
