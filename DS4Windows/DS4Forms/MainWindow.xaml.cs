@@ -1050,20 +1050,26 @@ Suspend support not enabled.", true);
         /// </summary>
         private void SelectProfCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // ★同期処理中は ComboBox の自動選択変更イベントをスキップ（暴発防止）
-            if (isProfileSyncing) return;
-
             ComboBox box = sender as ComboBox;
+            if (box == null) return;
+
             int idx = Convert.ToInt32(box.Tag);
             if (idx > -1 && conLvViewModel.ControllerDict.ContainsKey(idx))
             {
                 CompositeDeviceModel item = conLvViewModel.ControllerDict[idx];
-                if (item.SelectedIndex > -1)
+
+                // ★統合抑制フラグ: バックエンドからのプロファイル変更同期中は手動適用をスキップ（無限ループ防止）
+                if (item.suppressSelectedIndexChanged)
+                {
+                    DS4Windows.AppLogger.LogDebug($"SelectProfCombo_SelectionChanged: Suppressed for device {idx}");
+                    return;
+                }
+
+                if (item.SelectedIndex > -1 && item.SelectedIndex < item.ProfileListCol.Count)
                 {
                     string prof = item.ProfileListCol[item.SelectedIndex].Name;
 
                     // 既に同じプロファイルが適用されていればスキップ
-                    // （Global_SelectedProfileChangedから呼ばれた場合など）
                     if (profileRepo.SelectedProfile[idx] == prof)
                     {
                         DS4Windows.AppLogger.LogDebug($"SelectProfCombo_SelectionChanged: Profile '{prof}' already applied for device {idx}, skipping");
@@ -1936,10 +1942,6 @@ Suspend support not enabled.", true);
 
         #region Profile List & Controllers Synchronization (4-Stage Transaction)
 
-        /// <summary>
-        /// プロファイル同期処理中のイベント暴発を抑制するガードフラグ
-        /// </summary>
-        private bool isProfileSyncing = false;
 
         /// <summary>
         /// プロファイル保存・更新・リネーム時の4段階トランザクション同期メソッド。
@@ -1952,8 +1954,6 @@ Suspend support not enabled.", true);
         {
             int slotCount = ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
 
-            // ① 【退避 & ガード (Detach)】
-            isProfileSyncing = true;
             string[] activeProfiles = new string[slotCount];
             try
             {
@@ -1993,8 +1993,6 @@ Suspend support not enabled.", true);
             }
             finally
             {
-                // ガード解除
-                isProfileSyncing = false;
             }
 
             // ④ 【再適用・ホットリロード (Re-apply)】

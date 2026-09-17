@@ -35,14 +35,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 {
     public class ControllerListViewModel : IDisposable
     {
-        //private object _colLockobj = new object();
-        // 終了時のLockRecursionException対策:
-        // WriteLock保持中にcontrollerCol.Clear()を呼ぶと、WPFのCollectionChanged通知経由で
-        // ColLockCallbackが同一スレッドから再入的にReadLockを取得しようとする(ListCollectionView.RefreshOverride)。
-        // 既定のNoRecursionポリシーではこれが例外(LockRecursionException)となり、
-        // MainDS4Window_Closed内のDispose()が中断してApplication.Current.Shutdown()まで
-        // 到達できず、終了処理が完了しない不具合が発生していた。SupportsRecursionを指定し、
-        // 同一スレッドからのWrite→Read再入を許可することで解消する。
         private ReaderWriterLockSlim _colListLocker = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         private ObservableCollection<CompositeDeviceModel> controllerCol =
             new ObservableCollection<CompositeDeviceModel>();
@@ -71,7 +63,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public Dictionary<int, CompositeDeviceModel> ControllerDict { get => controllerDict; set => controllerDict = value; }
 
-        //public ControllerListViewModel(Tester tester, ProfileList profileListHolder)
         public ControllerListViewModel(ControlService service, ProfileList profileListHolder,
             IProfileSettingsService profileSettingsService = null,
             IProfileRepository profileRepo = null,
@@ -89,9 +80,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             // Subscribe to SelectedProfile change event (スペシャルアクション対応)
             this.profileRepo.SelectedProfileChanged += Global_SelectedProfileChanged;
 
-            //tester.StartControllers += ControllersChanged;
-            //tester.ControllersRemoved += ClearControllerList;
-
             int idx = 0;
             foreach (DS4Device currentDev in controlService.slotManager.ControllerColl)
             {
@@ -103,7 +91,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 idx++;
             }
 
-            //BindingOperations.EnableCollectionSynchronization(controllerCol, _colLockobj);
             BindingOperations.EnableCollectionSynchronization(controllerCol, _colListLocker,
                 ColLockCallback);
         }
@@ -130,10 +117,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private void Service_HotplugController(ControlService sender,
             DS4Device device, int index)
         {
-            // Engage write lock pre-maturely
             using (WriteLocker readLock = new WriteLocker(_colListLocker))
             {
-                // Look if device exists. Also, check if disconnect might be occurring
                 if (!controllerDict.ContainsKey(index) && !device.IsRemoving)
                 {
                     CompositeDeviceModel temp = new CompositeDeviceModel(device,
@@ -173,15 +158,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
         }
 
-        // Phase5-Watchpoints-Investigation-Report Watchpoint 2対応:
-        // controlService(Singleton)・profileRepo(Singleton)のイベント購読を確実に解除する。
-        // 個々のDS4Device.Removal購読解除はClearControllerListの既存ロジックを再利用する。
-        //
-        // 終了時のLockRecursionException対策(2026-09-10調査):
-        // ClearControllerList()がWPFのバインディング同期経由で例外を投げた場合でも、
-        // MainDS4Window_Closed側の後続シャットダウン処理(トレイアイコン破棄・
-        // Application.Current.Shutdown())が必ず継続されるよう、イベント購読解除を
-        // try/finallyで保護する。
         public void Dispose()
         {
             try
@@ -203,7 +179,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void ControllersChanged(object sender, EventArgs e)
         {
-            //IEnumerable<DS4Device> devices = DS4Windows.DS4Devices.getDS4Controllers();
             using (ReadLocker locker = new ReadLocker(controlService.slotManager.CollectionLocker))
             {
                 foreach (DS4Device currentDev in controlService.slotManager.ControllerColl)
@@ -220,10 +195,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     }
                     _colListLocker.ExitReadLock();
 
-                    // Check for new device. Also, check if disconnect might be occurring
                     if (!found && !currentDev.IsRemoving)
                     {
-                        //int idx = controllerCol.Count;
                         _colListLocker.EnterWriteLock();
                         int idx = controlService.slotManager.ReverseControllerDict[currentDev];
                         CompositeDeviceModel temp = new CompositeDeviceModel(currentDev,
@@ -289,7 +262,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                             CompositeDeviceModel item = controllerDict[deviceIndex];
                             AppLogger.LogDebug($"Global_SelectedProfileChanged: Found controller item for device {deviceIndex}");
 
-                            // Update SelectedIndex to match the new profile
                             ProfileEntity newProfile = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == profileName);
                             if (newProfile != null)
                             {
@@ -298,10 +270,15 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
                                 if (item.SelectedIndex != newIndex)
                                 {
-                                    // Suppress SelectedIndexChanged event to avoid triggering SelectProfCombo_SelectionChanged
+                                    // ★統合抑制フラグ: WPF ComboBox の SelectionChanged 完了まで確実に抑制状態を保持
                                     item.suppressSelectedIndexChanged = true;
                                     item.SelectedIndex = newIndex;
-                                    item.suppressSelectedIndexChanged = false;
+
+                                    System.Windows.Application.Current.Dispatcher.BeginInvoke((Action)(() =>
+                                    {
+                                        item.suppressSelectedIndexChanged = false;
+                                    }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+
                                     AppLogger.LogDebug($"Global_SelectedProfileChanged: Updated SelectedIndex to {newIndex}");
                                 }
                             }
@@ -310,14 +287,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                                 AppLogger.LogDebug($"Global_SelectedProfileChanged: Profile '{profileName}' not found in profile list");
                             }
 
-                            // Update backlight color to match the new profile
                             item.RaiseLightColorChanged();
                             AppLogger.LogDebug($"Global_SelectedProfileChanged: LightColorChanged event fired for device {deviceIndex}");
-
-                            // Note: RaiseLinkedProfileChanged() is not called here to avoid triggering
-                            // unnecessary UI updates. LinkedProfile should only be updated when explicitly
-                            // changed by the user or during controller reconnection.
-
                             AppLogger.LogDebug($"Global_SelectedProfileChanged: Completed successfully for device {deviceIndex}");
                         }
                         else
@@ -349,7 +320,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private ProfileList profileListHolder;
         private ProfileEntity selectedEntity;
         private int selectedIndex = -1;
-        internal bool suppressSelectedIndexChanged = false; // SelectedIndexChanged イベント抑制フラグ（Global_SelectedProfileChangedからアクセス可能）
+        internal bool suppressSelectedIndexChanged = false; // ★統合抑制フラグ（Global_SelectedProfileChangedからアクセス可能）
         private int devIndex;
         private readonly IProfileSettingsService profileSettingsService;
         private readonly IProfileRepository profileRepo;
@@ -368,7 +339,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 DS4Color color;
                 if (profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed)
                 {
-                    color = profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed; //Global.CustomColor[devIndex];
+                    color = profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed;
                 }
                 else
                 {
@@ -408,10 +379,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 if (selectedIndex == value) return;
                 selectedIndex = value;
 
-                // XAMLバインディング用のPropertyChangedイベントを発火
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedIndex)));
 
-                // 互換性のため既存のSelectedIndexChangedイベントも維持（現在は未使用）
                 if (!suppressSelectedIndexChanged)
                 {
                     SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
@@ -471,13 +440,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
         public event EventHandler LinkedProfileChanged;
 
-        // LinkedProfileチェックボックスのUI更新を強制する（再接続時など）
         public void RaiseLinkedProfileChanged()
         {
             LinkedProfileChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        // New properties for Selected Profile and Linked Profile
         public string SelectedProfileName
         {
             get => profileRepo.SelectedProfile[devIndex];
@@ -510,7 +477,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
                 profileRepo.LinkedProfileUI[devIndex] = newValue;
 
-                // Link ON時のみLinkedProfiles.xmlを更新
                 if (profileSettingsService.GetLinkedProfileCheck(devIndex) && device?.isValidSerial() == true)
                 {
                     if (!string.IsNullOrEmpty(newValue))
@@ -538,7 +504,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
                 if (value)
                 {
-                    // Link ON: Linked列の現在値を登録（空の場合は現在適用中のプロファイルを使用）
                     string linkedValue = profileRepo.LinkedProfileUI[devIndex];
                     if (string.IsNullOrEmpty(linkedValue))
                     {
@@ -564,7 +529,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 }
                 else
                 {
-                    // Link OFF: LinkedProfiles.xmlから削除（LinkedProfileUIは保持）
                     AppLogger.LogDebug($"LinkEnabled OFF: Removing from LinkedProfiles.xml for device {devIndex}");
                     if (device?.isValidSerial() == true)
                     {
@@ -573,7 +537,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                         AppLogger.LogDebug($"LinkEnabled OFF: Removed from LinkedProfiles.xml for MAC={device.getMacAddress()}");
                     }
 
-                    // LinkedProfileUIは空にせず保持する（再チェック時に使用）
                     AppLogger.LogDebug($"LinkEnabled OFF: Keeping LinkedProfileUI value '{profileRepo.LinkedProfileUI[devIndex]}' for device {devIndex}");
                 }
 
@@ -611,23 +574,20 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                string temp = Translations.Strings.SharedAccess;
-                switch (device.CurrentExclusiveStatus)
+                if (device.CurrentExclusiveStatus == DS4Device.ExclusiveStatus.Exclusive)
                 {
-                    case DS4Device.ExclusiveStatus.Exclusive:
-                        temp = Translations.Strings.ExclusiveAccess;
-                        break;
-                    case DS4Device.ExclusiveStatus.HidHideAffected:
-                        temp = Translations.Strings.HidHideAccess;
-                        break;
-                    case DS4Device.ExclusiveStatus.HidGuardAffected:
-                        temp = Translations.Strings.HidGuardianAccess;
-                        break;
-                    default:
-                        break;
+                    return Translations.Strings.ExclusiveAccess;
+                }
+                else if (device.CurrentExclusiveStatus == DS4Device.ExclusiveStatus.HidHideAffected)
+                {
+                    return Translations.Strings.HidHideAccess;
+                }
+                else if (device.CurrentExclusiveStatus == DS4Device.ExclusiveStatus.HidGuardAffected)
+                {
+                    return Translations.Strings.HidGuardianAccess;
                 }
 
-                return temp;
+                return Translations.Strings.SharedAccess;
             }
         }
 
@@ -765,7 +725,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (device.ConnectionType == ConnectionType.BT)
                 {
-                    //device.StopUpdate();
                     device.queueEvent(() =>
                     {
                         device.DisconnectBT();
