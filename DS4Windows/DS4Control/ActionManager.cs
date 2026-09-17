@@ -38,15 +38,20 @@ namespace DS4Windows
 
         // Issue8-1是正(1): プロファイル適用後は、以後発生した成立イベントのみを成立とみなす（仕様④）。
         // ActionInstanceStateが新規生成された直後はtrue。以後、当該アクションのトリガーが
-        // 一度でも「未成立（トリガー構成ボタンのいずれかが押されていない）」状態として観測されるまでは、
+        // 連続して指定時間（FreshPressReleaseHoldMs）「未成立」状態として観測されるまでは、
         // たとえ全ボタン押下状態が検出されても新規成立とみなさない。
-        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md §2.3, §3
         public bool RequiresFreshPressAfterReset = true;
+
+        // A案是正: 未成立状態が開始された時刻（Environment.TickCount64）。
+        // 過渡的な0クリアによる瞬間的OFFで即座にガード解除されるのを防ぐデバウンスタイマー。
+        public long UntriggeredTimestampTicks = 0;
+
+        // ガード解除に必要なOFF継続時間（ミリ秒）
+        public const int FreshPressReleaseHoldMs = 80;
 
         // Issue8-1是正(2): 同一アクションの実行重複禁止（仕様③の厳格化）。
         // Macro型はIsMacroRunningで既に管理されているため、それ以外の種別
         // （Profile/Program/GyroCalibrate等）向けに新設する。
-        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md §4
         public bool IsExecuting = false;
 
         // 実行中に新たな成立イベントが発生した場合、完了後にもう一度だけ実行してほしいという
@@ -209,7 +214,6 @@ namespace DS4Windows
         }
 
         // Controlled setter for BeingTriggered — centralizes mutations so callers don't assign the field directly.
-        // This API is private to prevent external callers from mutating BeingTriggered; use DispatchTriggerEdge instead.
         private static void SetBeingTriggeredFor(SpecialAction action, int device, bool value)
         {
             try
@@ -337,9 +341,7 @@ namespace DS4Windows
             catch { }
         }
 
-        // Preallocate runtime instances at startup: create Action instances and per-action states
-        // This forces creation of `Actions.Action` and `ActionEntry` objects so first-use latency
-        // does not hit the input path.
+        // Preallocate runtime instances at startup
         public static void PreallocateOnStartup()
         {
             try
@@ -350,7 +352,6 @@ namespace DS4Windows
                     try { GetActionByIndex(i); } catch { }
                 }
 
-                // Ensure ActionEntry/States are created for all actions and devices.
                 try
                 {
                     foreach (var sa in ActionRegistry.AllActions())
@@ -365,13 +366,8 @@ namespace DS4Windows
             catch { }
         }
 
-        // NOTE: NotifyTriggerEstablished removed — use DispatchTriggerEstablished or DispatchTriggerEdge
-
-        // Event fired when toggled-on state changes for an action/device.
-        // Parameters: (SpecialAction action, int device, bool oldValue, bool newValue)
         public static event Action<SpecialAction, int, bool, bool> ToggledOnChanged;
 
-        // Ensure the ToggledOnChanged event is always traced when fired.
         static ActionManager()
         {
             try
@@ -384,7 +380,6 @@ namespace DS4Windows
             catch { }
         }
 
-        // Helper for external components (such as DI-managed managers) to notify the static event.
         public static void FireToggledOnChanged(SpecialAction action, int device, bool oldValue, bool newValue)
         {
             try
@@ -394,10 +389,8 @@ namespace DS4Windows
             catch { }
         }
 
-        // Helper to set toggled-on flag with change notification.
         public static void SetToggledOn(SpecialAction action, int device, bool value)
         {
-            // Prefer DI-managed implementation and fail loudly if none present.
             var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
             if (sp != null)
             {
@@ -409,13 +402,11 @@ namespace DS4Windows
                 }
             }
 
-            // No DI manager available -> explicit failure to avoid silent state divergence
             var msg = $"ActionManager.SetToggledOn called but no IManagedActionManager is registered. action={(action?.name ?? "(null)")} device={device} value={value}";
             try { AppLogger.LogError(msg); } catch { }
             throw new InvalidOperationException(msg);
         }
 
-        // Dispatch that returns true if an Action instance existed and was invoked to handle the trigger.
         public static bool DispatchTriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler)
         {
             try
@@ -455,8 +446,6 @@ namespace DS4Windows
             }
         }
 
-        // NOTE: NotifyTriggerReleased removed — use DispatchTriggerReleased or DispatchTriggerEdge
-
         public static bool DispatchTriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM outputKBMHandler)
         {
             try
@@ -493,8 +482,6 @@ namespace DS4Windows
             }
         }
 
-        // Generic dispatch entry that accepts a TriggerContext and routes to established/released handlers.
-        // This is a simple forwarder used as a fallback when no ActionInstanceState is available.
         public static bool DispatchTrigger(DS4Windows.TriggerContext ctx)
         {
             try
@@ -516,9 +503,6 @@ namespace DS4Windows
             }
         }
 
-        // Edge-aware dispatcher: accepts a TriggerContext and only fires established/released once per input edge
-        // by consulting the per-action ActionInstanceState.BeingTriggered flag. If no state exists, falls back
-        // to the simple DispatchTrigger forwarder.
         public static bool DispatchTriggerEdge(DS4Windows.TriggerContext ctx)
         {
             try
@@ -534,7 +518,6 @@ namespace DS4Windows
 
                 if (ctx.IsEstablished)
                 {
-                    // Only fire when transitioning from not-being-triggered -> being-triggered
                     bool shouldFire = false;
                     try
                     {
@@ -555,12 +538,10 @@ namespace DS4Windows
                         return DispatchTriggerEstablished(ctx.ActionDef, ctx.Device, ctx.LogicalValue, ctx.NativeValue, ctx.UseScanCode, ctx.OutputHandler);
                     }
 
-                    // suppressed duplicate established
                     return false;
                 }
                 else
                 {
-                    // Only fire when transitioning from being-triggered -> not-being-triggered
                     bool shouldFire = false;
                     try
                     {
@@ -581,7 +562,6 @@ namespace DS4Windows
                         return DispatchTriggerReleased(ctx.ActionDef, ctx.Device, ctx.LogicalValue, ctx.NativeValue, ctx.UseScanCode, ctx.OutputHandler);
                     }
 
-                    // suppressed duplicate release
                     return false;
                 }
             }
@@ -592,29 +572,21 @@ namespace DS4Windows
             }
         }
 
-        // Abstraction: allow Actions to obtain controllers via ActionManager so implementations
-        // do not directly depend on Mapping internals. Default implementation delegates to Mapping.
         public static DS4Windows.Actions.IActionController GetOrCreateControllerForAction(int device, SpecialAction action)
         {
             try
             {
-                // If DI provider exposes a managed action manager, let it provide controllers.
                 var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
                 if (sp != null)
                 {
                     var mgr = sp.GetService(typeof(DS4Windows.Actions.IManagedActionManager)) as DS4Windows.Actions.IManagedActionManager;
-                    // IManagedActionManager may be extended later to provide controller factory; for now fall back.
                 }
 
-                // Default behavior: delegate to Mapping helper.
                 return Mapping.GetOrCreateKeyButtonControllerForAction(device, action);
             }
             catch { return null; }
         }
 
-        // Preallocate runtime instances for a specific device when a profile is applied to that device.
-        // Creates Action instances, per-device ActionInstanceState entries and key/button controllers
-        // for the SpecialActions present in the applied profile.
         public static void PreallocateForProfileApply(int device)
         {
             try
@@ -629,13 +601,8 @@ namespace DS4Windows
                         var sa = Global.GetProfileAction(device, actionName);
                         if (sa == null) continue;
 
-                        // Ensure Action instance exists
                         try { GetActionByName(sa.name); } catch { }
-
-                        // Ensure per-device state exists
                         try { GetStateFor(sa, device); } catch { }
-
-                        // Create key/button controller if needed
                         try { Mapping.GetOrCreateKeyButtonControllerForAction(device, sa); } catch { }
                     }
                     catch { }

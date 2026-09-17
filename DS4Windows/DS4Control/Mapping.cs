@@ -5110,18 +5110,35 @@ namespace DS4Windows
                         bool actionFound = false;
                         // Trigger evaluation is frequent; avoid unconditional per-tick debug logging to prevent log flooding.
 
-                        // Issue8-1是正(1): トリガー未成立を観測した時点で「以後の成立イベントは正規のもの」として
-                        // アームする（仕様④: プロファイル適用直後の押しっぱなし誤検知を防止）。
-                        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md §2.3, §3
-                        if (!triggeractivated)
+                        // Issue8-1是正(1) + A案フォローアップ: 
+                        // トリガー未成立が連続して指定時間（FreshPressReleaseHoldMs = 80ms）継続して初めて
+                        // 「以後の成立イベントは正規のもの」としてアーム解除する（過渡期0クリアによる瞬間的OFFの誤解除を防止）。
+                        try
                         {
-                            try
+                            var freshPressArmState = ActionManager.GetStateFor(action, device);
+                            if (freshPressArmState != null)
                             {
-                                var freshPressArmState = ActionManager.GetStateFor(action, device);
-                                if (freshPressArmState != null) freshPressArmState.RequiresFreshPressAfterReset = false;
+                                if (!triggeractivated)
+                                {
+                                    // 未成立（OFF）の開始時刻を記録
+                                    if (freshPressArmState.UntriggeredTimestampTicks == 0)
+                                    {
+                                        freshPressArmState.UntriggeredTimestampTicks = Environment.TickCount64;
+                                    }
+                                    else if (Environment.TickCount64 - freshPressArmState.UntriggeredTimestampTicks >= ActionInstanceState.FreshPressReleaseHoldMs)
+                                    {
+                                        // 連続して80ms以上OFFが維持されたらガード解除
+                                        freshPressArmState.RequiresFreshPressAfterReset = false;
+                                    }
+                                }
+                                else
+                                {
+                                    // ボタンが押されている間（ON）はOFFタイマーをリセット
+                                    freshPressArmState.UntriggeredTimestampTicks = 0;
+                                }
                             }
-                            catch { }
                         }
+                        catch { }
 
                         if (triggeractivated)
                         {

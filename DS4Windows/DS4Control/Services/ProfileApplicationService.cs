@@ -41,12 +41,26 @@ namespace DS4Windows
             {
                 if (device != null)
                 {
+                    // C案: HaltReporting の区間内ではプロファイルメモリ適用とアクションチェーンのみを高速実行（1〜2ms以内）
                     device.HaltReportingRunAction(() =>
                     {
                         Global.ApplyProfile(deviceIndex, action.details, action.IsTemporaryProfileAction, true, _control,
-                            ProfileChangeSource.MappingAction, prolog);
+                            ProfileChangeSource.MappingAction, null); // Halt内での重い通知ウィンドウ同期生成を抑止
                         _actionChain?.DispatchNextActions(deviceIndex, action);
                     });
+
+                    // Halt解除後に非同期で通知ウィンドウをディスパッチ
+                    if (!string.IsNullOrEmpty(prolog) && Global.Notifications != 0)
+                    {
+                        Task.Run(() =>
+                        {
+                            try
+                            {
+                                AppLogger.LogToTray(prolog, false, true);
+                            }
+                            catch { }
+                        });
+                    }
                 }
                 else
                 {
