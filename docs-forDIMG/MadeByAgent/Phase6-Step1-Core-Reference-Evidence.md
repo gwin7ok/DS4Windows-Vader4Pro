@@ -524,7 +524,7 @@
 | アクション個数はキャッシュ | `ScpUtil.cs`：3328–3331行。`ProfileActions.Count` への置換を同義と断定しない |
 | プロファイル別アクションindexは独自辞書 | `ScpUtil.cs`：3493–3498行。SA.`GetActionIndex` と別物 |
 | PA取得は同じ辞書だがTrace追加あり | [`ProfileActionProvider.cs`](G:/Cursor_Folder/DS4Windows-Vader4Pro/DS4Windows/DS4Control/Services/ProfileActionProvider.cs)：28–43行 |
-| 逆引き配列のDI getterはClone | `ProfileSettingsService.cs`：`GetReverseX360ButtonMapping()`、約619–622行。入力処理ごとの割当増加に注意 |
+| 逆引き配列のDI getterはClone | `ProfileSettingsService.cs`：`GetReverseX360ButtonMapping()`、602–605行（固定SHA `62e69387ebb99d32003897b261ca2ac9fb3bebd8` で再確認し、旧「約619–622行」を訂正）。入力処理ごとの割当増加に注意 |
 | SA.`Actions` はコピー、`ActionList` は実体 | [`SpecialActionRepository.cs`](G:/Cursor_Folder/DS4Windows-Vader4Pro/DS4Windows/DS4Control/Services/SpecialActionRepository.cs)：36–52行 |
 | 表示座標変換は純粋関数ではない | `ScpUtil.cs`：3963–4017行。`absDisplayBounds`／`fullDesktopBounds`／モニター列挙状態に依存 |
 | `GetInstanceIdFromDevicePath` は環境依存 | `ScpUtil.cs`：1771–1784行。Win32 `CM_Get_Device_Interface_Property` を使用 |
