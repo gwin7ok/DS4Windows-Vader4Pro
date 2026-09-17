@@ -206,6 +206,7 @@ namespace DS4WinWPF.DS4Forms
         private DS4State baseState = new DS4State();
         private DS4State interState = new DS4State();
         private DS4StateExposed exposeState;
+        private Label outputDelayLabel; // XAMLコントロール参照キャッシュ
         private const int CANVAS_WIDTH = 130;
         private const int CANVAS_MIDPOINT = CANVAS_WIDTH / 2;
         private const double TRIG_LB_TRANSFORM_OFFSETY = 66.0;
@@ -217,7 +218,7 @@ namespace DS4WinWPF.DS4Forms
             exposeState = new DS4StateExposed(baseState);
 
             readingTimer = new NonFormTimer();
-            readingTimer.Interval = 50.0; // 20fps (50ms) 縺ｫ險ｭ螳壹＠縺ｦUI繧ｭ繝･繝ｼ貊樒蕗繧貞ｮ悟・髦ｲ豁｢
+            readingTimer.Interval = 50.0; // 20fps (50ms) に設定してUIキュー滞留を完全防止
 
             LsDeadXChanged += ChangeLsDeadControls;
             LsDeadYChanged += ChangeLsDeadControls;
@@ -242,12 +243,12 @@ namespace DS4WinWPF.DS4Forms
 
         private void ControllerReadingsControl_DeviceNumChanged(object sender, EventArgs e)
         {
-                        inputContNum.Content = $"#{deviceNum + 1}";
+            inputContNum.Content = $"#{deviceNum + 1}";
         }
 
         private void ChangeSixAxisDeadControls(object sender, EventArgs e)
         {
-                        sixAxisDeadEllipse.Width = sixAxisXDead * CANVAS_WIDTH;
+            sixAxisDeadEllipse.Width = sixAxisXDead * CANVAS_WIDTH;
             sixAxisDeadEllipse.Height = sixAxisZDead * CANVAS_WIDTH;
             Canvas.SetLeft(sixAxisDeadEllipse, CANVAS_MIDPOINT - (sixAxisXDead * CANVAS_WIDTH / 2.0));
             Canvas.SetTop(sixAxisDeadEllipse, CANVAS_MIDPOINT - (sixAxisZDead * CANVAS_WIDTH / 2.0));
@@ -255,7 +256,7 @@ namespace DS4WinWPF.DS4Forms
 
         private void ChangeRsDriftControls(object sender, EventArgs e)
         {
-                        rsDriftEllipse.Width = rsDeadX * CANVAS_WIDTH;
+            rsDriftEllipse.Width = rsDeadX * CANVAS_WIDTH;
             rsDriftEllipse.Height = rsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(rsDriftEllipse, (1 + (RsDriftX / 127.0) - rsDeadX) * CANVAS_MIDPOINT);
             Canvas.SetTop(rsDriftEllipse, (1 + (RsDriftY / 127.0) - rsDeadY) * CANVAS_MIDPOINT);
@@ -263,7 +264,7 @@ namespace DS4WinWPF.DS4Forms
 
         private void ChangeLsDriftControls(object sender, EventArgs e)
         {
-                        lsDriftEllipse.Width = lsDeadX * CANVAS_WIDTH;
+            lsDriftEllipse.Width = lsDeadX * CANVAS_WIDTH;
             lsDriftEllipse.Height = lsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(lsDriftEllipse, (1 + (LsDriftX / 127.0) - lsDeadX) * CANVAS_MIDPOINT);
             Canvas.SetTop(lsDriftEllipse, (1 + (LsDriftY / 127.0) - lsDeadY) * CANVAS_MIDPOINT);
@@ -271,18 +272,18 @@ namespace DS4WinWPF.DS4Forms
 
         private void ChangeRsDeadControls(object sender, EventArgs e)
         {
-                        rsDeadEllipse.Width = rsDeadX * CANVAS_WIDTH;
+            rsDeadEllipse.Width = rsDeadX * CANVAS_WIDTH;
             rsDeadEllipse.Height = rsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadX * CANVAS_WIDTH / 2.0));
-            Canvas.SetTop(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadY * CANVAS_WIDTH / 2.0));
+            Canvas.SetTop(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadX * CANVAS_WIDTH / 2.0));
         }
 
         private void ChangeLsDeadControls(object sender, EventArgs e)
         {
-                        lsDeadEllipse.Width = lsDeadX * CANVAS_WIDTH;
+            lsDeadEllipse.Width = lsDeadX * CANVAS_WIDTH;
             lsDeadEllipse.Height = lsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadX * CANVAS_WIDTH / 2.0));
-            Canvas.SetTop(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadY * CANVAS_WIDTH / 2.0));
+            Canvas.SetTop(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadX * CANVAS_WIDTH / 2.0));
         }
 
         public void UseDevice(int index, int profileDevIdx)
@@ -298,6 +299,10 @@ namespace DS4WinWPF.DS4Forms
             {
                 IsEnabled = true;
                 useTimer = true;
+                if (Program.rootHub != null)
+                {
+                    Program.rootHub.IsMeasuringProcessingDelay = true;
+                }
                 readingTimer.Elapsed += ControllerReadingTimer_Elapsed;
                 readingTimer.Start();
             }
@@ -305,6 +310,10 @@ namespace DS4WinWPF.DS4Forms
             {
                 IsEnabled = false;
                 useTimer = false;
+                if (Program.rootHub != null)
+                {
+                    Program.rootHub.IsMeasuringProcessingDelay = false;
+                }
                 readingTimer.Elapsed -= ControllerReadingTimer_Elapsed;
                 readingTimer.Stop();
             }
@@ -312,9 +321,12 @@ namespace DS4WinWPF.DS4Forms
 
         private void ControllerReadingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-                        readingTimer.Stop();
+            readingTimer.Stop();
 
-            DS4Device ds = Program.rootHub.DS4Controllers[deviceNum];
+            DS4Device ds = Program.rootHub?.DS4Controllers != null && deviceNum < Program.rootHub.DS4Controllers.Length
+                ? Program.rootHub.DS4Controllers[deviceNum]
+                : null;
+
             if (ds != null)
             {
                 // Don't bother waiting for UI thread to grab references
@@ -344,12 +356,8 @@ namespace DS4WinWPF.DS4Forms
 
                     Canvas.SetLeft(lsValRec, x / 255.0 * CANVAS_WIDTH - 3);
                     Canvas.SetTop(lsValRec, y / 255.0 * CANVAS_WIDTH - 3);
-                    //bool mappedLS = interState.LX != x || interState.LY != y;
-                    //if (mappedLS)
-                    //{
                     Canvas.SetLeft(lsMapValRec, interState.LX / 255.0 * CANVAS_WIDTH - 3);
                     Canvas.SetTop(lsMapValRec, interState.LY / 255.0 * CANVAS_WIDTH - 3);
-                    //}
 
                     x = baseState.RX;
                     y = baseState.RY;
@@ -434,6 +442,15 @@ namespace DS4WinWPF.DS4Forms
 
                     batteryLvlLb.Content = $"{Translations.Strings.Battery}: {baseState.Battery}%";
                     gyroCalEllipse.Visibility = cntCalibrating > 0 && ((cntCalibrating / 250) % 2 == 1) ? Visibility.Visible : Visibility.Hidden;
+
+                    // 仮想コントローラー出力遅延（内部変換所要時間）の表示更新
+                    double procDelay = Program.rootHub != null ? Program.rootHub.GetProcessingDelay(deviceNum) : 0.0;
+                    outputDelayLabel ??= FindName("outputDelayLb") as Label;
+                    if (outputDelayLabel != null)
+                    {
+                        outputDelayLabel.Content = procDelay > 0.0 ? $"出力遅延: {procDelay:0.00} ms" : "出力遅延: -- ms";
+                    }
+
                     UpdateCoordLabels(baseState, interState, exposeState);
                 });
             }

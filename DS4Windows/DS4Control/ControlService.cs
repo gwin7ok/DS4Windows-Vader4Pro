@@ -74,6 +74,16 @@ namespace DS4Windows
         bool[] held = new bool[MAX_DS4_CONTROLLER_COUNT];
         int[] oldmouse = new int[MAX_DS4_CONTROLLER_COUNT] { -1, -1, -1, -1, -1, -1, -1, -1 };
         public OutputDevice[] outputDevices = new OutputDevice[MAX_DS4_CONTROLLER_COUNT] { null, null, null, null, null, null, null, null };
+
+        // ControllerReadings タブ表示中のみ有効化される遅延計測用
+        public bool IsMeasuringProcessingDelay = false;
+        public double[] ProcessingDelayMs = new double[MAX_DS4_CONTROLLER_COUNT];
+        public double GetProcessingDelay(int deviceIndex)
+        {
+            if (deviceIndex >= 0 && deviceIndex < ProcessingDelayMs.Length)
+                return ProcessingDelayMs[deviceIndex];
+            return 0.0;
+        }
         private OneEuroFilter3D[] udpEuroPairAccel = new OneEuroFilter3D[UdpServer.NUMBER_SLOTS]
         {
             new OneEuroFilter3D(), new OneEuroFilter3D(),
@@ -2865,6 +2875,17 @@ namespace DS4Windows
                     }
 
                     outputDevices[ind]?.ConvertandSendReport(cState, ind);
+
+                    // 仮想コントローラー出力完了時の処理遅延を計測
+                    if (IsMeasuringProcessingDelay)
+                    {
+                        long start = device.lastInputReportTimestamp;
+                        if (start > 0)
+                        {
+                            long end = Stopwatch.GetTimestamp();
+                            ProcessingDelayMs[ind] = (end - start) * (1000.0 / Stopwatch.Frequency);
+                        }
+                    }
                     //testNewReport(ref x360reports[ind], cState, ind);
                     //x360controls[ind]?.SendReport(x360reports[ind]);
 

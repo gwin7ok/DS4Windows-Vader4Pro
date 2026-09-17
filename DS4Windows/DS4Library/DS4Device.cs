@@ -357,7 +357,7 @@ namespace DS4Windows
 
         public object removeLocker = new object();
 
-        public string MacAddress =>  Mac;
+        public string MacAddress => Mac;
         public event EventHandler MacAddressChanged;
         public string getMacAddress()
         {
@@ -398,7 +398,7 @@ namespace DS4Windows
         protected VidPidFeatureSet featureSet;
         public VidPidFeatureSet FeatureSet
         {
-            get { return featureSet;  }
+            get { return featureSet; }
             set { featureSet = value; }
         }
         public VidPidFeatureSet ModifyFeatureSetFlag(VidPidFeatureSet featureBitFlag, bool flagSet)
@@ -753,7 +753,7 @@ namespace DS4Windows
             };
 
             byte finalReport = 0x00;
-            foreach(var element in reportIds)
+            foreach (var element in reportIds)
             {
                 int len = element.Length;
                 byte[] outputBuffer = new byte[element.Length];
@@ -972,9 +972,9 @@ namespace DS4Windows
 
         private readonly Stopwatch rumbleAutostopTimer = new Stopwatch(); // Autostop timer to stop rumble motors if those are stuck in a rumble state
 
-        #pragma warning disable CS0414 // outputPendCount is assigned in some flows but read paths may be conditional
+#pragma warning disable CS0414 // outputPendCount is assigned in some flows but read paths may be conditional
         private byte outputPendCount = 0;
-        #pragma warning restore CS0414
+#pragma warning restore CS0414
         private const int OUTPUT_MIN_COUNT_BT = 3;
         private byte[] outputBTCrc32Head = new byte[] { 0xA2 };
         protected readonly Stopwatch standbySw = new Stopwatch();
@@ -1020,6 +1020,7 @@ namespace DS4Windows
         }
 
         public double Latency = 0.0;
+        public long lastInputReportTimestamp = 0; // 実機レポート受信開始タイムスタンプ public string error;public double Latency = 0.0;
         public string error;
         public bool firstReport = true;
         public bool oldCharging = false;
@@ -1214,6 +1215,7 @@ namespace DS4Windows
                     readWaitEv.Reset();
 
                     curtime = Stopwatch.GetTimestamp();
+                    lastInputReportTimestamp = curtime; // 受信開始時刻を保持
                     testelapsed = curtime - oldtime;
                     lastTimeElapsedDouble = testelapsed * (1.0 / Stopwatch.Frequency) * 1000.0;
                     lastTimeElapsed = (long)lastTimeElapsedDouble;
@@ -1651,7 +1653,7 @@ namespace DS4Windows
             // If they are not yet initialized (race or early call), log and skip to avoid NRE.
             if (outputReport == null || outReportBuffer == null)
             {
-                AppLogger.LogToGui($"sendOutputReport: output buffers not initialized (outputReport={(outputReport==null)}, outReportBuffer={(outReportBuffer==null)})", false);
+                AppLogger.LogToGui($"sendOutputReport: output buffers not initialized (outputReport={(outputReport == null)}, outReportBuffer={(outReportBuffer == null)})", false);
                 return;
             }
 
@@ -1734,7 +1736,7 @@ namespace DS4Windows
 
                     if (!usingBT)
                     {
-                        lock(outReportBuffer)
+                        lock (outReportBuffer)
                         {
                             Monitor.Pulse(outReportBuffer);
                         }
@@ -1875,7 +1877,7 @@ namespace DS4Windows
             byte[] disconnectReport = new byte[SONYWA_FEATURE_REPORT_LENGTH];
             disconnectReport[0] = 0xe2;
             disconnectReport[1] = 0x02;
-            Array.Clear(disconnectReport, 2, SONYWA_FEATURE_REPORT_LENGTH-2);
+            Array.Clear(disconnectReport, 2, SONYWA_FEATURE_REPORT_LENGTH - 2);
 
             if (remove)
                 StopOutputUpdate();
