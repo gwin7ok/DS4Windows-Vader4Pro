@@ -72,6 +72,23 @@ namespace DS4WindowsTests
         }
 
         [Fact]
+        public void DispatchNextActions_NextActionIsProfile_DoesNotDispatch()
+        {
+            var mockProvider = new MockProfileActionProvider();
+            var mockDispatcher = new MockMappingActionDispatcher();
+            var service = new ProfileActionChainService(mockProvider, mockDispatcher);
+
+            var sourceAction = new SpecialAction("SourceAction", "Cross", "Profile", "Profile", 0);
+            var nextAction = new SpecialAction("NextAction", "Cross", "Profile", "Profile", 0);
+            mockProvider.AddAction("NextAction", nextAction);
+
+            service.DispatchNextActions(0, sourceAction);
+
+            // カスケードループ防止により、Profile -> Profile の連鎖はディスパッチされないこと
+            Assert.Empty(mockDispatcher.Calls);
+        }
+
+        [Fact]
         public void DispatchNextActions_NonMatchingControls_DoesNotDispatch()
         {
             var mockProvider = new MockProfileActionProvider();

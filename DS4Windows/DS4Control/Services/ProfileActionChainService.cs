@@ -21,11 +21,6 @@ namespace DS4Windows
                 sourceAction.uTrigger.Count != 0 || sourceAction.automaticUntrigger)
                 return;
 
-            // プロファイル切替アクション自体は別プロファイルへ移行した時点で単体完結するため、
-            // 新プロファイル側の同一トリガーを持つプロファイル切替アクションを連鎖実行（カスケードループ）させない
-            if (string.Equals(sourceAction.type, "Profile", StringComparison.OrdinalIgnoreCase))
-                return;
-
             if (_actionProvider == null)
                 return;
 
@@ -39,7 +34,7 @@ namespace DS4Windows
                 SpecialAction nextAction = _actionProvider.GetProfileAction(deviceIndex, actionName);
                 if (nextAction != null && nextAction.controls == sourceAction.controls)
                 {
-                    // 次のアクションがプロファイル切替の場合は連鎖をスキップ
+                    // 次のアクションがプロファイル切替の場合は連鎖切替（カスケードループ）を防ぐためスキップ
                     if (string.Equals(nextAction.type, "Profile", StringComparison.OrdinalIgnoreCase))
                         continue;
 
