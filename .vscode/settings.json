@@ -12,6 +12,7 @@
     "csharp.inlayHints.enableInlayHints": true,
     "csharp.inlayHints.enableInlayHintsForImplicitVariableTypes": true,
     "csharp.inlayHints.enableInlayHintsForImplicitObjectCreation": true,
+    "omnisharp.msbuild.path": "C:\\Program Files\\dotnet\\sdk\\8.0.425",
     "omnisharp.enableRoslynAnalyzers": true,
     "omnisharp.enableEditorConfigSupport": true,
     "omnisharp.enableAsyncCompletion": true,
