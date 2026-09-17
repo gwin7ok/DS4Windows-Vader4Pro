@@ -57,10 +57,13 @@ namespace DS4Windows
 
         /// <summary>
         /// Windows 10 / 11 のモダン トースト通知を発行します。
-        /// （TagにユニークIDを付与することで、Windows標準の最大3個までのスタック積み上げ表示に対応）
+        /// （TagにユニークIDを付与し、トレースログに出力）
         /// </summary>
         public static void ShowModernToast(string title, string message)
         {
+            string uniqueTag = Guid.NewGuid().ToString("N");
+            string groupName = "DS4WNotifications";
+
             string toastXmlString = $@"
 <toast duration=""short"">
     <visual>
@@ -85,10 +88,22 @@ namespace DS4Windows
 
             object toast = Activator.CreateInstance(toastType, new object[] { xmlDoc });
 
-            // ★ユニークなTagとGroupを付与し、OSに別通知としてスタック（最大3個の積み上げ）認識させる
-            string uniqueTag = Guid.NewGuid().ToString("N");
-            toastType.GetProperty("Tag")?.SetValue(toast, uniqueTag);
-            toastType.GetProperty("Group")?.SetValue(toast, "DS4WNotifications");
+            // ★ユニークなTagとGroupを付与
+            var tagProp = toastType.GetProperty("Tag");
+            var groupProp = toastType.GetProperty("Group");
+
+            tagProp?.SetValue(toast, uniqueTag);
+            groupProp?.SetValue(toast, groupName);
+
+            string actualTag = tagProp?.GetValue(toast)?.ToString() ?? "(null)";
+            string actualGroup = groupProp?.GetValue(toast)?.ToString() ?? "(null)";
+
+            // ★トーストID（Tag/Group）をログに出力
+            try
+            {
+                AppLogger.LogTrace($"[ModernToast] Dispatch: ToastID(Tag)='{actualTag}', Group='{actualGroup}', Title='{title}', Message='{message}'");
+            }
+            catch { }
 
             object notifier = toastManagerType.GetMethod("CreateToastNotifier", new[] { typeof(string) })?.Invoke(null, new object[] { AppId });
             notifier?.GetType().GetMethod("Show", new[] { toastType })?.Invoke(notifier, new object[] { toast });
