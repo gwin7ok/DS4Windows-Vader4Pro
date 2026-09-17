@@ -68,7 +68,7 @@
             <TextBox x:Name="profileNameTxt" Text="" Width="160" VerticalContentAlignment="Center" InputMethod.IsInputMethodEnabled="True" InputMethod.PreferredImeState="Off" />
             <Button x:Name="saveBtn" Content="{lex:Loc SaveProfile}" Margin="10,0,0,0" Click="SaveBtn_Click" />
             <Button x:Name="cancelBtn" Content="{lex:Loc Cancel}" Margin="10,0,0,0" Click="CancelBtn_Click" />
-            <Button x:Name="applyBtn" Content="{lex:Loc Apply}" Margin="10,0,0,0" Click="ApplyBtn_Click" IsEnabled="False" />
+            <Button x:Name="applyBtn" Content="{lex:Loc Apply}" Margin="10,0,0,0" Click="ApplyBtn_Click" />
             <Button x:Name="presetBtn" Content="Select Preset" Margin="10,0,0,0" Click="PresetBtn_Click" />
             <CheckBox x:Name="keepSizeCheckBox" Margin="10,0,0,0" IsChecked="{Binding Keepsize, Mode=TwoWay}" Click="KeepSizeCheckBox_Click" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Margin="0" VerticalAlignment="Center">

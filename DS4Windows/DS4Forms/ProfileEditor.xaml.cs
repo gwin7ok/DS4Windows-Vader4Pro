@@ -471,14 +471,9 @@ namespace DS4WinWPF.DS4Forms
 
             profileSettingsVM.LeftStickDriftXAxisChanged += UpdateReadingsLSDrift;
             profileSettingsVM.LeftStickDriftYAxisChanged += UpdateReadingsLSDrift;
-profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
+            profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             profileSettingsVM.RightStickDriftYAxisChanged += UpdateReadingsRSDrift;
 
-            // サブ設定変更バブリングによる Apply ボタン活性化
-            if (Global.ProfileSettingsServiceInstance != null)
-            {
-                Global.ProfileSettingsServiceInstance.ProfileSettingChanged += ProfileSettingsService_ProfileSettingChanged;
-            }
         }
 
         private void UnregisterEvents()
@@ -506,11 +501,6 @@ profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             profileSettingsVM.RightStickDriftXAxisChanged -= UpdateReadingsRSDrift;
             profileSettingsVM.RightStickDriftYAxisChanged -= UpdateReadingsRSDrift;
 
-            // サブ設定変更バブリングの購読解除
-            if (Global.ProfileSettingsServiceInstance != null)
-            {
-                Global.ProfileSettingsServiceInstance.ProfileSettingChanged -= ProfileSettingsService_ProfileSettingChanged;
-            }
 
             inputTimer.Stop();
             inputTimer.Elapsed -= InputDS4;
@@ -519,16 +509,7 @@ profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             StopEditorBindings();
         }
 
-        private void ProfileSettingsService_ProfileSettingChanged(object sender, DS4Windows.DI.ProfileSettingChangedEventArgs e)
-        {
-            if (e.DeviceIndex == deviceNum)
-            {
-                Dispatcher.BeginInvoke((System.Action)(() =>
-                {
-                    applyBtn.IsEnabled = true;
-                }));
-            }
-        }
+
         /// <summary>
         /// Place touchpad button mode options UserControl in active Touchpad TabItem.
         /// Applicable TabItem control needs to contain a ContentControl
@@ -1122,7 +1103,7 @@ profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             specialActionsTab.DataContext = null;
             lightbarRect.DataContext = null;
 
-deviceNum = device;
+            deviceNum = device;
 
             if (profile != null)
             {
@@ -1135,7 +1116,6 @@ deviceNum = device;
                 profileRepository.LoadProfile(device, profile.Name);
                 profileNameTxt.Text = profile.Name;
                 profileNameTxt.IsEnabled = false;
-                applyBtn.IsEnabled = true;
             }
             else
             {
@@ -1447,7 +1427,7 @@ deviceNum = device;
             }
         }
 
-private void SaveBtn_Click(object sender, RoutedEventArgs e)
+        private void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
             if (ExecuteSaveOrApply(isApply: false))
             {
@@ -1959,7 +1939,6 @@ private void SaveBtn_Click(object sender, RoutedEventArgs e)
                 specialActionsVM.SyncProfileActionsString();
                 Global.ProfileActions[deviceNum] = specialActionsVM.GetEnabledActionNames();
             }
-            applyBtn.IsEnabled = true;
         }
         private void Ds4LightbarColorBtn_MouseEnter(object sender, MouseEventArgs e)
         {
