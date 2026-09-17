@@ -1,9 +1,13 @@
 # Phase6-Step2 計画書: `ControlService.cs` のGlobal直参照解消
 
 作成日: 2026-09-09
+改訂日: 2026-09-18（実コード確認済み候補、マイクロステップ、検証条件を追加）
+状態: 計画書改訂・承認待ち（実装未着手）
 対象ブランチ: `For-DI-migration-work`
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
 着手前提: Phase6-Step1（詳細監査と対象確定）の完了、および`Phase6-Step1-Global-Usage-Classification-Report.md`の承認
+
+> **監査根拠の訂正（2026-09-18）**: 先行するStep1簡易レポートには、全件一覧・実測集計・移行先の根拠を欠いたまま完了とする記述がある。本計画ではそれを監査完了の証拠として採用しない。193件／39件は上位計画の暫定値であり、今回の実測値ではない。Phase5-Step14/15の完了も本改訂では確認していない。計画書の作成と実装着手を分離し、着手前に前提を確認する。
 
 ---
 
@@ -83,8 +87,107 @@ Step1でホットパス該当と判定された項目については、以下の
 
 ---
 
-## 6. 次のアクション
+## 6. 実コード確認済みの先行候補
 
-1. Phase6-Step1を実施し、`Phase6-Step1-Global-Usage-Classification-Report.md`で`ControlService.cs`分の確定件数・分類・移行先サービスを確定する。
-2. Step1の結果を踏まえ、本計画書の対象件数・PR分割を必要に応じて改訂する。
-3. 承認後、PR-1（分類(a)非ホットパス項目）から着手する。
+以下は2026-09-18にローカル作業ツリーで確認した**3箇所の候補**であり、ControlService全件監査の代替ではない。行番号は変更によりずれるため、メソッド名と式を併記する。
+
+| ID | 対象・確認位置 | 旧参照 → 移行先 | 分類・経路 |
+|---|---|---|---|
+| C2-01 | `DS4Windows/DS4Control/ControlService.cs:1416`、`PluginOutDev(int index, DS4Device device)` | `Global.OutContType[index]` → `_profileSettings.OutContType[index]` | (a) 非ホットパス。接続準備・同期状態変更・プロファイルロード後のイベント経路 |
+| C2-02 | 同ファイル`:2775`、`On_Report` の非Primary分岐 | `Global.GetGyroOutMode(device.JointDeviceSlotNumber)` → `_profileSettings.GetGyroOutMode(device.JointDeviceSlotNumber)` | (a) 条件付きホットパス。結合デバイスのジャイロモード判定 |
+| C2-03 | 同ファイル`:2890`、`On_Report` の `useDInputOnly[ind]` 分岐 | `Global.GetSASteeringWheelEmulationAxis(ind)` → `_profileSettings.GetSASteeringWheelEmulationAxis(ind)` | (a) 条件付きホットパス。ステアリング軸選択 |
+
+### 6.1 契約と状態同一性の根拠
+
+- `DS4Windows/DI/IProfileSettingsService.cs:219–221,123,197` に上記3メンバが既存定義されている。新規インターフェースは不要。
+- `DS4Windows/DS4Control/Services/ProfileSettingsService.cs:24–34,584–585`: `_config` は注入された `BackingStore` または `Global.store`。`OutContType` は `SafeConfig?.outputDevType` を都度返し、配列を複製しない。
+- `DS4Windows/DS4Control/ScpUtil.cs:647–648,3118`: `Global.store` と `Global.OutContType` は同じ `m_Config` を基にする。
+- `ProfileSettingsService.cs:389,557` の2 getterはBackingStoreの対象スロットを都度読み取る。`ScpUtil.cs:2553–2556,2603–2606` の旧シムも対応するサービスへ委譲する。
+- **同等性の条件**: 通常起動時に旧シムと注入先が同一設定を参照すること。`Global.ProfileSettingsServiceInstance` を生成後に差し替えてもreadonlyの `_profileSettings` は追随しない。テストや再初期化経路でこの差し替えが必要かを実装前に確認する。独立BackingStore注入時にGlobalと異なる設定を参照すること自体はDIの意図した動作である。
+- null時・不正インデックス時の挙動を一般的な「安全化」として変更しない。読み取りの置換とバリデーション追加は別変更とする。
+
+### 6.2 呼び出し経路と依存グラフ
+
+- `ControlService.cs:2224–2235` の `device.Report` 購読が `On_Report` を呼ぶ。C2-02/03の頻度・性能は未計測。
+- C2-01の呼び出し元は `ControlService.cs:2180`、`On_SyncChange`（`:2544–2576`）、`ScpUtil.cs` の `PostLoadSnippet` 内 `queueEvent`（`:11140–11162`）。非ホットパスという分類は「UIスレッドのみ」を意味しない。
+- `ControlService.cs:100,199–204` に既存の `_profileSettings` とコンストラクタ注入・互換フォールバックがある。3候補ではこれを再利用し、Service Locatorを追加しない。
+- `DS4Windows/DI/ServiceRegistration.cs:28,84–93` にSingleton登録と明示的注入がある。既存 `Program.rootHub` を再利用する経路も維持する。
+- `DS4Windows/App.xaml.cs:715–726` の `CreateControlService` がHostから取得したインスタンスを公開する。
+- `ProfileApplicationService.cs:16–27` は `ControlService` を受け取るため、逆向きに `IProfileApplicationService` を追加注入する変更は循環依存の検討が必要。本候補には含めない。
+
+## 7. マイクロステップと成果物
+
+### Step2-0: 着手条件・ベースライン確定（実装前）
+
+1. ブランチ・HEAD・未コミット差分を記録する。ユーザーの変更を上書きせず、pullやブランチ切替を無断で行わない。
+2. Phase5-Step14/15の完了証跡とStep1全件分類を確認する。未充足なら実装を保留し、本計画は承認待ちに留める。
+3. `Global.`修飾だけでなく `using static DS4Windows.Global` による無修飾参照を棚卸しする。定数・型・コメントを実利用件数と混同せず、除外理由とともに記録する。検索が空でも既知の参照が読める場合は、絶対パス・除外設定・直接ファイル検索を確認し「0件」と断定しない。
+4. 以下の既存ビルド／テストを実施して変更前の結果を保存する。失敗があれば既存不具合と切り分ける。
+
+### Step2-1 / PR-1: C2-01の1箇所のみ置換
+
+1. `PluginOutDev` 内の出力種別読み取りのみを既存 `_profileSettings` 経由へ変更する。
+2. `OutContType` の同一配列参照・生成後の設定変更への追随を、独立したBackingStoreを使った単体テストで追加検証する。テストは1ファイル1型とし、既存のGlobal比較テストは削除しない。
+3. コンストラクタ・DI登録・Globalシム・出力デバイス生成・フィードバック配線・ログを変更しない。
+4. ビルド・Actions/Standalone回帰テストを実行。接続・同期復帰・設定再適用時の出力種別は実機確認を別途記録する。
+
+### Step2-2 / PR-2a: C2-02の1箇所のみ置換
+
+1. 結合デバイスのスロット引数、非Primary分岐、後続ジャイロ処理を保持してgetterだけ置換する。
+2. getterのスロット分離・設定更新追随・旧シムとの同等性テストを追加する。静的状態を触る場合は終了時に復元し、並列実行との競合を防ぐ。
+3. Report購読から対象分岐までを確認し、ユニットテストで到達できない部分は未検証として残す。getterテストのみで `On_Report` 全体を検証済みとしない。
+4. §8の性能比較と回帰テスト後に次へ進む。
+
+### Step2-3 / PR-2b: C2-03の1箇所のみ置換
+
+1. `ind` と既存条件分岐を維持し、ステアリング軸getterのみを置換する。VJoyの軸番号・送出順序は変更しない。
+2. 各軸の値、スロット分離、生成後の更新追随を単体テストで検証する。
+3. §8の性能比較、Actions/Standalone回帰、対象機能の実機確認を記録する。
+
+### Step2-4: 残件の確定と後続PR計画
+
+Step1で確定した残件を§3のPR-3/4へ配分する。本書の3候補を終えてもStep2全体完了とはしない。新規依存・契約拡張・(c)要設計項目は、対象とテストを追記して再承認後に実装する。
+
+### 成果物
+
+- 本計画書（今回の変更対象）。
+- 承認後: `ControlService.cs` の対象式のみの差分、追加単体テスト、各マイクロステップの検証記録。
+- Step2完了時: 完了報告書、確定対象／除外／残件の一覧、`Phase6-Status.md` 更新。今回は進捗表を完了へ変更しない。
+
+## 8. テスト・性能・安全性の検証計画
+
+### 8.1 自動検証
+
+- 既存の `Build Debug` → `Build Test` → `Execute Test`（または統合 `Debug ALL`）で本体と両テストプロジェクトを再ビルドして実行する。`--no-build` のテストだけを実行して古いDLLで合格扱いにしない。
+- `Build Debug` は `Remove bin` に依存するため、実行中アプリ・並行ビルド・成果物利用との競合を事前確認する。
+- 既存 `DS4WindowsTests/ProfileSettingsServiceTests.cs:165–192` の `OutContType_ShouldShareBackingStoreWithGlobalShim` を維持する。これは配列共有の検証であり `PluginOutDev` の実行テストではない。
+- 既存 `DS4WindowsTests/Phase3ServiceRegistrationTests.cs:59–70` のDI解決テストを回帰対象に含める。これは設定サービスの注入同一性までは保証しないため、その確認を追加するか明示的な未検証項目にする。
+- 追加テストはHID・ViGEm・実キー／マウス送出に依存させない。ハードウェアが必要な処理をテスト容易性だけのために広範囲に分解しない。
+- 実行時に日時・対象コミット・構成・成功／失敗件数を記録する。本改訂ではビルド・テストを実行していない。
+
+### 8.2 ホットパス性能と実機確認
+
+- 同一PC・接続方式・デバイス・プロファイル・Release x64構成で変更前後を比較する。ウォームアップ後に同じ入力シナリオを複数回測定する。
+- 平均／p95／p99処理時間、割り当て量・GC、レポート欠落や入力→出力遅延を確認する。getterのみのマイクロベンチ結果と実際のReport処理結果を区別する。
+- 計測基準と許容差は変更前の分散を取得してから承認する。安定した悪化・設定反映漏れ・新規割り当てがあれば当該置換を保留する。測定できない場合は未検証とする。
+- 高頻度経路に常時 `[DI]` ログ、ロック、サービス解決、配列コピー、設定値キャッシュを追加しない。プロファイラー等を優先し、計測用ログを用いる場合は同条件比較・一時利用とする。
+- 接続／切断／再接続、プロファイル再適用、結合デバイスのジャイロ、DInputOnly＋ステアリング軸を確認する。最終統合先は現行12ステップ版の **Phase6-Step11** とする（旧Step9表記より本節を優先）。
+
+### 8.3 維持するガードレール
+
+同一XML排他、適用時Halt、スレッド直列化、On-Demandパス評価、ドライバ破棄順序、切断時クリーンアップを変更しない。本候補は設定読み取りのみであり、これらの追加・再設計を含まない。既存ログのメッセージ・レベル・回数と通知抑制も維持する。後続で重要なDI境界操作を変更する場合にのみ `[DI]` 追跡ログの必要性を検討する。
+
+### 8.4 ロールバック
+
+不具合・性能悪化時は該当マイクロステップの読み取り式のみを旧参照へ戻す。ユーザーの差分や他ステップを一括リセットしない。既存シムを温存し、症状・再現条件・検証結果を記録して再設計する。
+
+## 9. 承認ゲートと完了条件の補足
+
+- [ ] Step1全件分類とPhase5の着手前提を証跡で確認する。
+- [ ] 本計画の対象範囲・変更順序・検証方法についてユーザー承認を得る。
+- [ ] C2-01/02/03それぞれについて単体テストと回帰結果を記録する。
+- [ ] ホットパス測定と実機結果を記録し、未実施は明示する。
+- [ ] 確定対象の修飾／無修飾参照を再検索し、除外・未完了と区別する。定数まで削除して字面上の `Global.` を0件にすることは目標ではない。
+- [ ] 3候補以外の残件も解決または承認済み例外として記録してからStep2全体の完了を判断する。
+
+本書の作成依頼は実装の承認ではない。次のアクションは監査根拠の補完と計画書承認であり、今回は本番コード・テストコード・DI登録を変更しない。
