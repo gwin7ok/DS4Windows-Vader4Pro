@@ -1,108 +1,194 @@
-# Phase6-Step11 計画書: 自動テスト・実機検証
+# Phase6-Step11 計画書: 2層構造・階層化総合検証（自動回帰テスト ＋ 実機シナリオマトリクス）
 
-作成日: 2026-09-09
-改定日: 2026-09-11（Phase6全12ステップ再編に伴うステップ番号変更）
-対象ブランチ: `For-DI-migration-work`
-上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
-着手前提: Phase6-Step2〜Step10の実装完了
+作成日: 2026-09-09  
+改訂日: 2026-09-18（Step2〜Step10確定スコープ約400箇所統合・推奨案［2層構造・階層化総合検証］採用・全面拡充改訂）  
+状態: 計画書改訂・承認待ち（実装未着手）  
+対象ブランチ: `For-DI-migration-work`  
+上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
+準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
+参照エビデンス:  
+  - `Phase6-Step1-Core-Reference-Evidence.md`（Core層・Mapping層・Mouse層 監査記録）  
+  - `Phase6-Step1-UI-Reference-Evidence.md`（UI層・ViewModel層 監査記録）  
+  - `Phase6-Step2-Plan.md` 〜 `Phase6-Step10-Plan.md`（各ステップ確定実装計画書）  
+  - `Phase5-Step14-RealDevice-Verification-Checklist.md`（Phase5 実機検証成功モデル）  
 
 ---
 
-## 0. 前提の明記
+## 0. 背景と改訂の経緯
 
-Step11は、Step2〜8で行った193件（Step1確定値ベース）のGlobal直接参照置換について、**個別Step内の
-確認だけでは拾いきれない横断的な回帰**を検出するための総合検証Stepである。Phase5-Step14と同様、
-自動テストと実機検証チェックリストの2本立てで構成する。
+### 0.1 暫定193件から全域約400実参照への精査と統合
+旧計画書（2026-09-11）では、対象範囲を「Step2〜8（暫定193件）」と表記していた。  
+しかし、Step1 精密再監査（`Phase6-Step1-*`）および Step2〜Step10 で策定された実装計画により、Phase6 で実施される改修の全容は**実参照式約404箇所（除外定数や引き継ぎ等を含めると500箇所以上）**に上る大規模なものであることが確定した：
 
-各Step（Step2〜8）は完了時点で個別の自動テスト・簡易確認を実施済みという前提だが、Step11では
-**複数Stepにまたがる相互作用**（例: `ControlService.cs`の変更と`Mouse.cs`の変更が同時に効いた場合の
-入力→出力の一連の流れ）を重点的に確認する。
+- **Step2 (`ControlService.cs`)**: 実参照66箇所（ホットパス、KBMライフサイクル、UDP/OSC、Pure DIコンストラクタ）
+- **Step3 (`Mapping.cs`)**: 実装10箇所引数渡し ＋ 101箇所Phase7引き継ぎ台帳化
+- **Step4 (`Mouse.cs`, `MouseCursor.cs`, `MouseWheel.cs`)**: 実参照73箇所（Pure DI引数注入、マウス・ジャイロ・ホイールホットパス保護）
+- **Step5 (`OutputSlotService.cs`)**: 孤立配列 `_deviceTypes[]` 完全撤廃、三態SSOT確立、UDP診断コマンド是正、実参照8箇所
+- **Step6 (`ProfileEditor.xaml.cs` / `IOutputSlotService`)**: マッピング表示追従バグ是正、負債API非推奨化、実参照4箇所
+- **Step7 (`App.xaml.cs`)**: Pre-Host領域厳格保護（11箇所温存）、Post-Host 32箇所（Composition Root解決）
+- **Step8 (`ProfileEditor.xaml.cs`)**: 案3-A 段階的MVVM移設（`ProfileSettingsViewModel` へロジック移設、Fat View解体、MainWindow解体推進）、実参照60箇所
+- **Step9 (主要4大ViewModel)**: Pure DI徹底、カテゴリ別移行（`Settings`, `MainWindow`, `TrayIcon`, `ProfileSettings`、計79箇所）
+- **Step10 (残存小型View & 小型ViewModel & 補助クラス)**: 機能ドメイン別3グループペアPure DI化、実参照72箇所
+
+### 0.2 方針の確定: 【推奨案: 選択肢A（2層構造・階層化総合検証アプローチ）の採用】
+Phase5-Step14 で大成功を収めた検証モデル（自動回帰テストスイートの完全合格 ＋ 実機検証チェックリストの厳格運用）を完全踏襲し、以下の2層構造で Phase6 全域の成果を横断的かつ徹底的に検証する：
+
+1. **第1層: 自動回帰テストスイートの全件実行 ＋ 静的解析による未検知参照ゼロ証明**:  
+   既存テスト（Actions / Standalone）に加え、Step2〜Step10 で新たに追加された全単体テストを完全実行。Roslyn/grep 静的解析により、明示的除外（const定数、Pre-Hostブートストラップ、ViGEmバックエンド直接依存）以外の `Global.` 直参照がコードベース全体から完全に根絶されたことを客観的に証明する。
+2. **第2層: 実機デバイスマトリクスによる構造化シナリオ検証**:  
+   `Phase6-Step11-RealDevice-Verification-Checklist.md` を作成し、本フォークの主役である **Flydigi Vader 4 Pro**（追加ボタン C/Z/M1〜M4、ジャイロ、有線/ドングル/BT）、**DS4**、**DualSense** を用いた実機検証を実施。10大検証セクションにより、ホットパス性能、入力追従性、三態SSOT、表示追従、MVVM保存、長時間の安定稼働を保証する。
+3. **Step12（旧シム物理削除判断）への確実なゲート機能**:  
+   本ステップの完全合格（全テスト Green ＋ 全実機チェック項目 ○）をもって、呼出元0件となった旧静的メンバの安全な物理削除を正式に認可（GO / NO-GO 判定）する。
 
 ---
 
 ## 1. 目的
 
-Phase6全体（Step2〜8）の変更について、既存自動テストの全件成功、およびPhase6固有のリスク
-（ホットパス性能、マウス体感、起動安定性）に対する実機検証を完了し、Phase6の完了判定基準（Phase6-Plan.md
-§4）を満たすことを確認する。
+1. Step2〜Step10 で実施された全改修（約404実参照）に対して、機能欠落（Feature Drop）および動作リグレッションが一切発生していないことを、自動テストと実機テストの両輪で証明する。
+2. 毎秒250〜1000回実行される入力ポーリング・ホットパス（`ControlService`, `Mapping`, `Mouse`）において、DI化に伴う入力遅延、GC アロケーション、CPU負荷の悪化がゼロであることを実証する。
+3. Flydigi Vader 4 Pro コントローラーの固有機能（C/Z ボタン、背面 M1〜M4 パドル、ポーリングレート等）が完全に動作することを保証する。
+4. Step12（旧静的シムの物理削除判断）に引き渡す客観的かつ反論不能な合格エビデンス（検証報告書・チェックリスト）を完成させる。
 
 ---
 
-## 2. 自動テスト実施方針
+## 2. 第1層: 自動回帰テストスイート ＆ 静的解析完全証明
 
-### 2.1 実施対象
-- `DS4Windows.Actions.Tests`（既存156件相当、Step2〜8完了時点での最新件数で再計測）
-- `StandaloneTests`（既存13件相当）
-- Phase4・5で追加された新規単体テスト
-- Phase6のStep2〜8実装時に追加された新規単体テスト（あれば）
+### 2.1 自動テストスイートの全件実行
+以下のすべてのテストプロジェクトを Release x64 で実行し、警告ゼロ・合格率 100% を確認する。
 
-### 2.2 実施手順
-1. `dotnet build`（Debug/Release両構成）でビルドエラー・警告増加がないことを確認する。
-2. 上記テストプロジェクトを全件実行し、全件成功を確認する。
-3. 失敗があれば、該当するStep（2〜8）に差し戻して原因を特定する。
+1. **既存基盤テスト**:
+   - `DS4Windows.Actions.Tests.csproj`（156件超）
+   - `StandaloneTests.csproj`（13件超）
+2. **Phase4 / Phase5 既存サービステスト**:
+   - `AppSettingsServiceTests`, `AutoProfileServiceTests`, `DeviceStateServiceTests`, `EnvironmentServiceTests`, `NotificationServiceTests`, `OutputSlotServiceTests`, `PathServiceTests`, `ProfileRepositoryTests`, `SpecialActionRepositoryTests` 等
+3. **Phase6（Step2〜Step10）で追加された全新規単体テスト**:
+   - `ControlServiceDiWiringTests.cs`, `ControlServiceHotPathAllocationTests.cs` (Step2)
+   - `MappingSettingsPassThroughTests.cs`, `MappingHotPathIntegrityTests.cs` (Step3)
+   - `MouseDiWiringTests.cs`, `MouseWheelShimTests.cs`, `MouseCursorMovementTests.cs` (Step4)
+   - `OutputSlotServiceSsotTests.cs`, `MainWindowUdpQueryTests.cs` (Step5)
+   - `AppCompositionRootTests.cs`, `AppShimIntegrationTests.cs` (Step7)
+   - `ProfileSettingsViewModelMvvmTests.cs`, `ProfileEditorShimEquivalenceTests.cs` (Step8)
+   - `SettingsViewModelDiTests.cs`, `TrayIconViewModelBatteryTests.cs`, `MainWindowsViewModelViGEmTests.cs` (Step9)
+   - `SmallViewModelsDiWiringTests.cs`, `SpecialActionEditorDiTests.cs`, `SaveWherePathServiceTests.cs` (Step10)
+
+### 2.2 静的解析による「未検知 Global 参照ゼロ」の完全証明
+PowerShell または Python スクリプトにより、ソリューション内の全 C# ファイルを走査し、以下の「明示的除外リスト」に登録された行以外の `Global.` 直接参照が**完全に 0 件であること**を機械的に検証・出力する。
+
+#### 明示的除外リスト（許容される正当な Global 参照）:
+- **真の定数（`const`）**: `MAX_DS4_CONTROLLER_COUNT`, `OLD_XINPUT_CONTROLLER_COUNT`, `TEST_PROFILE_INDEX`, `ASSEMBLY_RESOURCE_PREFIX`, `RESOURCES_PREFIX` 等
+- **純粋計算ユーティリティ（状態非保持）**: `Clamp`, `getTransitionedColor`
+- **Pre-Host ブートストラップ処理（カテゴリA）**: `App.xaml.cs` 内のコンテナ構築前ログ初期化・多重起動判定・driverinstall分岐（計11箇所）
+- **ViGEm クライアント直接依存（Phase6対象外）**: `RefreshViGEmBusInfo`, `IsRunningSupportedViGEmBus`, `vigembusVersion`, `vigemInstalled`
 
 ---
 
-## 3. 実機検証チェックリストの構成方針
+## 3. 第2層: 実機デバイスマトリクス ＆ 10大構造化シナリオ検証
 
-Step11の成果物として`Phase6-Step11-RealDevice-Verification-Checklist.md`を作成する。
-Phase5-Step14-RealDevice-Verification-Checklist.mdの構成（セクション区切り、`○/△/×/未実施`の記録欄）を
-踏襲し、以下のセクションで構成する。
+### 3.1 対象実機デバイスマトリクス
+本リポジトリ（`DS4Windows-Vader4Pro`）の責務に基づき、以下の実機マトリクスを対象とする：
 
-| セクション | 対象Step | 重点確認項目 |
+| コントローラー機種 | 接続方式 | 主な検証重点項目 |
 |---|---|---|
-| 1. ビルド・自動テスト確認 | 全Step | §2の自動テスト結果の記録 |
-| 2. コア層（`ControlService.cs`）回帰確認 | Step2 | ホットパス該当項目のベンチマーク比較結果、Halt機構との整合、連打・ホールド・同時押し |
-| 3. `Mapping.cs`残存参照回帰確認 | Step3 | 該当項目の入力→出力の遅延、SpecialAction・マクロの動作 |
-| 4. マウスエミュレーション回帰確認 | Step4 | 感度・加速度カーブ・クリックタイミング、高感度/低感度極端値 |
-| 5. 起動シーケンス確認 | Step7 | 通常起動、初回起動相当（設定ファイル削除後）、多重起動チェック |
-| 6. プロファイル編集画面確認 | Step8 | プロファイル新規作成・複製・削除・各設定タブ |
-| 7. 主要ViewModel確認 | Step9 | 設定画面、メインウィンドウ、トレイアイコン、プロファイル設定画面 |
-| 8. 小型UIファイル確認 | Step10 | ウェルカム画面（初回起動時）、プリセット選択、保存先選択、ボタン割り当て画面 |
-| 9. 横断的な複合シナリオ確認 | 複数Step | 後述§4参照 |
-| 10. 総合判定 | 全体 | Phase6完了判定基準（Phase6-Plan.md §4）とのチェックリスト対応 |
+| **Flydigi Vader 4 Pro** | 有線 USB | 1000Hz ポーリング、C/Z ボタン、背面 M1〜M4 パドル、ジャイロ |
+| **Flydigi Vader 4 Pro** | 2.4G ワイヤレスドングル | 無線接続時の安定性、独自レポート解析、遅延体感 |
+| **Flydigi Vader 4 Pro** | Bluetooth | BT 接続認識、スロット割当、切断・再接続 |
+| **Sony DualShock 4** | 有線 USB / BT | タッチパッドマウス、ライトバー、6軸ジャイロ、排他モード |
+| **Sony DualSense (PS5)** | 有線 USB / BT | アダプティブトリガー設定、触覚フィードバック、オーディオ |
+| **Nintendo Switch Pro** (任意) | Bluetooth | ジャイロ操作、ボタンリマップ |
 
 ---
 
-## 4. 横断的な複合シナリオ（Step11固有の重点確認）
+### 3.2 10大検証セクション（`Checklist.md` 構成仕様）
 
-個別Stepの確認だけでは検出しにくい、複数コンポーネントにまたがるシナリオを重点的に確認する。
+`Phase6-Step11-RealDevice-Verification-Checklist.md` に以下の 10大セクションを定義し、各項目に対して `[○: 合格 / △: 軽微課題 / ×: 失敗 / 未: 未実施]` を記録する。
 
-1. **起動直後の一連の操作**: アプリ起動（Step7）→コントローラー接続→プロファイル自動適用→
-   ボタン操作でマウス/キー出力（Step2, Step4）→設定画面を開いて変更・保存（Step9）→
-   プロファイル編集画面でプロファイル切替（Step8）、という一連の流れをノンストップで実施し、
-   途中で例外や異常終了が発生しないことを確認する。
-2. **長時間動作**: Phase5-Step14チェックリストの「長時間・ストレステスト」セクションと同様、
-   10〜30分程度の連続操作でPhase6由来の新規リークやハングが発生しないことを確認する。
-3. **設定変更の即時反映**: `SettingsViewModel.cs`（Step9）で変更した設定が、`ControlService.cs`
-   （Step2）や`Mouse.cs`（Step4）に即座に反映されることを確認する（DIサービス経由の一貫性確認）。
+#### セクション1: 起動・初期化・Pre-Host 整合性検証 (Step7, Step10 G1)
+- [ ] 通常起動時にスプラッシュ・UI が正常表示されること。
+- [ ] `-m`（最小化起動）でトレイアイコンのみ起動すること。
+- [ ] `--driverinstall` 起動時に特殊インストーラ画面がクラッシュせず表示されること。
+- [ ] 初回起動ダイアログ（`SaveWhere`）での設定保存先選択が正常に反映されること。
+- [ ] 言語設定（英語 ⇄ 日本語）の変更が即時・再起動後に反映されること。
+
+#### セクション2: デバイス接続・認識・ホットパス性能検証 (Step2, Step4, Vader 4 Pro)
+- [ ] コントローラー接続時、スロットに即時認識され仮想デバイスがプラグインされること。
+- [ ] 1000Hz 入力ポーリング時に入力遅延・カクつきが一切ないこと（体感ラグゼロ）。
+- [ ] ボタン連打・スティック全開旋回時にメモリリークや GC スパイク（カクつき）が発生しないこと。
+- [ ] **Vader 4 Pro 固有ボタン（C, Z, M1, M2, M3, M4）が正しく認識・マッピングされること**。
+- [ ] コントローラー切断（ケーブル抜去／BT電源オフ）時、仮想デバイスが安全にアンプラグされること。
+
+#### セクション3: マウスエミュレーション・ジャイロ・ホイール検証 (Step4)
+- [ ] タッチパッドによるマウスカーソル移動が滑らかで、ジッター補正が効いていること。
+- [ ] タッチパッドタップ、左右クリック、マルチタッチが意図通り動作すること。
+- [ ] ジャイロマウス操作（傾き検知）が滑らかに追従し、トグル切替・反転が動作すること。
+- [ ] スティックまたはタッチによるホイールスクロール（上下）が正確に入力されること。
+
+#### セクション4: 出力スロット・三態SSOT・ViGEm ホットスワップ検証 (Step5, Step6)
+- [ ] 出力デバイス種別の変更（Xbox 360 ⇄ DS4）時、ViGEm バス上で仮想デバイスが即座に再接続されること（`joy.cpl` で機種変更を確認）。
+- [ ] UDP 診断コマンド `query.<device>.outconttype` が、孤立値 `None` ではなく正しい設定値（`Xbox360` / `DS4`）を応答すること。
+- [ ] `IOutputSlotService` の負債API（`PluginSlot`, `UnplugSlot`）が呼出元0件で非推奨化されていること。
+
+#### セクション5: ProfileEditor 表示追従・設定変更検証 (Step6, Step8)
+- [ ] ProfileEditor を開いた状態で別プロファイルをロード（Reload）した際、マッピング一覧のボタン表記（Xbox「A/B/X/Y」⇄ DS4「Cross/Circle」）が即座に切り替わること。
+- [ ] エディタの左右スプリッター幅および各カラム幅が再起動後も維持されること。
+
+#### セクション6: プロファイル保存・適用・ブランク作成（MVVM移設）検証 (Step8)
+- [ ] エディタで設定を変更し「Save」をクリックした際、XML が正常保存され、接続中のコントローラーに即時適用されること。
+- [ ] 「New」操作でブランクプロファイルが生成され、安全にデフォルトリセットされること。
+- [ ] アクションの XML エクスポート機能が正常に動作すること。
+
+#### セクション7: 主要設定（OSC/UDP/平滑化/テーマ/ログ）検証 (Step9)
+- [ ] OSC 送信・受信設定（ポート・アドレス）の変更が保存され、通信が機能すること。
+- [ ] UDP サーバーおよび 1Euro フィルタ平滑化（Mincutoff, Beta）の変更が即時反映されること。
+- [ ] ダークテーマ ⇄ デフォルトテーマの切り替えが即座に全画面に適用されること。
+- [ ] ログレベル変更（Info, Debug）およびログローテーションが正常に機能すること。
+
+#### セクション8: タスクトレイ・バックグラウンド常駐・通知検証 (Step9)
+- [ ] 最小化時にタスクトレイに格納され、右クリックメニュー（プロファイル切替、Stop/Start、Exit）が動作すること。
+- [ ] コントローラーのバッテリー残量変化時に、トレイアイコンおよびツールチップが正確に更新されること（B12シム検証）。
+
+#### セクション9: 小型ダイアログ・自動プロファイル・スペシャルアクション検証 (Step10)
+- [ ] `BindingWindow` でボタンをクリックし、キーボード・マウス・コントローラーボタンの再マッピングが正常に保存されること。
+- [ ] `AutoProfiles` で特定アプリ（例: メモ帳やゲーム exe）にプロファイルを紐付け、ウィンドウフォーカス連動でプロファイルが自動切替されること。
+- [ ] `SpecialActionEditor` でマクロ、キーコンボ、バッテリー読み上げ等のアクションを作成・実行できること。
+
+#### セクション10: 連続ストレステスト・終了永続化・総合判定
+- [ ] 30分〜1時間の連続ゲームプレイまたは入力ストレステストにおいて、異常終了・フリーズ・入力抜けがゼロであること。
+- [ ] アプリ終了（タスクトレイ「Exit」またはウィンドウ「閉じる」）時、全設定・プロファイルが破損なく完全に保存されること。
+- [ ] **Step12（旧シム物理削除）への引き渡し判定: 【GO（認可）】 であること**。
 
 ---
 
-## 5. 完了判定基準
+## 4. 検証手順とスケジュール
 
-- [ ] 自動テスト（Actions/Standalone/新規）が全件成功していること。
-- [ ] ビルドエラー・警告増加がないこと。
-- [ ] `Phase6-Step11-RealDevice-Verification-Checklist.md`の全項目が実施され、`×`（不具合あり）が
-      残っていないこと（`△`が残る場合は、Phase6完了条件を満たすかどうかを個別に判断し記録する）。
-- [ ] §4の横断的な複合シナリオで異常が発生しないこと。
-- [ ] Phase6-Plan.md §4記載の完了条件が全て満たされていること。
-
----
-
-## 6. リスクと対応
-
-| リスク | 対応 |
-|---|---|
-| 個別Step完了時の確認が「その場しのぎ」になっており、Step11で初めて根本的な不具合が発覚する | §4の複合シナリオ確認を必須項目とし、単発の機能確認では検出できない相互作用を明示的に狙う |
-| 実機検証項目が多く、確認漏れが発生する | Phase5-Step14と同様の構造化されたチェックリストを用い、`○/△/×/未実施`を明示的に記録する運用を徹底する |
-| Step11で不具合が発見された場合の手戻り範囲が不明確 | 発見した不具合を該当Step（2〜8）に紐づけて記録し、Step12（削除判断）着手前に該当Stepへ差し戻して修正する |
+```text
+【Phase6-Step11 実行フロー】
+├─ 1. 自動テストスイートの完全実行 ＆ 静的解析スクリプト実行（第1層）
+├─ 2. Checklist.md の展開と実機テスト環境（USB/BT/Vader4Pro）の準備
+├─ 3. セクション1〜9 の個別機能マトリクス検証（第2層）
+├─ 4. セクション10 の長時間連続ストレステスト（30分〜1時間）
+├─ 5. チェックリスト結果集計と判定レビュー
+└─ 6. Phase6-Step11-Completion-Report.md 作成 ＆ Step12 承認ゲート開放
+```
 
 ---
 
-## 7. 次のアクション
+## 5. ロールバックおよび是正方針
 
-1. Phase6-Step2〜8の完了後、本Stepに着手する。
-2. §2の自動テストを実施し、結果を記録する。
-3. `Phase6-Step11-RealDevice-Verification-Checklist.md`を作成し、実機検証を実施する。
-4. 完了後、`Phase6-Status.md`のStep11欄を更新し、Step12（呼出元0件シムの物理削除判断）の計画書作成へ進む。
+万が一、いずれかの項目で「×（失敗）」または重大な「△（性能劣化・カクつき）」が検出された場合は、以下の手順で直ちに対処する：
+1. **問題箇所の特定**: Step2〜Step10 のどのサブPRが原因であるかを単離する。
+2. **局所的ホットフィックスまたは revert**: 
+   - 単純なシム連動漏れであれば、該当ステップの修正パッチを即時適用する。
+   - ホットパスの性能劣化やアーキテクチャ競合である場合は、該当サブPRを `git revert` して再設計する。
+3. **再テスト**: 修正後、第1層自動テストおよび該当実機セクションを再実行し、全項目「○」を確認する。
+
+---
+
+## 6. 完了判定チェックリスト（Step12 移行ゲート）
+
+- [ ] 第1層: 自動テスト（既存 Actions / Standalone ＋ Phase6 新規追加単体テスト全件）が 100% 成功していること。
+- [ ] 第1層: 静的解析により、明示的除外以外の Global 直接参照がソリューション全体から完全に 0 件であることが証明されていること。
+- [ ] 第2層: `Phase6-Step11-RealDevice-Verification-Checklist.md` の全 10 セクションが実施され、すべての必須項目が「○（合格）」であること。
+- [ ] Flydigi Vader 4 Pro コントローラーの独自機能（C/Z/M1〜M4、1000Hz 入力追従）が実機で確認されていること。
+- [ ] 入力遅延・マウス追従性・ホットスワップ瞬断において体感上の劣化が一切ないこと。
+- [ ] 30分以上の連続操作でクラッシュ・メモリリークが皆無であること。
+- [ ] `Phase6-Step11-Completion-Report.md` が作成され、Step12（旧静的シム物理削除）の正式認可（GO）が記録されていること。
