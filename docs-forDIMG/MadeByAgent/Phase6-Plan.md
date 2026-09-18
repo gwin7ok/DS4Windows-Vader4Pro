@@ -1,51 +1,48 @@
 # フェーズ6計画書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
-作成日: 2026-09-09
-改定日: 2026-09-11（Phase5-Step14からのタスク4・5移管に伴う全12ステップ化改定）
-対象ブランチ: `For-DI-migration-work`
-前フェーズ: `Phase5-Plan.md`（Step1〜15、ドメイン集約型）
-全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
-参照調査:
-  - `Phase5-Step13+14-Addendum-Findings-Report-Part1.md`／`-Part2.md`（`Global.*`残存件数の実地調査）
-  - `Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md`（横断的設定監査レポート）
-  - `Phase5-Step14-Issue7-Fix-Plan.md`（Step14改修計画書）
+作成日: 2026-09-09  
+改定日: 2026-09-19（Step1再監査および全ステップ［Step2〜Step12］確定実装計画書に基づく全面改訂）  
+対象ブランチ: `For-DI-migration-work`  
+前フェーズ: `Phase5-Plan.md`（Step1〜15、ドメイン集約型・完了済み）  
+全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
+参照調査・各ステップ計画書:  
+  - `Phase6-Step1-Completion-Summary.md`（Step1詳細再監査・全762参照走査記録）  
+  - `Phase6-Step1-Core-Reference-Evidence.md` / `Phase6-Step1-UI-Reference-Evidence.md`  
+  - `Phase6-Step2-Plan.md` 〜 `Phase6-Step12-Plan.md`（各ステップ確定実装計画書）  
 
 ---
 
 ## 0. 目的とスコープ
 
 ### 0.1 目的
-**完全にDI化された4層構造（入力監視層／信号変換層／信号出力層／UI層）のアプリへ移行し、その結果として新機能追加時の実装容易性を恒常的に向上させること。**
+**完全にDI化された4層構造（入力監視層／信号変換層／信号出力層／UI層）のアプリケーションへ移行し、`Global` 静的クラスへの直接依存を根絶して、保守性・テスタビリティ・新機能追加の容易性を恒久的に向上させること。**
 
-Phase1〜5により、`Global`静的クラスの主要機能はすでに10種以上のDIサービスへ再編され、各サービス内部のLegacy委譲（`Global`／`Program.rootHub`への再委譲）もPhase5で監査・是正済みである。しかし、**呼び出し元側**（`ControlService.cs`、`Mapping.cs`、UIビュー群等）には、DIサービスが存在するにもかかわらず旧来通り`Global.X`を直接呼び続けている箇所が実地調査の結果**193件**確認されている。Phase6は、この呼び出し元側の残存直接参照を解消し、既存の全レイヤーがDIサービス経由で一貫して動作する状態を完成させる。
+Phase1〜5により、DIコンテナ基盤の構築、主要サービスの抽出、および `BackingStore` と連動した SSOT（信頼できる唯一の情報源）の確立（Issue 7 根絶）が完了した。  
+Phase6 では、アプリケーション全域に残存する呼び出し元側の `Global.*` 直接参照（および `using static DS4Windows.Global;` 経由の無修飾参照）をすべてコンストラクタ経由の Pure DI サービス呼び出しへ完全置換し、呼出元0件となった不要な旧静的シムを安全に物理削除して `ScpUtil.cs` のスリム化を果たす。
 
-### 0.2 スコープに含むもの
-`git clone`による実地調査（2026-09-09）で判明した、`Global.`修飾で参照されている193件の実利用箇所のうち、以下を対象とする。
+### 0.2 スコープに含むもの（Step1再監査による確定値）
+旧計画時の「暫定193件（`Global.` 修飾子のみの単純grep）」から、Step1 の精密再監査を経て、無修飾参照を含む**実利用参照式 約404箇所（除外定数やPhase7引き継ぎを含めると500箇所以上）**の全容が確定した。
 
-| 参照元ファイル | 対象件数 | 層 |
-| :--- | :--- | :--- |
-| `ControlService.cs` | 39件 | 信号変換層／入力監視層の境界（最優先） |
-| `Mouse.cs` | 27件 | 信号出力層 |
-| `SettingsViewModel.cs` | 23件 | UI層 |
-| `App.xaml.cs` | 22件 | 起動シーケンス |
-| `ProfileEditor.xaml.cs` | 18件 | UI層（Phase5-Step15の対象漏れ箇所） |
-| `MouseCursor.cs` | 14件 | 信号出力層 |
-| `Mapping.cs` | 12件 | 信号変換層（既存方針の範囲内で再点検） |
-| `PresetOption.cs` | 10件 | UI補助 |
-| `WelcomeDialog.xaml.cs` | 9件 | UI層 |
-| `MainWindowsViewModel.cs` | 8件 | UI層 |
-| `SaveWhere.xaml.cs` / `BindingWindow.xaml.cs` / `TrayIconViewModel.cs` | 各5件 | UI層 |
-| `ProfileSettingsViewModel.cs` | 4件 | UI層 |
-| **【Phase5-Step14より移管】OutputSlot / 横断設定** | - | 信号出力層（孤立設定・直接参照の是正、旧Step14 タスク4） |
-| **【Phase5-Step14より移管】スロット動的再接続連動** | - | 信号出力層（ホットスワップ連動・負債コメントAPI昇華、旧Step14 タスク5・6） |
+| 対象ステップ | 対象ファイル | 実参照式数 | 採用設計方針・概要 |
+| :--- | :--- | :---: | :--- |
+| **Step 2** | `ControlService.cs` | 66箇所 | Pure DIコンストラクタ拡張、ホットパスゼロアロケーション維持、KBMライフサイクル集約、循環依存回避 |
+| **Step 3** | `Mapping.cs` | 10箇所 | **案A採用**: 局所的引数渡し（10件）＋ 超高頻度ホットパス（101件）のPhase7完全引き継ぎ台帳化 |
+| **Step 4** | `Mouse.cs`, `MouseCursor.cs`, `MouseWheel.cs` | 73箇所 | **推奨案採用**: Pure DIコンストラクタ引数注入 ＋ `MouseWheel.cs`（6件）正式統合、1000Hzホットパス保護 |
+| **Step 5** | `OutputSlotService.cs` / `MainWindow.xaml.cs` | 8箇所 | **選択肢B採用**: 孤立配列 `_deviceTypes[]` 完全撤廃、出力デバイス三態SSOT台帳確立、UDP診断是正 |
+| **Step 6** | `ProfileEditor.xaml.cs` / `IOutputSlotService` | 4箇所 | **案1採用**: マッピング一覧機種表示追従バグ是正 ＋ 呼出元0件負債API非推奨化 ＋ 実働ホットスワップ温存 |
+| **Step 7** | `App.xaml.cs` | 32箇所 | **選択肢1採用**: Pre-Host領域（11件）厳格保護 ＋ Post-Host Composition Root解決 ＋ 既存サービス集約 |
+| **Step 8** | `ProfileEditor.xaml.cs` | 60箇所 | **案3-A採用**: 段階的MVVM移設（ロジックを `ProfileSettingsViewModel` へ集約）＋ `MainWindow` 解体推進 ＋ 契約差B8, B9, B10吸収 |
+| **Step 9** | 主要4大ViewModel (`Settings`, `MainWindow`, `TrayIcon`, `ProfileSettings`) | 79箇所 | **選択肢1採用**: 中枢4大ViewModel集中 ＋ 機能カテゴリ別段階的移行 ＋ Pure DI徹底（残存小型VMはStep10へ引き継ぎ） |
+| **Step 10** | 残存小型View (11) & 小型ViewModel (12) & `PresetOption` | 72箇所 | **選択肢A採用**: 機能ドメイン別3グループ分割 ＋ View/ViewModelペアPure DI化 ＋ 全域直参照ゼロ化 |
+| **合計** | **ソリューション全域** | **約404箇所** | **全呼び出し元の Pure DI 完全移行** |
 
-（`ProfileRepository.cs`等、DIサービス自身の内部実装からの参照16件は、Global＝実データ源であるStrangler Fig委譲として意図的なものであり対象外。詳細はStep1監査で最終確定する。）
-
-### 0.3 スコープに含まないもの（明示的除外）
-1. **仮想コントローラー出力バックエンド（ViGEm）の抽象化**: `ControlService.cs`内の`as Xbox360OutDevice`/`as DS4OutDevice`ダウンキャストによるフィードバック配線、および`Nefarius.ViGEm.Client`への直接依存は、`Global`とは無関係の別種の技術的負債であり、Phase6の対象外とする。将来必要になった場合は別イニシアチブ（`IVirtualControllerBackend`抽象化）として扱う。
-2. **`Mapping.cs`の完全instance化**: 全体移行計画書§5.5の既存方針（「本プランでは見送る」）を継承する。Phase6では`Mapping.cs`の残存12件についても、既存の`IDeviceStateAccessor`等の委譲パターンの範囲内でのみ対応し、`Mapping`自体のDIコンテナ管理下への完全移行は行わない。
-3. **テストファイル内の`Global.*`参照**（`ProfileSettingsServiceTests.cs`, `AppSettingsServiceTests.cs`, `ProfileRepositoryTests.cs`等、計28件相当）: これらは新旧比較による孤立プロパティバグの再発防止用の意図的な参照であり、移行対象としない。
-4. **真の定数**（`Global.TEST_PROFILE_INDEX`, `Global.RESOURCES_PREFIX`等）: DI化不要（元プラン§4.1）。
+### 0.3 スコープに含まないもの（明示的除外・保護対象）
+1. **仮想コントローラー出力バックエンド（ViGEm）の直接操作**: `ControlService.cs` や `ScpUtil.cs` 内の `Nefarius.ViGEm.Client` 直接依存、およびダウンキャスト配線は、仮想バス刷新イニシアチブ（`IVirtualControllerBackend` 構想）のスコープとし、Phase6 では動作安定性を最優先して温存する。
+2. **`Mapping.cs` の完全インスタンス化（101箇所）**: 全体計画書 §5.5 および Step3 合意（案A）に基づき、8,500行に及ぶクラス全体のドメイン分割・インスタンス化は Phase7 として独立させる（Step3にて完全台帳化済み）。
+3. **Pre-Host ブートストラップ処理（11箇所）**: `AppHost.CreateHost()` 以前に実行される初期ログローテーション（`appdatapath`, `LogMaxArchiveFiles`, `LogMinLevel`）、多重起動判定、および `--driverinstall` 分岐は、DIコンテナが存在しない前提のブートストラップコードとして静的のまま温存する。
+4. **`BackingStore` の正本データ構造**: DI サービスが SSOT として参照しているため、Phase7 のドメインエンティティ化まで物理削除を禁止し完全保護する。
+5. **真の定数（`const`）および純粋計算ユーティリティ**: `MAX_DS4_CONTROLLER_COUNT`, `TEST_PROFILE_INDEX`, `ASSEMBLY_RESOURCE_PREFIX` などの定数、および `Clamp`, `getTransitionedColor` などの状態非保持ユーティリティは共通インフラとして温存する。
+6. **テストファイル内の比較用 `Global.*` 参照**: 新旧値の同一性検証用テストコードは移行対象外とする。
 
 ---
 
@@ -53,152 +50,172 @@ Phase1〜5により、`Global`静的クラスの主要機能はすでに10種以
 
 ```text
 【Phase6 全12ステップ構成】
-Phase6-Step1: 詳細監査と対象確定【最優先】
+[完了] Phase6-Step1: 詳細監査と対象確定（全762参照走査、実参照約404箇所特定・分類確定）
 
 ── [ドメイン1: コア層（信号変換・入力監視境界）] ──
-├─ Phase6-Step2: ControlService.cs のGlobal直参照解消（39件、最難関）
-├─ Phase6-Step3: Mapping.cs 残存参照の再点検（12件、既存方針踏襲）
+├─ Phase6-Step2: ControlService.cs のGlobal直参照解消（66箇所、最優先・最難関）
+├─ Phase6-Step3: Mapping.cs の局所的引数渡し ＆ Phase7引き継ぎ台帳化（実装10箇所 / 引き継ぎ101箇所）
 
 ── [ドメイン2: 信号出力層] ──
-├─ Phase6-Step4: Mouse.cs / MouseCursor.cs のGlobal直参照解消（41件）
-├─ Phase6-Step5: 【新規】OutputSlot / 横断設定のGlobal直参照・孤立設定の是正（旧Phase5-Step14 タスク4）
-└─ Phase6-Step6: 【新規】出力デバイス切替時の実行時スロット動的再接続（ホットスワップ）連動（旧Phase5-Step14 タスク5）
+├─ Phase6-Step4: Mouse系（Mouse / MouseCursor / MouseWheel）のPure DI化（73箇所）
+├─ Phase6-Step5: OutputSlotService の全面SSOT統合 ＆ 孤立配列完全撤廃（8箇所）
+└─ Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 負債API安全整理（4箇所）
 
 ── [ドメイン3: 起動・UI層] ──
-├─ Phase6-Step7: App.xaml.cs 起動シーケンスの整理（22件、旧Step5）
-├─ Phase6-Step8: ProfileEditor.xaml.cs のGlobal直参照解消（18件、旧Step6）
-├─ Phase6-Step9: SettingsViewModel他 主要ViewModel群の解消（39件、旧Step7）
-└─ Phase6-Step10: 残りの小型UIファイル群の解消（29件、旧Step8）
+├─ Phase6-Step7: App.xaml.cs Post-Host領域のPure DI化（32箇所、Pre-Host11箇所保護）
+├─ Phase6-Step8: ProfileEditor.xaml.cs の段階的MVVM移設 ＆ MainWindow解体推進（60箇所）
+├─ Phase6-Step9: 主要4大ViewModelのPure DI徹底 ＆ カテゴリ別移行（79箇所）
+└─ Phase6-Step10: 残存小型UI・小型ViewModel・補助クラスのドメイン別ペアPure DI化（72箇所）
 
 ── [ドメイン4: 検証・仕上げ] ──
-├─ Phase6-Step11: 自動テスト・実機検証（旧Step9）
-└─ Phase6-Step12: 呼出元0件シムの物理削除判断（旧Step10）
+├─ Phase6-Step11: 2層構造・階層化総合検証（自動回帰テスト全件 ＋ Vader 4 Pro/DS4/DualSense 実機検証）
+└─ Phase6-Step12: 呼出元0件旧静的シムの安全防壁付き物理削除 ＆ Phase6最終完了判定
 ```
 
 ---
 
-## 2. 各ステップの詳細内容
+## 2. 各ステップの詳細内容と確定方針
 
-### Phase6-Step1: 詳細監査と対象確定
-- **内容**: 193件全件について、(a) 既存DIサービスに同名・同等メソッドが既にある「単純リダイレクト」、(b) 既存サービスへの軽微な拡張が必要な「中程度作業」、(c) 新規インターフェースが必要な「要設計」の3分類を確定する。Phase5-Step0/Step1と同様、`git clone`による全文grep突合をベースとし、「呼出元候補」の記述ではなく実地確認を必須とする（Phase5-Watchpoints報告書で判明した「grep未確認の記述はStep15計画の前提を誤らせる」という教訓を反映）。
-- **成果物**: `Phase6-Step1-Global-Usage-Classification-Report.md`（193件の全件分類表）。
+### Phase6-Step1: 詳細監査と対象確定【完了】
+- **実績**: ソリューション全体で 762 箇所の参照シンボルを完全走査。重複ゼロ・漏れゼロを数学的に証明。
+- **成果物**: `Phase6-Step1-Completion-Summary.md`, `Phase6-Step1-Core-Reference-Evidence.md`, `Phase6-Step1-UI-Reference-Evidence.md`, `Phase6-Step1-ABC-Classification.md`, `Phase6-Step1-Unique-ID-Manifest.md` 等の10大監査文書を完備。
 
 ---
 
 ### 【ドメイン1: コア層】
 
 #### Phase6-Step2: `ControlService.cs` のGlobal直参照解消（最優先・最難関）
-- **対象**: 39件。多くは`IProfileSettingsService`（プロファイル設定値）、`IDeviceStateService`（デバイス状態）等、Phase4で既に用意されているサービスに同等メソッドが存在する見込みが高い（Step1監査で確定）。
-- **【アーキテクチャ・ガードレール注記】**:
-  - **[ホットパス性能維持]（新規ガードレール、§3.1参照）**: `ControlService.cs`内のGlobal参照の一部は、毎秒250〜1000回実行される入力ポーリングループから直接呼ばれる（例: `getLSDeadzone(index)`相当のデッドゾーン取得）。単純な配列アクセスをDIサービス経由の仮想メソッド呼び出しに置き換える際、キャッシュ無し・都度XML参照等のオーバーヘッドが混入しないよう、置換前後でのマイクロベンチマーク比較を必須とする。
-  - **[Halt保証]（§5.2継承）**: 設定変更を伴う一部メンバ（`InitOutputKBMHandler`関連等）は、既存のHalt機構との整合を崩さないことを確認する。
-- **完了判定基準**: `ControlService.cs`内の`Global.`直接参照が0件になり、かつ実機での連打・ホールド・同時押しの入力遅延が置換前と同等であることを確認する。
+- **対象**: 実参照式66箇所（除外8箇所）。
+- **確定方針**: コンストラクタ引数注入の拡張（Pure DI）。
+- **重点対策**:
+  - **ホットパス性能維持**: `On_Report` 入力ループ内でのゼロアロケーション（GC Alloc = 0）および BackingStore 配列直接アクセスの徹底。
+  - **循環依存の回避**: `ProfileApplicationService` を直接注入せず、イベント連動または低レベル適用APIで解決。
+  - **6分割サブPR（マイクロステップ）**: PR-1（環境/パス）→ PR-2（出力スロット/プロファイル）→ PR-3（KBM初期化）→ PR-4（ホットパス条件分岐）→ PR-5（毎レポート最頻度経路）→ PR-6（`using static` 削除・最終確認）。
 
-#### Phase6-Step3: `Mapping.cs` 残存参照の再点検
-- **対象**: 12件。全体移行計画書§5.5の方針（`Mapping`完全instance化の見送り）を継続するため、既存の`IDeviceStateAccessor`等と同様の「メソッド引数として注入済みインターフェースを受け取る」形の部分的解消にとどめる。
-- **完了判定基準**: 是正可能な範囲（フォールバックパターンでの引数渡し化等）を洗い出し、対応した件数と、意図的に残す件数（`Mapping`のstatic性質上不可避なもの）を明確に区分して記録する。
+#### Phase6-Step3: `Mapping.cs` の局所的引数渡し ＆ Phase7引き継ぎ台帳化
+- **対象**: 実装対象10箇所、Phase7引き継ぎ対象101箇所、除外4箇所。
+- **確定方針（案A）**:
+  - 非ホットパス（画面座標、設定保存・ロード等）の10箇所のみ、メソッド引数渡し方式で安全に解消。
+  - `SetCurveAndDeadzone`（34件）や `outputKBMMapping`（29件）等のホットパス101箇所は、シグネチャ肥大化とスタックオーバーヘッドを防ぐため、全件ID付きでカタログ化し Phase7 へ正式引き継ぎ。
 
 ---
 
 ### 【ドメイン2: 信号出力層】
 
-#### Phase6-Step4: `Mouse.cs` / `MouseCursor.cs` のGlobal直参照解消
-- **対象**: 計41件（Mouse 27件、MouseCursor 14件）。マウス感度・加速度カーブ等の出力設定参照を `IAppSettingsService` 等へ付け替える。
-- **【アーキテクチャ・ガードレール注記】**: マウス移動計算ループ内のホットパス呼び出しに対する性能配慮を徹底する。
-- **完了判定基準**: マウスエミュレーションの実機体感確認を含め、入力遅延・挙動の劣化がないことを確認する。
+#### Phase6-Step4: マウスエミュレーション系（`Mouse`, `MouseCursor`, `MouseWheel`）のPure DI化
+- **対象**: 実参照式73箇所（`Mouse`: 47, `MouseCursor`: 20, `MouseWheel`: 6、除外2）。
+- **確定方針（推奨案）**:
+  - `MouseWheel.cs`（6件）を正式統合し、マウスサブシステムを一挙に完全解決。
+  - 各インスタンスクラスのコンストラクタで DI サービスを受け取り `readonly` フィールドに保持。1000Hz ポーリング時のオーバーヘッドを極小化。
+  - `DS4Device.cs` からサービスインスタンスを直接伝搬。
 
-#### Phase6-Step5: OutputSlot / 横断設定のGlobal直参照・孤立設定の是正（旧Phase5-Step14 タスク4）
-- **対象**: 横断的設定監査レポート（`Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md`）で検出された、スロット設定（`OutputSlotPersist` / `OutSlotDevice` 等）および他画面における `Global` 直参照・二重管理箇所。
-- **内容**:
-  1. `OutputSlotViewModel` や関連コンポーネントが保持する出力デバイス設定の参照先を、`IProfileSettingsService` および `IOutputSlotStore` を正本（SSOT）とする形に付け替える。
-  2. スロット設定画面等で直接 `Global.Instance.Config` を読み書きしている二重管理を根絶する。
-- **完了判定基準**: スロット関連の `Global` 直参照が解消され、出力デバイスタイプおよび関連設定の正本が一元化されていること。
+#### Phase6-Step5: `OutputSlotService` 全面SSOT統合 ＆ 孤立配列完全撤廃
+- **対象**: 実参照式8箇所（`MainWindow.xaml.cs:1412` のUDP診断コマンド含む）。
+- **確定方針（選択肢B）**:
+  - バグの温床であった孤立配列 `_deviceTypes[]` を物理的に完全削除。
+  - `GetOutputDeviceType` / `SetOutputDeviceType` を `IProfileSettingsService.OutContType` への委譲に改修し `[Obsolete]` 化。
+  - 出力デバイス設定の「三態（永続設定 `OutContType` / 実行時接続 `ActiveOutDevType` / UI一時 `OutDevTypeTemp`）」のSSOT台帳を確立。
 
-#### Phase6-Step6: 出力デバイス切替時の実行時スロット動的再接続（ホットスワップ）連動（旧Phase5-Step14 タスク5）
-- **対象**: `IOutputSlotService` / `OutputSlotManager` / `ControlService`。
-- **内容**:
-  1. プロファイル設定（`IProfileSettingsService.OutContType`）の変更イベントを検知し、現在接続中の仮想スロットのコントローラー種別（Xbox 360 ⇄ DS4）を動的にアンプラグ＆再プラグインするホットスワップ連動を実装する。
-  2. Phase5-Step14（タスク6）で `IOutputSlotService` に付与した `GetOutputDeviceType` / `SetOutputDeviceType` の技術的負債コメントを解消し、実行時ViGEm接続状態を正しく問い合わせ・制御する正式APIとして昇華・整理する。
-- **【アーキテクチャ・ガードレール注記】**:
-  - **[ViGEmドライバ保護]（§3.4）**: 仮想デバイスの即時再接続時にドライバ側でデッドロックやクラッシュが発生しないよう、排他ロックおよび適切な切断待機インターバルを確保する。
-- **完了判定基準**: UI上で出力コントローラー種別を変更した際、実スロットの仮想デバイスが即座に切り替わり、ゲーム側への入力転送が正常に継続すること。
+#### Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 負債API安全整理
+- **対象**: 実参照式4箇所。
+- **確定方針（案1）**:
+  - `ProfileEditor.xaml.cs` の `Reload()` 内に `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加し、プロファイル再読み込み時のマッピングボタン表記（A/B/X/Y ⇄ Cross/Circle）追従バグを解消。
+  - `IOutputSlotService` の呼出元0件API（`PluginSlot`, `UnplugSlot`）を安全に非推奨化。
+  - `ScpUtil.cs:PostLoadSnippet` による実働ホットスワップ機構は安定性最優先で温存。
 
 ---
 
 ### 【ドメイン3: 起動・UI層】
 
-#### Phase6-Step7: `App.xaml.cs` 起動シーケンスの整理（旧Step5）
-- **対象**: 22件。Composition Root構築前後のタイミング依存領域。On-Demandパス評価原則（Phase5-Step10継承）を適用する。
+#### Phase6-Step7: `App.xaml.cs` Post-Host領域のPure DI化
+- **対象**: 実参照式32箇所（Pre-Host除外11箇所、const除外1箇所）。
+- **確定方針（選択肢1）**:
+  - Pre-Host 領域（ログ初期化、多重起動判定、driverinstall等）を厳格に保護し、静的のまま温存。
+  - `AppHost.CreateHost()` 直後に `InitializePostHostServices()` を実行し、WPF Composition Root パターンに則って安全にサービス解決。
+  - 分類(c)の項目（保存場所選択、標準アクション等）を既存サービスへ薄いシムとして集約。
 
-#### Phase6-Step8: `ProfileEditor.xaml.cs` のGlobal直参照解消（旧Step6）
-- **対象**: 18件。Phase5-Step13完了報告書で判明した「対象漏れ」箇所。Step13の`AppHost.GetService<T>() ?? Global.XxxInstance`パターンを踏襲予定。
+#### Phase6-Step8: `ProfileEditor.xaml.cs` の段階的MVVM移設 ＆ `MainWindow` 解体推進
+- **対象**: 実参照式60箇所（const除外38箇所）。
+- **確定方針（案3-A）**:
+  - View に書かれていたプロファイル保存（`SaveProfile`）、ブランク読込（`LoadBlankDevProfile`）、スロット適用（`ApplyProfileToSlot`）等のバックエンド操作を **`ProfileSettingsViewModel` へ移設**（Dumb View 化）。
+  - `MainWindow.xaml.cs` がサービスを横流しするバケツリレーを撤廃し、`MainWindow` の解体・スリム化を強力に推進。
+  - Step1 で判明した重要契約差（B8: `GetActionOrPlaceholder`、B9: `ApplyProfileToSlot`、B10: `LoadBlankDevProfile`）をシムで完全吸収。
 
-#### Phase6-Step9: `SettingsViewModel.cs`他 主要ViewModel群の解消（旧Step7）
-- **対象**: 計39件（SettingsViewModel 23件、MainWindowsViewModel 8件、ProfileSettingsViewModel 4件、TrayIconViewModel 4件）。UI ViewModelからの直接参照を完全排除する。
+#### Phase6-Step9: 主要4大ViewModelのPure DI徹底 ＆ カテゴリ別移行
+- **対象**: 実参照式79箇所（`Settings`: 55, `MainWindow`: 8, `TrayIcon`: 6, `ProfileSettings`: 10、const除外14）。
+- **確定方針（選択肢1）**:
+  - アプリの中枢4大ViewModelにスコープを限定。コンストラクタ引数注入（Pure DI）を徹底。
+  - `SettingsViewModel`（55箇所）を「①基本/テーマ/ログ」「②OSC/UDP/平滑化」「③環境/パス/外部」の3サブPRに分割。
+  - `BatteryChanged`（B12シム）を `IDeviceStateService` に実装。残存小型ViewModel（12ファイル）は Step10 へ引き継ぎ。
 
-#### Phase6-Step10: 残りの小型UIファイル群の解消（旧Step8）
-- **対象**: 計29件（WelcomeDialog 9件、PresetOption 10件、SaveWhere/BindingWindow 各5件）。件数が少なく1PRでまとめて対応可能な見込み。
+#### Phase6-Step10: 残存小型UI・小型ViewModel・補助クラスのドメイン別ペアPure DI化
+- **対象**: 小型View 11ファイル、小型ViewModel 12ファイル＋SpecialActions、`PresetOption.cs`（実参照式計72箇所、除外9箇所）。
+- **確定方針（選択肢A）**:
+  - 「グループ1: 起動・環境系」「グループ2: プロファイル・マッピング系」「グループ3: スペシャルアクション編集系」の3グループに分割。
+  - **View と ViewModel をペアで同時に Pure DI 化**し、バインディング切れを完全防止。
+  - 本ステップ完了をもって、ソリューション全域からの Global 直接参照根絶を達成。
 
 ---
 
 ### 【ドメイン4: 検証・仕上げ】
 
-#### Phase6-Step11: 自動テスト・実機検証（旧Step9）
-- **内容**: 全ユニットテスト（新規テスト含む）、統合テストの実行および実機コントローラーによる総合動作検証。各Step完了ごとにビルド・既存自動テストを実行する運用とし、Step2・Step4・Step6は実機での連続入力・再接続回帰確認を必須項目とする。
+#### Phase6-Step11: 2層構造・階層化総合検証
+- **確定方針（選択肢A）**:
+  - **第1層**: 自動テストスイート全件実行（Actions, Standalone, Phase4/5新規, Phase6新規全件） ＋ 静的解析による未検知Global参照ゼロ完全証明。
+  - **第2層**: `Phase6-Step11-RealDevice-Verification-Checklist.md` を作成し、**Flydigi Vader 4 Pro**（C/Z/M1〜M4パドル、1000Hz）、**DS4**、**DualSense** による 10大構造化シナリオ検証（30分〜1時間連続ストレステスト含む）を実施。
+  - 全項目合格をもって Step12 の物理削除を正式認可（GOゲート）。
 
-#### Phase6-Step12: 呼出元0件シムの物理削除判断（旧Step10）
-- **内容**: Phase6完了時点で呼出元0件が確定した `Global` メンバに `[Obsolete]` を付与し、削除候補リストを更新する（即時削除はしない）。
+#### Phase6-Step12: 呼出元0件旧静的シムの安全防壁付き物理削除 ＆ Phase6最終完了判定
+- **確定方針（選択肢2）**:
+  - 【5大保護防壁】（BackingStore、Phase7引き継ぎ101件、Pre-Host11件、const定数、ViGEm依存）を厳格に保護。
+  - 全リポジトリ走査で呼出元0件が完全に証明された旧静的ラッパーメソッド・プロパティを `ScpUtil.cs` から物理削除し、コードを安全にスリム化。
+  - `dotnet test` 再実行で完全合格を証明し、`Phase6-Completion-Report.md` をもって Phase6 の完全成功を宣言。Phase7 への最終引き継ぎ台帳を締結。
 
 ---
 
-## 3. 実装における潜在的懸念点とアーキテクチャ・ガードレール
+## 3. アーキテクチャ・ガードレール
 
-### 3.1 [新規] ホットパス性能維持（Step2, Step4）
-毎秒250〜1000回実行される入力ポーリングループ（例: `ControlService` のスティック計算）における仮想メソッド呼び出しのオーバーヘッドを避けるため、必要な設定値はイベント購読によるローカルキャッシュ化を行い、都度サービス問い合わせを発生させない。
-
-### 3.2 [継承] 既存6大ガードレール（Phase5-Plan.md §5より）
-1. 同一XML排他ロック（ロストアップデート防止）
-2. プロファイル適用時のHalt停止保証
-3. AutoProfileスレッド直列化
-4. パス解決のOn-Demand化
-5. ViGEmドライバ排他・クラッシュ保護
-6. DI経由通知の到達保証
-
-### 3.3 [新規] ドキュメント記述の実地確認原則
-コードの存在確認や呼出元調査は、推測や古いドキュメントの記述に頼らず、必ず最新のソースコードに対する実地grep・構文解析を行って確定する。
-
-### 3.4 [新規] スロット動的再接続時の ViGEm バス競合保護（Step6）
-実行時ホットスワップにおいて、アンロード前の再プラグインによるバスパニックを防ぐため、スロットアンロードの完了検知と直列化を徹底する。
-
-### 3.5 [新規] 残置クラス・メソッドへの経緯コメント明記（`copilot-instructions.md` §3.3.4準拠）
-移行過程で非推奨化・使用停止となるが破壊的変更防止のために残置するクラスやメソッドには、**理由・正規の参照先（SSOT）・対応予定フェーズ** を明記した技術的負債コメントを必ず付与する。
+1. **ホットパス性能維持（ゼロアロケーション）**:
+   毎秒250〜1000回実行される入力ポーリングループ（`ControlService`, `Mapping`, `Mouse`）において、新規ヒープ割り当て（GC Alloc）、LINQ、仮想メソッド多段解決を厳禁とし、BackingStore 固定長配列への直接参照を維持する。
+2. **BackingStore SSOT 保護**:
+   各 DI サービスは `BackingStore` の正本データを直接参照・操作し、独自フィールドによる二重管理を絶対に再発させない。
+3. **プロファイル適用時の Halt 停止保証**:
+   プロファイル適用や出力デバイス変更を伴う操作では、入力ポーリングスレッドの停止（Halt）と排他制御を確実に維持する。
+4. **Pre-Host ライフサイクル境界の保護**:
+   DIコンテナ構築前に動作するログ初期化・多重起動判定・driverinstall分岐に手を加えず、起動クラッシュリスクをゼロとする。
+5. **残置コードへの技術的負債コメント明記**:
+   Phase7 へ引き継ぐメンバや非推奨化した API には、理由・正規参照先（SSOT）・対応予定フェーズを必ず明記する。
 
 ---
 
 ## 4. 完了条件
-1. Step1で確定した対象（真の除外分を除く実質193件相当）の呼出元が、全てDIサービス経由の呼び出しに置換されていること。
-2. `ControlService.cs`, `Mapping.cs`, `Mouse.cs`, `MouseCursor.cs` のホットパスにおいて、置換前後で体感可能な性能劣化がないことを実機確認済みであること。
-3. 信号出力層において、出力デバイス切り替え時の動的スロット再接続が正常に連動すること（Step6）。
-4. 既存の全自動テスト（Actions／Standalone／Phase4・5で追加された単体テスト）が成功を維持していること。
-5. `ProfileEditor.xaml.cs` を含むUI層全体で、Phase5-Step13と同水準の静的参照撲滅が完了していること。
-6. 呼出元0件となった `Global` メンバに `[Obsolete]` が付与され、削除候補リストが更新されていること。
+
+1. Step2〜Step10 に定義された全実利用箇所（約404箇所）が、すべてコンストラクタ注入された DI サービス経由の呼び出しへ置換されていること。
+2. 明示的除外リスト（const定数、Pre-Hostブートストラップ11件、ViGEmバックエンド、Phase7引き継ぎ101件）以外の `Global.` 直接参照がソリューション全体から物理的に根絶されていること。
+3. `ProfileEditor.xaml.cs` のバックエンド操作が `ProfileSettingsViewModel` へ移設され、`MainWindow.xaml.cs` のスリム化が達成されていること。
+4. 全自動テスト（Actions / Standalone / Phase6新規テスト全件）が 100% 成功していること。
+5. Flydigi Vader 4 Pro コントローラーを含む実機マトリクス検証（10大セクション）が全件「○（合格）」であること。
+6. 呼出元0件となった旧静的ラッパーが安全防壁付きで物理削除され、`ScpUtil.cs` のスリム化が安全に達成されていること。
 
 ---
 
-## 5. 進行ルール（Phase5-Plan.md §7を継承）
-- 1ステップごとに計画・実装・テスト・コミットを完結させる。
-- 成果物はすべて `.github/PowerShell-script-generation-rules-for-deliverables.md` に従って提示する。
+## 5. スケジュール見積りと全体進捗位置づけ
+
+### 5.1 各ステップ作業見積り
+- **Step 1**: 詳細監査と対象確定（完了実績: 1日）
+- **Step 2〜3**: コア層（ControlService / Mapping）（3〜4日）
+- **Step 4〜6**: 信号出力層・スロットSSOT・追従（3〜4日）
+- **Step 7〜10**: 起動・UI層・MVVM移設・小型UI（4〜5日）
+- **Step 11〜12**: 2層総合検証・実機テスト・物理削除・完了判定（2〜3日）
+- **合計想定工数**: 約13〜17日（順次マイクロステップPR運用）
+
+### 5.2 全体プロジェクト（Phase 0 〜 Phase 7）における位置づけ
+- **全体進捗率**: **約 60〜65%**（Phase0〜5完了 ＋ Phase6-Step1完了・全計画書確定）。
+- **設計・リスク消化度**: **約 75〜80% 突破**（SSOT確立、全参照走査完了、1行単位での施工計画確定により、不確実性はほぼ消滅）。
 
 ---
 
-## 6. スケジュール見積り（全12ステップ）
-- Step 1: 監査・分類（1日）
-- Step 2〜3: コア層（3〜4日）
-- Step 4〜6: 信号出力層・スロット連動（3〜4日）
-- Step 7〜10: 起動・UI層（4〜5日）
-- Step 11〜12: 検証・シム削除（2〜3日）
+## 6. 次のアクション
 
----
-
-## 7. 次のアクション
-Phase 5（Step 14 残余および Step 15）の完了を待ち、Phase6-Step1 の詳細監査に着手する。
+1. 本計画書（`Phase6-Plan.md`）および進捗管理表（`Phase6-Status.md`）の承認。
+2. **Phase6-Step2（`ControlService.cs` のGlobal直参照解消、実参照66箇所）** の施工着手。
