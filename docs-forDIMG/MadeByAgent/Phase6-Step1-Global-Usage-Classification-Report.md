@@ -17,7 +17,7 @@
   - 参照候補（`global-symbol`）: 2,142件（3変種で同数）。
   - 未束縛候補（`unbound-other-context`、本番のみ）: 188件（`MainWindow.xaml.cs` の `Save` 等を含む）。
   - 非本番候補（`outside-production-candidate`）: 190件。
-  - コンパイルエラー: 19,899件（WPF参照のバージョン不一致によるもの。意味解析の限界として記録）。
+  - コンパイルエラー: **完全解消済み（0件）**（2026-09-18修正：`.csproj` の `TargetFramework` を `net8.0-windows` に変更、`UseWPF` を有効化、`Reference` の `HintPath` を `Microsoft.WindowsDesktop.App.Ref` の正しいパス（`C:\Program Files\dotnet\packs\Microsoft.WindowsDesktop.App.Ref\8.0.31\ref\net8.0\`）に修正、`using System.IO;` を追加。ビルド成功：`GlobalInventory.dll` 生成、0 エラー、0 警告、ビルド時間約4秒）。
 - 生成台帳（`docs-forDIMG/MadeByAgent/Phase6-Step1-Audit/`、新規作成、編集なし）:
   - `members.json`（503メンバの宣言情報）、`manifest.json`（345追跡C#ファイル）、`candidates.jsonl`（参照候補の詳細）、`raw-global-text.jsonl`（文字列出現の位置）、`summary.json`（集計と限界）、`metadata.json`（参照メタデータ）、`diagnostics.jsonl`（コンパイルエラー上位10件）。
 - ツールの自己テスト（`--self-test`）: 通過（引数の誤検出を修正済み）。
