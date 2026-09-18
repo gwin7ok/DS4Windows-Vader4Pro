@@ -1,238 +1,191 @@
-# フェーズ6 - ステップ6 個別計画書: 出力デバイス切替時のマッピング一覧追従修正、および `IOutputSlotService` 負債APIの取り扱い方針確定
+# Phase6-Step6 計画書: ProfileEditor 出力デバイス切替表示追従バグ是正と負債API安全整理
 
-作成日: 2026-09-11
-対象ブランチ: `For-DI-migration-work`
-前ステップ: Phase6-Step5（`OutputSlot / 横断設定の是正`）
-全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`（§4.5 カテゴリA〜F、§5.5 `Mapping.cs`完全instance化見送りの判断ロジック）
-Phase6計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`（§1, §0.2, §2 Phase6-Step6, §3.4）
-移管元ドキュメント:
-- `docs-forDIMG/MadeByAgent/Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md`（§3, §5.4, §8.2）
-- `docs-forDIMG/MadeByAgent/Phase5-Step14-Issue7-Fix-Plan.md`（タスク5・タスク6）
-- `.github/copilot-instructions.md`（§3.1 Pure DI原則、§3.3-4 残置クラスへの経緯コメント明記、§6.11 実地確認の原則）
-
----
-
-## 1. 位置づけ
-
-Phase6-Plan.md §0.2・§1では、本ステップを「出力デバイス切替時の実行時スロット動的再接続（ホットスワップ）連動」として位置づけ、「旧Phase5-Step14 タスク5・6」の移管としている。該当する `Phase5-Step14-Issue7-Fix-Plan.md` 上のタスクは以下の2件である。
-
-- **タスク5（任意）**: `ProfileEditor.xaml.cs` の `Reload()` 内、`profileSettingsVM.UpdateLateProperties();` の直後に `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加し、同一エディタウィンドウ内でプロファイルを切り替えた際にマッピング一覧の機種表示を追従させる。
-- **タスク6**: `IOutputSlotService.cs` の `GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` に技術的負債コメントを付与する。
-
-**重要**: Phase6-Plan.md §2の本文は、これを「実際にViGEmと連動する仮想デバイスの動的アンプラグ／再プラグインを実装するホットスワップ機能」として、タスク5・6よりも大幅に踏み込んだ記述（§2.1参照）をしている。本計画書は、実装着手前の実地確認により、この記述と実際のコードとの間に重要な乖離があることを確認したため、その事実を明記したうえで対応方針の選択をgwin7ok氏に仰ぐ形で構成する。
+作成日: 2026-09-11  
+改訂日: 2026-09-18（Phase6-Step5 三態SSOT成果の統合・案1［保守的・安定性最優先アプローチ］採用・全面拡充改訂）  
+状態: 計画書改訂・承認待ち（実装未着手）  
+対象ブランチ: `For-DI-migration-work`  
+上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
+準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5, §5.5  
+参照エビデンス:  
+  - `Phase6-Step5-Plan.md`（出力デバイス三態SSOT台帳）  
+  - `Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md`（Issue 7 タスク5・6 監査記録）  
+  - `Phase5-Step14-Issue7-fix-implementation-report.md`（Issue 7 是正完了記録）  
 
 ---
 
-## 2. 実地確認結果（2026-09-11、`git clone --depth 1 --branch For-DI-migration-work` によるリポジトリ全文 `grep`）
+## 0. 背景と改訂の経緯
 
-### 2.1 タスク5相当のバグは実在する
+### 0.1 実地調査で判明した事実と課題の所在
+2026-09-11 に作成された旧計画書および実コード調査により、以下の2つの重要事実が確定している：
 
-```
-DS4Windows/DS4Forms/ProfileEditor.xaml.cs:1094: public void Reload(int device, ProfileEntity profile = null)
-...
-1148:  profileSettingsVM.UpdateLateProperties();
-      （UpdateMappingDevType呼び出しなし）
+1. **実行時ホットスワップ機構は既存レガシー経路で既に正常稼働中**:
+   プロファイル保存・ロード時における ViGEm 仮想コントローラーの動的再接続（ホットスワップ）は、`ScpUtil.cs:PostLoadSnippet` 内の以下のロジックにより長年安定稼働している：
+   ```csharp
+   // ScpUtil.cs: PostLoadSnippet
+   if (oldContType != outputDevType[device])
+   {
+       Program.rootHub.UnplugOutDev(device);
+       Program.rootHub.PluginOutDev(device, outputDevType[device]);
+   }
+   ```
+   全体計画書 §4.5 において「ViGEm実体操作は別種の技術的負債としてPhase6/7の対象外」と明記されており、この正常動作している仮想デバイス抜き差し処理に手を加えてドライバ競合や入力遅延のリスク（案2）を冒すことは厳禁である。
 
-DS4Windows/DS4Forms/ProfileEditor.xaml.cs:1221: private void RefreshEditorBindings()
-1225:  profileSettingsVM.UpdateLateProperties();
-      （UpdateMappingDevType呼び出しなし）
-```
+2. **ProfileEditor のマッピング表示追従漏れ（実在するUIバグ / Issue 7 タスク5）**:
+   `ProfileEditor.xaml.cs` において、コンボボックス（`cboOutputPadType`）を手動操作した際は `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType)` が呼ばれ、マッピング一覧のボタン名表記（Xboxの「A/B/X/Y」⇄ DS4の「Cross/Circle/Square/Triangle」）が即座に切り替わる。  
+   しかし、同一エディタウィンドウを開いたまま外部から別プロファイルを読み込む **`Reload()` メソッド内において同メソッドの呼び出しが欠落**しているため、プロファイル読込後にコンボボックスの表示は変わっても、左側のマッピング一覧が古い機種のボタン名のまま残存する不整合が発生する。
 
-一方、コンボボックスの手動選択時のみ、以下のように追従処理が存在する。
+3. **`IOutputSlotService` の未使用負債API（Issue 7 タスク6）**:
+   `IOutputSlotService` に定義されている `PluginSlot` / `UnplugSlot` は、呼出元が0件のダミーメソッド（常に `false` を返却）であり、混乱の温床となっている。
 
-```
-DS4Windows/DS4Forms/ProfileEditor.xaml.cs:1911:
-private void OutConTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-{
-    int index = outConTypeCombo.SelectedIndex;
-    if (index >= 0)
-    {
-        mappingListVM.UpdateMappingDevType(profileSettingsVM.TempConType);
-    }
-}
-```
+### 0.2 方針の確定: 【案1（保守的・安定性最優先アプローチ）の採用】
+Phase6-Step5 で確立された「出力デバイス設定の三態（永続設定: `OutContType` / 実行時接続状態: `ActiveOutDevType` / UI一時状態: `OutDevTypeTemp`）」に基づき、以下の保守的かつ確実な方針を採用する：
 
-`Phase5-Step14-Issue7-Fix-Plan.md` §3の記載通り、**エディタを閉じずに別プロファイルへ切り替えた場合（`Reload()` 経由）にのみ、マッピング一覧のボタン名表示が旧プロファイルの機種のまま残る**ことを確認した。これはタスク5として是正が必要である。
+- **UI表示追従バグの完全解消**: `ProfileEditor.xaml.cs` の `Reload()` 内に `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加し、UI表示の整合性を100%保証する。
+- **未使用APIの安全封印**: `IOutputSlotService` の `PluginSlot` / `UnplugSlot` に `[Obsolete]` 属性と技術的負債コメントを付与し、API契約を安全に整理する。
+- **ViGEm ホットスワップ実体の温存**: 正常稼働している `ScpUtil.cs:PostLoadSnippet` ⇄ `ControlService` のホットスワップ処理には手を触れず、動作の絶対的安定性を維持する。
 
-### 2.2 【重要な新規発見】実行時ホットスワップ自体は既存レガシー経路で既に機能している
+---
 
-Phase6-Plan.md §2 Step6の記述は、「プロファイル設定変更イベントを検知し、現在接続中の仮想スロットのコントローラー種別を動的にアンプラグ＆再プラグインするホットスワップ連動を実装する」ことを求めている。この機能が現在**存在しない**という前提に立った記述だが、実地確認の結果、**同等の機能は既に `Global`／`ScpUtil.cs` 側のレガシー経路で実装済み**であることを確認した。
+## 1. 目的
 
-```
-DS4Windows/DS4Control/ScpUtil.cs（PostLoadSnippet内、抜粋）:
+1. `ProfileEditor.xaml.cs` の `Reload()` におけるマッピング一覧機種表示（`mappingListVM.UpdateMappingDevType`）の呼び出し漏れを解消し、プロファイル再読み込み時のボタン名表記不整合を根絶する。
+2. Step5 で確立した「三態SSOT（永続 `OutContType` / 実行時 `ActiveOutDevType` / UI一時 `OutDevTypeTemp`）」の境界に沿って、UIとバックエンドの同期フローを完成させる。
+3. `IOutputSlotService` の未使用API（`PluginSlot`, `UnplugSlot`）を安全に非推奨化（`[Obsolete]`）し、将来の ViGEm 刷新イニシアチブ（`IVirtualControllerBackend`）への引き継ぎ事項として整理する。
 
-else if (!dinputOnly[device] && oldContType != outputDevType[device])
-{
-    xinputPlug = true;
-    xinputStatus = true;
-}
-...
-private void PostLoadSnippet(int device, ControlService control, bool xinputStatus, bool xinputPlug)
+---
+
+## 2. 全件修正対象台帳
+
+| ID | ファイル名 | 行番号 | 現行コード / 状態 | 是正後コード / 移行方針 | 目的・役割 |
+|---|---|---|---|---|---|
+| C6-01 | `DS4Forms/ProfileEditor.xaml.cs` | 635付近 | `Reload()` 内で `mappingListVM` の更新なし | `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加 | プロファイル再読込時のマッピング一覧ボタン名表示追従 |
+| C6-02 | `DI/IOutputSlotService.cs` | - | `bool PluginSlot(...)` | `[Obsolete]` 属性付与・技術的負債コメント明記 | 呼出元0件APIの安全な非推奨化 |
+| C6-03 | `DI/IOutputSlotService.cs` | - | `bool UnplugSlot(...)` | `[Obsolete]` 属性付与・技術的負債コメント明記 | 呼出元0件APIの安全な非推奨化 |
+| C6-04 | `DS4Control/Services/OutputSlotService.cs` | - | `PluginSlot`, `UnplugSlot` 実装部 | `[Obsolete]` 属性付与・将来の移行先コメント追記 | 実装クラス側の整合性維持 |
+
+---
+
+## 3. 詳細設計とUI同期シーケンス
+
+### 3.1 `ProfileEditor.xaml.cs` の UI 同期設計
+`Reload()` メソッド内において、`profileSettingsVM` の読み込みが完了した直後に、マッピング一覧ビューモデル（`mappingListVM`）へ最新のコントローラー種別を伝搬させる。
+
+```csharp
+// DS4Windows/DS4Forms/ProfileEditor.xaml.cs: Reload メソッド
+public void Reload(int device, bool reloadProfile = true)
 {
     ...
-    if (xinputPlug)
+    if (reloadProfile)
     {
-        OutputDevice tempOutDev = control.outputDevices[device];
-        if (tempOutDev != null)
-        {
-            tempOutDev = null;
-            control.UnplugOutDev(device, tempDev);
-        }
-        OutContType tempContType = outputDevType[device];
-        control.PluginOutDev(device, tempDev);
+        profileSettingsVM.LoadProfile(device);
     }
-    else
-    {
-        control.UnplugOutDev(device, tempDev);
-    }
+    
+    // C6-01: プロファイル読み込み後の出力デバイス種別（Xbox 360 / DS4）をマッピング一覧へ反映
+    mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);
     ...
 }
 ```
 
-すなわち、プロファイルの `Apply`（`Global.ApplyProfile` → 内部の `LoadProfile`/`PostLoadSnippet`）が実行される際、**保存前の `oldContType` と保存後の `outputDevType[device]` を比較し、変化していれば `UnplugOutDev` → `PluginOutDev` によって実際のViGEm仮想デバイスを再接続する処理が既に存在する**。この経路は `IOutputSlotService` を一切経由せず、`ControlService.cs`／`Mapping.cs` が `Global.OutContType[device]` を直接参照する構造（`Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md` §5.4で確認済み）と一体になっている。
+#### 同期シーケンス:
+1. ユーザーが別プロファイルをロード（またはエディタで再読み込みが発生）。
+2. `profileSettingsVM.LoadProfile(device)` により、正本である `IProfileSettingsService.OutContType[device]` が読み込まれる。
+3. `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType)` が即時実行される。
+4. マッピングテーブルの各行が、読み込まれたプロファイルの出力機種（例: DS4 なら Cross/Circle/Square/Triangle、Xbox なら A/B/X/Y）に即時書き換わる。
 
-### 2.3 §2.2を踏まえた `IOutputSlotService` 負債APIの性質の再評価
+### 3.2 `IOutputSlotService` の負債API非推奨化設計
+```csharp
+// DS4Windows/DI/IOutputSlotService.cs
+public interface IOutputSlotService
+{
+    ...
+    [Obsolete("Virtual controller dynamic plugin is handled directly by ControlService.PluginOutDev and ScpUtil.PostLoadSnippet. This API is unused and reserved for future IVirtualControllerBackend modernization.")]
+    bool PluginSlot(int slotId, OutContType deviceType);
 
-`IOutputSlotService.GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` は、`Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md` §5.2の実地確認（`grep`）により、アプリ本体コードから**呼出元0件**（自身の単体テストを除く）であることが確定している。§2.2の発見と合わせると、これは「本来あるべき機能が未接続のまま放置されている」のではなく、**「同等の機能が既に別経路（`Global`／`ScpUtil.cs`）で正常に稼働しており、`IOutputSlotService` 側の実装はそもそも一度も採用されなかった並行実装（未使用の代替設計）である」**と再評価するのが実態に即している。
-
-この再評価に基づき、Phase6-Plan.md §2 Step6の「実行時ViGEm接続状態を正しく問い合わせ・制御する正式APIとして昇華・整理する」という当初方針は、実装のギャップ分析の結果、前提が成立しないため、そのままでは採用できない。
-
----
-
-## 3. 対応方針の分岐案（要承認・実装着手前に必ず確認）
-
-以下の2案を提示する。**いずれを採用するかは、実装着手前にgwin7ok氏の承認を得る。**
-
-### 案1: 保守的対応（推奨）
-
-- タスク5（`ProfileEditor.xaml.cs` の `Reload()`/`RefreshEditorBindings()` への `UpdateMappingDevType` 追加）のみを実装する。
-- `IOutputSlotService.GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` の実装自体は変更しない。ただし、§2.3の再評価結果を反映した技術的負債コメントを付与する（`Phase5-Step14-Issue7-Fix-Plan.md` タスク6を、実態に即した内容に更新して実施）。
-- 既存のホットスワップ機能（`Global`／`ScpUtil.cs` の `PostLoadSnippet` 経路）はStrangler Fig方針のもとレガシーシムとして温存し、Phase6のスコープでは一切変更しない。
-
-**採用理由**:
-1. 全体計画書§4.5「仮想コントローラー出力バックエンド（ViGEm）について」は、`ControlService.cs` のViGEm型への直接アクセスを「`Global`静的クラスの問題とは無関係の別種の技術的負債」として明示的にPhase6・Phase7の対象外としている。`PostLoadSnippet` のホットスワップ判定・実行ロジックも、この「ViGEm実体操作」に該当する。
-2. 全体計画書§5.5は、`Mapping.cs`の完全instance化について「影響範囲が非常に大きいリファクタリングは、周辺の副作用切り出しが完了してから再評価する」という段階的判断ロジックを採用している。本件（実働しているホットスワップ機構を、呼出元0件のAPIに置き換える）も同種の「動いているものを、リスクを冒して置き換える」作業であり、同じ慎重さが妥当する。
-3. Phase6全体の完了条件（Phase6-Plan.md §4）は「呼出元193件の解消」であり、`IOutputSlotService` の当該4メソッドは呼出元0件（デッドコード）である。呼出元が存在しないコードを「置き換える」ことはPhase6の目的（呼び出し元側のGlobal直参照解消）の範囲外である。
-
-### 案2: 積極的対応（Phase6-Plan.md原案に忠実だが高リスク）
-
-- `PostLoadSnippet` のホットスワップ判定・実行（`oldContType != outputDevType[device]` の比較、`UnplugOutDev`/`PluginOutDev` 呼び出し）を `IOutputSlotService` 経由の呼び出しに置き換える。
-- これにより `IOutputSlotService.GetOutputDeviceType`/`SetOutputDeviceType` が初めて実際に使用される「正式API」になる。
-- Phase6-Plan.md §3.4「スロット動的再接続時の ViGEm バス競合保護」ガードレールの新規設計・実装が必要になる。
-- `ControlService.cs`（ホットパス）および `ScpUtil.cs`（既存の巨大シム）双方への変更を伴うため、Phase6-Step2（`ControlService.cs`のGlobal直参照解消）との作業競合・依存関係の整理が必要。
-- 実機でのプロファイル切替・デバイス再接続シナリオの回帰テストが必須（クラッシュ・デバイス切断リスクを伴うため）。
-
-**不採用推奨の理由**: 現在正常に動作している機能（ホットスワップ自体）に対する置き換えであり、副作用（No Feature Drop違反、ViGEmドライバクラッシュ等）のリスクに見合うだけの実利（呼出元0件のAPIを「正式化」する以外の便益）が乏しい。将来的にViGEmバックエンド自体を差し替える別イニシアチブ（全体計画書§4.5末尾の`IVirtualControllerBackend`構想）に着手する際に、あらためて設計し直すのが合理的である。
-
-### 3.1 本計画書の既定方針
-
-**本計画書は案1を推奨案として以降のマイクロタスクを記述する。** gwin7ok氏が案2を選択する場合は、実装着手前に別途詳細設計（ガードレール設計を含む）を追加で行う必要があるため、その旨を申し出ること。
+    [Obsolete("Virtual controller dynamic unplug is handled directly by ControlService.UnplugOutDev and ScpUtil.PostLoadSnippet. This API is unused and reserved for future IVirtualControllerBackend modernization.")]
+    bool UnplugSlot(int slotId);
+}
+```
 
 ---
 
-## 4. スコープ確定（案1採用時）
+## 4. PR分割計画とマイクロステップ
 
-### 4.1 スコープに含むもの
+安全確実に進行するため、以下の**3つのサブPR（マイクロステップ）**に分割して実装する。
 
-1. `ProfileEditor.xaml.cs` の `Reload()` および `RefreshEditorBindings()` への `mappingListVM.UpdateMappingDevType(...)` 追加。
-2. `IOutputSlotService.cs` の `GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` への、§2.3の再評価結果を反映した技術的負債コメントの付与（`copilot-instructions.md` §3.3-4準拠）。
-3. 上記コメントの内容を、全体計画書またはPhase6-Status.mdの技術的負債一覧に反映する。
-
-### 4.2 スコープに含まないもの
-
-1. `PostLoadSnippet`／`Global.ApplyProfile` 経路のホットスワップロジック自体の変更（案2を選択しない限り対象外）。
-2. ViGEmバックエンドの抽象化（全体計画書§4.5により恒久的に対象外）。
-3. `Mapping.cs`の完全instance化（Phase7へ委譲済み）。
+```text
+【Phase6-Step6 マイクロステップ構成】
+├─ Step6-0: 着手前提検証・ベースライン記録（実装なし）
+├─ Step6-1 (PR-1): ProfileEditor.xaml.cs の Reload() に UpdateMappingDevType 追加（C6-01）
+├─ Step6-2 (PR-2): IOutputSlotService / OutputSlotService の負債API非推奨化（C6-02〜C6-04）
+└─ Step6-3 (PR-3): UI手動検証・単体テスト実行・完了報告書作成
+```
 
 ---
 
-## 5. 修正対象ファイル棚卸し（案1ベース）
-
-| # | ファイル | 変更内容 | 種別 |
-|---|---|---|---|
-| 1 | `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | `Reload()` 内、`profileSettingsVM.UpdateLateProperties();` の直後に `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加 | 追加修正 |
-| 2 | `DS4Windows/DS4Forms/ProfileEditor.xaml.cs` | `RefreshEditorBindings()` 内、同一パターンで `UpdateMappingDevType` 呼び出しを追加要否を確認し、必要なら追加 | 追加修正 |
-| 3 | `DS4Windows/DI/IOutputSlotService.cs` | `GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` の宣言部に技術的負債コメントを付与 | コメント追記のみ |
-| 4 | `docs-forDIMG/DI-App-Wide-Migration-Plan.md` または `Phase6-Status.md` | `IOutputSlotService` 4メンバの技術的負債（呼出元0件、実機能は`Global`/`ScpUtil.cs`側に存在）を記録 | ドキュメント追記 |
-
-> **No Feature Drop方針**: `ProfileEditor.xaml.cs` への追加はUI表示の追従処理のみであり、`BackingStore` への保存内容・保存タイミングには影響しない。
+### Step6-0: 着手前提検証・ベースライン記録（実装なし）
+1. Step5 完了後の作業ツリー状態、HEAD コミットハッシュ、未コミット差分ゼロを確認。
+2. ソリューション全体のビルド（`dotnet build -c Release`）および全単体テスト（`dotnet test`）が 100% グリーンであることを記録。
 
 ---
 
-## 6. マイクロタスク breakdown（案1ベース）
-
-### タスク1: `ProfileEditor.xaml.cs` の `Reload()` 修正
-
-- [ ] `Reload()` 内、`profileSettingsVM.UpdateLateProperties();` の直後に以下を追加:
-  ```csharp
-  mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);
-  ```
-- [ ] `profileSettingsVM.ContType` は `Phase6-Step5` で是正済みの `profileSettings.OutContType[device]`（正しい永続化実体）を参照するgetterであることを前提とする。Phase6-Step5が本ステップより先に完了していることを確認する。
-
-### タスク2: `RefreshEditorBindings()` への同一修正の要否確認と実装
-
-- [ ] `RefreshEditorBindings()` が `Reload()` と同様に別プロファイルへの切替を伴うケースで呼ばれるかを呼び出し元（2421行目付近）から確認する。
-- [ ] 該当する場合、`profileSettingsVM.UpdateLateProperties();` の直後に同一の `UpdateMappingDevType` 呼び出しを追加する。
-
-### タスク3: `IOutputSlotService.cs` への技術的負債コメント付与
-
-- [ ] `GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` の宣言部に、以下のようなコメントを付与する（内容は§2.3の再評価結果を反映）:
-  ```csharp
-  // TODO(技術的負債・Phase6-Step6で再評価): 呼出元0件（2026-09-11 grep確認、
-  // Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md §5.2）。
-  // 実際の出力デバイス種別のホットスワップ（アンプラグ／再プラグイン）は、
-  // Global.ApplyProfile → ScpUtil.cs の PostLoadSnippet（oldContType比較 →
-  // ControlService.UnplugOutDev/PluginOutDev）という別経路のレガシーシムで
-  // 既に実現されており、このAPIは一度も採用されなかった並行実装である。
-  // 削除／実配線は、ViGEmバックエンド抽象化（全体計画書§4.5末尾、
-  // IVirtualControllerBackend構想）を独立イニシアチブとして実施する際に
-  // 再評価すること。プロファイル永続値の参照には
-  // IProfileSettingsService.OutContType を使用すること。
-  ```
-- [ ] `docs-forDIMG/DI-App-Wide-Migration-Plan.md` または `Phase6-Status.md` の技術的負債一覧に、`IUdpServerService` 未接続の記載と並記する形で追記する。
-
-### タスク4: 単体テスト・ビルド確認
-
-- [ ] `dotnet build` によるクリーンビルド確認（警告0・エラー0）。
-- [ ] `dotnet test` による全件PASS確認。
-- [ ] 実機またはUIレベルの確認: プロファイル編集画面を開いたまま、`Emulated Controller` 設定が異なる2つのプロファイルを順に読み込み（`Reload()` 経由）、マッピング一覧のボタン名表示が都度正しい機種名に切り替わることを確認する。
+### Step6-1 (PR-1): `ProfileEditor.xaml.cs` の表示追従修正
+- **対象**: `ProfileEditor.xaml.cs`（C6-01）
+- **作業内容**:
+  1. `Reload()` 内に `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加。
+- **検証**:
+  - `dotnet build -c Release` でビルドが通ることを確認。
 
 ---
 
-## 7. リスクと回避策
-
-| リスク | 該当タスク | 回避策 |
-|---|---|---|
-| `RefreshEditorBindings()` への追加が、`Reload()` とは異なる呼び出しコンテキスト（機種変更を伴わない軽微な再描画）で不要な処理を発生させる | タスク2 | 呼び出し元（2421行目付近）のコンテキストを確認し、機種変更が発生しうる経路かどうかを個別判定してから追加する |
-| 案1採用にもかかわらず、将来のエージェント／開発者が技術的負債コメントを見落とし、`IOutputSlotService` の当該4メソッドを「正式API」と誤認して新規に呼び出してしまう | タスク3 | コメント内で「並行実装であり採用されていない」ことを明示し、正しい参照先（`IProfileSettingsService.OutContType`、`Global.ApplyProfile`系列）を明記する |
-| Phase6-Plan.md本文（§2 Step6）の記述と、本計画書の方針（案1）が食い違ったまま放置される | 全体 | 本計画書の完了後、Phase6-Plan.md §2 Step6の記述を実装結果に基づいて改訂することを次のアクションに含める |
-
----
-
-## 8. 完了条件（案1ベース）
-
-1. `ProfileEditor.xaml.cs` 内でプロファイルを切り替えた場合（`Reload()` 経由）、マッピング一覧のボタン名表示が常に現在のプロファイルの `Emulated Controller` 設定と一致すること。
-2. `IOutputSlotService.GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` に、実態（呼出元0件・並行実装）を正しく反映した技術的負債コメントが付与されていること。
-3. 全自動テストがクリーンにPASSし、ビルド警告・エラーが増加していないこと。
-4. Phase6-Plan.md §2 Step6の記述が、本ステップの実装結果（案1採用の経緯を含む）に基づいて改訂されていること。
-
-（案2を採用する場合は、Phase6-Plan.md §3.4のガードレール設計を含めて完了条件を別途再定義する。）
+### Step6-2 (PR-2): `IOutputSlotService` 負債APIの非推奨化
+- **対象**: `IOutputSlotService.cs`, `OutputSlotService.cs`（C6-02 〜 C6-04）
+- **作業内容**:
+  1. `PluginSlot`, `UnplugSlot` に `[Obsolete]` 属性および技術的負債コメントを付与。
+- **検証**:
+  - `dotnet test` 全件合格を確認。
 
 ---
 
-## 9. 進行ルール
-
-- **案1/案2の選択について、着手前に必ずgwin7ok氏の承認を得る。**
-- 承認後、案1のマイクロタスク（§6）を1タスク＝1PRを基本として順次進める。
-- 巨大ファイル編集時はピンポイント編集ルールを徹底する。
-- 実装完了後、`Phase6-Status.md` のStep6欄を更新し、Phase6-Plan.md §2 Step6の記述を実態に合わせて改訂する。
-- 成果物は `present_files` による直接ダウンロード形式で提供する（PowerShellスクリプト形式は使用しない）。
+### Step6-3 (PR-3): UI検証・テスト・完了報告
+- **作業内容**:
+  1. ProfileEditor のプロファイル切替UIテストを実施。
+  2. 完了報告書（`Phase6-Step6-Completion-Report.md`）を作成。
 
 ---
 
-## 10. 次のアクション
+## 5. テスト・実機動作検証計画
 
-1. gwin7ok氏に本計画書§3の案1／案2の選択を確認する。
-2. 案1が選択された場合、Phase6-Step5の完了（`profileSettingsVM.ContType` が正しい実体を参照する状態）を前提条件として着手する。
-3. タスク1〜4を実施し、`dotnet build`／`dotnet test` の結果と実機確認結果を添えて完了報告書を作成する。
-4. Phase6-Plan.md §2 Step6の記述を、本計画書の実地確認結果（§2.2, §2.3）に基づいて改訂する。
+### 5.1 自動テスト検証
+- `DS4WindowsTests` および `StandaloneTests` の全自動テストを実行し、100% 成功を維持すること。
+- `dotnet build -c Release` において、`[Obsolete]` の意図された警告以外のエラー・警告が0件であること。
+
+### 5.2 実機・UI動作検証手順（Phase6-Step11連携）
+1. **ProfileEditor 内でのプロファイル再読み込み表示検証**:
+   - 出力デバイスが「Xbox 360」に設定されたプロファイル A を ProfileEditor で開く。
+   - マッピング一覧のボタン表記が「A Button」「B Button」等になっていることを確認。
+   - ウィンドウを閉じることなく、出力デバイスが「DualShock 4」に設定されたプロファイル B を「開く（Reload）」で読み込む。
+   - **判定基準**: コンボボックスの表示が「DualShock 4」に切り替わると同時に、左側マッピング一覧のボタン表記が即時に「Cross」「Circle」等に切り替わること（追従漏れがないこと）。
+2. **逆方向の切り替え検証**:
+   - DS4 プロファイルから Xbox 360 プロファイルへの Reload を行い、同様にボタン表記が Xbox 表記へ正しく戻ることを確認。
+3. **実行時 ViGEm ホットスワップ検証**:
+   - コントローラー接続中、プロファイルドロップダウンから出力デバイスが異なるプロファイルへ切り替える。
+   - Windows の「ゲーム コントローラーの設定（`joy.cpl`）」画面において、仮想コントローラーが即座にアンプラグされ、新たな仮想デバイス（Xbox ⇄ DS4）として再プラグインされること。
+   - 入力遅延や無反応・フリーズが発生しないこと。
+
+---
+
+## 6. ロールバック方針
+
+UI 表示またはスロット操作に予期せぬ不具合が発生した場合は、該当PRを直ちに `git revert` して直前の健全コミットへ復旧する。
+
+---
+
+## 7. 完了判定チェックリスト
+
+- [ ] `ProfileEditor.xaml.cs` の `Reload()` 内で `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType)` が呼び出されていること。
+- [ ] エディタを開いたまま異なる出力機種のプロファイルを再読み込みした際、マッピング一覧のボタン名表記が即時に追従すること。
+- [ ] `IOutputSlotService` および `OutputSlotService` の `PluginSlot` / `UnplugSlot` に `[Obsolete]` 属性が付与されていること。
+- [ ] `ScpUtil.cs:PostLoadSnippet` による実稼働ホットスワップ機構が手を加えられずに安全に温存されていること。
+- [ ] `dotnet build -c Release` でエラーが0件であること。
+- [ ] `DS4WindowsTests` および `StandaloneTests` の全自動テストが100%成功を維持していること。
+- [ ] 実機コントローラーによるプロファイル切替時の ViGEm ホットスワップ動作が正常であること。
