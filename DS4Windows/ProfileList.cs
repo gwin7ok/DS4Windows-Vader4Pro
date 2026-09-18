@@ -32,11 +32,15 @@ namespace DS4WinWPF
         private object _proLockobj = new object();
         private ObservableCollection<ProfileEntity> profileListCol =
             new ObservableCollection<ProfileEntity>();
+        // Phase5-Step15-2-a: Global.appdatapath直接参照を廃止し、IPathServiceをDI経由で受け取る。
+        // 引数省略時はGlobal.PathServiceInstanceにフォールバックし、既存呼び出し元(new ProfileList())を変更不要にする。
+        private readonly DS4Windows.DI.IPathService pathService;
 
         public ObservableCollection<ProfileEntity> ProfileListCol { get => profileListCol; set => profileListCol = value; }
 
-        public ProfileList()
+        public ProfileList(DS4Windows.DI.IPathService pathService = null)
         {
+            this.pathService = pathService ?? DS4Windows.Global.PathServiceInstance;
             BindingOperations.EnableCollectionSynchronization(profileListCol, _proLockobj);
         }
 
@@ -47,7 +51,7 @@ namespace DS4WinWPF
         /// </summary>
         public void Refresh()
         {
-            string profilesDir = DS4Windows.Global.appdatapath + @"\Profiles\";
+            string profilesDir = pathService.AppDataPath + @"\Profiles\";
             if (!Directory.Exists(profilesDir))
                 return;
 

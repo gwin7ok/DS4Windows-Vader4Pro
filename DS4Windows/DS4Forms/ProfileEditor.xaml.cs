@@ -1981,7 +1981,9 @@ namespace DS4WinWPF.DS4Forms
             if (activeWin && profileSettingsVM.UseControllerReadout)
             {
                 int index = -1;
-                switch (Program.rootHub.GetActiveInputControl(tempDeviceNum))
+                // Phase5-Step15-2-d: 281行目で解決済みのcontrolServiceフィールドを使わず、
+                // ここだけProgram.rootHubを直接呼んでいた置換漏れを修正。
+                switch (controlService.GetActiveInputControl(tempDeviceNum))
                 {
                     case DS4Controls.None: break;
                     case DS4Controls.Cross: index = 0; break;

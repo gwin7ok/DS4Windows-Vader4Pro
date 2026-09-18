@@ -54,8 +54,13 @@ namespace DS4WinWPF.DS4Forms
         private ColorPickerWindow colorDialog;
         private NonFormTimer ds4 = new NonFormTimer();
 
+        // Phase5-Step15-2-c: Program.rootHub直接参照を廃止し、他View/ViewModelと同じDIフォールバックパターンを導入する。
+        // 動作は完全に同一（フォールバック先が同じProgram.rootHubのため）で、実行時の挙動に変化はない。
+        private readonly DS4Windows.ControlService controlService;
+
         public RecordBox(int deviceNum, DS4Windows.DS4ControlSettings controlSettings, bool shift, bool showscan = true, bool repeatable = true)
         {
+            controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? DS4Windows.Program.rootHub;
             InitializeComponent();
             var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
             if (vmFactory != null)
@@ -183,7 +188,7 @@ namespace DS4WinWPF.DS4Forms
             bool recording = recordBoxVM.Recording = !recordBoxVM.Recording;
             if (recording)
             {
-                DS4Windows.Program.rootHub.recordingMacro = true;
+                controlService.recordingMacro = true;
                 recordBtn.Content = "Stop";
                 if (recordBoxVM.MacroStepIndex == -1)
                 {
@@ -208,7 +213,7 @@ namespace DS4WinWPF.DS4Forms
             }
             else
             {
-                DS4Windows.Program.rootHub.recordingMacro = false;
+                controlService.recordingMacro = false;
                 recordBoxVM.AppendIndex = -1;
                 ds4.Stop();
                 recordBtn.Content = "Record";

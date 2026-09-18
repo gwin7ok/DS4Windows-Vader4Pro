@@ -224,8 +224,13 @@ namespace DS4WinWPF.DS4Forms
         private int lastProcDelayInt = -1;
         private long lastCalibrating = -1;
 
+        // Phase5-Step15-2-b: Program.rootHub直接参照を廃止し、他View/ViewModelと同じDIフォールバックパターンを導入する。
+        // 動作は完全に同一（フォールバック先が同じProgram.rootHubのため）で、実行時の挙動に変化はない。
+        private readonly DS4Windows.ControlService controlService;
+
         public ControllerReadingsControl()
         {
+            controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? Program.rootHub;
             InitializeComponent();
             inputContNum.Content = $"#{deviceNum + 1}";
             exposeState = new DS4StateExposed(baseState);
@@ -315,9 +320,9 @@ namespace DS4WinWPF.DS4Forms
             {
                 IsEnabled = true;
                 useTimer = true;
-                if (Program.rootHub != null)
+                if (controlService != null)
                 {
-                    Program.rootHub.IsMeasuringProcessingDelay = true;
+                    controlService.IsMeasuringProcessingDelay = true;
                 }
                 readingTimer.Elapsed += ControllerReadingTimer_Elapsed;
                 readingTimer.Start();
@@ -326,9 +331,9 @@ namespace DS4WinWPF.DS4Forms
             {
                 IsEnabled = false;
                 useTimer = false;
-                if (Program.rootHub != null)
+                if (controlService != null)
                 {
-                    Program.rootHub.IsMeasuringProcessingDelay = false;
+                    controlService.IsMeasuringProcessingDelay = false;
                 }
                 readingTimer.Stop();
                 isUiUpdating = false;
@@ -346,14 +351,14 @@ namespace DS4WinWPF.DS4Forms
                 return;
             }
 
-            DS4Device ds = Program.rootHub?.DS4Controllers != null && deviceNum < Program.rootHub.DS4Controllers.Length
-                ? Program.rootHub.DS4Controllers[deviceNum]
+            DS4Device ds = controlService?.DS4Controllers != null && deviceNum < controlService.DS4Controllers.Length
+                ? controlService.DS4Controllers[deviceNum]
                 : null;
 
             if (ds != null && ds.IsAlive())
             {
-                DS4State tmpbaseState = Program.rootHub.getDS4State(deviceNum);
-                DS4State tmpinterState = Program.rootHub.getDS4StateTemp(deviceNum);
+                DS4State tmpbaseState = controlService.getDS4State(deviceNum);
+                DS4State tmpinterState = controlService.getDS4StateTemp(deviceNum);
                 long cntCalibrating = ds.SixAxis.CntCalibrating;
 
                 // タイムアウト付き待機 (最大10ms) でブロッキングを防止
@@ -587,7 +592,7 @@ namespace DS4WinWPF.DS4Forms
             }
 
             // 出力遅延差分更新 (0.01ms単位で変化があった場合のみテキスト再構築)
-            double procDelay = Program.rootHub != null ? Program.rootHub.GetProcessingDelay(deviceNum) : 0.0;
+            double procDelay = controlService != null ? controlService.GetProcessingDelay(deviceNum) : 0.0;
             int procDelayInt = (int)(procDelay * 100);
             if (procDelayInt != lastProcDelayInt)
             {
