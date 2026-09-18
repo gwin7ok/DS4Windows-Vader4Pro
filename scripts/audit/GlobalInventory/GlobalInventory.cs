@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 // Audit-only: reads pinned Git blobs; writes inventories, never application sources.
 internal static class GlobalInventory
 {
-    private const string Revision = "b678d53fa80aa2e76b777c63f4d65feec997447d";
+    private const string Revision = "aa0e503c1b6f241dd14d0f01224d211f2a20f008";
     private const string GlobalName = "DS4Windows.Global";
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
     private static string root = @"G:\Cursor_Folder\DS4Windows-Vader4Pro";
