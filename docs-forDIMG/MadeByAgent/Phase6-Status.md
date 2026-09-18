@@ -26,7 +26,7 @@ Phase6計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`
 
 | ステップ | 名称 | 状態 | 完了日 | 成果物・備考 |
 | :--- | :--- | :--- | :--- | :--- |
-| Step 1 | 詳細監査と対象確定 | **未着手** | - | 前提: Phase5-Step14/15完了後に着手。成果物: `Phase6-Step1-Global-Usage-Classification-Report.md`（予定） |
+| Step 1 | 詳細監査と対象確定 | **完了（中間成果）** | 2026-09-18 | `Phase6-Step1-Completion-Summary.md`（10文書生成、762参照網羅、重複ゼロ・漏れゼロ証明済み）。報告書§7維持：Step2承認根拠には使用しない。残作業（個別参照厳密確定継続、Phase5内容検証、本番コード変更なし維持）は記録済み。 |
 | **【ドメイン1】** | **コア層（信号変換・入力監視境界）** | | | |
 | Step 2 | `ControlService.cs` のGlobal直参照解消（39件） | **未着手** | - | 最優先・最難関。ホットパス性能維持ガードレール適用予定 |
 | Step 3 | `Mapping.cs` 残存参照の再点検（12件） | **未着手** | - | `Mapping`完全instance化は対象外。既存方針の範囲内で対応 |
