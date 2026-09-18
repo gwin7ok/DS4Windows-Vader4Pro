@@ -115,3 +115,12 @@
    ▼            ▼             ▼
   [1. 入力監視層] [3. 信号出力層] [横断基盤・永続化層]
 ```
+
+---
+
+%% 注釈補強（2026-09-18監査結果反映、構造変更なし）
+%% - データパイプライン（生HID→変換→仮想パッド/OS入力）は現状のホットパス（ControlService入力ループ、Mouse系加速度処理）と一致。Zero-GCインプレース更新（MappingPipelineContext）の原則を維持。
+%% - 依存方向（UI→変換→入力/出力→横断基盤）はDIP原則に従い、現状の監査結果（Global型503メンバの各層分散、ScpUtilの横断基盤層分解、MappingのPipeline+Processor分解）と完全一致。
+%% - ScpUtil.cs（255件静的宣言）の横断基盤層への分解は理想構造と一致するが、参照と宣言の区別を維持（§2抽出問題記録済み）。
+%% - Phase5証跡（Step14/15未完了）の前提条件を維持（証跡存在確認済み、内容検証別途必要：Phase5-Evidence-Check.md 参照）。
+%% - c除外（≈304件）の改修対象外原則を維持（Classification-Metrics.md, C-Classification-Count.md 参照）。

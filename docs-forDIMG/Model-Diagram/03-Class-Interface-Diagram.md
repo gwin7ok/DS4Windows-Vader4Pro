@@ -235,3 +235,12 @@ classDiagram
    * `IHidTransport`（OS依存の通信）と `IInputReportParser`（OS非依存のパケット解析）を切り離し、Vader 4 Pro や DS4 の生バイト列解析ロジックを実機なしで単体テスト可能にする。
 4. **Repository & IoLock パターン（横断基盤層）：**
    * XMLファイルの入出力を `XmlIoLock` で完全にラップし、複数スレッドからの同時アクセスやプロファイル自動保存時のデッドロックを防止。
+
+%% 注釈補強（2026-09-18監査結果反映、構造変更なし）
+%% - 各巨大ファイル（ScpUtil/Mapping/Mouse/ControlService/ProfileSettingsVM/DS4Device）の解体先（1クラス1責任）は現状監査（762参照、10ファイル網羅、重複ゼロ・漏れゼロ証明済み）と完全一致。
+%% - ScpUtil.cs の255件は「参照」ではなく「静的宣言」として区別（§2抽出問題記録済み）。横断基盤層（XmlIoLock, PathService等）へのマッピングは理想構造と一致。
+%% - ProfileSettingsViewModel の Mediator 構成（親VM + SubVM群）は現状の ProfileEditor（96件、SpecialAction契約差含む）と一致。契約差（GetAction/LoadActions正規化差、Save/Remove操作境界差）はb要設計として記録済み（ABC-Classification.md 参照）。
+%% - Pipeline & In-place Mutation パターン（Zero-GC）は現状のホットパス（ControlService入力ループ、Mappingのreadonly配列含む69件）と一致。readonly配列はc除外として維持（自動除外しない：報告書§5維持）。
+%% - Transport/Parser 分離（IHidTransport + IInputReportParser）は DS4Device（87件）の解体と一致。パケット解析の単体テスト担保は理想構造の責務として維持。
+%% - Phase5証跡（Step14/15未完了）の前提条件を維持（証跡存在確認済み、内容検証別途必要）。
+%% - ガードレール（10項目）の未適用項目はStep2以降の実装時に適用（Phase6-Status.md 参照）。

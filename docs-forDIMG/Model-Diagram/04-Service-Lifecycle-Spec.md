@@ -84,3 +84,12 @@
    * `ControlService` / `InputLoopCoordinator` が停止してスレッドを安全に閉じた後に、`IDs4DeviceRegistry`（HIDデバイスハンドル）や `OutputSlotService`（ViGEmクライアント）が破棄されるため、リソース解放時の競合クラッシュが発生しない。
 2. **ホットパスサービスのステートレス設計:**
    * `ButtonProcessor`、`StickProcessor` などの各変換プロセッサは、内部にミュータブルな状態を持たず、パイプラインコンテキスト `MappingPipelineContext` 経由で受け渡すステートレス設計とすることで、Singleton でありながら完全なスレッドセーフとゼロGCを両立する。
+
+%% 注釈補強（2026-09-18監査結果反映、構造変更なし）
+%% - ライフタイム定義（Singleton/Transient/Factory生成）は現状のDI登録（ServiceRegistration.cs）と前提条件（Phase5完了）と一致。
+%% - Singleton サービス（ControlService, InputLoopCoordinator, 各Processor, IProfileApplicationService等）のステートレス設計とZero-GC原則は現状監査（762参照、重複ゼロ・漏れゼロ証明済み）と一致。
+%% - Transient サービス（SettingsViewModel, LogViewModel, AboutViewModel）の最新値取得原則は現状のUI層（App/MainWindow/ProfileEditor/SettingsVM、計273件）と一致。
+%% - Factory生成（ProfileSettingsViewModel + SubVM群）のMediator調停構成は現状のProfileEditor（96件、契約差含む）と一致。契約差（ProfileApp契約差、SpecialAction編集契約差）はb要設計として記録済み（ABC-Classification.md 参照）。
+%% - リソース破棄順序（LIFO/逆順破棄）は現状のガードレール（ドライバ破棄順序、切断時クリーンアップ）と一致。未適用項目はStep2以降に適用（Phase6-Status.md 参照）。
+%% - c（除外 ≈ 304件）の改修対象外原則を維持（Classification-Metrics.md, C-Classification-Count.md 参照）。a（契約候補）とb（要設計 ≈ 458件）が改修対象。
+%% - Phase5証跡（Step14/15未完了）の内容検証は別途必要（Phase5-Evidence-Check.md 参照）。本監査（Phase6-Step1）は中間成果として記録（報告書§7維持：Step2承認根拠には使用しない）。
