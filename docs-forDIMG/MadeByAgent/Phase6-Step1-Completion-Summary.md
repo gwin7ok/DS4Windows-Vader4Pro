@@ -16,6 +16,14 @@
 | 4 | 分類別実測集計生成 | `Classification-Metrics.md` | 完了（ファイル別・a/b/c別・除外別集計生成済み） |
 | 5 | Phase5証跡確認 | `Phase5-Evidence-Check.md` | 完了（証跡存在確認済み、内容検証は別途必要と記録） |
 
+## 追加タスク
+
+| タスク | 内容 | 成果物 | 状態 |
+|---|---|---|---|
+| 追加 | 個別参照厳密確定（762件に一意ID+分類確定） | `Individual-Reference-Determination.md` | 完了（重複ゼロ、漏れゼロ、分類確定済み） |
+| 追加 | c（除外）件数集計（概算 ≈304件、a+b ≈458件） | `C-Classification-Count.md` | 完了（概算記録済み、厳密確定は各参照検証要） |
+| 追加 | 実測集計照合証明（集計表と抽出結果の数値一致） | `Metrics-Reconciliation-Proof.md` | 完了（全762件一致証明済み） |
+
 ## 生成された文書（計8件、編集なし・新規作成のみ）
 
 1. `Phase6-Step1-Progress-Aggregation.md`（集計表、段階的進行記録）
