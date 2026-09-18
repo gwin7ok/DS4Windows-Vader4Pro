@@ -19,7 +19,7 @@
         "unbound-other-context": 188,
         "outside-production-candidate": 190
       },
-      "compilationErrors": 19899,
+      "compilationErrors": 19526,
       "members": 503
     },
     {
@@ -33,7 +33,7 @@
         "unbound-other-context": 188,
         "outside-production-candidate": 190
       },
-      "compilationErrors": 19899,
+      "compilationErrors": 19526,
       "members": 503
     },
     {
@@ -45,7 +45,7 @@
         "unbound-other-context": 188,
         "outside-production-candidate": 190
       },
-      "compilationErrors": 19899,
+      "compilationErrors": 19526,
       "members": 503
     }
   ],
