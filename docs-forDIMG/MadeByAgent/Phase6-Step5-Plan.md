@@ -1,180 +1,210 @@
-# フェーズ6 - ステップ5 個別計画書: OutputSlot / 横断設定の `Global` 直参照・孤立設定の是正
+# Phase6-Step5 計画書: OutputSlotService の全面SSOT統合と孤立配列完全撤廃
 
-作成日: 2026-09-11
-対象ブランチ: `For-DI-migration-work`
-前フェーズ/前ステップ: Phase6-Step1（詳細監査、Phase5-Step14/15完了後に着手予定・本計画書作成時点では未実施）
-全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`
-Phase6計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`（§1, §0.2, §2 Phase6-Step5）
-移管元ドキュメント:
-- `docs-forDIMG/MadeByAgent/Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md`（§5, §6.2, §8.1, §8.2）
-- `docs-forDIMG/MadeByAgent/Phase5-Step14-Issue7-Fix-Plan.md`（タスク4）
-- `.github/copilot-instructions.md`（§3.1 Pure DI原則、§6.11 実地確認の原則）
-
----
-
-## 1. 位置づけ
-
-Phase6-Plan.md §0.2・§1では、本ステップを「旧Phase5-Step14 タスク4」の移管として位置づけている。Phase5-Step14では、Issue 7（`Emulated Controller` コンボボックス誤表示）の真因調査の過程で、`IOutputSlotService.GetOutputDeviceType(int)` が `Global`/`BackingStore` と非連動の孤立配列 `_deviceTypes[]`（常に `OutContType.None`）を参照する「孤立バグ」であることが判明した（`Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md` §5）。
-
-この是正（`IProfileSettingsService` への `OutContType` プロパティ新設、および `ProfileSettingsViewModel.cs`・`SpecialActionsListViewModel.cs` の参照先修正）自体は `Phase5-Step14-Issue7-Fix-Plan.md` のタスク1〜3・6・7として「必須スコープ」に位置づけられている。**このうち、影響範囲が外部UDP連携という限定的な箇所であるため優先度が低いとして「任意スコープ」に分類されたタスク4（`MainWindow.xaml.cs` のUDP診断コマンド `outconttype` の修正）が、Phase6-Step5として本計画書の対象である。**
+作成日: 2026-09-11  
+改訂日: 2026-09-18（Phase6-Step1 再監査エビデンスに基づく推奨案［OutputSlotService 全面SSOT統合＋孤立配列完全撤廃］採用・全面拡充改訂）  
+状態: 計画書改訂・承認待ち（実装未着手）  
+対象ブランチ: `For-DI-migration-work`  
+上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
+準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
+参照エビデンス:  
+  - `Phase6-Step1-Service-Reference-Evidence.md` §1-1（OutputSlotService 監査記録）  
+  - `Phase6-Step1-UI-Reference-Evidence.md` §2（MainWindow.xaml.cs 監査記録）  
+  - `Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md`（Issue 7 根本原因分析）  
+  - `Phase5-Step14-Issue7-fix-implementation-report.md`（Issue 7 是正完了記録）  
 
 ---
 
-## 2. 実地確認結果（2026-09-11、`git clone --depth 1 --branch For-DI-migration-work` によるリポジトリ全文 `grep`）
+## 0. 背景と改訂の経緯
 
-着手前に、Phase6-Plan.md本文の記述が現在のコードと一致しているかを確認した（`copilot-instructions.md` の「ドキュメント記述は実装前に必ず実地確認を経ること」の原則を適用）。
+### 0.1 旧計画書からの前提変化と最新の実装状況
+2026-09-11 に作成された旧計画書では、「`IProfileSettingsService.OutContType` が未実装のためタスク0で新設する」と計画されていた。  
+しかし、`Phase5-Step14-Issue7-fix-implementation-report.md` により、**`IProfileSettingsService.OutContType`（`BackingStore.outContType` への完全委譲）は既に実装完了**しており、`ProfileSettingsViewModel.cs` および `SpecialActionsListViewModel.cs` の参照先も同プロパティへ是正済みである。
 
-### 2.1 Phase6-Plan.md記載の「OutputSlotViewModel」は実在しない
+### 0.2 残存する真の課題と方針確定（推奨案: 選択肢Bの採用）
+最新コードベース（`MainWindow.xaml.cs:1412` および `OutputSlotService.cs`）を精査した結果、以下の2つの根本的課題が残存していることが判明した：
 
-Phase6-Plan.md §2 Step5の記述は「`OutputSlotViewModel` や関連コンポーネントが保持する出力デバイス設定の参照先を…」「スロット設定画面等で直接 `Global.Instance.Config` を読み書きしている二重管理を根絶する」としているが、実地 `grep` の結果：
+1. **UDP 診断コマンドの孤立 API 参照（`MainWindow.xaml.cs:1412`）**:
+   ```csharp
+   else if (propName == "outconttype")
+       propValue = outputSlotService.GetOutputDeviceType(tdevice).ToString();
+   ```
+   UDP 経由で `query.<device>.outconttype` を問い合わせた際、正本であるプロファイル設定（`IProfileSettingsService.OutContType`）ではなく、`outputSlotService.GetOutputDeviceType` を呼んでいる。
+2. **`OutputSlotService` 内部の孤立配列 `_deviceTypes[]`（バグの温床）**:
+   `OutputSlotService.cs` 内部に `private OutContType[] _deviceTypes = new OutContType[4]` という Global / BackingStore と全く連動していない孤立配列が存在し、`GetOutputDeviceType` は常に初期値の `OutContType.None` を返却している。
+3. **`OutputSlotService.cs:193, 196` の Global 直参照**:
+   `Global.outDevTypeTemp`, `Global.activeOutDevType` への直接参照が残存している。
 
+本ステップでは、`MainWindow.xaml.cs` の1行を修正するだけの表面的な対症療法（選択肢A）にとどまらず、**孤立配列 `_deviceTypes[]` を物理的に完全撤廃し、`OutputSlotService` を `IProfileSettingsService` と統合した SSOT（信頼できる唯一の情報源）構造へと刷新する（選択肢B）**を採用する。  
+これにより、出力デバイスに関する「設定」「実行時状態」「UI一時状態」の三態を完全に整理し、後続の **Phase6-Step6（出力デバイス切替時のスロット動的再接続・ホットスワップ連動）** に対する堅牢な土台を確立する。
+
+---
+
+## 1. 目的
+
+1. `MainWindow.xaml.cs:1412` における UDP 診断コマンド `outconttype` の参照先を、正本である `IProfileSettingsService.OutContType` へ是正する。
+2. `OutputSlotService.cs` 内部の孤立配列 `_deviceTypes[]` を物理削除し、二重管理・値の乖離の根本原因を抹消する。
+3. `IOutputSlotService.GetOutputDeviceType` / `SetOutputDeviceType` を `IProfileSettingsService.OutContType` への直接委譲へ改修し、非推奨（`[Obsolete]`）マークを付与する。
+4. `OutputSlotService.cs:193, 196` の Global 直参照を解消し、`OutputSlotService` を完全な Pure DI クラスへ移行する。
+5. 出力デバイス状態の「三態（永続設定 / 実行時接続状態 / UI一時状態）」を明文化し、Step6 との整合性を保証する。
+
+---
+
+## 2. 出力デバイス設定・状態の「三態」SSOT 台帳
+
+出力デバイスに関する混乱を恒久的に防ぐため、以下の三態モデルを定義・徹底する。
+
+| 状態区分 | プロパティ名・契約インターフェース | 正本格納場所 (SSOT) | ライフサイクル・役割 | 許容される値 |
+|---|---|---|---|---|
+| **1. 永続設定 (Profile)** | `IProfileSettingsService.OutContType[slot]` | `BackingStore.outContType` (XML永続化) | プロファイルに保存される出力コントローラー種別。 | `OutContType.X360`, `OutContType.DS4` |
+| **2. 実行時接続状態 (Runtime)** | `IOutputSlotService.ActiveOutDevType[slot]` | `OutputSlotService.activeOutDevType` / `Global` | 現在 ViGEm バスに実際にプラグインされている仮想コントローラーの種別。未接続時は None。 | `OutContType.None`, `OutContType.X360`, `OutContType.DS4` |
+| **3. UI一時編集状態 (Temp)** | `IOutputSlotService.OutDevTypeTemp[slot]` | `OutputSlotService.outDevTypeTemp` / `Global` | スロット管理画面等でユーザーが一時選択している未確定のデバイス種別。確定時に状態1または2へ反映。 | `OutContType.None`, `OutContType.X360`, `OutContType.DS4` |
+
+- **孤立配列 `_deviceTypes[]` の位置づけ**:
+  上記三態のいずれにも属さない「第4の偽状態」であり、即時撤廃すべき技術的負債である。
+- **UDP診断コマンドの整合**:
+  `query.<device>.outconttype` はプロファイル設定値（状態1）を返すのが仕様であるため、`IProfileSettingsService.OutContType` を参照するのが正しい。
+
+---
+
+## 3. 全件修正対象台帳
+
+| ID | ファイル名 | 行番号 | 現行コード | 是正後コード / 移行方針 |
+|---|---|---|---|---|
+| C5-01 | `DS4Forms/MainWindow.xaml.cs` | 1412 | `outputSlotService.GetOutputDeviceType(tdevice).ToString()` | `profileSettingsService.OutContType[tdevice].ToString()` |
+| C5-02 | `DS4Control/Services/OutputSlotService.cs` | 33 | `private OutContType[] _deviceTypes = new OutContType[4] ...` | **フィールド完全削除** |
+| C5-03 | `DS4Control/Services/OutputSlotService.cs` | 126 | `GetOutputDeviceType(int slotId)` | `_profileSettings.OutContType[slotId]` への直接委譲（`[Obsolete]` 付与） |
+| C5-04 | `DS4Control/Services/OutputSlotService.cs` | 135 | `SetOutputDeviceType(int slotId, OutContType type)` | `_profileSettings.OutContType[slotId] = type` への直接委譲（`[Obsolete]` 付与） |
+| C5-05 | `DS4Control/Services/OutputSlotService.cs` | 20 | コンストラクタ `OutputSlotService(IOutputSlotStore store = null)` | `IProfileSettingsService` を追加注入（フォールバック付き） |
+| C5-06 | `DS4Control/Services/OutputSlotService.cs` | 193 | `Global.outDevTypeTemp[slot]` | `_store` または自サービス内部プロパティ経由へ置換 |
+| C5-07 | `DS4Control/Services/OutputSlotService.cs` | 196 | `Global.activeOutDevType[slot]` | `_store` または自サービス内部プロパティ経由へ置換 |
+| C5-08 | `DI/IOutputSlotService.cs` | - | `GetOutputDeviceType`, `SetOutputDeviceType` | `[Obsolete]` 属性付与・廃止予定コメント明記 |
+
+---
+
+## 4. アーキテクチャ設計・Pure DI 拡張
+
+### 4.1 `OutputSlotService` のコンストラクタ拡張
+```csharp
+// DS4Windows/DS4Control/Services/OutputSlotService.cs
+public class OutputSlotService : IOutputSlotService
+{
+    private readonly IOutputSlotStore _store;
+    private readonly IProfileSettingsService _profileSettings;
+
+    public OutputSlotService(
+        IOutputSlotStore store = null,
+        IProfileSettingsService profileSettings = null)
+    {
+        _store = store ?? new OutputSlotStore();
+        _profileSettings = profileSettings ?? AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
+    }
+    
+    [Obsolete("Use IProfileSettingsService.OutContType instead. This method delegates to IProfileSettingsService.")]
+    public OutContType GetOutputDeviceType(int slotId)
+    {
+        if (slotId < 0 || slotId >= 4) return OutContType.None;
+        return _profileSettings.OutContType[slotId];
+    }
+
+    [Obsolete("Use IProfileSettingsService.OutContType instead. This method delegates to IProfileSettingsService.")]
+    public void SetOutputDeviceType(int slotId, OutContType deviceType)
+    {
+        if (slotId < 0 || slotId >= 4) return;
+        _profileSettings.OutContType[slotId] = deviceType;
+    }
+}
 ```
-$ grep -rln "OutputSlotViewModel" DS4Windows/
-（0件）
-$ grep -rn "Global.Instance.Config" DS4Windows/
-（0件）
+
+### 4.2 `MainWindow.xaml.cs` の呼出元是正
+```csharp
+// DS4Windows/DS4Forms/MainWindow.xaml.cs:1412
+else if (propName == "outconttype")
+{
+    // C5-01: 孤立した outputSlotService ではなく、正本である profileSettingsService を参照
+    propValue = profileSettingsService.OutContType[tdevice].ToString();
+}
 ```
-
-`OutputSlotViewModel` という名前のクラスはリポジトリ中に存在せず、`Global.Instance.Config` という参照パターンも存在しない。この記述はPhase6-Plan.md策定時点での一般論的な想定であり、実装の裏付けを伴っていなかったと判断する。**本計画書ではこの記述を採用せず、実際に存在が確認された対象のみをスコープとする。**
-
-### 2.2 実在する対象: `MainWindow.xaml.cs` のUDP診断コマンド
-
-```
-DS4Windows/DS4Forms/MainWindow.xaml.cs:1412:
-    else if (propName == "outconttype")
-        propValue = outputSlotService.GetOutputDeviceType(tdevice).ToString();
-```
-
-`Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md` §6.2で報告された通り、外部プログラムがUDP経由で `query.<device>.outconttype` を問い合わせた場合、プロファイルの実際の設定に関わらず常に文字列 `"None"` が返却される孤立バグが現存することを確認した。
-
-### 2.3 前提タスク（Fix-Planタスク1〜3）の未着手を確認
-
-```
-$ grep -n "OutContType" DS4Windows/DI/IProfileSettingsService.cs DS4Windows/DS4Control/Services/ProfileSettingsService.cs
-（0件）
-```
-
-本ステップが参照先として使う予定の `IProfileSettingsService.OutContType`（`Phase5-Step14-Issue7-Fix-Plan.md` タスク1で新設予定）は、本計画書作成時点では**未実装**であることを確認した。Phase6-Status.mdの前提（Phase5-Step14完了後にPhase6着手）に照らすと、Phase6-Step5の実装着手時点ではタスク1〜3は完了済みである見込みだが、**万一未完了のままPhase6-Step5に着手する場合は、本計画書のタスク0として先に実施する**（§5参照）。
-
-### 2.4 MainWindow.xaml.cs は既に `IProfileSettingsService` を保持済み
-
-```
-DS4Windows/DS4Forms/MainWindow.xaml.cs:74:
-    private readonly DS4Windows.DI.IProfileSettingsService profileSettingsService;
-DS4Windows/DS4Forms/MainWindow.xaml.cs:109:
-    profileSettingsService = DS4WinWPF.AppHost.GetService<...IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
-```
-
-同ファイル内で `profileSettingsService` フィールドが既にPure DI／フォールバック方式で初期化済みであり、コンストラクタ変更や新規DI配線は不要である。1412行目の修正のみで完結する。
-
-### 2.5 他の「横断設定」孤立バグは是正済み（再確認のみ）
-
-`Phase5-Step14-FormSettings-Unification-Plan.md` フェーズAにより、`IEnvironmentService`／`IProfileSettingsService`（カラム幅5プロパティ）／`AppNotificationService` の孤立フィールドは既に是正済みであることを確認した（該当コードが現存しないことをgrepで確認）。本ステップではこれらの再修正は不要である。
 
 ---
 
-## 3. スコープ確定
+## 5. PR分割計画とマイクロステップ
 
-### 3.1 スコープに含むもの
+安全確実に進行するため、以下の**3つのサブPR（マイクロステップ）**に分割して実装する。
 
-1. `MainWindow.xaml.cs` 1412行目、UDP診断コマンド `outconttype` の参照先を `Global.OutContType[device]`（永続化実体）へ是正する（実装は `IProfileSettingsService.OutContType` 経由）。
-2. §2.3の前提タスク（`IProfileSettingsService.OutContType` 新設）が未完了の場合、これを本ステップのタスク0として先に実施する。
-3. `IOutputSlotService.GetOutputDeviceType`/`SetOutputDeviceType` を参照する箇所が、Phase5-Step14フェーズC完了後・Phase6-Step1監査後の時点で他に残存していないかの最終横断確認（§2.1の是正漏れ防止）。
-
-### 3.2 スコープに含まないもの
-
-1. `IOutputSlotService.GetOutputDeviceType`/`SetOutputDeviceType`/`PluginSlot`/`UnplugSlot` 自体の実装変更・削除・`[Obsolete]`化（Phase6-Step6のスコープ）。
-2. `ProfileEditor.xaml.cs` の `Reload()`/`RefreshEditorBindings()` におけるマッピング一覧の機種追従修正（Phase6-Step6のスコープ）。
-3. ViGEm出力バックエンドの抽象化（全体計画書§4.5により恒久的に対象外＝カテゴリE隣接の別イニシアチブ）。
+```text
+【Phase6-Step5 マイクロステップ構成】
+├─ Step5-0: 着手前提検証・ベースライン記録（実装なし）
+├─ Step5-1 (PR-1): OutputSlotService のコンストラクタ拡張と孤立配列完全撤廃（C5-02〜C5-08）
+├─ Step5-2 (PR-2): MainWindow.xaml.cs の UDP 診断コマンド是正（C5-01）
+└─ Step5-3 (PR-3): 単体テスト更新・三態検証・完了報告書作成
+```
 
 ---
 
-## 4. 修正対象ファイル棚卸し
-
-| # | ファイル | 変更内容 | 種別 |
-|---|---|---|---|
-| 1 | `DS4Windows/DI/IProfileSettingsService.cs` | （タスク0・条件付き）`OutContType[] OutContType { get; }` の宣言追加 | インターフェース追加（前提未完了時のみ） |
-| 2 | `DS4Windows/DS4Control/Services/ProfileSettingsService.cs` | （タスク0・条件付き）`public OutContType[] OutContType => _config.outputDevType;` の実装追加 | サービス実装追加（前提未完了時のみ） |
-| 3 | `DS4Windows/DS4Forms/MainWindow.xaml.cs` | 1412行目、`outputSlotService.GetOutputDeviceType(tdevice)` → `profileSettingsService.OutContType[tdevice]` に置換 | 参照先修正 |
-| 4 | `DS4WindowsTests/ProfileSettingsServiceTests.cs`（存在すれば） | （タスク0・条件付き）新規プロパティの単体テスト追加 | テスト追加（前提未完了時のみ） |
-
-> **No Feature Drop方針**: 本ステップの変更は「読み取り参照先の付け替え」のみであり、`BackingStore`（`m_Config`）の実データ格納先・XML構造・保存ロジックには一切手を加えない。
+### Step5-0: 着手前提検証・ベースライン記録（実装なし）
+1. Step4 完了後の作業ツリー状態、HEAD コミットハッシュ、未コミット差分ゼロを確認。
+2. ソリューション全体のビルド（`dotnet build -c Release`）および全単体テスト（`dotnet test`）が 100% グリーンであることを記録。
 
 ---
 
-## 5. マイクロタスク breakdown
-
-### タスク0（条件付き・実施要否は着手時に確認）: `IProfileSettingsService.OutContType` の新設
-
-- [ ] Phase6-Step5着手時点で `IProfileSettingsService.OutContType` が未実装の場合のみ実施する。
-- [ ] `IProfileSettingsService.cs` に以下を追加:
-  ```csharp
-  /// <summary>
-  /// プロファイルに永続化されているエミュレートコントローラー種別（&lt;OutputContDevice&gt;）。
-  /// Global.OutContType（m_Config.outputDevType）への読み取り専用の薄い委譲。
-  /// </summary>
-  OutContType[] OutContType { get; }
-  ```
-- [ ] `ProfileSettingsService.cs` に以下を追加:
-  ```csharp
-  public OutContType[] OutContType => _config.outputDevType;
-  ```
-- [ ] 既に `Phase5-Step14-Issue7-Fix-Plan.md` タスク1〜3として実装済みの場合は、本タスクをスキップし、その旨をStatus文書に記録する。
-
-### タスク1: `MainWindow.xaml.cs` のUDP診断コマンド修正
-
-- [ ] 1412行目を以下のように修正する:
-  ```diff
-  -    else if (propName == "outconttype")
-  -        propValue = outputSlotService.GetOutputDeviceType(tdevice).ToString();
-  +    else if (propName == "outconttype")
-  +        propValue = profileSettingsService.OutContType[tdevice].ToString();
-  ```
-- [ ] `outputSlotService` フィールドが本箇所以外（`activeoutdevtype` 分岐等）で引き続き使用されているため、フィールド自体は削除しない。
-
-### タスク2: 残存参照の最終横断確認
-
-- [ ] `grep -rn "outputSlotService.GetOutputDeviceType\|outputSlotService.SetOutputDeviceType" DS4Windows/` を実行し、本ステップ完了時点で `IOutputSlotService.GetOutputDeviceType`/`SetOutputDeviceType` の呼び出し元がアプリ本体コード中に0件（テストファイルを除く）であることを確認する。
-- [ ] 0件でなかった場合、Phase6-Step1の監査対象に追加漏れがなかったかを確認し、必要に応じて本ステップまたは後続ステップへの追加を提案する。
-
-### タスク3: 単体テスト・ビルド確認
-
-- [ ] `dotnet build` によるクリーンビルド確認（警告0・エラー0）。
-- [ ] `dotnet test` による全件PASS確認。
-- [ ] （任意）UDP `query.<device>.outconttype` コマンドの実機／統合テストでの動作確認（外部連携機能のため必須ではない）。
+### Step5-1 (PR-1): `OutputSlotService` のコンストラクタ拡張と孤立配列完全撤廃
+- **対象**: `OutputSlotService.cs`, `IOutputSlotService.cs`（C5-02 〜 C5-08）
+- **作業内容**:
+  1. `OutputSlotService` に `IProfileSettingsService` を追加注入。
+  2. 孤立配列 `_deviceTypes[]` を削除。
+  3. `GetOutputDeviceType` / `SetOutputDeviceType` を `_profileSettings.OutContType` への委譲に改修し、`[Obsolete]` を付与。
+  4. 193, 196行の Global 直参照を解消。
+- **検証**:
+  - `dotnet test` 全件合格を確認。
 
 ---
 
-## 6. リスクと回避策
-
-| リスク | 回避策 |
-|---|---|
-| タスク0の要否判定を誤り、`IProfileSettingsService.OutContType` を重複定義してしまう | 着手直前に `grep -n "OutContType" IProfileSettingsService.cs ProfileSettingsService.cs` を再実行し、存在確認をしてから着手する |
-| `outputSlotService` フィールドが本ステップの修正により未使用になり、コンパイル警告が発生する | `activeoutdevtype` 分岐で引き続き使用されていることを確認済みのため、フィールド自体の削除は行わない |
-| UDP外部連携の仕様変更と誤認される | 戻り値の型・意味（`OutContType` の文字列表現）は変更せず、参照元（常に`None`だった孤立実体）を正しい実体に差し替えるのみであることをコミットメッセージに明記する |
-
----
-
-## 7. 完了条件
-
-1. `MainWindow.xaml.cs` の UDP診断コマンド `outconttype` が、`Global.OutContType[device]`（プロファイルの永続化実体）と連動した正しい値を返すこと。
-2. `IOutputSlotService.GetOutputDeviceType`/`SetOutputDeviceType` の呼び出し元がアプリ本体コード中（テストを除く）に0件であることを確認済みであること。
-3. 全自動テストがクリーンにPASSし、ビルド警告・エラーが増加していないこと。
-4. タスク0を実施した場合、`Phase5-Step14-Issue7-Fix-Plan.md` タスク1〜3の完了記録と重複しないよう、実施経緯をStatus文書に記録すること。
+### Step5-2 (PR-2): `MainWindow.xaml.cs` の UDP 診断コマンド是正
+- **対象**: `MainWindow.xaml.cs:1412`（C5-01）
+- **作業内容**:
+  1. 1412行目を `profileSettingsService.OutContType[tdevice].ToString()` へ置換。
+- **検証**:
+  - 単体テスト: UDP 診断コマンド処理ロジックの出力検証。
+  - `dotnet test` 全件合格を確認。
 
 ---
 
-## 8. 進行ルール
-
-- 本計画書の内容について、着手前にgwin7ok氏の確認・承認を得る。
-- 巨大ファイル編集時はピンポイント編集ルールを徹底する。
-- 実装完了後、`Phase6-Status.md` のStep5欄を更新する。
-- 成果物は `present_files` による直接ダウンロード形式で提供する（PowerShellスクリプト形式は使用しない）。
+### Step5-3 (PR-3): 単体テスト更新・三態検証・完了報告
+- **作業内容**:
+  1. `OutputSlotServiceTests.cs` の既存テストを更新（`_deviceTypes` 単体テストから、`_profileSettings` 連携検証テストへ更新）。
+  2. 出力デバイス三態（永続・実行時・一時）が互いに干渉せず正しく分離・連動していることを検証するテストを追加。
+  3. 完了報告書（`Phase6-Step5-Completion-Report.md`）を作成。
 
 ---
 
-## 9. 次のアクション
+## 6. テスト・回帰検証計画
 
-1. gwin7ok氏より本計画書の承認を得る。
-2. タスク0の要否をPhase5-Step14の完了状況（`Phase5-Step14-Issue7-Fix-Plan.md` タスク1〜3の実施有無）で確定する。
-3. タスク1〜3を実施し、`dotnet build`／`dotnet test` の結果を確認のうえ完了報告書を作成する。
+### 6.1 自動単体テスト計画
+1. **`OutputSlotServiceSsotTests.cs`**:
+   - `OutputSlotService.GetOutputDeviceType(slotId)` が、注入された `IProfileSettingsService.OutContType[slotId]` の値と常に同期していることの検証。
+   - `SetOutputDeviceType` を呼び出した際、`IProfileSettingsService.OutContType` が更新されることの検証。
+   - 範囲外スロット番号（-1, 4）を指定した際に安全に `OutContType.None` が返却されることの検証。
+2. **`MainWindowUdpQueryTests.cs`**:
+   - UDP コマンド `query.0.outconttype` に対して、プロファイル設定値（`Xbox360` または `DS4`）が正確に応答されることの検証（`None` が返らないこと）。
+
+### 6.2 回帰テスト基準
+- `DS4WindowsTests` および `StandaloneTests` の全テストが 100% 成功を維持すること。
+- `dotnet build -c Release` でエラー・警告（`[Obsolete]` の意図された警告を除く）が0件であること。
+
+---
+
+## 7. ロールバック方針
+
+万が一、UDP コマンド応答やスロット管理画面で予期せぬ不整合が発生した場合は、該当PRを直ちに `git revert` して直前の健全コミットに復旧する。
+
+---
+
+## 8. 完了判定チェックリスト
+
+- [ ] `OutputSlotService.cs` 内部の孤立配列 `_deviceTypes[]` が物理的に完全削除されていること。
+- [ ] `GetOutputDeviceType` / `SetOutputDeviceType` が `_profileSettings.OutContType` への委譲に改修され、`[Obsolete]` 属性が付与されていること。
+- [ ] `MainWindow.xaml.cs:1412` の UDP 診断コマンド `outconttype` が `profileSettingsService.OutContType[tdevice]` を参照していること。
+- [ ] `OutputSlotService.cs:193, 196` の Global 直参照が解消されていること。
+- [ ] 出力デバイス状態の三態（永続設定 / 実行時接続 / UI一時状態）の SSOT 境界が確立されていること。
+- [ ] `dotnet build -c Release` でエラー・警告が0件であること。
+- [ ] `DS4WindowsTests` および `StandaloneTests` の全自動テストが100%成功を維持していること。
