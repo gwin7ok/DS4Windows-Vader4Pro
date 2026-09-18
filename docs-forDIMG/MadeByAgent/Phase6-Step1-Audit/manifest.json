@@ -316,7 +316,7 @@
   },
   {
     "path": "DS4Windows/DS4Control/ControlService.cs",
-    "blob": "076e56f1817789d164b5c3291c3e030caa9219d6",
+    "blob": "1e1fde544b8e34dd8dfaafd636c77b1f829f622e",
     "scope": "production"
   },
   {
@@ -896,7 +896,7 @@
   },
   {
     "path": "DS4Windows/DS4Forms/ControllerReadingsControl.xaml.cs",
-    "blob": "b14d2bf5516d058a53fe5a64c0219797aaaa72d3",
+    "blob": "2ec51f0230bbf2bd6fae12e3153a1880a5e42f50",
     "scope": "production"
   },
   {
@@ -1216,7 +1216,7 @@
   },
   {
     "path": "DS4Windows/DS4Library/DS4Device.cs",
-    "blob": "e4309d2e74c3ab7a7b5cfbe1c29aae3aba44fc5f",
+    "blob": "0df5beb4bcae07b89a2f4e7fdb4b78b949cb351d",
     "scope": "production"
   },
   {
@@ -1718,6 +1718,11 @@
     "path": "StandaloneTests/XmlCompatibilityCheckerTests.cs",
     "blob": "c1435871142229540d77d4c2358f09a90ab691f6",
     "scope": "test"
+  },
+  {
+    "path": "scripts/audit/GlobalInventory/GlobalInventory.cs",
+    "blob": "d88e0c7852e2648b89ae8c91441ed481f63320b4",
+    "scope": "other"
   },
   {
     "path": "utils/emit-missing-action-test/Program.cs",

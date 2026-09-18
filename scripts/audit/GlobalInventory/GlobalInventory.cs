@@ -69,11 +69,48 @@ internal static class GlobalInventory
     }
     private static IEnumerable<MetadataReference> References()
     {
-        var paths = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "").Split(Path.PathSeparator)
+        var paths = new List<string>();
+        // 1. Trusted platform assemblies (system references)
+        var trusted = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "").Split(Path.PathSeparator)
             .Where(File.Exists).ToList();
-        // Available local reference metadata helps binding; not an evaluated MSBuild project.
+        paths.AddRange(trusted);
+
+        // 2. Project references from .csproj (PackageReference and Reference)
+        var csprojPath = Path.Combine(root, "DS4Windows/DS4WinWPF.csproj");
+        if (File.Exists(csprojPath))
+        {
+            var csprojText = File.ReadAllText(csprojPath);
+            // Extract PackageReference Include values
+            foreach (Match match in System.Text.RegularExpressions.Regex.Matches(csprojText, @"<PackageReference\s+Include=""([^""]+)"""))
+            {
+                var packageName = match.Groups[1].Value;
+                // Try to locate package assembly in NuGet package folders
+                var packageDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget/packages", packageName.ToLower());
+                if (Directory.Exists(packageDir))
+                {
+                    var versionDir = Directory.GetDirectories(packageDir).OrderByDescending(d => d, StringComparer.Ordinal).FirstOrDefault();
+                    if (versionDir != null)
+                    {
+                        var libDir = Path.Combine(versionDir, "lib", "net8.0");
+                        if (!Directory.Exists(libDir)) libDir = Path.Combine(versionDir, "lib", "net8.0-windows10.0.19041.0");
+                        if (Directory.Exists(libDir)) paths.AddRange(Directory.GetFiles(libDir, "*.dll"));
+                    }
+                }
+            }
+            // Extract Reference HintPath values
+            foreach (Match match in System.Text.RegularExpressions.Regex.Matches(csprojText, @"<Reference\s+[^>]*<HintPath>([^<]+)</HintPath>"))
+            {
+                var hintPath = match.Groups[1].Value;
+                var fullPath = Path.IsPathRooted(hintPath) ? hintPath : Path.Combine(root, hintPath);
+                if (File.Exists(fullPath)) paths.Add(fullPath);
+            }
+        }
+
+        // 3. Build output DLLs (from successful dotnet build)
         var output = Path.Combine(root, "DS4Windows/bin/x64/Debug");
         if (Directory.Exists(output)) paths.AddRange(Directory.GetFiles(output, "*.dll"));
+
+        // 4. Windows Desktop App reference framework (WPF references)
         var windowsRefs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet/packs/Microsoft.WindowsDesktop.App.Ref");
         if (Directory.Exists(windowsRefs))
         {
@@ -81,6 +118,8 @@ internal static class GlobalInventory
                 .OrderByDescending(p => p, StringComparer.Ordinal).FirstOrDefault();
             if (version != null) paths.AddRange(Directory.GetFiles(version, "*.dll", SearchOption.AllDirectories));
         }
+
+        // 5. Deduplicate by file name (prefer build output over framework references for same assembly)
         foreach (var file in paths.Where(p => Path.GetFileNameWithoutExtension(p) != "DS4Windows")
                      .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase).Select(g => g.First()))
         {

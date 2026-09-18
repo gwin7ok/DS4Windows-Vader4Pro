@@ -1,7 +1,7 @@
 {
-  "revision": "b678d53fa80aa2e76b777c63f4d65feec997447d",
-  "sourceTree": "a2f31da88ce57b5c5622e6d7325fb50365689d34",
-  "trackedCSharpFiles": 345,
+  "revision": "aa0e503c1b6f241dd14d0f01224d211f2a20f008",
+  "sourceTree": "6c40f77b480835be48af2d07ab1caff73f2ec09d",
+  "trackedCSharpFiles": 346,
   "productionFiles": 286,
   "memberCount": 503,
   "selfTests": "passed",
@@ -14,12 +14,12 @@
         "WIN64"
       ],
       "stats": {
-        "other-symbol": 2120,
+        "other-symbol": 2121,
         "global-symbol": 2142,
         "unbound-other-context": 188,
         "outside-production-candidate": 190
       },
-      "compilationErrors": 19526,
+      "compilationErrors": 19883,
       "members": 503
     },
     {
@@ -28,24 +28,24 @@
         "WIN64"
       ],
       "stats": {
-        "other-symbol": 2120,
+        "other-symbol": 2121,
         "global-symbol": 2142,
         "unbound-other-context": 188,
         "outside-production-candidate": 190
       },
-      "compilationErrors": 19526,
+      "compilationErrors": 19883,
       "members": 503
     },
     {
       "variant": "NO_SYMBOLS",
       "defines": [],
       "stats": {
-        "other-symbol": 2120,
+        "other-symbol": 2121,
         "global-symbol": 2142,
         "unbound-other-context": 188,
         "outside-production-candidate": 190
       },
-      "compilationErrors": 19526,
+      "compilationErrors": 19883,
       "members": 503
     }
   ],
