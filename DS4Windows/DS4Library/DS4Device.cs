@@ -1096,6 +1096,8 @@ namespace DS4Windows
 
                     readWaitEv.Set();
 
+                    long rawReceivedTime = 0;
+
                     // Sony DS4 and compatible gamepads send data packets with 0x11 type code in BT mode.
                     // Will no longer support any third party fake DS4 that does not behave according to official DS4 specs
                     //if (conType == ConnectionType.BT)
@@ -1104,9 +1106,11 @@ namespace DS4Windows
                         //HidDevice.ReadStatus res = hDevice.ReadFile(btInputReport);
                         //HidDevice.ReadStatus res = hDevice.ReadAsyncWithFileStream(btInputReport, READ_STREAM_TIMEOUT);
                         HidDevice.ReadStatus res = hDevice.ReadFile(btInputReport);
-                        timeoutEvent = false;
                         if (res == HidDevice.ReadStatus.Success)
                         {
+                            rawReceivedTime = Stopwatch.GetTimestamp();
+                            timeoutEvent = false;
+
                             //Array.Copy(btInputReport, 2, inputReport, 0, inputReport.Length);
                             fixed (byte* byteP = &btInputReport[2], imp = inputReport)
                             {
@@ -1209,12 +1213,16 @@ namespace DS4Windows
                             timeoutExecuted = true;
                             return;
                         }
+                        else
+                        {
+                            rawReceivedTime = Stopwatch.GetTimestamp();
+                        }
                     }
 
                     readWaitEv.Wait();
                     readWaitEv.Reset();
 
-                    curtime = Stopwatch.GetTimestamp();
+                    curtime = rawReceivedTime;
                     lastInputReportTimestamp = curtime; // 受信開始時刻を保持
                     testelapsed = curtime - oldtime;
                     lastTimeElapsedDouble = testelapsed * (1.0 / Stopwatch.Frequency) * 1000.0;
