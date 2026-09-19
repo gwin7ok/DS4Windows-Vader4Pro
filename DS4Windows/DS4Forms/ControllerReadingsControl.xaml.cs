@@ -68,6 +68,10 @@ namespace DS4WinWPF.DS4Forms
         private sbyte rsDriftX;
         private sbyte rsDriftY;
 
+        // タブ表示中の最大遅延記録用フィールド
+        private double maxLatency = 0.0;
+        private double maxProcDelay = 0.0;
+
         public double LsDeadX
         {
             get => lsDeadX;
@@ -257,6 +261,21 @@ namespace DS4WinWPF.DS4Forms
             SixAxisDeadZChanged += ChangeSixAxisDeadControls;
 
             DeviceNumChanged += ControllerReadingsControl_DeviceNumChanged;
+
+            // タブ表示切り替え時の最大値リセットイベント登録
+            this.IsVisibleChanged += ControllerReadingsControl_IsVisibleChanged;
+        }
+
+        private void ControllerReadingsControl_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (this.IsVisible)
+            {
+                // タブが開かれた（表示された）タイミングで最大値をリセット
+                maxLatency = 0.0;
+                maxProcDelay = 0.0;
+                lastLatencyInt = -1;
+                lastProcDelayInt = -1;
+            }
         }
 
         private void ControllerReadingsControl_DeviceNumChanged(object sender, EventArgs e)
@@ -550,13 +569,18 @@ namespace DS4WinWPF.DS4Forms
                 lastTouchY = touchY;
             }
 
-            // 入力遅延 (0.1ms単位で変化があった場合のみテキスト再構築)
+            // 入力遅延 (最大値の更新と表示)
             double latency = ds.Latency;
+            if (latency > maxLatency) maxLatency = latency;
             int latencyInt = (int)(latency * 10);
-            if (latencyInt != lastLatencyInt)
+
+            if (latencyInt != lastLatencyInt || latency >= maxLatency)
             {
                 int warnInterval = ds.getWarnInterval();
-                inputDelayLb.Content = string.Format(Properties.Resources.InputDelay, latency.ToString("0.0"));
+
+                // 元のリソース（言語ファイル）による「入力遅延: XX ms」の文字列を取得し、それにMaxを付与する
+                string baseText = string.Format(Properties.Resources.InputDelay, latency.ToString("0.0"));
+                inputDelayLb.Content = $"{baseText} (Max: {maxLatency.ToString("0.0")} ms)";
 
                 if (latency > warnInterval)
                 {
@@ -591,15 +615,17 @@ namespace DS4WinWPF.DS4Forms
                 lastCalibrating = cntCalibrating;
             }
 
-            // 出力遅延差分更新 (0.01ms単位で変化があった場合のみテキスト再構築)
+            // 出力遅延 (最大値の更新と表示)
             double procDelay = controlService != null ? controlService.GetProcessingDelay(deviceNum) : 0.0;
+            if (procDelay > maxProcDelay) maxProcDelay = procDelay;
             int procDelayInt = (int)(procDelay * 100);
-            if (procDelayInt != lastProcDelayInt)
+
+            if (procDelayInt != lastProcDelayInt || procDelay >= maxProcDelay)
             {
                 outputDelayLabel ??= FindName("outputDelayLb") as Label;
                 if (outputDelayLabel != null)
                 {
-                    outputDelayLabel.Content = procDelay > 0.0 ? $"出力遅延: {procDelay:0.00} ms" : "出力遅延: -- ms";
+                    outputDelayLabel.Content = procDelay > 0.0 ? $"出力遅延: {procDelay:0.00} ms (Max: {maxProcDelay:0.00} ms)" : "出力遅延: -- ms";
                 }
                 lastProcDelayInt = procDelayInt;
             }
