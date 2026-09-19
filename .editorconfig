@@ -46,3 +46,11 @@ trim_trailing_whitespace = true
 # フォルダ構造と名前空間を一致させるコードスタイル規約の適用外として宣言する
 [DS4Windows/{DS4Control,DI,Actions}/**.cs]
 dotnet_style_namespace_match_folder = false
+
+# Win32 P/Invoke 移行推奨（SYSLIB1054）および情報レベルの提案メッセージを抑制
+[*.cs]
+dotnet_diagnostic.SYSLIB1054.severity = none
+dotnet_diagnostic.SYSLIB1050.severity = none
+dotnet_diagnostic.SYSLIB1051.severity = none
+dotnet_diagnostic.SYSLIB1052.severity = none
+dotnet_diagnostic.SYSLIB1053.severity = none
