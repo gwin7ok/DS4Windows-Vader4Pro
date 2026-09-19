@@ -93,10 +93,6 @@
 		<WriteLinesToFile File="$(OutDir)build_timestamp.txt" Lines="$(BuildTimestamp)" Overwrite="true" Encoding="UTF-8" />
 	</Target>
 
-<!-- ディスクに出力された生成ファイルが通常のソースとして二重読み込み・衝突するのを防ぐ -->
-  <ItemGroup>
-    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Resources\**" />
