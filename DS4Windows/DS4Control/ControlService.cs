@@ -109,6 +109,12 @@ namespace DS4Windows
         private readonly IDs4DeviceRegistry _deviceRegistry;
         private readonly DI.IProfileSettingsService _profileSettings;
 
+        // Phase6-Step2-1 (PR-1): Global 直接参照の解消。SSOT は Global/BackingStore のまま、
+        // 薄い委譲サービス経由で参照する（Pure DI: コンストラクタ注入のみ。AppHost.Services は使用しない）。
+        private readonly DI.IAppSettingsService _appSettings;
+        private readonly DI.IEnvironmentService _environmentService;
+        private readonly DI.IPathService _pathService;
+
         private HashSet<string> hidDeviceHidingAffectedDevs = new HashSet<string>();
         private HashSet<string> hidDeviceHidingExemptedDevs = new HashSet<string>();
         private bool hidDeviceHidingForced = false;
@@ -207,11 +213,19 @@ namespace DS4Windows
         }
 
         public ControlService(DS4WinWPF.ArgumentParser cmdParser, IDs4DeviceRegistry deviceRegistry,
-            DI.IProfileSettingsService profileSettings = null)
+            DI.IProfileSettingsService profileSettings,
+            DI.IAppSettingsService appSettings,
+            DI.IEnvironmentService environmentService,
+            DI.IPathService pathService)
         {
             this.cmdParser = cmdParser;
             this._deviceRegistry = deviceRegistry;
+            // TODO(技術的負債): 過渡期の防御コード。DI 経由の生成（ServiceRegistration）では profileSettings は常に非 null。
+            // 旧シグネチャ（profileSettings = null）との互換のために残している。Phase6-Step12 で削除判断（Phase6-Step2-Plan.md 決定D2）。
             this._profileSettings = profileSettings ?? Global.ProfileSettingsServiceInstance;
+            this._appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+            this._environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
+            this._pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 
@@ -249,7 +263,7 @@ namespace DS4Windows
 
             outputslotMan = new OutputSlotManager();
             //outputslotMan.SlotAssigned += OutputslotMan_SlotAssigned;
-            deviceOptions = Global.DeviceOptions;
+            deviceOptions = _appSettings.DeviceOptions;
 
             _deviceRegistry.RequestElevation += DS4Devices_RequestElevation;
             _deviceRegistry.PrepareDS4Init = PrepareDS4DeviceInit;
@@ -257,8 +271,8 @@ namespace DS4Windows
             _deviceRegistry.PreparePendingDevice = CheckForSupportedDevice;
             outputslotMan.ViGEmFailure += OutputslotMan_ViGEmFailure;
 
-            Global.UDPServerSmoothingMincutoffChanged += ChangeUdpSmoothingAttrs;
-            Global.UDPServerSmoothingBetaChanged += ChangeUdpSmoothingAttrs;
+            _appSettings.UDPServerSmoothingMincutoffChanged += ChangeUdpSmoothingAttrs;
+            _appSettings.UDPServerSmoothingBetaChanged += ChangeUdpSmoothingAttrs;
 
             CreateOSCCallback();
 
@@ -269,7 +283,7 @@ namespace DS4Windows
 
         private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
         {
-            Global.PrepareAbsMonitorBounds(string.Empty);
+            _environmentService.PrepareAbsMonitorBounds(string.Empty);
         }
 
         //private void OutputslotMan_SlotAssigned(OutputSlotManager sender, int slotNum, OutSlotDevice outSlotDev)
@@ -339,7 +353,7 @@ namespace DS4Windows
 
                 if (command[2] == "monitor")
                 {
-                    if (Global.isInterpretingOscMonitoring())
+                    if (_appSettings.InterpretingOscMonitoring)
                     {
                         command = MapMonitoringOscMessageToCommand(command);
                     }
@@ -363,7 +377,7 @@ namespace DS4Windows
 
                 if (command[3] == "battery")
                 {
-                    if (!isUsingOSCSender())
+                    if (!_appSettings.UseOscSender)
                     {
                         AppLogger.LogToGui("Battery level requested, but the OSC Sender isn't active. Turn it on in Settings.", false);
                     }
@@ -670,7 +684,7 @@ namespace DS4Windows
             {
                 // Launches an elevated child process to re-enable device
                 ProcessStartInfo startInfo =
-                    new ProcessStartInfo(Global.exelocation);
+                    new ProcessStartInfo(_pathService.ExecutablePath);
                 startInfo.Verb = "runas";
                 startInfo.Arguments = "re-enabledevice " + args.InstanceId;
                 startInfo.UseShellExecute = true;
@@ -694,7 +708,7 @@ namespace DS4Windows
 
         public void CheckHidHidePresence(string ExePath = "", string ExeName = "Autoprofile Exe", bool AddExe = true) // Default value for D4W Startup
         {
-            if (Global.hidHideInstalled)
+            if (_environmentService.HidHideInstalled)
             {
                 LogDebug("HidHide control device found");
                 using (HidHideAPIDevice hidHideDevice = new HidHideAPIDevice())
@@ -705,7 +719,7 @@ namespace DS4Windows
                     }
                     // Catch Blank Values and initialize for Startup. Also catches empty Values.
                     // Also Catches Empty values in auto-profiler, and defaults to trying to re-add D4W. Will fail harmlessly later.
-                    if (ExePath == "") { ExePath = Global.exelocation; ExeName = "DS4Windows"; AddExe = true; }
+                    if (ExePath == "") { ExePath = _pathService.ExecutablePath; ExeName = "DS4Windows"; AddExe = true; }
 
                     // Check for inverse application cloak. If setting is being used in HidHide,
                     // skip checking HidHide whitelist for DS4Windows.
@@ -771,7 +785,7 @@ namespace DS4Windows
 
         public void UpdateHidHideAttributes()
         {
-            if (Global.hidHideInstalled)
+            if (_environmentService.HidHideInstalled)
             {
                 hidDeviceHidingAffectedDevs.Clear();
                 hidDeviceHidingExemptedDevs.Clear(); // No known equivalent in HidHide
@@ -799,7 +813,7 @@ namespace DS4Windows
 
         public void UpdateHidHiddenAttributes()
         {
-            if (Global.hidHideInstalled)
+            if (_environmentService.HidHideInstalled)
             {
                 UpdateHidHideAttributes();
             }
@@ -810,10 +824,10 @@ namespace DS4Windows
             bool result = false;
             if (dev != null && hidDeviceHidingEnabled)
             {
-                string deviceInstanceId = Global.GetInstanceIdFromDevicePath(dev.HidDevice.DevicePath);
-                if (Global.hidHideInstalled)
+                string deviceInstanceId = _environmentService.GetInstanceIdFromDevicePath(dev.HidDevice.DevicePath);
+                if (_environmentService.HidHideInstalled)
                 {
-                    result = Global.CheckHidHideAffectedStatus(deviceInstanceId,
+                    result = _environmentService.CheckHidHideAffectedStatus(deviceInstanceId,
                         hidDeviceHidingAffectedDevs, hidDeviceHidingExemptedDevs, hidDeviceHidingForced);
                 }
             }
@@ -865,7 +879,7 @@ namespace DS4Windows
 
         private void ChangeExclusiveStatus(DS4Device dev)
         {
-            if (Global.hidHideInstalled)
+            if (_environmentService.HidHideInstalled)
             {
                 dev.CurrentExclusiveStatus = DS4Device.ExclusiveStatus.HidHideAffected;
             }
@@ -893,8 +907,8 @@ namespace DS4Windows
                         // Change thread affinity of object to have normal priority
                         Task.Run(() =>
                         {
-                            var UDP_SERVER_PORT = Global.getUDPServerPortNum();
-                            var UDP_SERVER_LISTEN_ADDRESS = Global.getUDPServerListenAddress();
+                            var UDP_SERVER_PORT = _appSettings.UdpServerPort;
+                            var UDP_SERVER_LISTEN_ADDRESS = _appSettings.UdpServerListenAddress;
 
                             try
                             {
@@ -936,9 +950,9 @@ namespace DS4Windows
         {
             if (state)
             {
-                oscListener = new UDPListener(Global.getOSCServerPortNum(), callback: oscCallback);
+                oscListener = new UDPListener(_appSettings.OscServerPort, callback: oscCallback);
 
-                AppLogger.LogToGui("OSC LISTENER STARTED AT PORT: " + Global.getOSCServerPortNum(), false);
+                AppLogger.LogToGui("OSC LISTENER STARTED AT PORT: " + _appSettings.OscServerPort, false);
             }
             else
             {
@@ -952,8 +966,8 @@ namespace DS4Windows
         {
             if (state)
             {
-                AppLogger.LogToGui("OSC SENDER STARTED AT IP: " + Global.getOSCSenderAddress() + " PORT: " + Global.getOSCSenderPortNum(), false);
-                oscSender = new UDPSender(Global.getOSCSenderAddress(), Global.getOSCSenderPortNum());
+                AppLogger.LogToGui("OSC SENDER STARTED AT IP: " + _appSettings.OscSenderAddress + " PORT: " + _appSettings.OscSenderPort, false);
+                oscSender = new UDPSender(_appSettings.OscSenderAddress, _appSettings.OscSenderPort);
             }
             else
             {
@@ -1019,8 +1033,8 @@ namespace DS4Windows
 
             await Task.Delay(100);
 
-            var UDP_SERVER_PORT = Global.getUDPServerPortNum();
-            var UDP_SERVER_LISTEN_ADDRESS = Global.getUDPServerListenAddress();
+            var UDP_SERVER_PORT = _appSettings.UdpServerPort;
+            var UDP_SERVER_LISTEN_ADDRESS = _appSettings.UdpServerListenAddress;
 
             try
             {
@@ -1630,7 +1644,7 @@ namespace DS4Windows
 
                 Thread.Sleep(2000);
 
-                bool runningAsAdmin = Global.IsAdministrator();
+                bool runningAsAdmin = _environmentService.IsAdministrator();
                 if (Global.outputKBMHandler.GetIdentifier() != FakerInputHandler.IDENTIFIER && !runningAsAdmin)
                 {
                     string helpURL = @"https://ryochan7.github.io/ds4windows-site/troubleshooting/kb-mouse-issues/#windows-not-responding-to-ds4ws-kb-m-commands-in-some-situations";
@@ -1640,7 +1654,7 @@ namespace DS4Windows
                 LogDebug($"Using output KB+M handler: {Global.outputKBMHandler.GetFullDisplayName()}");
                 LogDebug($"Connection to ViGEmBus {Global.vigembusVersion} established");
 
-                _deviceRegistry.IsExclusiveMode = getUseExclusiveMode(); //Re-enable Exclusive Mode
+                _deviceRegistry.IsExclusiveMode = _appSettings.UseExclusiveMode; //Re-enable Exclusive Mode
 
                 UpdateHidHiddenAttributes();
 
@@ -1650,17 +1664,17 @@ namespace DS4Windows
                     LogDebug(_deviceRegistry.IsExclusiveMode ? DS4WinWPF.Properties.Resources.UsingExclusive : DS4WinWPF.Properties.Resources.UsingShared);
                 }
 
-                if (isUsingOSCServer() && oscListener == null)
+                if (_appSettings.UseOscServer && oscListener == null)
                 {
                     ChangeOSCListenerStatus(true);
                 }
 
-                if (isUsingOSCSender() && oscSender == null)
+                if (_appSettings.UseOscSender && oscSender == null)
                 {
                     ChangeOSCSenderStatus(true);
                 }
 
-                if (isUsingUDPServer() && _udpServer == null)
+                if (_appSettings.UseUdpServer && _udpServer == null)
                 {
                     ChangeUDPStatus(true, false);
                     while (udpChangeStatus == true)
@@ -1743,8 +1757,8 @@ namespace DS4Windows
                 if (_udpServer != null)
                 {
                     //var UDP_SERVER_PORT = 26760;
-                    var UDP_SERVER_PORT = Global.getUDPServerPortNum();
-                    var UDP_SERVER_LISTEN_ADDRESS = Global.getUDPServerListenAddress();
+                    var UDP_SERVER_PORT = _appSettings.UdpServerPort;
+                    var UDP_SERVER_LISTEN_ADDRESS = _appSettings.UdpServerListenAddress;
 
                     try
                     {
@@ -1781,11 +1795,11 @@ namespace DS4Windows
             }
 
             inServiceTask = false;
-            runHotPlug = true;
+            _appSettings.RunHotPlug = true;
             ServiceStarted?.Invoke(this, EventArgs.Empty);
             RunningChanged?.Invoke(this, EventArgs.Empty);
             using var process = Process.GetCurrentProcess();
-            process.PriorityClass = MainWindow.ProcessPriorityClasses[Global.ProcessPriority];
+            process.PriorityClass = MainWindow.ProcessPriorityClasses[_appSettings.ProcessPriority];
             return true;
         }
 
@@ -1829,7 +1843,7 @@ namespace DS4Windows
         private void CheckQuickCharge(object sender, EventArgs e)
         {
             DS4Device device = sender as DS4Device;
-            if (device.ConnectionType == ConnectionType.BT && getQuickCharge() &&
+            if (device.ConnectionType == ConnectionType.BT && _appSettings.QuickCharge &&
                 device.Charging)
             {
                 // Set disconnect flag here. Later Hotplug event will check
@@ -1855,7 +1869,7 @@ namespace DS4Windows
             if (running)
             {
                 running = false;
-                runHotPlug = false;
+                _appSettings.RunHotPlug = false;
                 inServiceTask = true;
                 PreServiceStop?.Invoke(this, EventArgs.Empty);
 
@@ -1870,7 +1884,7 @@ namespace DS4Windows
                     DS4Device tempDevice = DS4Controllers[i];
                     if (tempDevice != null)
                     {
-                        if ((DCBTatStop && !tempDevice.isCharging()) || suspending)
+                        if ((_appSettings.DCBTatStop && !tempDevice.isCharging()) || suspending)
                         {
                             if (tempDevice.getConnectionType() == ConnectionType.BT)
                             {
@@ -1964,7 +1978,7 @@ namespace DS4Windows
                 activeControllers = 0;
             }
 
-            runHotPlug = false;
+            _appSettings.RunHotPlug = false;
             ServiceStopped?.Invoke(this, EventArgs.Empty);
             RunningChanged?.Invoke(this, EventArgs.Empty);
             return true;

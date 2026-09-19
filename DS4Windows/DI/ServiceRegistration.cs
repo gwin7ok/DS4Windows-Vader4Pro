@@ -87,7 +87,10 @@ namespace DS4Windows.DI
                 return Program.rootHub ?? new ControlService(
                     new ArgumentParser(),
                     sp.GetRequiredService<IDs4DeviceRegistry>(),
-                    sp.GetRequiredService<IProfileSettingsService>()
+                    sp.GetRequiredService<IProfileSettingsService>(),
+                    sp.GetRequiredService<IAppSettingsService>(),
+                    sp.GetRequiredService<IEnvironmentService>(),
+                    sp.GetRequiredService<IPathService>()
                 );
             });
             services.AddSingleton<IDeviceStateAccessor>(sp => sp.GetRequiredService<ControlService>());

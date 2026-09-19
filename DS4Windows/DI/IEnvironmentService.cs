@@ -19,5 +19,15 @@
         string ApplicationVersion { get; }
         void RefreshHidHideInfo();
         void RefreshFakerInputInfo();
+
+        // ---- Phase6-Step2-1 (PR-1): ControlService の Global 直接参照解消（Global への薄い委譲）----
+        /// <summary>HidHide が導入済みかどうか（RefreshHidHideInfo で更新される現在値）。</summary>
+        bool HidHideInstalled { get; }
+        string GetInstanceIdFromDevicePath(string devicePath);
+        bool CheckHidHideAffectedStatus(string deviceInstanceId,
+            System.Collections.Generic.HashSet<string> affectedDevs,
+            System.Collections.Generic.HashSet<string> exemptedDevices, bool force = false);
+        /// <summary>画面座標系（マウス絶対座標計算用モニター境界）を再取得する。</summary>
+        void PrepareAbsMonitorBounds(string edid);
     }
 }

@@ -24,5 +24,18 @@ namespace DS4Windows
         public void RefreshHidHideInfo() => Global.RefreshHidHideInfo();
 
         public void RefreshFakerInputInfo() => Global.RefreshFakerInputInfo();
+
+        // ---- Phase6-Step2-1 (PR-1): ControlService の Global 直接参照解消 ----
+        public bool HidHideInstalled => Global.hidHideInstalled;
+
+        public string GetInstanceIdFromDevicePath(string devicePath) =>
+            Global.GetInstanceIdFromDevicePath(devicePath);
+
+        public bool CheckHidHideAffectedStatus(string deviceInstanceId,
+            System.Collections.Generic.HashSet<string> affectedDevs,
+            System.Collections.Generic.HashSet<string> exemptedDevices, bool force = false) =>
+            Global.CheckHidHideAffectedStatus(deviceInstanceId, affectedDevs, exemptedDevices, force);
+
+        public void PrepareAbsMonitorBounds(string edid) => Global.PrepareAbsMonitorBounds(edid);
     }
 }

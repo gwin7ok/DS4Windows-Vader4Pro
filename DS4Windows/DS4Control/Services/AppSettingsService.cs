@@ -392,5 +392,139 @@ namespace DS4Windows.Services
                 }
             }
         }
+
+        // ---- Phase6-Step2-1 (PR-1): ControlService の Global 直接参照解消（Global への薄い委譲）----
+
+        public bool UseOscServer
+        {
+            get => Global.isUsingOSCServer();
+            set
+            {
+                if (Global.isUsingOSCServer() != value)
+                {
+                    Global.setUsingOSCServer(value);
+                    NotifyChanged(nameof(UseOscServer));
+                }
+            }
+        }
+
+        public bool UseOscSender
+        {
+            get => Global.isUsingOSCSender();
+            set
+            {
+                if (Global.isUsingOSCSender() != value)
+                {
+                    Global.setUsingOSCSender(value);
+                    NotifyChanged(nameof(UseOscSender));
+                }
+            }
+        }
+
+        public bool InterpretingOscMonitoring
+        {
+            get => Global.isInterpretingOscMonitoring();
+            set
+            {
+                if (Global.isInterpretingOscMonitoring() != value)
+                {
+                    Global.setInterpretingOscMonitoring(value);
+                    NotifyChanged(nameof(InterpretingOscMonitoring));
+                }
+            }
+        }
+
+        public int OscServerPort
+        {
+            get => Global.getOSCServerPortNum();
+            set
+            {
+                if (Global.getOSCServerPortNum() != value)
+                {
+                    Global.setOSCServerPort(value);
+                    NotifyChanged(nameof(OscServerPort));
+                }
+            }
+        }
+
+        public string OscSenderAddress
+        {
+            get => Global.getOSCSenderAddress();
+            set
+            {
+                if (Global.getOSCSenderAddress() != value)
+                {
+                    Global.setOSCSenderAddress(value);
+                    NotifyChanged(nameof(OscSenderAddress));
+                }
+            }
+        }
+
+        public int OscSenderPort
+        {
+            get => Global.getOSCSenderPortNum();
+            set
+            {
+                if (Global.getOSCSenderPortNum() != value)
+                {
+                    Global.setOSCSenderPort(value);
+                    NotifyChanged(nameof(OscSenderPort));
+                }
+            }
+        }
+
+        public bool QuickCharge
+        {
+            get => Global.QuickCharge;
+            set
+            {
+                if (Global.QuickCharge != value)
+                {
+                    Global.QuickCharge = value;
+                    NotifyChanged(nameof(QuickCharge));
+                }
+            }
+        }
+
+        public bool DCBTatStop
+        {
+            get => Global.DCBTatStop;
+            set
+            {
+                if (Global.DCBTatStop != value)
+                {
+                    Global.DCBTatStop = value;
+                    NotifyChanged(nameof(DCBTatStop));
+                }
+            }
+        }
+
+        public int ProcessPriority
+        {
+            get => Global.ProcessPriority;
+            set
+            {
+                if (Global.ProcessPriority != value)
+                {
+                    Global.ProcessPriority = value;
+                    NotifyChanged(nameof(ProcessPriority));
+                }
+            }
+        }
+
+        public ControlServiceDeviceOptions DeviceOptions => Global.DeviceOptions;
+
+        // Global 側の static イベントへ購読をそのまま転送する（発火元・引数は従来と完全に同一）。
+        public event EventHandler UDPServerSmoothingMincutoffChanged
+        {
+            add => Global.UDPServerSmoothingMincutoffChanged += value;
+            remove => Global.UDPServerSmoothingMincutoffChanged -= value;
+        }
+
+        public event EventHandler UDPServerSmoothingBetaChanged
+        {
+            add => Global.UDPServerSmoothingBetaChanged += value;
+            remove => Global.UDPServerSmoothingBetaChanged -= value;
+        }
     }
 }

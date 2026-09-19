@@ -62,5 +62,21 @@ namespace DS4Windows.DI
         int SpecialActionNameColWidth { get; set; }
         int SpecialActionTriggerColWidth { get; set; }
         int SpecialActionDetailColWidth { get; set; }
+
+        // ---- Phase6-Step2-1 (PR-1): ControlService の Global 直接参照解消 ----
+        // いずれも Global(m_Config/BackingStore) への薄い委譲。独自フィールドは保持しない（SSOT 維持）。
+        bool UseOscServer { get; set; }
+        bool UseOscSender { get; set; }
+        bool InterpretingOscMonitoring { get; set; }
+        int OscServerPort { get; set; }
+        string OscSenderAddress { get; set; }
+        int OscSenderPort { get; set; }
+        bool QuickCharge { get; set; }
+        bool DCBTatStop { get; set; }
+        /// <summary>プロセス優先度の選択インデックス（MainWindow.ProcessPriorityClasses の添字）。</summary>
+        int ProcessPriority { get; set; }
+        ControlServiceDeviceOptions DeviceOptions { get; }
+        event EventHandler UDPServerSmoothingMincutoffChanged;
+        event EventHandler UDPServerSmoothingBetaChanged;
     }
 }

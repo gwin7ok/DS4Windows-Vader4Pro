@@ -1,9 +1,9 @@
 # Phase6-Step2 計画書: `ControlService.cs` のGlobal直参照解消
 
 作成日: 2026-09-09  
-改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新）  
+改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: 決定D1〜D3 承認済み（2026-09-19）・PR-1 着手待ち（実装未着手）  
+状態: 決定D1〜D3 承認済み（2026-09-19）・PR-1 実装済み（レビュー待ち）・O2（C2-01）決定待ち  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -61,6 +61,7 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 
 | ID | 論点 | 決定時期 |
 |---|---|---|
+| **O2** | C2-01（`CURRENT_DS4_CONTROLLER_LIMIT` の静的初期化 `Global.IsWin8OrGreater()`）の扱い。`public static` フィールドで、初期化時点ではインスタンスを注入できず、全ソリューションで約60箇所から参照されるためインスタンス化は現実的でない。`IsWin8OrGreater` は状態を持たない純粋な OS 判定（§4.5 カテゴリB相当） | PR-1 レビュー時に、メリット・デメリット・推奨を提示して決定（PR-1 では未着手） |
 | **O1** | C2-47（`Global.ApplyProfileToSlot`）の循環回避方式。`ProfileApplicationService` も `ControlService` に依存しているため、D1 と同様の `Func<IProfileApplicationService>`、イベント通知、`IProfileRepository.LoadProfileToSlot` 系の低レベルAPI利用などが候補。`Global.ApplyProfileToSlot` はログ組立・変更元（`ProfileChangeSource`）を伴うため、単純な置換では挙動差が出る恐れがある | Step2-2（PR-2）着手時に、メリット・デメリット・推奨を提示して決定 |
 
 #### 0.3.4 モデル図の連動更新
@@ -101,12 +102,12 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 
 | ID | 行番号・形式 | メソッド／経路 | 参照メンバ | 分類 | ホットパス | 移行先サービス・メンバ／方針 |
 |---|---|---|---|---|---|---|
-| C2-01 | 51 Q | 静的初期化 | `IsWin8OrGreater()` | (b) | N | `IEnvironmentService.IsWin8OrGreater()`（静的フィールド評価順序の整理を伴う） |
-| C2-02 | 204 Q | コンストラクタ | `ProfileSettingsServiceInstance` | (a) | N | コンストラクタ注入された `_profileSettings` を直接利用（既存配線済み） |
+| C2-01 | 51 Q | 静的初期化 | `IsWin8OrGreater()` | (b) | N | **O2（未決）**: `public static` フィールドの初期化子のためインスタンス注入不可。PR-1 では未着手（`Global.IsWin8OrGreater()` を温存） |
+| C2-02 | 204 Q | コンストラクタ | `ProfileSettingsServiceInstance` | (a) | N | **D2**: 過渡期の防御コードとして温存（`profileSettings ?? Global.ProfileSettingsServiceInstance`）。技術的負債コメント付与済み。Phase6-Step12 で削除判断 |
 | C2-03 | 242 Q | コンストラクタ | `DeviceOptions` | (b) | N | `IAppSettingsService.DeviceOptions`（`BackingStore.deviceOptions` 委譲） |
 | C2-04 | 250 Q | コンストラクタ | `UDPServerSmoothingMincutoffChanged` | (b) | N | `IAppSettingsService.UDPServerSmoothingMincutoffChanged` イベント購読 |
 | C2-05 | 251 Q | コンストラクタ | `UDPServerSmoothingBetaChanged` | (b) | N | `IAppSettingsService.UDPServerSmoothingBetaChanged` イベント購読 |
-| C2-06 | 262 Q | `SystemEvents_DisplaySettingsChanged` | `PrepareAbsMonitorBounds` | (c) | N | 画面座標系管理（過渡期はシム経由ヘルパー化、将来 `IDisplayCoordinateService`） |
+| C2-06 | 262 Q | `SystemEvents_DisplaySettingsChanged` | `PrepareAbsMonitorBounds` | (c) | N | PR-1 で `IEnvironmentService.PrepareAbsMonitorBounds(string)`（`Global` への薄い委譲）を新設して置換。将来 `IDisplayCoordinateService`（Phase6-Step4 と連動して再評価） |
 | C2-07 | 332 Q | `CreateOSCCallback` | `isInterpretingOscMonitoring()` | (b) | N/受信時 | `IAppSettingsService.InterpretingOscMonitoring` |
 | C2-08 | 356 U | `CreateOSCCallback` | `isUsingOSCSender()` | (b) | N/受信時 | `IAppSettingsService.UseOscSender` |
 | C2-09 | 478, 481 Q | `RefreshOutputKBMHandler` | `outputKBMHandler` (null判定・代入) | (c) | N | **D3**: `_kbmLifecycle.ReleaseHandler()`（null判定・Disconnect・null代入を実装側に内包） |
@@ -272,7 +273,7 @@ private OutContType[] ActiveOutDevType
    - `int FlashWhenLateAt { get; set; }` → `Global.getFlashWhenLateAt()` / `Global.setFlashWhenLateAt(value)`
    - `bool QuickCharge { get; set; }` → `Global.getQuickCharge()` / `Global.setQuickCharge(value)`
    - `bool DCBTatStop { get; set; }` → `Global.DCBTatStop`
-   - `ProcessPriorityClass ProcessPriority { get; set; }` → `Global.ProcessPriority`
+   - `int ProcessPriority { get; set; }` → `Global.ProcessPriority`（`MainWindow.ProcessPriorityClasses` の添字。旧記載の `ProcessPriorityClass` 型は誤り）
    - `int OscServerPort { get; set; }` → `Global.getOSCServerPortNum()`
    - `string OscSenderAddress { get; set; }` → `Global.getOSCSenderAddress()`
    - `int OscSenderPort { get; set; }` → `Global.getOSCSenderPortNum()`
@@ -280,14 +281,15 @@ private OutContType[] ActiveOutDevType
    - `bool UseOscSender { get; set; }` → `Global.isUsingOSCSender()`
    - `bool InterpretingOscMonitoring { get; set; }` → `Global.isInterpretingOscMonitoring()`
    - `bool UseUdpServerSmoothing { get; set; }` → `Global.IsUsingUDPServerSmoothing`
-   - `float UDPServerSmoothingMincutoff { get; set; }` → `Global.UDPServerSmoothingMincutoff`
-   - `float UDPServerSmoothingBeta { get; set; }` → `Global.UDPServerSmoothingBeta`
+   - `double UDPServerSmoothingMincutoff { get; set; }` → `Global.UDPServerSmoothingMincutoff`（旧記載の `float` は誤り。実型は `double`）
+   - `double UDPServerSmoothingBeta { get; set; }` → `Global.UDPServerSmoothingBeta`（同上）
    - `event EventHandler UDPServerSmoothingMincutoffChanged;`
    - `event EventHandler UDPServerSmoothingBetaChanged;`
    - `ControlServiceDeviceOptions DeviceOptions { get; }` → `Global.DeviceOptions`
 
 2. **`IEnvironmentService` / `EnvironmentService.cs`**:
-   - `bool IsWin8OrGreater()` → `Global.IsWin8OrGreater()`
+   - `bool IsWin8OrGreater()` → `Global.IsWin8OrGreater()`（O2 決定後に追加）
+   - `void PrepareAbsMonitorBounds(string edid)` → `Global.PrepareAbsMonitorBounds(edid)`（PR-1 で追加、C2-06）
    - `bool HidHideInstalled { get; }` → `Global.hidHideInstalled`
    - `string GetInstanceIdFromDevicePath(string devicePath)` → `Global.GetInstanceIdFromDevicePath(devicePath)`
    - `bool CheckHidHideAffectedStatus(string instanceId, HashSet<string> affected, HashSet<string> exempted, bool forced)` → `Global.CheckHidHideAffectedStatus(...)`
@@ -386,9 +388,9 @@ namespace DS4Windows.Services
 ```text
 【Phase6-Step2 マイクロステップ構成】
 ├─ Step2-0: 着手前提検証・ベースライン記録（実装なし）
-├─ Step2-1 (PR-1): 非ホットパスの環境・パス・基本設定（ID: C2-01〜05, 21〜27, 32〜40）[22参照]
+├─ Step2-1 (PR-1): 非ホットパスの環境・パス・基本設定（ID: C2-03〜08, 21〜27, 32, 34〜39）※C2-01=O2決定待ち、C2-02=D2温存、C2-33/40=PR-3
 ├─ Step2-2 (PR-2): 出力スロット・プロファイル状態・接続イベント（ID: C2-28〜31, 41〜49）[20参照]
-├─ Step2-3 (PR-3): KBMハンドラ初期化・ライフサイクル整理（ID: C2-09〜20）[12参照]
+├─ Step2-3 (PR-3): KBMハンドラ初期化・ライフサイクル整理（ID: C2-09〜20, 33, 40）
 ├─ Step2-4 (PR-4): 入力処理ホットパス（条件付き・低頻度分岐）（ID: C2-51〜54, 56, 58, 64〜65）[14参照]
 ├─ Step2-5 (PR-5): 入力処理ホットパス（毎レポート最頻度経路）（ID: C2-50, 55, 57, 59〜63, 66）[18参照]
 └─ Step2-6 (PR-6): using static DS4Windows.Global; 削除・未修飾参照ゼロ検証・最終クリーンアップ
@@ -405,7 +407,8 @@ namespace DS4Windows.Services
 ---
 
 ### Step2-1 (PR-1): 非ホットパスの環境・パス・基本設定
-- **対象**: ID: C2-01〜C2-05, C2-21〜C2-27, C2-32〜C2-40（初期化、管理者権限、HidHide、UDP/OSCポート設定、Start/Stop）
+- **対象**: ID: C2-03〜C2-08, C2-21〜C2-27, C2-32, C2-34〜C2-39（初期化、OSC/UDP設定、管理者権限、HidHide、Start/Stop）
+- **対象外（2026-09-19 是正）**: C2-01（O2: 静的初期化のため決定待ち）、C2-02（D2: 防御コードとして温存）、C2-33・C2-40（`IVirtualKBM` を使うため、注入を行う PR-3 で実施）。旧計画では C2-06〜C2-08 がどの PR にも割り当てられていなかったため、PR-1 に含めた
 - **作業内容**:
   1. `IAppSettingsService` および `IEnvironmentService` に必要なプロパティ・メソッドを追加（§4.1）。
   2. `ControlService` コンストラクタに `IAppSettingsService`, `IEnvironmentService`, `IPathService` を**必須引数として**追加（D2）。あわせて `profileSettings` の省略可能を外し、`ServiceRegistration` のファクトリを更新する。
@@ -535,6 +538,7 @@ namespace DS4Windows.Services
 - [ ] 表1〜表3に定義された全66箇所の実移行対象が、DIサービス経由の呼び出しへ置換されていること。
 - [ ] 表4に定義された明示的除外項目（const定数3件、ViGEmバックエンド5件、計8参照）以外の `Global.` 直接参照が `ControlService.cs` から完全に根絶されていること。
 - [ ] `ControlService.cs` 冒頭の `using static DS4Windows.Global;` ディレクティブが安全に削除されていること。
+- [ ] 例外として残る `Global` 参照が、C2-02（D2: 防御コード）と C2-01（O2 の決定内容）のみであり、いずれも技術的負債コメントまたは除外表への追記で理由が記録されていること。
 - [ ] コンストラクタ注入において、`ProfileApplicationService` および `OutputSlotService` との循環依存が発生していないこと（D1、O1 の決定内容に従うこと）。
 - [ ] `ControlService` のコンストラクタに `AppHost.GetService` フォールバックが新設されておらず、新規引数がすべて必須であること（D2）。
 - [ ] `IVirtualKBMLifecycle` / `OutputKBMHandlerLifecycle` が1ファイル1型で追加され、`Global.outputKBMHandler` への直接アクセスに技術的負債コメントが付与されていること（D3）。
