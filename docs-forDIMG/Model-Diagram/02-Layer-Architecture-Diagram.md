@@ -84,6 +84,12 @@
   * 親の `ProfileSettingsViewModel` が Mediator となり、各サブVM（`StickSubVM`, `TriggerSubVM` 等）を直接保持・調停する。
   * 「保存」ボタンが押された際は、親VMが各子VMから設定スライスを吸い上げて `ProfileDTO` に統合し、`IProfileXmlStore` に一括保存を要求する。
 
+### 方針4：3-b KBM出力における「送出」と「ライフサイクル」の分離
+* **課題：** 現行の `OutputKBMHandlerAdapter` は `Global.outputKBMHandler` への読み取り専用委譲で、出力ハンドラの生成・差し替え・フォールバック切替の口が無く、`ControlService` が `Global` の static フィールドを直接書き換えている。
+* **解決策：**
+  * 送出（キー・マウス出力）は `IVirtualKBM`、ハンドラの生成・破棄・フォールバック切替・マッピング初期化は `IVirtualKBMLifecycle` に分ける。
+  * 上記のスタック図の 3-b `IVirtualKBM` に付随するインターフェースとして扱う（図の枠は変更しない）。ライフサイクル操作を使うのは第2層の `ControlService` のみで、送出側の利用者（Actions・`IMouseEngine`）には公開しない。
+
 ---
 
 ## 3. 「データフロー」と「依存関係」の比較対比
@@ -117,6 +123,10 @@
 ```
 
 ---
+
+%% 注釈補強（2026-09-19 Phase6-Step2 実地確認・決定D1〜D3反映）
+%% - 方針4（3-b の送出とライフサイクルの分離、`IVirtualKBMLifecycle`）を追加（決定D3）。スタック図・依存方向図の構造は変更なし。
+%% - 依存方向（上位→下位）に反する過渡期の逆依存（`OutputSlotService` → `ControlService` 等）が現状実装に存在する。目標構造は変更せず、04-Service-Lifecycle-Spec.md §4 で技術的負債として管理する。
 
 %% 注釈補強（2026-09-18監査結果反映、構造変更なし）
 %% - データパイプライン（生HID→変換→仮想パッド/OS入力）は現状のホットパス（ControlService入力ループ、Mouse系加速度処理）と一致。Zero-GCインプレース更新（MappingPipelineContext）の原則を維持。

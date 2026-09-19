@@ -115,6 +115,11 @@ classDiagram
         -IInputLoopCoordinator _loopCoordinator
         -IInputMappingPipeline _pipeline
         -IOutputSlotService _outputSlotService
+        -IVirtualKBM _virtualKBM
+        -IVirtualKBMLifecycle _kbmLifecycle
+        -IProfileSettingsService _profileSettings
+        -IAppSettingsService _appSettings
+        -IEnvironmentService _environmentService
         -MappingPipelineContext[] _contextPool
         +Start()
         +Stop()
@@ -139,6 +144,24 @@ classDiagram
         +PerformKeyRelease(uint key, bool useScan)
         +MoveMouse(int dx, int dy)
     }
+    class IVirtualKBMLifecycle {
+        <<interface>>
+        +ReleaseHandler()
+        +DetermineHandler(string identifier)
+        +SwitchToFallbackHandler()
+        +ApplyFakerInputVersion()
+        +InitializeMapping(string identifier)
+    }
+    class OutputKBMHandlerAdapter {
+        +PerformKeyPress(uint key)
+        +Sync()
+    }
+    class OutputKBMHandlerLifecycle {
+        -IEnvironmentService _environment
+    }
+    IVirtualKBM <|.. OutputKBMHandlerAdapter : implements
+    IVirtualKBMLifecycle <|.. OutputKBMHandlerLifecycle : implements
+    OutputKBMHandlerLifecycle --> IEnvironmentService : reads FakerInput version
     class IMacroPlayer {
         <<interface>>
         +PlayMacro(int slot, MacroStep[] steps)
@@ -151,6 +174,8 @@ classDiagram
     InputMappingPipeline --> IOutputSlotService : outputs pad
     IMouseEngine --> IVirtualKBM : outputs mouse
     ControlService --> ILightbarService : updates LED
+    ControlService --> IVirtualKBM : identify / Sync
+    ControlService --> IVirtualKBMLifecycle : manages KBM handler lifecycle
 
     %% ==========================================
     %% 4. UI層 (Sub-ViewModels Mediator構成)
@@ -235,6 +260,13 @@ classDiagram
    * `IHidTransport`（OS依存の通信）と `IInputReportParser`（OS非依存のパケット解析）を切り離し、Vader 4 Pro や DS4 の生バイト列解析ロジックを実機なしで単体テスト可能にする。
 4. **Repository & IoLock パターン（横断基盤層）：**
    * XMLファイルの入出力を `XmlIoLock` で完全にラップし、複数スレッドからの同時アクセスやプロファイル自動保存時のデッドロックを防止。
+
+5. **送出とライフサイクルの分離（3-b KBM出力）：**
+   * キー・マウスの送出（`IVirtualKBM`）と、出力ハンドラの生成・破棄・フォールバック切替・マッピング初期化（`IVirtualKBMLifecycle`）を別インターフェースに分ける。送出側（Actions・`IMouseEngine`）はライフサイクル操作を知らず、`ControlService` だけが両方を使う。
+
+%% 注釈補強（2026-09-19 Phase6-Step2 実地確認・決定D1〜D3反映）
+%% - `IVirtualKBMLifecycle`（`OutputKBMHandlerLifecycle` が実装）を追加（決定D3）。現行の `OutputKBMHandlerAdapter` は `Global.outputKBMHandler` への読み取り専用委譲であり、ハンドラの生成・差し替えの口を持たないため。図中の `IVirtualKBM` のメソッドは概念的な代表例で、実インターフェース（`DS4Windows.Services.IVirtualKBM`）とは一致しない。
+%% - `ControlService` のフィールドは Step2 の主な依存のみ記載（全体は Phase6-Step2-Plan.md §3.1）。過渡期は `IOutputSlotService` を `Func<IOutputSlotService>` で遅延解決する（決定D1、04-Service-Lifecycle-Spec.md §4）。目標構造（直接注入）は変更しない。
 
 %% 注釈補強（2026-09-18監査結果反映、構造変更なし）
 %% - 各巨大ファイル（ScpUtil/Mapping/Mouse/ControlService/ProfileSettingsVM/DS4Device）の解体先（1クラス1責任）は現状監査（762参照、10ファイル網羅、重複ゼロ・漏れゼロ証明済み）と完全一致。

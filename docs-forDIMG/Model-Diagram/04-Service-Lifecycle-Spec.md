@@ -24,20 +24,20 @@
 | 分類 | サービス（インターフェース） | 具象クラス（実装） | ライフタイム | 責務 / 役割 | 主な依存注入引数 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **基盤** | `IPathService` | `PathService` | **Singleton** | プロファイル・アプリデータ保存先パスの動的解決 | なし |
-| **基盤** | `IEnvironmentService` | `EnvironmentService` | **Singleton** | OS種別、管理者権限、ディスプレイ解像度情報の提供 | なし |
+| **基盤** | `IEnvironmentService` | `EnvironmentService` | **Singleton** | OS種別、管理者権限、ディスプレイ解像度情報、HidHide／FakerInput の導入状態、デバイスインスタンスID解決の提供 | なし |
 | **基盤** | `INotificationService` | `AppNotificationService` | **Singleton** | OSトースト通知、ステータス通知の統一発行 | なし |
 | **基盤** | `XmlIoLock` | `XmlIoLock` | **Singleton** | プロセス内・スレッド間のファイル排他制御ロック | なし |
 | **基盤** | `IAppSettingsService` | `AppSettingsService` | **Singleton** | `AppSettings.xml` の永続化・設定値管理 | `IPathService`, `XmlIoLock` |
-| **基盤** | `IAppearanceSettingsService`| `AppearanceSettingsService` | **Singleton** | UIテーマ（Dark/Default）、フォントスケール | `IAppSettingsService` |
+| **基盤** | `IAppearanceSettingsService`| `AppearanceSettingsService` | **Singleton** | UIテーマ（Dark/Default）、フォントスケール、トレイアイコン選択・バッテリー変化通知 | `IAppSettingsService` |
 | **基盤** | `IProfileXmlStore` | `ProfileXmlStore` | **Singleton** | プロファイルXMLのシリアライズ・デシリアライズ | `IPathService`, `XmlIoLock` |
-| **基盤** | `IProfileRepository` | `ProfileRepository` | **Singleton** | プロファイル名一覧の保持、CRUD、存在検証 | `IProfileXmlStore`, `IPathService` |
+| **基盤** | `IProfileRepository` | `ProfileRepository` | **Singleton** | プロファイル名一覧の保持、CRUD、存在検証、リンクプロファイル解決 | `IProfileXmlStore`, `IPathService` |
 | **基盤** | `IProfileSettingsService` | `ProfileSettingsService` | **Singleton** | ロード済みプロファイルのインメモリ設定値管理 | `IProfileXmlStore` |
 | **基盤** | `IDeviceOptionRepository` | `DeviceOptionRepository` | **Singleton** | 機種別オプション（`*ControllerOptsDTO`）の管理 | `IPathService`, `XmlIoLock` |
 | **基盤** | `ISpecialActionRepository` | `SpecialActionRepository` | **Singleton** | `Actions.xml` のCRUDおよび定義管理 | `IPathService`, `XmlIoLock` |
 | **基盤** | `IOutputSlotStore` | `OutputSlotStore` | **Singleton** | スロット永続化設定（`OutputSlots.xml`）の管理 | `IPathService`, `XmlIoLock` |
 | **1.入力**| `IDeviceHotplugMonitor` | `DeviceHotplugMonitor` | **Singleton** | Win32 RAW/HID デバイス到着・抜去イベントの検知 | なし |
 | **1.入力**| `IDs4DeviceRegistry` | `Ds4DeviceRegistryAdapter` | **Singleton** | コントローラーの列挙・保持、通信ハンドルの監視 | `IDeviceHotplugMonitor` |
-| **1.入力**| `IDeviceStateService` | `DeviceStateService` | **Singleton** | 接続中デバイスのバッテリー残量、通信種別管理 | `IDs4DeviceRegistry` |
+| **1.入力**| `IDeviceStateService` | `DeviceStateService` | **Singleton** | 接続中デバイスのバッテリー残量、通信種別管理、初回接続判定・シリアル変更通知 | `IDs4DeviceRegistry` |
 | **1.入力**| `IInputReportParserFactory` | `InputReportParserFactory` | **Singleton** | デバイス種別に応じたパケット解析器（DS4/Vader等）の提供 | なし |
 | **2.変換**| `IButtonProcessor` | `ButtonProcessor` | **Singleton** | ボタンリマップ、シフト変調（ステートレス計算） | なし |
 | **2.変換**| `IStickProcessor` | `StickProcessor` | **Singleton** | デッドゾーン、カーブ（`StickOutCurve`）、AntiSnap計算 | なし |
@@ -52,9 +52,10 @@
 | **2.変換**| `IAutoProfileService` | `AutoProfileService` | **Singleton** | フォアグラウンドアプリ監視とプロファイル自動切替 | `IProcessInspector`, `IProfileApplicationService` |
 | **2.変換**| `IMappingActionDispatcher` | `MappingActionDispatcher` | **Singleton** | パイプラインからのアクション発火要求の非同期分配 | `IManagedActionManager` |
 | **2.変換**| `IManagedActionManager` | `DefaultActionManager` | **Singleton** | マクロ・キー・プロファイル切替アクションの実行統括 | `IActionFactory` |
-| **2.変換**| `ControlService` | `ControlService` | **Singleton** | 入力・変換・出力パイプライン全体の開始・停止統括（ファサード） | `IDs4DeviceRegistry`, `IInputLoopCoordinator`, `IOutputSlotService` |
+| **2.変換**| `ControlService` | `ControlService` | **Singleton** | 入力・変換・出力パイプライン全体の開始・停止統括（ファサード） | `IDs4DeviceRegistry`, `IInputLoopCoordinator`, `IOutputSlotService`※1, `IProfileSettingsService`, `IAppSettingsService`, `IEnvironmentService`, `IPathService`, `IVirtualKBM`, `IVirtualKBMLifecycle`, `IProfileRepository`, `IDeviceStateService`, `IAppearanceSettingsService`, `IProfileXmlStore`, `IProfileActionProvider` |
 | **3.出力**| `IOutputSlotService` | `OutputSlotService` | **Singleton** | 仮想Xbox360/DS4（ViGEm）の生成、割当、切替 | `IOutputSlotStore` |
 | **3.出力**| `IVirtualKBM` | `OutputKBMHandlerAdapter` | **Singleton** | SendInput / FakerInput によるキー・マウス送出 | なし |
+| **3.出力**| `IVirtualKBMLifecycle` | `OutputKBMHandlerLifecycle` | **Singleton** | KBM出力ハンドラの生成・破棄・フォールバック切替・マッピング初期化（送出は `IVirtualKBM` が担当） | `IEnvironmentService` |
 | **3.出力**| `IMacroPlayer` | `DefaultMacroPlayer` | **Singleton** | 時系列非同期マクロの再生・停止管理 | `IVirtualKBM` |
 | **3.出力**| `ILightbarService` | `LightbarService` | **Singleton** | バッテリー・プロファイル色に応じたLED発光計算 | なし |
 | **3.出力**| `IActionFactory` | `DefaultActionFactory` | **Singleton** | 各種アクションインスタンス（Key/Macro/Launch）の生成 | `IVirtualKBM`, `IMacroPlayer`, `IProcessLauncher` |
@@ -75,6 +76,8 @@
 | **4.UI** | `ButtonMappingSubViewModel` | `ButtonMappingSubViewModel` | **Factory生成 (サブVM)** | ボタン割り当て・シフトモディファイア設定タブ | `IProfileSettingsService` |
 | **4.UI** | `SpecialActionsSubViewModel`| `SpecialActionsSubViewModel`| **Factory生成 (サブVM)** | スペシャルアクション一覧・登録タブ | `ISpecialActionRepository`, `IDs4DeviceRegistry` |
 
+※1 `ControlService` は過渡期に `IOutputSlotService` を直接ではなく `Func<IOutputSlotService>`（遅延解決）で受け取る。理由は §4 を参照。目標構造は直接注入であり、変更しない。
+
 ---
 
 ## 3. リソース破棄と安全な終了手順
@@ -84,6 +87,24 @@
    * `ControlService` / `InputLoopCoordinator` が停止してスレッドを安全に閉じた後に、`IDs4DeviceRegistry`（HIDデバイスハンドル）や `OutputSlotService`（ViGEmクライアント）が破棄されるため、リソース解放時の競合クラッシュが発生しない。
 2. **ホットパスサービスのステートレス設計:**
    * `ButtonProcessor`、`StickProcessor` などの各変換プロセッサは、内部にミュータブルな状態を持たず、パイプラインコンテキスト `MappingPipelineContext` 経由で受け渡すステートレス設計とすることで、Singleton でありながら完全なスレッドセーフとゼロGCを両立する。
+
+---
+
+## 4. 過渡期の既知の逆依存（2026-09-19 Phase6-Step2 実地確認）
+
+本仕様書の目標構造では、下位（出力・基盤）サービスは `ControlService` に依存しない。現状の実装には以下の逆依存が残っており、**技術的負債として管理する**（目標構造は変更しない）。
+
+| 逆依存（現状） | 実装上の根拠 | 影響 | 暫定措置 | 解消予定 |
+| :--- | :--- | :--- | :--- | :--- |
+| `OutputSlotService` → `ControlService` | コンストラクタで `_control = control ?? Program.rootHub`、`_slotManager` を `_control?.OutputslotMan` から取得 | `ControlService` 生成中に解決すると `_control` が null のまま固定され、`OutputSlotManager` が二重化する恐れ | `ControlService` は `Func<IOutputSlotService>` で遅延解決し、`ActiveOutDevType` 配列参照を初回にキャッシュ（決定D1） | Phase6-Step5（`OutputSlotService` 全面SSOT統合）。解消後は直接注入へ戻す |
+| `ProfileApplicationService` → `ControlService` | コンストラクタで `control ?? AppHost.GetService<ControlService>()` | `ControlService` 生成中に解決すると再帰生成の恐れ | `ControlService` からは直接注入しない（C2-47 の方式は Step2-2 着手時に決定） | 未定（Step2-2 の決定に従い、必要なら担当Stepを追加） |
+| `ProfileRepository` → `ControlService` | メソッド内で `AppHost.GetService<ControlService>()` を実行時に呼ぶ（コンストラクタ依存ではない） | 生成順序の問題は無いが、Service Locator が残る | 現状維持 | 未定 |
+
+%% 注釈補強（2026-09-19 Phase6-Step2 実地確認・決定D1〜D3反映）
+%% - 新規サービス `IVirtualKBMLifecycle` / `OutputKBMHandlerLifecycle`（3.出力、Singleton）を追加（決定D3）。`IVirtualKBM`（送出専用）は変更しない。
+%% - `ControlService` の主な依存注入引数を Step2 の実装計画（Phase6-Step2-Plan.md §3.1）に合わせて更新。新規引数はすべて必須（Pure DI、決定D2）。
+%% - `IEnvironmentService` / `IAppearanceSettingsService` / `IProfileRepository` / `IDeviceStateService` の責務記述を、Step2 で追加されるシム（Phase6-Step2-Plan.md §4.1）に合わせて補足。
+%% - 過渡期の逆依存（§4）は現状実装の負債であり、目標構造の変更ではない。
 
 %% 注釈補強（2026-09-18監査結果反映、構造変更なし）
 %% - ライフタイム定義（Singleton/Transient/Factory生成）は現状のDI登録（ServiceRegistration.cs）と前提条件（Phase5完了）と一致。

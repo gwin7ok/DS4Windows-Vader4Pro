@@ -116,8 +116,10 @@ flowchart TD
 
         subgraph Out_KBM ["3-b: キーボード・マウス・マクロ出力"]
             Out_KBMHandler["IVirtualKBM<br>(SendInput / FakerInput Adapter)"]:::egressLayer
+            Out_KBMLifecycle["IVirtualKBMLifecycle<br>(ハンドラ生成・フォールバック切替・マッピング初期化)"]:::egressLayer
             Out_Macro["IMacroPlayer<br>(DefaultMacroPlayer: 非同期再生)"]:::egressLayer
             Out_KBMHandler --> Out_Macro
+            Out_KBMLifecycle -. 生成・切替 .-> Out_KBMHandler
         end
 
         subgraph Out_Actions ["3-c: アプリ・OS副作用実行"]
@@ -158,6 +160,8 @@ flowchart TD
     Core_Coordinator --> In_Registry
     Core_Coordinator --> Out_SlotSvc
     Core_Coordinator --> Out_LED
+    Core_Coordinator --> Out_KBMHandler
+    Core_Coordinator --> Out_KBMLifecycle
     Pipe_Master --> Out_SlotSvc
     Proc_Mouse --> Out_KBMHandler
 
@@ -168,6 +172,10 @@ flowchart TD
 
     Out_Switcher --> Core_ProfileApp
     Core_ProfileApp --> Store_Profile
+
+%% 注釈補強（2026-09-19 Phase6-Step2 実地確認・決定D1〜D3反映）
+%% - 3-b に `IVirtualKBMLifecycle` を追加（決定D3）。`ControlService` が送出（`IVirtualKBM`）とライフサイクル（`IVirtualKBMLifecycle`）の両方を利用する。
+%% - 過渡期は `OutputSlotService` / `ProfileApplicationService` が `ControlService` に逆依存している（目標構造には存在しない辺）。`ControlService` は `Func<IOutputSlotService>` で遅延解決する（決定D1）。詳細は 04-Service-Lifecycle-Spec.md §4。
 
 %% 注釈補強（2026-09-18監査結果反映）
 %% - ScpUtil.cs の255件は「Global型の参照」ではなく「ScpUtil内の静的宣言」（§2抽出問題記録済み）。横断基盤層（XmlIoLock, PathService等）への分解は理想構造と一致するが、参照と宣言の区別を維持する必要がある。
@@ -187,7 +195,7 @@ flowchart TD
 | **`ScpUtil.cs`**<br>(574 KB) | `Global` 静的クラス（設定、XML、デバイス状態の混在） | `ProfileXmlStore`, `AppSettingsService`, `DeviceOptionRepository`, `PathService`, `XmlIoLock` | **横断基盤層** |
 | **`Mapping.cs`**<br>(443 KB) | 巨大静的マッピング、デッドゾーン、カーブ計算 | `IInputMappingPipeline`, `ButtonProcessor`, `StickProcessor`, `TriggerProcessor`, `TouchGyroProcessor` | **2. 信号変換層** |
 | **`Mouse.cs`**<br>(78 KB) | タッチパッド/ジャイロのマウス変換、カーソル加速 | `IMouseEngine`, `MouseCursor`, `OneEuroFilter`, `FakeTrackball` | **2. 信号変換層** |
-| **`ControlService.cs`**<br>(145 KB) | パイプライン統括、スレッドループ、LED計算、デバイス監視 | `ControlService`(統括), `InputLoopCoordinator`, `IDeviceHotplugMonitor`, `ILightbarService` | **2. 信号変換層 / 3. 出力層** |
+| **`ControlService.cs`**<br>(145 KB) | パイプライン統括、スレッドループ、LED計算、デバイス監視 | `ControlService`(統括), `InputLoopCoordinator`, `IDeviceHotplugMonitor`, `ILightbarService`, `IVirtualKBMLifecycle`(KBMハンドラ生成管理) | **2. 信号変換層 / 3. 出力層** |
 | **`ProfileSettingsViewModel.cs`**<br>(158 KB) | 全UI設定プロパティの抱え込み | `ProfileSettingsViewModel`(親Mediator) ＋ `StickSubVM`, `TriggerSubVM`, `ButtonSubVM`, `SpecialActionsSubVM` | **4. UI層** |
 | **`DS4Device.cs`**<br>(87 KB) | 通信、パケット解析、CRC32、振動出力の混在 | `IHidTransport`(通信), `DS4ReportParser`(解析), `DS4OutputReportEncoder`(生成) | **1. 入力監視層** |
 
