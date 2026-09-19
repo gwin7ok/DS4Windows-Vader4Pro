@@ -510,10 +510,12 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServiceShimEquivalenceTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlTabAndSpecialActionKeyTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControllerListViewModelTests.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControllerSlotLimitTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/DS4Windows.Actions.Tests.csproj
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/DefaultActionManagerTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/DeviceStateServiceTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/Ds4DeviceRegistryTests.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/EnvironmentServiceInjectionTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/EnvironmentServiceTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/LaunchProcessActionTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/LogToTrayNotificationBridgeTests.cs
