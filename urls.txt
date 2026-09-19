@@ -150,7 +150,6 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/PressActionController.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/ProfileMigration.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/ProfilePropGroups.cs
-https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/ProfileRepository.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/ProfileSlotApplier.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/ProfileSubSettingBase.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Program.cs
@@ -174,8 +173,10 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/IProcessInspector.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/IProfileSlotApplier.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/IVirtualKBM.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/IVirtualKBMLifecycle.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/MappingActionDispatcher.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/OutputKBMHandlerAdapter.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/OutputKBMHandlerLifecycle.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/OutputSlotService.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/OutputSlotStore.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4Windows/DS4Control/Services/PathService.cs
@@ -511,7 +512,9 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServiceDiWiringTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServicePr2DiWiringTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServicePr2ShimEquivalenceTests.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServicePr3DiWiringTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServiceShimEquivalenceTests.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServiceTestFactory.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlTabAndSpecialActionKeyTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControllerListViewModelTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControllerSlotLimitTests.cs
@@ -554,6 +557,7 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/SpecialActionsListViewModelTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/TestData/Actions.xml
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/UdpServerServiceTests.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/VirtualKBMLifecycleTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/VirtualKBMTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/xunit.runner.json
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsWPF.sln
