@@ -1,9 +1,9 @@
 # Phase6-Step2 計画書: `ControlService.cs` のGlobal直参照解消
 
 作成日: 2026-09-09  
-改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記）  
+改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: PR-1・PR-1b・PR-1c 完了（ビルド・テスト成功、コミット済み。実機確認は OSC/UDP のみ未実施）・決定O1=B／O3=A／O4=B-2 確定（モデル図 01／03／04 の変更も承認）・PR-2 実装済み（レビュー待ち）  
+状態: PR-1・PR-1b・PR-1c・PR-2 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP のみ未実施）・PR-3 実装済み（レビュー待ち）  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -121,7 +121,7 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 | C2-07 | 332 Q | `CreateOSCCallback` | `isInterpretingOscMonitoring()` | (b) | N/受信時 | `IAppSettingsService.InterpretingOscMonitoring` |
 | C2-08 | 356 U | `CreateOSCCallback` | `isUsingOSCSender()` | (b) | N/受信時 | `IAppSettingsService.UseOscSender` |
 | C2-09 | 478, 481 Q | `RefreshOutputKBMHandler` | `outputKBMHandler` (null判定・代入) | (c) | N | **D3**: `_kbmLifecycle.ReleaseHandler()`（null判定・Disconnect・null代入を実装側に内包） |
-| C2-10 | 480 Q | `RefreshOutputKBMHandler` | `outputKBMHandler.Disconnect()` | (a) | N | `_virtualKBM.Disconnect()` |
+| C2-10 | 480 Q | `RefreshOutputKBMHandler` | `outputKBMHandler.Disconnect()` | (a) | N | `ReleaseHandler()`（C2-09）に内包される。`ControlService` から `Disconnect` を直接呼ぶ箇所は `Stop()` の1箇所のみで、`_virtualKBM.Disconnect()` に置換（C2-40） |
 | C2-11 | 484, 486 Q | `RefreshOutputKBMHandler` | `outputKBMMapping` (null判定・代入) | (a) | N | `_profileSettings.OutputKBMMapping = null` |
 | C2-12 | 495 Q | `InitOutputKBMHandler` | `InitOutputKBMHandler(...)` | (c) | N | **D3**: `_kbmLifecycle.DetermineHandler(identifier)`（実装は `Global.InitOutputKBMHandler` への委譲） |
 | C2-13 | 500 Q | `InitOutputKBMHandler` | `outputKBMHandler.Connect()` | (a) | N | `_virtualKBM.Connect()` |
@@ -363,7 +363,7 @@ namespace DS4Windows.Services
 | `Global.outputKBMMapping.PopulateConstants()/PopulateMappings()`（529〜530） | `_profileSettings.OutputKBMMapping.PopulateConstants()/PopulateMappings()` |
 
   - **技術的負債コメント**: `OutputKBMHandlerLifecycle` 内の `Global.outputKBMHandler` への直接アクセスには、copilot-instructions §3.3 原則4 に従い、TODO コメント（理由: ハンドラ実体が `Global` の static フィールドに残っているため／最終対応: `Global` 撤去フェーズ〈Phase7〉）を付与する。
-  - **既知の挙動差**: `Start()` 内（旧1634, 1640行）の `Global.outputKBMHandler.GetIdentifier()` / `GetFullDisplayName()` を `_virtualKBM` 経由に替えると、ハンドラが null の場合の結果が「NullReferenceException」から「空文字」に変わる。`InitOutputKBMHandler` が `Start()` より前に必ず実行されるため通常は発生しないが、PR-3 の報告書に明記する。
+  - **既知の挙動差**: `Start()`（`GetIdentifier()`／`GetFullDisplayName()`）、`Stop()`（`GetDisplayName()`／`Disconnect()`）、`InitOutputKBMHandler`（`Connect()`／`GetIdentifier()`）を `_virtualKBM` 経由に替えると、ハンドラが null の場合の結果が「NullReferenceException」から「空文字／false」に変わる（`OutputKBMHandlerAdapter` は null 安全）。`InitOutputKBMHandler` が `Start()` より前に必ず実行されるため通常は発生しないが、`Connect()` の例外は従来も `try/catch` で握りつぶされており、結果（接続失敗としてフォールバックへ）は同じになる。PR-3 の報告書に明記した。
 - **画面解像度変更時の座標系更新（ID: C2-06）**:
   `SystemEvents_DisplaySettingsChanged` から呼ばれる `Global.PrepareAbsMonitorBounds(string.Empty)` は、マウス絶対座標計算のためのWin32モニター列挙処理である。過渡期は薄いシムメソッドを経由させ、Phase6-Step4（Mouse系移行）と連動して最終的なサービス抽象化を行う。
 
@@ -481,16 +481,20 @@ namespace DS4Windows.Services
 ---
 
 ### Step2-3 (PR-3): KBMハンドラ初期化・ライフサイクル整理
-- **対象**: ID: C2-09〜C2-20（`RefreshOutputKBMHandler`, `InitOutputKBMHandler`）＋ C2-33, C2-40（`Start` / `Stop` 内の KBM 識別子・表示名参照）
-- **作業内容**（決定D3）:
-  1. 新規 `IVirtualKBMLifecycle.cs` / `OutputKBMHandlerLifecycle.cs` を追加（1ファイル1型、§4.2）し、`ServiceRegistration` に登録。
-  2. `ControlService` コンストラクタに `IVirtualKBM`, `IVirtualKBMLifecycle` を必須引数として追加。
-  3. §4.2 の対応表に従い `RefreshOutputKBMHandler` / `InitOutputKBMHandler` を置換。`Global.outputKBMMapping` は `_profileSettings.OutputKBMMapping` へ置換。
-  4. ハンドラ交換時の例外保護（`try/catch`）・フォールバック切替の分岐条件・処理順序を維持。
+- **対象**: ID: C2-09〜C2-20（`RefreshOutputKBMHandler`, `InitOutputKBMHandler`）＋ C2-33, C2-40（`Start` / `Stop` 内の KBM 識別子・表示名・切断）
+- **作業内容（実装済み、決定D3）**:
+  1. 新規 `IVirtualKBMLifecycle`／`OutputKBMHandlerLifecycle`（各1ファイル1型、`DS4Windows.Services`）を追加し、`ServiceRegistration` に Singleton 登録（`IVirtualKBM` の登録の隣）。実装は `Global` 側処理への薄い委譲で、ハンドラ実体が `Global` の static フィールドに残る理由と撤去予定（Phase7）を技術的負債コメントで記録した。
+  2. `IEnvironmentService.FakerInputVersion`（`Global.fakerInputVersion` への委譲）を追加。利用者は `OutputKBMHandlerLifecycle.ApplyFakerInputVersion` のみ（`ControlService` からの直接参照は無い）。
+  3. `ControlService` コンストラクタに `IVirtualKBM`／`IVirtualKBMLifecycle` を必須引数として追加（D2）し、`ServiceRegistration` のファクトリを更新。
+  4. `RefreshOutputKBMHandler`／`InitOutputKBMHandler` を §4.2 の対応表どおりに置換。`try/catch`（`Connect` の例外保護）、フォールバックの分岐条件、処理順序は従来のまま。`Global.outputKBMMapping` は `_profileSettings.OutputKBMMapping` へ置換。
+  5. `Start()`／`Stop()` の KBM 参照（識別子・表示名・切断）を `_virtualKBM` 経由へ置換（C2-33／C2-40）。
+  6. `ControlService.cs` の修飾 `Global.` 行（コメント除く）は 28 → 14 行。KBM 関連で残るのは On_Report 内の `outputKBMHandler.Sync()` 1箇所（無修飾、ホットパスのため PR-5）。
+- **テスト基盤の改善**: `ControlServiceTestFactory`（テスト用）を新設し、`ControlService` の生成をコンストラクタの引数型から `AppHost` で解決する方式にした。以降の PR で引数が増えてもテスト側の生成コードを修正する必要がない。既存の `ControlServiceDiWiringTests`／`ControlServicePr2DiWiringTests` はこの方式に置き換えた。
 - **検証**:
-  - 新規単体テスト: `VirtualKBMLifecycleTests.cs`（`ReleaseHandler` の null 安全性、フォールバック切替、`ApplyFakerInputVersion` が Faker ハンドラのみで呼ばれること、マッピング初期化）。
-  - 回帰テスト: `VirtualKBMTests.cs` および `dotnet test` 全件合格を確認。
-  - 実機: KBM 出力の接続・フォールバック（FakerInput 未導入環境）・再初期化（`RefreshOutputKBMHandler`）の動作確認。
+  - `VirtualKBMLifecycleTests`: `ReleaseHandler`（ハンドラあり／なし）、`DetermineHandler`、`SwitchToFallbackHandler`、`ApplyFakerInputVersion`（ハンドラあり／なし）、`InitializeMapping`、`EnvironmentService.FakerInputVersion` の等価性。
+  - `ControlServicePr3DiWiringTests`: `IVirtualKBM`／`IVirtualKBMLifecycle` の解決、`ControlService` の解決、新規必須引数の null 拒否。
+  - 回帰テスト: `dotnet test` 全件合格を確認。
+  - 実機（レビュー後）: ①通常起動（KBM 出力が従来どおり動く。ログの `Using output KB+M handler` の表示名）、②コマンドライン `-virtualkbm fakerinput` を FakerInput 未導入の環境で指定（接続失敗により SendInput へフォールバックすること）、③開始→停止→開始の繰り返し（停止時の `Closing connection to output handler` ログ、再開始後に KBM 出力が動くこと）。`RefreshOutputKBMHandler` は現状リポジトリ内に呼び出し元がないため、実機で確認できる経路は `Start()` 内の `InitOutputKBMHandler` になる。
 
 ---
 
@@ -681,4 +685,12 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 
 - **実装**: §6 Step2-2 のとおり。新規は `IProfileSlotApplier`／`ProfileSlotApplier`、テスト `ControlServicePr2ShimEquivalenceTests`／`ControlServicePr2DiWiringTests`。
 - **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイル（xUnit は簡易スタブ）で新規エラー 0 件。`IProfileXmlStore` の追加メンバに追随できていなかった既存テストのモック2件は、この検査で見つけて修正した。
-- **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施）。実機では、コントローラーの接続時に、①初回接続時の保存プロファイル・リンクプロファイルの適用、②ライトバー色、③出力コントローラー（Xbox360／DS4）の種別切替、④DInput のみモードのスロットを重点的に確認する。
+- **自動検証**: ビルド、テストビルド、テスト実行の全てが成功（開発環境での実施結果）。リモートリポジトリへ反映済み。
+- **実機確認**（ユーザー実施）: コントローラー接続時の ①初回接続時の保存プロファイル・リンクプロファイルの適用、②ライトバー色、③出力コントローラー（Xbox360／DS4）の種別切替、④DInput のみモードのスロット — いずれも問題なし。
+- **併せて実施された整理（ユーザー実施、コミット `b88fc81`）**: 同名の `ProfileRepository.cs` が `DS4Control/` と `DS4Control/Services/` に2つ存在していた（前者は `DS4Windows.DS4Control` 名前空間の旧実装で、DTO ベースの XML 直列化を持つ）。旧 `DS4Control.ProfileRepository` の機能を DI の `IProfileRepository`／`ProfileRepository`（`Services/`）へ統合し、旧ファイルを削除した。`IProfileSlotApplier` の既定実装 `ProfileSlotApplier.cs` はリモートでは `DS4Control/` 直下に置かれている（名前空間は `DS4Windows.Services`。§3.3 原則3 の過渡期ルールにより許容）。
+
+### B.5 PR-3（Step2-3）: 2026-09-19
+
+- **実装**: §6 Step2-3 のとおり。新規は `IVirtualKBMLifecycle`／`OutputKBMHandlerLifecycle`、テスト `VirtualKBMLifecycleTests`／`ControlServicePr3DiWiringTests`／`ControlServiceTestFactory`。
+- **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイル（xUnit は簡易スタブ）で新規エラー 0 件。
+- **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施。手順は §6 Step2-3 の検証欄）。

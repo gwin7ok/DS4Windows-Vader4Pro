@@ -48,6 +48,9 @@ namespace DS4Windows
 
         public bool UsingMaxControllers => ProcessControllerSlotLimit == ControlService.EXPANDED_CONTROLLER_COUNT;
 
+        // ---- Phase6-Step2-3 (PR-3): FakerInput 導入バージョン ----
+        public string FakerInputVersion => Global.fakerInputVersion;
+
         private static int CalculateControllerSlotLimit()
         {
 #if FORCE_4_INPUT

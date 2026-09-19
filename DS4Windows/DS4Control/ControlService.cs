@@ -128,6 +128,10 @@ namespace DS4Windows
         private readonly DI.IDeviceStateService _deviceStateService;
         private readonly DI.IProfileXmlStore _profileXmlStore;
         private readonly Services.IProfileSlotApplier _profileSlotApplier;
+
+        // Phase6-Step2-3 (PR-3): KBM 出力の送出（IVirtualKBM）とハンドラのライフサイクル（IVirtualKBMLifecycle）を分離（決定D3）
+        private readonly Services.IVirtualKBM _virtualKBM;
+        private readonly Services.IVirtualKBMLifecycle _kbmLifecycle;
         // コントローラースロット上限（現在接続台数ではない）。プロセス内で不変のためコンストラクタで1回だけ取得する。
         private readonly int _controllerSlotLimit;
 
@@ -237,7 +241,9 @@ namespace DS4Windows
             DI.IProfileRepository profileRepository,
             DI.IDeviceStateService deviceStateService,
             DI.IProfileXmlStore profileXmlStore,
-            Services.IProfileSlotApplier profileSlotApplier)
+            Services.IProfileSlotApplier profileSlotApplier,
+            Services.IVirtualKBM virtualKBM,
+            Services.IVirtualKBMLifecycle kbmLifecycle)
         {
             this.cmdParser = cmdParser;
             this._deviceRegistry = deviceRegistry;
@@ -253,6 +259,8 @@ namespace DS4Windows
             this._deviceStateService = deviceStateService ?? throw new ArgumentNullException(nameof(deviceStateService));
             this._profileXmlStore = profileXmlStore ?? throw new ArgumentNullException(nameof(profileXmlStore));
             this._profileSlotApplier = profileSlotApplier ?? throw new ArgumentNullException(nameof(profileSlotApplier));
+            this._virtualKBM = virtualKBM ?? throw new ArgumentNullException(nameof(virtualKBM));
+            this._kbmLifecycle = kbmLifecycle ?? throw new ArgumentNullException(nameof(kbmLifecycle));
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 
@@ -526,15 +534,12 @@ namespace DS4Windows
 
         public void RefreshOutputKBMHandler()
         {
-            if (Global.outputKBMHandler != null)
-            {
-                Global.outputKBMHandler.Disconnect();
-                Global.outputKBMHandler = null;
-            }
+            // ハンドラの Disconnect と破棄（null 判定を含む）は IVirtualKBMLifecycle が担う（決定D3）。
+            _kbmLifecycle.ReleaseHandler();
 
-            if (Global.outputKBMMapping != null)
+            if (_profileSettings.OutputKBMMapping != null)
             {
-                Global.outputKBMMapping = null;
+                _profileSettings.OutputKBMMapping = null;
             }
 
             InitOutputKBMHandler();
@@ -543,32 +548,32 @@ namespace DS4Windows
         private void InitOutputKBMHandler()
         {
             string attemptVirtualkbmHandler = cmdParser.VirtualkbmHandler;
-            Global.InitOutputKBMHandler(attemptVirtualkbmHandler);
+            _kbmLifecycle.DetermineHandler(attemptVirtualkbmHandler);
 
             bool handlerConnected = false;
             try
             {
-                handlerConnected = Global.outputKBMHandler.Connect();
+                handlerConnected = _virtualKBM.Connect();
             }
             catch { }
 
             if (!handlerConnected &&
                 attemptVirtualkbmHandler != VirtualKBMFactory.GetFallbackHandlerIdentifier())
             {
-                Global.outputKBMHandler = VirtualKBMFactory.GetFallbackHandler();
+                _kbmLifecycle.SwitchToFallbackHandler();
             }
             else
             {
                 // Connection was made. Check if version number should get populated
-                if (outputKBMHandler.GetIdentifier() == FakerInputHandler.IDENTIFIER)
+                if (_virtualKBM.GetIdentifier() == FakerInputHandler.IDENTIFIER)
                 {
-                    Global.outputKBMHandler.Version = Global.fakerInputVersion;
+                    _kbmLifecycle.ApplyFakerInputVersion();
                 }
             }
 
-            Global.InitOutputKBMMapping(Global.outputKBMHandler.GetIdentifier());
-            Global.outputKBMMapping.PopulateConstants();
-            Global.outputKBMMapping.PopulateMappings();
+            _kbmLifecycle.InitializeMapping(_virtualKBM.GetIdentifier());
+            _profileSettings.OutputKBMMapping.PopulateConstants();
+            _profileSettings.OutputKBMMapping.PopulateMappings();
         }
 
         private void OutputslotMan_ViGEmFailure(object sender, int errorCode)
@@ -1672,13 +1677,13 @@ namespace DS4Windows
                 Thread.Sleep(2000);
 
                 bool runningAsAdmin = _environmentService.IsAdministrator();
-                if (Global.outputKBMHandler.GetIdentifier() != FakerInputHandler.IDENTIFIER && !runningAsAdmin)
+                if (_virtualKBM.GetIdentifier() != FakerInputHandler.IDENTIFIER && !runningAsAdmin)
                 {
                     string helpURL = @"https://ryochan7.github.io/ds4windows-site/troubleshooting/kb-mouse-issues/#windows-not-responding-to-ds4ws-kb-m-commands-in-some-situations";
                     LogDebug($"Some applications may block controller inputs. (Windows UAC Conflictions). Please go to {helpURL} for more information and workarounds.");
                 }
 
-                LogDebug($"Using output KB+M handler: {Global.outputKBMHandler.GetFullDisplayName()}");
+                LogDebug($"Using output KB+M handler: {_virtualKBM.GetFullDisplayName()}");
                 LogDebug($"Connection to ViGEmBus {Global.vigembusVersion} established");
 
                 _deviceRegistry.IsExclusiveMode = _appSettings.UseExclusiveMode; //Re-enable Exclusive Mode
@@ -1999,8 +2004,8 @@ namespace DS4Windows
                 StopViGEm();
 
                 // Disconnect from KBM system when stopping ControlService
-                LogDebug($"Closing connection to output handler {outputKBMHandler.GetDisplayName()}");
-                outputKBMHandler.Disconnect();
+                LogDebug($"Closing connection to output handler {_virtualKBM.GetDisplayName()}");
+                _virtualKBM.Disconnect();
                 inServiceTask = false;
                 activeControllers = 0;
             }

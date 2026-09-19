@@ -38,5 +38,8 @@
         int ControllerSlotLimit { get; }
         /// <summary><see cref="ControllerSlotLimit"/> が拡張スロット数（8）であるか。</summary>
         bool UsingMaxControllers { get; }
+
+        // ---- Phase6-Step2-3 (PR-3): FakerInput 導入バージョン（Global への薄い委譲。利用者は IVirtualKBMLifecycle 実装）----
+        string FakerInputVersion { get; }
     }
 }

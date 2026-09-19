@@ -67,6 +67,7 @@ namespace DS4Windows.DI
             services.AddSingleton<IProcessLauncher, DefaultProcessLauncher>();
             services.AddSingleton<IProfileSwitcher, DefaultProfileSwitcher>();
             services.AddSingleton<IVirtualKBM, OutputKBMHandlerAdapter>();
+            services.AddSingleton<IVirtualKBMLifecycle, OutputKBMHandlerLifecycle>();
             services.AddSingleton<IMacroPlayer, DefaultMacroPlayer>();
 
             // Phase 4: UI層 ViewModel ファクトリの登録
@@ -96,7 +97,9 @@ namespace DS4Windows.DI
                     sp.GetRequiredService<IProfileRepository>(),
                     sp.GetRequiredService<IDeviceStateService>(),
                     sp.GetRequiredService<IProfileXmlStore>(),
-                    sp.GetRequiredService<IProfileSlotApplier>()
+                    sp.GetRequiredService<IProfileSlotApplier>(),
+                    sp.GetRequiredService<IVirtualKBM>(),
+                    sp.GetRequiredService<IVirtualKBMLifecycle>()
                 );
             });
             services.AddSingleton<IDeviceStateAccessor>(sp => sp.GetRequiredService<ControlService>());

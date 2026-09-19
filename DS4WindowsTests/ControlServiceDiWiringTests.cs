@@ -10,6 +10,7 @@ namespace DS4WindowsTests
     /// Phase6-Step2-1 (PR-1): ControlService のコンストラクタ注入拡張（IAppSettingsService /
     /// IEnvironmentService / IPathService）が ServiceRegistration の Composition Root から
     /// 正しく配線されていること、および必須引数（Pure DI、決定D2）が null で受け付けられないことを検証する。
+    /// ControlService の生成は <see cref="ControlServiceTestFactory"/> を用いる。
     /// </summary>
     public class ControlServiceDiWiringTests
     {
@@ -49,20 +50,7 @@ namespace DS4WindowsTests
         [Fact]
         public void Constructor_NullAppSettings_ThrowsArgumentNullException()
         {
-            DS4WinWPF.AppHost.CreateHost();
-
-            var ex = Assert.Throws<ArgumentNullException>(() => new ControlService(
-                new DS4WinWPF.ArgumentParser(),
-                DS4WinWPF.AppHost.GetService<IDs4DeviceRegistry>(),
-                DS4WinWPF.AppHost.GetService<IProfileSettingsService>(),
-                null,
-                DS4WinWPF.AppHost.GetService<IEnvironmentService>(),
-                DS4WinWPF.AppHost.GetService<IPathService>(),
-                () => DS4WinWPF.AppHost.GetService<IOutputSlotService>(),
-                DS4WinWPF.AppHost.GetService<IProfileRepository>(),
-                DS4WinWPF.AppHost.GetService<IDeviceStateService>(),
-                DS4WinWPF.AppHost.GetService<IProfileXmlStore>(),
-                DS4WinWPF.AppHost.GetService<IProfileSlotApplier>()));
+            var ex = Assert.Throws<ArgumentNullException>(() => ControlServiceTestFactory.Create("appSettings"));
 
             Assert.Equal("appSettings", ex.ParamName);
         }
@@ -70,20 +58,7 @@ namespace DS4WindowsTests
         [Fact]
         public void Constructor_NullEnvironmentService_ThrowsArgumentNullException()
         {
-            DS4WinWPF.AppHost.CreateHost();
-
-            var ex = Assert.Throws<ArgumentNullException>(() => new ControlService(
-                new DS4WinWPF.ArgumentParser(),
-                DS4WinWPF.AppHost.GetService<IDs4DeviceRegistry>(),
-                DS4WinWPF.AppHost.GetService<IProfileSettingsService>(),
-                DS4WinWPF.AppHost.GetService<IAppSettingsService>(),
-                null,
-                DS4WinWPF.AppHost.GetService<IPathService>(),
-                () => DS4WinWPF.AppHost.GetService<IOutputSlotService>(),
-                DS4WinWPF.AppHost.GetService<IProfileRepository>(),
-                DS4WinWPF.AppHost.GetService<IDeviceStateService>(),
-                DS4WinWPF.AppHost.GetService<IProfileXmlStore>(),
-                DS4WinWPF.AppHost.GetService<IProfileSlotApplier>()));
+            var ex = Assert.Throws<ArgumentNullException>(() => ControlServiceTestFactory.Create("environmentService"));
 
             Assert.Equal("environmentService", ex.ParamName);
         }
@@ -91,20 +66,7 @@ namespace DS4WindowsTests
         [Fact]
         public void Constructor_NullPathService_ThrowsArgumentNullException()
         {
-            DS4WinWPF.AppHost.CreateHost();
-
-            var ex = Assert.Throws<ArgumentNullException>(() => new ControlService(
-                new DS4WinWPF.ArgumentParser(),
-                DS4WinWPF.AppHost.GetService<IDs4DeviceRegistry>(),
-                DS4WinWPF.AppHost.GetService<IProfileSettingsService>(),
-                DS4WinWPF.AppHost.GetService<IAppSettingsService>(),
-                DS4WinWPF.AppHost.GetService<IEnvironmentService>(),
-                null,
-                () => DS4WinWPF.AppHost.GetService<IOutputSlotService>(),
-                DS4WinWPF.AppHost.GetService<IProfileRepository>(),
-                DS4WinWPF.AppHost.GetService<IDeviceStateService>(),
-                DS4WinWPF.AppHost.GetService<IProfileXmlStore>(),
-                DS4WinWPF.AppHost.GetService<IProfileSlotApplier>()));
+            var ex = Assert.Throws<ArgumentNullException>(() => ControlServiceTestFactory.Create("pathService"));
 
             Assert.Equal("pathService", ex.ParamName);
         }
