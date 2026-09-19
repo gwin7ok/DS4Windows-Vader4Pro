@@ -506,6 +506,8 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/AutoProfileServiceTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/AutoProfilesViewModelTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/CompositionRootTests.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServiceDiWiringTests.cs
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlServiceShimEquivalenceTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControlTabAndSpecialActionKeyTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/ControllerListViewModelTests.cs
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/DS4WindowsTests/DS4Windows.Actions.Tests.csproj
@@ -729,6 +731,7 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Verification-Checklist.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-pretest-cleanup-Completion-Report.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step14-pretest-cleanup-plan.md
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step15-Completion-Report.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step15-Plan.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step2-Completion-Report.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase5-Step2-Plan.md
