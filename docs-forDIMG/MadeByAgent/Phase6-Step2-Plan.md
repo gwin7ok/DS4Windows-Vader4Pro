@@ -1,9 +1,9 @@
 # Phase6-Step2 計画書: `ControlService.cs` のGlobal直参照解消
 
 作成日: 2026-09-09  
-改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記）  
+改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: PR-1 完了（ビルド・テスト成功、コミット済み `da16de4`、実機確認は OSC/UDP のみ未実施）・決定O2=C 確定／PR-1b 実装済み（レビュー待ち）・O1／O3 決定待ち  
+状態: PR-1・PR-1b 完了（ビルド・テスト成功、コミット済み `da16de4`／`5400257`、実機確認は OSC/UDP のみ未実施）・決定O3=A／O1=B 確定・PR-1c 実装済み（レビュー待ち）・O4（O1 の具体形）決定待ち  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -57,13 +57,14 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 | **D2** | コンストラクタの `AppHost.GetService` フォールバック | **新規引数はすべて必須引数（Pure DI）**とし、`?? AppHost.GetService<T>()` フォールバックは新設しない。`ServiceRegistration` のファクトリで全て解決する。既存の `profileSettings ?? Global.ProfileSettingsServiceInstance` のみ、過渡期の防御コードとして本文内に残す（Step12 で削除判断） |
 | **D3** | KBM ハンドラの生成・差し替え | **新規 `IVirtualKBMLifecycle`（1ファイル1型）**を追加し、実装 `OutputKBMHandlerLifecycle` は `Global` への薄い委譲とする。`IVirtualKBM`（送出専用）は変更しない（詳細は §4.2） |
 | **O2** | C2-01（`CURRENT_DS4_CONTROLLER_LIMIT` の静的初期化 `Global.IsWin8OrGreater()`） | **C（インスタンス化）を採用**（推奨案 B の「静的ヘルパーへ移設」ではなく、上限を DI サービスの値として扱う）。実装が大きいため、実施方式（段階／一括）は O3 で決定する。PR-1b で `IEnvironmentService.ControllerSlotLimit` / `UsingMaxControllers` を新設し、`ControlService` 内部を注入値へ移行した（§6 Step2-1b） |
+| **O3** | O2=C の実施方式 | **A（段階実施）**を採用。外部の未移行呼び出し元（15ファイル・54箇所）は、各 Step が対象ファイルを Pure DI 化する際に同時に置換し、`ControlService` の static 互換シムは Phase6-Step12 で削除する。DI サービス2件（`ProfileSettingsService`／`AutoProfileService`）は Step2 内の PR-1c で実施する |
+| **O1** | C2-47（`Global.ApplyProfileToSlot`）の扱い | **B（`ControlService` が `IProfileApplicationService` に直接依存せず、委譲によって適用する）を採用**。理由: Pure DI の方向性を重視するため。K1（§0.3.5）により `IProfileApplicationService.ApplyProfile` へ直接置換できないことも踏まえ、具体形は O4 で決定する |
 
 #### 0.3.3 未決事項
 
 | ID | 論点 | 決定時期 |
 |---|---|---|
-| **O3** | O2=C の実施方式。外部の未移行呼び出し元が54箇所（15ファイル）あり、その多くは Step5／8／9／10／12 の対象ファイルである。(A) 段階実施: 各 Step が対象ファイルを Pure DI 化する際に同時に置換し、`ControlService` の static 互換シムは Step12 で削除する。(B) 一括実施: 54箇所を Step2 内で全置換し、互換シムを即時に撤去する | PR-1b レビュー時に、メリット・デメリット・推奨（A）を提示して決定 |
-| **O1** | C2-47（`Global.ApplyProfileToSlot`）の扱い。`IProfileApplicationService.ApplyProfile` は `Global.ApplyProfileToSlot` と等価ではない（§0.3.5 K1）ため、(A) `Func<IProfileApplicationService>` への置換は、先に K1 の是正と等価性確認が必要。(B) イベント経由の委譲は過剰設計。(C) `Global.ApplyProfileToSlot` を温存（同メソッドの XML コメントが既に「フェーズGで `IProfileApplicationService` へ完全委譲」と予告済み） | Step2-2（PR-2）着手時に、メリット・デメリット・推奨（C）を提示して決定 |
+| **O4** | O1=B の具体形（C2-47）。(B-1) 適用要求イベント: `ControlService` がイベントを発火し、上位が購読して適用する。戻り値（`profileLoaded`）を後続処理が使うため、イベント引数に結果を書き戻す形になり、購読者がいないと適用されないまま無言で失敗する（§2.2 機能維持に反する）。(B-2) 注入ポート: `ControlService` が自身で定義する狭いインターフェース（例: `IProfileSlotApplier.ApplyToSlot(slot, profile, source)`、戻り値あり）をコンストラクタで受け取る。実装は当面 `Global.ApplyProfileToSlot` へ委譲し、`ControlService` への逆依存を持たない。B の趣旨（依存の逆転）を保ち、Pure DI・同期の戻り値・起動時配線の漏れ検出（コンテナ構築時）を満たす。新規インターフェースのためモデル図 03／04 への追記が必要 | PR-2 着手前に、メリット・デメリット・推奨（B-2）を提示して決定。モデル図の変更は指示を仰ぐ |
 
 #### 0.3.4 モデル図の連動更新
 
@@ -163,7 +164,7 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 | C2-44 | 2116, 2123, 2141 Q | `PrepareConnectedInput...` | `IsFirstConnection(i)`, `MarkConnected(i)` | (b) | N | `_deviceStateService.IsFirstConnection(i)`, `_deviceStateService.MarkConnected(i)` |
 | C2-45 | 2128, 2131, 2154, 2156 U | `PrepareConnectedInput...` | `containsLinkedProfile(s)`, `getLinkedProfile(s)` | (b) | N | `_profileRepository.ContainsLinkedProfile(s)`, `_profileRepository.GetLinkedProfile(s)` |
 | C2-46 | 2137, 2146, 2151, 2157, 2162 Q/U | `PrepareConnectedInput...` | `OlderProfilePath[i]`, `SelectedProfile[i]`, `LinkedProfileUI[i]` | (a) | N | `_profileRepository.OlderProfilePath[i]`, `SelectedProfile[i]`, `LinkedProfileUI[i]` |
-| C2-47 | 2168 Q | `PrepareConnectedInput...` | `ApplyProfileToSlot(i, ...)` | (b) | N | **O1（未決）**: Step2-2 着手時に方式を決定（§0.3.3）。それまで `Global.ApplyProfileToSlot` は温存 |
+| C2-47 | 2168 Q | `PrepareConnectedInput...` | `ApplyProfileToSlot(i, ...)` | (b) | N | **O1=B（確定）／具体形は O4 で決定**。決定までは `Global.ApplyProfileToSlot` を温存。`IProfileApplicationService` への直接置換は K1 のため行わない |
 | C2-48 | 2174, 3128 U | `PrepareConnectedInput...`, `LagFlashWarning` | `getMainColor(index)` | (a) | N/H条件 | `_profileSettings.GetMainColor(index)` |
 | C2-49 | 2257, 2260, 2269, 2275 Q | UDP 平滑化設定 | `UDPServerSmoothingMincutoff`, `UDPServerSmoothingBeta` | (b) | N | `_appSettings.UDPServerSmoothingMincutoff`, `_appSettings.UDPServerSmoothingBeta` |
 
@@ -440,8 +441,8 @@ namespace DS4Windows.Services
 | 呼び出し元 | 箇所数 | 担当案 | 置換方法 |
 |---|---:|---|---|
 | `OutputSlotManager.cs` | 3 | Step5 | コンストラクタで上限を受け取る（引数なしのコンストラクタは互換のため残す） |
-| `Services/ProfileSettingsService.cs` | 4 | PR-1c（提案） | `IEnvironmentService` をコンストラクタ注入（既存テストの `new ProfileSettingsService()` の修正を伴う） |
-| `Services/AutoProfileService.cs` | 2 | PR-1c（提案） | 同上（`AutoProfileChecker` と `AutoProfileServiceTests` の生成箇所の修正を伴う） |
+| `Services/ProfileSettingsService.cs` | 4 | PR-1c（**実装済み**） | `IEnvironmentService` をコンストラクタ注入（既存テストの `new ProfileSettingsService()` の修正を伴う） |
+| `Services/AutoProfileService.cs` | 2 | PR-1c（**実装済み**） | 同上（`AutoProfileChecker` と `AutoProfileServiceTests` の生成箇所の修正を伴う） |
 | `ScpUtil.cs`（`Global` 内部の static メソッド） | 8 | Step12 | `Global.EnvironmentServiceInstance` 経由へ（Global 内部のためシム扱い） |
 | `DTOXml/AutoProfilesDTO.cs` | 2 | Step10 | 引数渡し |
 | `ProfileSettingsViewModel.cs` | 10 | Step9 | コンストラクタ注入（`IViewModelFactory` 経由） |
@@ -450,6 +451,14 @@ namespace DS4Windows.Services
 | `AutoProfilesViewModel.cs`／`AutoProfiles.xaml.cs` | 2／2 | Step10 | コンストラクタ注入／`AppHost` 経由 |
 | `RecordBoxViewModel.cs`／`BindingWindowViewModel.cs`／`BindingWindow.xaml.cs` | 3／3／1 | Step10 | 同上 |
 | `SpecialActions/CheckBatteryViewModel.cs`／`CurrentOutDeviceViewModel.cs` | 3／1 | Step10 | 同上 |
+
+---
+
+### Step2-1c (PR-1c): DI サービス2件のスロット上限を IEnvironmentService 注入へ（決定O3=A）
+- **対象**: `ProfileSettingsService`（4箇所）、`AutoProfileService`（2箇所）の `ControlService.CURRENT_DS4_CONTROLLER_LIMIT` 参照。
+- **作業内容（実装済み）**: 両サービスのコンストラクタに `IEnvironmentService environmentService = null` を末尾の省略可能引数として追加し、上限の参照を `_environmentService.ControllerSlotLimit` へ置換した。省略時は状態を持たない既定実装（`new EnvironmentService()`）を使う。
+- **省略可能引数にした理由**: 両サービスの生成箇所が約45箇所（テスト・`Global` のフォールバック・`AutoProfileChecker`）あり、いずれも既存の省略可能引数を使っているため、必須にすると全生成箇所の修正が必要になる。DI コンテナ経由では登録済みの `IEnvironmentService` が注入される。`AppHost.Services` の新規参照は追加していない（`ControlService` の決定D2とは異なり、既存コンストラクタの慣例に合わせた）。
+- **検証**: `EnvironmentServiceInjectionTests`（注入・省略時の生成、コンテナ解決）。上限を使う挙動は既存の `ProfileSettingsServiceSubSettingsTests`／`AutoProfileServiceTests` が既定実装経由で検証する。
 
 ---
 
@@ -656,4 +665,11 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 
 - **実装**: §6 Step2-1b のとおり（`IEnvironmentService`／`EnvironmentService`／`ControlService`、新規テスト `ControllerSlotLimitTests`）。
 - **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソース（既存診断 1,265 件）で新規エラー 0 件を確認。テストファイルも xUnit の簡易スタブで検証した。
-- **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施）。
+- **自動検証**: ビルド、テストビルド、テスト実行の全てが成功（開発環境での実施結果）。コミット `5400257`。
+- **実機確認**: 簡単な実機テストで問題なし（ユーザー実施）。
+
+### B.3 PR-1c（Step2-1c）: 2026-09-19
+
+- **実装**: §6 Step2-1c のとおり（`ProfileSettingsService`／`AutoProfileService`、新規テスト `EnvironmentServiceInjectionTests`）。
+- **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソース（既存診断 1,265 件）で新規エラー 0 件。既存テストの生成箇所は末尾の省略可能引数のため無変更で互換。
+- **未実施**: `dotnet build` / `dotnet test`（レビュー後に開発環境で実施）。

@@ -24,9 +24,16 @@ namespace DS4Windows
         private readonly BackingStore _config;
         private BackingStore SafeConfig => _config ?? Global.store;
 
-        public ProfileSettingsService(BackingStore backingStore = null)
+        // Phase6-Step2-1c (決定O2=C/O3=A): スロット上限（現在接続台数ではない）を IEnvironmentService から取得する。
+        // 既存の生成箇所（テスト・Global のフォールバック）を変更しないよう省略可能とし、
+        // 省略時は状態を持たない既定実装を用いる（AppHost.Services は使用しない）。
+        private readonly IEnvironmentService _environmentService;
+
+        public ProfileSettingsService(BackingStore backingStore = null,
+            IEnvironmentService environmentService = null)
         {
             _config = backingStore ?? Global.store;
+            _environmentService = environmentService ?? new EnvironmentService();
         }
 
         public CultureInfo ConfigDecimalCulture { get; } = new CultureInfo("en-US");
@@ -691,9 +698,9 @@ namespace DS4Windows
             lock (_syncLock)
             {
                 int start = deviceIndex >= 0 ? deviceIndex : 0;
-                int end = deviceIndex >= 0 ? deviceIndex + 1 : ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+                int end = deviceIndex >= 0 ? deviceIndex + 1 : _environmentService.ControllerSlotLimit;
 
-                for (int dev = start; dev < end && dev < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; dev++)
+                for (int dev = start; dev < end && dev < _environmentService.ControllerSlotLimit; dev++)
                 {
                     if (_subSettingsUnwireMap.TryGetValue(dev, out var unwireList))
                     {
@@ -730,9 +737,9 @@ namespace DS4Windows
                 lock (_syncLock)
                 {
                     int start = deviceIndex >= 0 ? deviceIndex : 0;
-                    int end = deviceIndex >= 0 ? deviceIndex + 1 : ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+                    int end = deviceIndex >= 0 ? deviceIndex + 1 : _environmentService.ControllerSlotLimit;
 
-                    for (int dev = start; dev < end && dev < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; dev++)
+                    for (int dev = start; dev < end && dev < _environmentService.ControllerSlotLimit; dev++)
                     {
                         int currentDev = dev;
                         var unwireList = new List<Action>();

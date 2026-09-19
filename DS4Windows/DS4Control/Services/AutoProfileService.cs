@@ -14,6 +14,8 @@ namespace DS4Windows
         private readonly IProfileApplicationService _profileAppService;
         private readonly IProfileSettingsService _profileSettings;
         private readonly IProcessInspector _processInspector;
+        // Phase6-Step2-1c (決定O2=C/O3=A): スロット上限（現在接続台数ではない）の取得元。
+        private readonly IEnvironmentService _environmentService;
 
         private bool _turnOffTemp;
         private AutoProfileEntity _tempAutoProfile;
@@ -45,12 +47,15 @@ namespace DS4Windows
         public AutoProfileService(AutoProfileHolder holder = null,
             IProfileApplicationService profileAppService = null,
             IProfileSettingsService profileSettings = null,
-            IProcessInspector processInspector = null)
+            IProcessInspector processInspector = null,
+            IEnvironmentService environmentService = null)
         {
             _holder = holder ?? new AutoProfileHolder();
             _profileAppService = profileAppService ?? DS4WinWPF.AppHost.GetService<IProfileApplicationService>();
             _profileSettings = profileSettings ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>();
             _processInspector = processInspector ?? DS4WinWPF.AppHost.GetService<IProcessInspector>();
+            // 省略時は状態を持たない既定実装を用いる（新規の AppHost.Services 参照は追加しない）。
+            _environmentService = environmentService ?? new EnvironmentService();
         }
 
         public void CheckProfiles()
@@ -91,7 +96,7 @@ namespace DS4Windows
                         forceLoadProfile = true;
                     }
 
-                    for (int j = 0; j < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; j++)
+                    for (int j = 0; j < _environmentService.ControllerSlotLimit; j++)
                     {
                         string tempname = matchedProfileEntity.ProfileNames[j];
                         if (!string.IsNullOrEmpty(tempname) && tempname != "(none)")
@@ -150,7 +155,7 @@ namespace DS4Windows
                     }
 
                     _tempAutoProfile = null;
-                    for (int j = 0; j < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; j++)
+                    for (int j = 0; j < _environmentService.ControllerSlotLimit; j++)
                     {
                         bool useTemp = _profileSettings?.GetUseTempProfile(j) ?? false;
                         if (useTemp)
