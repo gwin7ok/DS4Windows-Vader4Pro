@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml.Serialization;
 using DS4Windows.DI;
+using DS4WinWPF.DS4Control.DTOXml;
 
 namespace DS4Windows
 {
@@ -137,6 +139,77 @@ namespace DS4Windows
                 }
             }
         }
+
+        // ====================================================================================
+        // --- 旧 DS4Windows.DS4Control.ProfileRepository から統合した DTO ベースの I/O ロジック ---
+        // ====================================================================================
+        public bool LoadProfile(string filePath, int deviceIndex, BackingStore destination)
+        {
+            lock (_fileLock)
+            {
+                try
+                {
+                    if (!File.Exists(filePath)) return false;
+
+                    XmlSerializer serializer = new XmlSerializer(typeof(ProfileDTO), ProfileDTO.GetAttributeOverrides());
+
+                    using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        if (serializer.Deserialize(fs) is ProfileDTO dto)
+                        {
+                            dto.DeviceIndex = deviceIndex;
+                            dto.MapTo(destination);
+
+                            // プロファイル読み込み完了後、サブ設定オブジェクトの変更バブリングを再配線
+                            _profileSettings?.WireSubSettingsEvents(deviceIndex);
+
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogError($"Failed to load profile from {filePath}: {ex.Message}");
+                }
+                return false;
+            }
+        }
+
+        public bool SaveProfile(string filePath, int deviceIndex, BackingStore source)
+        {
+            lock (_fileLock)
+            {
+                try
+                {
+                    ProfileDTO dto = new ProfileDTO
+                    {
+                        DeviceIndex = deviceIndex
+                    };
+
+                    dto.MapFrom(source);
+
+                    XmlSerializer serializer = new XmlSerializer(typeof(ProfileDTO), ProfileDTO.GetAttributeOverrides());
+
+                    string dir = Path.GetDirectoryName(filePath);
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    using (FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        serializer.Serialize(fs, dto);
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogError($"Failed to save profile to {filePath}: {ex.Message}");
+                }
+                return false;
+            }
+        }
+        // ====================================================================================
 
         public bool LoadDefaultProfile(int deviceIndex)
         {

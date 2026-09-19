@@ -12,6 +12,11 @@ namespace DS4Windows.DI
         bool LoadProfile(int deviceIndex, string profileName);
         bool SaveProfile(int deviceIndex, string profileName);
 
+        // --- 旧 DS4Windows.DS4Control.IProfileRepository から統合したDTOベースのXML直列化メソッド ---
+        bool LoadProfile(string filePath, int deviceIndex, BackingStore destination);
+        bool SaveProfile(string filePath, int deviceIndex, BackingStore source);
+        // ---------------------------------------------------------------------------------------------
+
         bool LoadDefaultProfile(int deviceIndex);
         bool LoadProfileToSlot(int deviceIndex, string profileName);
 
