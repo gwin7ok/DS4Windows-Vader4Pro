@@ -93,6 +93,18 @@
 		<WriteLinesToFile File="$(OutDir)build_timestamp.txt" Lines="$(BuildTimestamp)" Overwrite="true" Encoding="UTF-8" />
 	</Target>
 
+<!-- ディスクに出力された生成ファイルが通常のソースとして二重読み込み・衝突するのを防ぐ -->
+  <ItemGroup>
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Resources\**" />
+    <EmbeddedResource Remove="Resources\**" />
+    <None Remove="Resources\**" />
+    <Page Remove="Resources\**" />
+  </ItemGroup>
+  
 	<ItemGroup>
 		<PackageReference Include="bloomtom.HttpProgress" Version="2.3.2" />
 		<PackageReference Include="DotNetProjects.Extended.Wpf.Toolkit" Version="5.0.106" />

@@ -31,6 +31,7 @@ dotnet_diagnostic.CS0234.severity = none
 dotnet_diagnostic.CS0246.severity = none
 dotnet_diagnostic.CS0122.severity = none
 dotnet_diagnostic.CS1061.severity = none
+dotnet_diagnostic.CS0103.severity = none
 
 [*.xaml]
 charset = utf-8
