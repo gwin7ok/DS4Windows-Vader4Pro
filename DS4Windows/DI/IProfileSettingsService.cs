@@ -255,5 +255,8 @@ namespace DS4Windows.DI
         /// 課題①: 指定スロット（-1 の場合は全スロット）のネストされたサブ設定オブジェクト群のイベント購読を解除します。
         /// </summary>
         void UnwireSubSettingsEvents(int deviceIndex = -1);
+
+        // ---- Phase6-Step2-2 (PR-2): 接続時のエクストラボタン再構築（Global への薄い委譲）----
+        void RefreshExtrasButtons(int deviceIndex, List<DS4Controls> buttons);
     }
 }

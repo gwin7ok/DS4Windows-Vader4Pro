@@ -57,7 +57,12 @@ namespace DS4WindowsTests
                 DS4WinWPF.AppHost.GetService<IProfileSettingsService>(),
                 null,
                 DS4WinWPF.AppHost.GetService<IEnvironmentService>(),
-                DS4WinWPF.AppHost.GetService<IPathService>()));
+                DS4WinWPF.AppHost.GetService<IPathService>(),
+                () => DS4WinWPF.AppHost.GetService<IOutputSlotService>(),
+                DS4WinWPF.AppHost.GetService<IProfileRepository>(),
+                DS4WinWPF.AppHost.GetService<IDeviceStateService>(),
+                DS4WinWPF.AppHost.GetService<IProfileXmlStore>(),
+                DS4WinWPF.AppHost.GetService<IProfileSlotApplier>()));
 
             Assert.Equal("appSettings", ex.ParamName);
         }
@@ -73,7 +78,12 @@ namespace DS4WindowsTests
                 DS4WinWPF.AppHost.GetService<IProfileSettingsService>(),
                 DS4WinWPF.AppHost.GetService<IAppSettingsService>(),
                 null,
-                DS4WinWPF.AppHost.GetService<IPathService>()));
+                DS4WinWPF.AppHost.GetService<IPathService>(),
+                () => DS4WinWPF.AppHost.GetService<IOutputSlotService>(),
+                DS4WinWPF.AppHost.GetService<IProfileRepository>(),
+                DS4WinWPF.AppHost.GetService<IDeviceStateService>(),
+                DS4WinWPF.AppHost.GetService<IProfileXmlStore>(),
+                DS4WinWPF.AppHost.GetService<IProfileSlotApplier>()));
 
             Assert.Equal("environmentService", ex.ParamName);
         }
@@ -89,7 +99,12 @@ namespace DS4WindowsTests
                 DS4WinWPF.AppHost.GetService<IProfileSettingsService>(),
                 DS4WinWPF.AppHost.GetService<IAppSettingsService>(),
                 DS4WinWPF.AppHost.GetService<IEnvironmentService>(),
-                null));
+                null,
+                () => DS4WinWPF.AppHost.GetService<IOutputSlotService>(),
+                DS4WinWPF.AppHost.GetService<IProfileRepository>(),
+                DS4WinWPF.AppHost.GetService<IDeviceStateService>(),
+                DS4WinWPF.AppHost.GetService<IProfileXmlStore>(),
+                DS4WinWPF.AppHost.GetService<IProfileSlotApplier>()));
 
             Assert.Equal("pathService", ex.ParamName);
         }

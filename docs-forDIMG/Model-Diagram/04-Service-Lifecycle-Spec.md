@@ -47,12 +47,13 @@
 | **2.変換**| `IInputMappingPipeline` | `InputMappingPipeline` | **Singleton** | スロット別 `MappingPipelineContext` を各Processorへ適用統括 | 各Processor群, `IMappingActionDispatcher` |
 | **2.変換**| `IInputLoopCoordinator` | `InputLoopCoordinator` | **Singleton** | 毎秒250〜1000回の高速入力ポーリングループ実行 | `IDs4DeviceRegistry`, `IInputMappingPipeline` |
 | **2.変換**| `IProfileApplicationService`| `ProfileApplicationService` | **Singleton** | プロファイルのスロット適用・復帰、Halt保護 | `IProfileRepository`, `IOutputSlotService` |
+| **2.変換**| `IProfileSlotApplier` | `ProfileSlotApplier` | **Singleton** | 接続時などにスロットへプロファイルを適用する、`ControlService` 側の出力ポート（依存の逆転）。現状は `Global.ApplyProfileToSlot` へ委譲し、K1 是正後に `IProfileApplicationService` へ委譲する | なし（目標: `IProfileApplicationService`） |
 | **2.変換**| `IProfileActionProvider` | `ProfileActionProvider` | **Singleton** | プロファイルに紐づくアクション定義の解決 | `ISpecialActionRepository` |
 | **2.変換**| `IProfileActionChainService` | `ProfileActionChainService` | **Singleton** | アクションの連鎖実行・ライフサイクル管理 | `IProfileActionProvider` |
 | **2.変換**| `IAutoProfileService` | `AutoProfileService` | **Singleton** | フォアグラウンドアプリ監視とプロファイル自動切替 | `IProcessInspector`, `IProfileApplicationService` |
 | **2.変換**| `IMappingActionDispatcher` | `MappingActionDispatcher` | **Singleton** | パイプラインからのアクション発火要求の非同期分配 | `IManagedActionManager` |
 | **2.変換**| `IManagedActionManager` | `DefaultActionManager` | **Singleton** | マクロ・キー・プロファイル切替アクションの実行統括 | `IActionFactory` |
-| **2.変換**| `ControlService` | `ControlService` | **Singleton** | 入力・変換・出力パイプライン全体の開始・停止統括（ファサード） | `IDs4DeviceRegistry`, `IInputLoopCoordinator`, `IOutputSlotService`※1, `IProfileSettingsService`, `IAppSettingsService`, `IEnvironmentService`, `IPathService`, `IVirtualKBM`, `IVirtualKBMLifecycle`, `IProfileRepository`, `IDeviceStateService`, `IAppearanceSettingsService`, `IProfileXmlStore`, `IProfileActionProvider` |
+| **2.変換**| `ControlService` | `ControlService` | **Singleton** | 入力・変換・出力パイプライン全体の開始・停止統括（ファサード） | `IDs4DeviceRegistry`, `IInputLoopCoordinator`, `IOutputSlotService`※1, `IProfileSettingsService`, `IAppSettingsService`, `IEnvironmentService`, `IPathService`, `IVirtualKBM`, `IVirtualKBMLifecycle`, `IProfileRepository`, `IDeviceStateService`, `IAppearanceSettingsService`, `IProfileXmlStore`, `IProfileActionProvider`, `IProfileSlotApplier` |
 | **3.出力**| `IOutputSlotService` | `OutputSlotService` | **Singleton** | 仮想Xbox360/DS4（ViGEm）の生成、割当、切替 | `IOutputSlotStore` |
 | **3.出力**| `IVirtualKBM` | `OutputKBMHandlerAdapter` | **Singleton** | SendInput / FakerInput によるキー・マウス送出 | なし |
 | **3.出力**| `IVirtualKBMLifecycle` | `OutputKBMHandlerLifecycle` | **Singleton** | KBM出力ハンドラの生成・破棄・フォールバック切替・マッピング初期化（送出は `IVirtualKBM` が担当） | `IEnvironmentService` |
@@ -97,8 +98,11 @@
 | 逆依存（現状） | 実装上の根拠 | 影響 | 暫定措置 | 解消予定 |
 | :--- | :--- | :--- | :--- | :--- |
 | `OutputSlotService` → `ControlService` | コンストラクタで `_control = control ?? Program.rootHub`、`_slotManager` を `_control?.OutputslotMan` から取得 | `ControlService` 生成中に解決すると `_control` が null のまま固定され、`OutputSlotManager` が二重化する恐れ | `ControlService` は `Func<IOutputSlotService>` で遅延解決し、`ActiveOutDevType` 配列参照を初回にキャッシュ（決定D1） | Phase6-Step5（`OutputSlotService` 全面SSOT統合）。解消後は直接注入へ戻す |
-| `ProfileApplicationService` → `ControlService` | コンストラクタで `control ?? AppHost.GetService<ControlService>()` | `ControlService` 生成中に解決すると再帰生成の恐れ | `ControlService` からは直接注入しない（C2-47 の方式は Step2-2 着手時に決定） | 未定（Step2-2 の決定に従い、必要なら担当Stepを追加） |
+| `ProfileApplicationService` → `ControlService` | コンストラクタで `control ?? AppHost.GetService<ControlService>()` | `ControlService` 生成中に解決すると再帰生成の恐れ | `ControlService` からは直接注入しない（C2-47 は決定O1=B／O4=B-2 により、`ControlService` が定義する出力ポート `IProfileSlotApplier` 経由） | 未定（Step2-2 の決定に従い、必要なら担当Stepを追加） |
 | `ProfileRepository` → `ControlService` | メソッド内で `AppHost.GetService<ControlService>()` を実行時に呼ぶ（コンストラクタ依存ではない） | 生成順序の問題は無いが、Service Locator が残る | 現状維持 | 未定 |
+
+%% 注釈補強（2026-09-19 Phase6-Step2 決定O1=B／O4=B-2 反映）
+%% - 新規サービス `IProfileSlotApplier` / `ProfileSlotApplier`（2.変換、Singleton）を追加。`ControlService` の依存に `IProfileSlotApplier` を追加。
 
 %% 注釈補強（2026-09-19 Phase6-Step2 決定O2=C 反映）
 %% - `IEnvironmentService` に「コントローラースロット上限」（`ControllerSlotLimit` / `UsingMaxControllers`）を追加。旧 `ControlService` の static フィールドをサービスの値へ移行する。未移行の呼び出し元向けの static 互換シムは Phase6-Step12 で削除予定。

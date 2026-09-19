@@ -117,6 +117,7 @@ classDiagram
         -IOutputSlotService _outputSlotService
         -IVirtualKBM _virtualKBM
         -IVirtualKBMLifecycle _kbmLifecycle
+        -IProfileSlotApplier _profileSlotApplier
         -IProfileSettingsService _profileSettings
         -IAppSettingsService _appSettings
         -IEnvironmentService _environmentService
@@ -152,6 +153,12 @@ classDiagram
         +ApplyFakerInputVersion()
         +InitializeMapping(string identifier)
     }
+    class IProfileSlotApplier {
+        <<interface>>
+        +ApplyToSlot(int slotIndex, string profileName, ProfileChangeSource source) bool
+    }
+    class ProfileSlotApplier
+    IProfileSlotApplier <|.. ProfileSlotApplier : implements
     class OutputKBMHandlerAdapter {
         +PerformKeyPress(uint key)
         +Sync()
@@ -176,6 +183,7 @@ classDiagram
     ControlService --> ILightbarService : updates LED
     ControlService --> IVirtualKBM : identify / Sync
     ControlService --> IVirtualKBMLifecycle : manages KBM handler lifecycle
+    ControlService --> IProfileSlotApplier : applies connect-time profile
 
     %% ==========================================
     %% 4. UI層 (Sub-ViewModels Mediator構成)
@@ -263,6 +271,9 @@ classDiagram
 
 5. **送出とライフサイクルの分離（3-b KBM出力）：**
    * キー・マウスの送出（`IVirtualKBM`）と、出力ハンドラの生成・破棄・フォールバック切替・マッピング初期化（`IVirtualKBMLifecycle`）を別インターフェースに分ける。送出側（Actions・`IMouseEngine`）はライフサイクル操作を知らず、`ControlService` だけが両方を使う。
+
+%% 注釈補強（2026-09-19 Phase6-Step2 決定O1=B／O4=B-2 反映）
+%% - `IProfileSlotApplier`（`ProfileSlotApplier` が実装）を追加。`ControlService` は `IProfileApplicationService` に直接依存せず、自身が定義する出力ポートのみを知る（依存の逆転）。現状の実装は `Global.ApplyProfileToSlot` へ委譲し、`IProfileApplicationService` への委譲は K1 の是正後（フェーズG）に行う。
 
 %% 注釈補強（2026-09-19 Phase6-Step2 実地確認・決定D1〜D3反映）
 %% - `IVirtualKBMLifecycle`（`OutputKBMHandlerLifecycle` が実装）を追加（決定D3）。現行の `OutputKBMHandlerAdapter` は `Global.outputKBMHandler` への読み取り専用委譲であり、ハンドラの生成・差し替えの口を持たないため。図中の `IVirtualKBM` のメソッドは概念的な代表例で、実インターフェース（`DS4Windows.Services.IVirtualKBM`）とは一致しない。

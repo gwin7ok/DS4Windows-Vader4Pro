@@ -88,5 +88,11 @@ namespace DS4Windows
         {
             DeviceStateChanged?.Invoke(this, new DeviceStateChangedEventArgs(slotIndex, isConnected));
         }
+
+
+        // ---- Phase6-Step2-2 (PR-2): 起動後の初回接続判定 ----
+        public bool IsFirstConnection(int slotIndex) => Global.IsFirstConnection(slotIndex);
+
+        public void MarkConnected(int slotIndex) => Global.MarkConnected(slotIndex);
     }
 }

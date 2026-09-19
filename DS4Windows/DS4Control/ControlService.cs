@@ -114,6 +114,20 @@ namespace DS4Windows
         private readonly DI.IAppSettingsService _appSettings;
         private readonly DI.IEnvironmentService _environmentService;
         private readonly DI.IPathService _pathService;
+
+        // Phase6-Step2-2 (PR-2)
+        // TODO(技術的負債): OutputSlotService → ControlService の逆依存を避けるための遅延解決（決定D1）。
+        // ControlService のコンストラクタ内では呼ばない。逆依存の除去は Phase6-Step5 で行い、その時点で直接注入へ戻す。
+        private readonly Func<DI.IOutputSlotService> _outputSlotServiceFactory;
+        private OutContType[] _activeOutDevType;
+        // ActiveOutDevType の配列参照は再代入されない（Global.activeOutDevType は要素書込みのみ）ため、初回に1回だけ取得する。
+        // 以降は null 合体の1分岐のみで、ホットパスでもアロケーションは発生しない。
+        private OutContType[] ActiveOutDevType
+            => _activeOutDevType ?? (_activeOutDevType = _outputSlotServiceFactory().ActiveOutDevType);
+        private readonly DI.IProfileRepository _profileRepository;
+        private readonly DI.IDeviceStateService _deviceStateService;
+        private readonly DI.IProfileXmlStore _profileXmlStore;
+        private readonly Services.IProfileSlotApplier _profileSlotApplier;
         // コントローラースロット上限（現在接続台数ではない）。プロセス内で不変のためコンストラクタで1回だけ取得する。
         private readonly int _controllerSlotLimit;
 
@@ -218,7 +232,12 @@ namespace DS4Windows
             DI.IProfileSettingsService profileSettings,
             DI.IAppSettingsService appSettings,
             DI.IEnvironmentService environmentService,
-            DI.IPathService pathService)
+            DI.IPathService pathService,
+            Func<DI.IOutputSlotService> outputSlotServiceFactory,
+            DI.IProfileRepository profileRepository,
+            DI.IDeviceStateService deviceStateService,
+            DI.IProfileXmlStore profileXmlStore,
+            Services.IProfileSlotApplier profileSlotApplier)
         {
             this.cmdParser = cmdParser;
             this._deviceRegistry = deviceRegistry;
@@ -229,6 +248,11 @@ namespace DS4Windows
             this._environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
             this._pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
             this._controllerSlotLimit = _environmentService.ControllerSlotLimit;
+            this._outputSlotServiceFactory = outputSlotServiceFactory ?? throw new ArgumentNullException(nameof(outputSlotServiceFactory));
+            this._profileRepository = profileRepository ?? throw new ArgumentNullException(nameof(profileRepository));
+            this._deviceStateService = deviceStateService ?? throw new ArgumentNullException(nameof(deviceStateService));
+            this._profileXmlStore = profileXmlStore ?? throw new ArgumentNullException(nameof(profileXmlStore));
+            this._profileSlotApplier = profileSlotApplier ?? throw new ArgumentNullException(nameof(profileSlotApplier));
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 
@@ -1440,20 +1464,20 @@ namespace DS4Windows
 
         public void PluginOutDev(int index, DS4Device device)
         {
-            OutContType contType = Global.OutContType[index];
+            OutContType contType = _profileSettings.OutContType[index];
 
             OutSlotDevice slotDevice = null;
-            if (!getDInputOnly(index))
+            if (!_profileSettings.GetDInputOnly(index))
             {
                 slotDevice = outputslotMan.FindExistUnboundSlotType(contType);
             }
 
-            if (useDInputOnly[index])
+            if (_profileSettings.UseDInputOnlyArray[index])
             {
                 bool success = false;
                 if (contType == OutContType.X360)
                 {
-                    activeOutDevType[index] = OutContType.X360;
+                    ActiveOutDevType[index] = OutContType.X360;
 
                     if (slotDevice == null)
                     {
@@ -1519,7 +1543,7 @@ namespace DS4Windows
                 }
                 else if (contType == OutContType.DS4)
                 {
-                    activeOutDevType[index] = OutContType.DS4;
+                    ActiveOutDevType[index] = OutContType.DS4;
                     if (slotDevice == null)
                     {
                         slotDevice = outputslotMan.FindOpenSlot();
@@ -1591,14 +1615,14 @@ namespace DS4Windows
                 if (success && slotDevice.OutputDevice != null)
                 {
                     LogDebug($"Associated input controller #{index + 1} ({device.DisplayName}) to virtual {slotDevice.OutputDevice.GetDeviceType()} Controller in{(slotDevice.PermanentType != OutContType.None ? " permanent" : "")} output slot #{slotDevice.Index + 1}");
-                    useDInputOnly[index] = false;
+                    _profileSettings.UseDInputOnlyArray[index] = false;
                 }
             }
         }
 
         public void UnplugOutDev(int index, DS4Device device, bool immediate = false, bool force = false)
         {
-            if (!useDInputOnly[index])
+            if (!_profileSettings.UseDInputOnlyArray[index])
             {
                 //OutContType contType = Global.OutContType[index];
                 OutputDevice dev = outputDevices[index];
@@ -1608,9 +1632,9 @@ namespace DS4Windows
                     string tempType = dev.GetDeviceType();
                     LogDebug($"Disassociated virtual {tempType} Controller in{(slotDevice.CurrentReserveStatus == OutSlotDevice.ReserveStatus.Permanent ? " permanent" : "")} output slot #{slotDevice.Index + 1} from input controller #{index + 1} ({device.DisplayName})", false);
 
-                    OutContType currentType = activeOutDevType[index];
+                    OutContType currentType = ActiveOutDevType[index];
                     outputDevices[index] = null;
-                    activeOutDevType[index] = OutContType.None;
+                    ActiveOutDevType[index] = OutContType.None;
                     if ((slotDevice.CurrentAttachedStatus == OutSlotDevice.AttachedStatus.Attached &&
                         slotDevice.CurrentReserveStatus == OutSlotDevice.ReserveStatus.Dynamic) || force)
                     {
@@ -1628,7 +1652,7 @@ namespace DS4Windows
                     //LogDebug(tempType + " Controller # " + (index + 1) + " unplugged");
                 }
 
-                useDInputOnly[index] = true;
+                _profileSettings.UseDInputOnlyArray[index] = true;
             }
         }
 
@@ -1928,7 +1952,7 @@ namespace DS4Windows
                         //outputDevices[i] = null;
                         //useDInputOnly[i] = true;
                         //Global.activeOutDevType[i] = OutContType.None;
-                        useDInputOnly[i] = true;
+                        _profileSettings.UseDInputOnlyArray[i] = true;
                         DS4Controllers[i] = null;
                         oscState[i] = new DS4State();
                         touchPad[i] = null;
@@ -2119,13 +2143,13 @@ namespace DS4Windows
 
         private void PrepareConnectedInputControllerSettingEvents(int numControllers, DS4Device device, int index)
         {
-            Global.RefreshExtrasButtons(index, GetKnownExtraButtons(device));
-            Global.LoadControllerConfigs(device);
+            _profileSettings.RefreshExtrasButtons(index, GetKnownExtraButtons(device));
+            _profileXmlStore.LoadControllerConfigsForDevice(device);
             device.LoadStoreSettings();
             device.CheckControllerNumDeviceSettings(numControllers);
 
             slotManager.AddController(device, index);
-            if (isUsingOSCSender())
+            if (_appSettings.UseOscSender)
             {
                 oscSender.Send(new OscMessage("/ds4windows/monitor/" + index + "/plug", 1));
             }
@@ -2140,67 +2164,67 @@ namespace DS4Windows
             bool profileLoaded = false;
             bool useAutoProfile = _profileSettings.GetUseTempProfile(index);
 
-            DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: device={index}, useAutoProfile={useAutoProfile}, isFirstConnection={Global.IsFirstConnection(index)}");
+            DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: device={index}, useAutoProfile={useAutoProfile}, isFirstConnection={_deviceStateService.IsFirstConnection(index)}");
 
             if (!useAutoProfile)
             {
                 // ===== プロファイル選択ロジック =====
                 string profileToApply;
 
-                if (Global.IsFirstConnection(index))
+                if (_deviceStateService.IsFirstConnection(index))
                 {
                     // 初回接続: LinkedProfiles.xmlまたはOlderProfilePathからプロファイルを選択
                     DS4Windows.AppLogger.LogDebug($"FIRST CONNECTION detected for device {index}");
 
-                    if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
+                    if (device.isValidSerial() && _profileRepository.ContainsLinkedProfile(device.getMacAddress()))
                     {
                         // Linked登録済み → Linkedを適用
-                        profileToApply = getLinkedProfile(device.getMacAddress());
+                        profileToApply = _profileRepository.GetLinkedProfile(device.getMacAddress());
                         DS4Windows.AppLogger.LogDebug($"Using LINKED profile: '{profileToApply}' for device {index}");
                     }
                     else
                     {
                         // Linked未登録 → OlderProfilePathを使用
-                        profileToApply = OlderProfilePath[index];
+                        profileToApply = _profileRepository.OlderProfilePath[index];
                         DS4Windows.AppLogger.LogDebug($"Using OLDER profile: '{profileToApply}' for device {index}");
                     }
 
-                    Global.MarkConnected(index); // 初回接続完了マーク
+                    _deviceStateService.MarkConnected(index); // 初回接続完了マーク
                 }
                 else
                 {
                     // 再接続: 既存のSelectedProfileを使用
-                    profileToApply = Global.SelectedProfile[index];
+                    profileToApply = _profileRepository.SelectedProfile[index];
                     DS4Windows.AppLogger.LogDebug($"RECONNECTION detected for device {index}, using existing profile: '{profileToApply}'");
                 }
 
                 // ===== 共通処理: プロファイル設定とUI状態の更新 =====
-                Global.SelectedProfile[index] = profileToApply;
+                _profileRepository.SelectedProfile[index] = profileToApply;
 
                 // LinkedProfiles.xmlの状態を確認してLinkedProfileUIとlinkedProfileCheckを設定
-                if (device.isValidSerial() && containsLinkedProfile(device.getMacAddress()))
+                if (device.isValidSerial() && _profileRepository.ContainsLinkedProfile(device.getMacAddress()))
                 {
-                    string linkedProfile = getLinkedProfile(device.getMacAddress());
-                    Global.LinkedProfileUI[index] = linkedProfile;
+                    string linkedProfile = _profileRepository.GetLinkedProfile(device.getMacAddress());
+                    _profileRepository.LinkedProfileUI[index] = linkedProfile;
                     _profileSettings.SetLinkedProfileCheck(index, true);
                 }
                 else
                 {
-                    Global.LinkedProfileUI[index] = string.Empty;
+                    _profileRepository.LinkedProfileUI[index] = string.Empty;
                     _profileSettings.SetLinkedProfileCheck(index, false);
                 }
 
                 // プロファイル適用（Phase5-Step14 フェーズD: 共通窓口 Global.ApplyProfileToSlot 経由に統一。契機5統合）
                 DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: About to call ApplyProfileToSlot with '{profileToApply}'");
-                profileLoaded = Global.ApplyProfileToSlot(index, profileToApply, DS4Windows.ProfileChangeSource.ControlService);
+                profileLoaded = _profileSlotApplier.ApplyToSlot(index, profileToApply, DS4Windows.ProfileChangeSource.ControlService);
                 DS4Windows.AppLogger.LogDebug($"PrepareConnectedInputController: ApplyProfileToSlot returned {profileLoaded}");
             }
 
             if (profileLoaded || useAutoProfile)
             {
-                device.LightBarColor = getMainColor(index);
+                device.LightBarColor = _profileSettings.GetMainColor(index);
 
-                if (!getDInputOnly(index) && device.isSynced())
+                if (!_profileSettings.GetDInputOnly(index) && device.isSynced())
                 {
                     if (device.PrimaryDevice)
                     {
@@ -2212,17 +2236,17 @@ namespace DS4Windows
                         OutputDevice tempOutDev = outputDevices[otherIdx];
                         if (tempOutDev != null)
                         {
-                            OutContType tempConType = activeOutDevType[otherIdx];
+                            OutContType tempConType = ActiveOutDevType[otherIdx];
                             EstablishOutFeedback(index, tempConType, tempOutDev, device);
                             outputDevices[index] = tempOutDev;
-                            Global.activeOutDevType[index] = tempConType;
+                            ActiveOutDevType[index] = tempConType;
                         }
                     }
                 }
                 else
                 {
-                    useDInputOnly[index] = true;
-                    Global.activeOutDevType[index] = OutContType.None;
+                    _profileSettings.UseDInputOnlyArray[index] = true;
+                    ActiveOutDevType[index] = OutContType.None;
                 }
 
                 if (device.PrimaryDevice && device.OutputMapGyro)
@@ -2281,10 +2305,10 @@ namespace DS4Windows
             if (idx < UdpServer.NUMBER_SLOTS)
             {
                 OneEuroFilter3D temp = udpEuroPairAccel[idx] = new OneEuroFilter3D();
-                temp.SetFilterAttrs(Global.UDPServerSmoothingMincutoff, Global.UDPServerSmoothingBeta);
+                temp.SetFilterAttrs(_appSettings.UDPServerSmoothingMincutoff, _appSettings.UDPServerSmoothingBeta);
 
                 temp = udpEuroPairGyro[idx] = new OneEuroFilter3D();
-                temp.SetFilterAttrs(Global.UDPServerSmoothingMincutoff, Global.UDPServerSmoothingBeta);
+                temp.SetFilterAttrs(_appSettings.UDPServerSmoothingMincutoff, _appSettings.UDPServerSmoothingBeta);
             }
         }
 
@@ -2293,13 +2317,13 @@ namespace DS4Windows
             for (int i = 0; i < udpEuroPairAccel.Length; i++)
             {
                 OneEuroFilter3D temp = udpEuroPairAccel[i];
-                temp.SetFilterAttrs(Global.UDPServerSmoothingMincutoff, Global.UDPServerSmoothingBeta);
+                temp.SetFilterAttrs(_appSettings.UDPServerSmoothingMincutoff, _appSettings.UDPServerSmoothingBeta);
             }
 
             for (int i = 0; i < udpEuroPairGyro.Length; i++)
             {
                 OneEuroFilter3D temp = udpEuroPairGyro[i];
-                temp.SetFilterAttrs(Global.UDPServerSmoothingMincutoff, Global.UDPServerSmoothingBeta);
+                temp.SetFilterAttrs(_appSettings.UDPServerSmoothingMincutoff, _appSettings.UDPServerSmoothingBeta);
             }
         }
 
@@ -2585,15 +2609,15 @@ namespace DS4Windows
 
                 if (!synced)
                 {
-                    if (!useDInputOnly[ind])
+                    if (!_profileSettings.UseDInputOnlyArray[ind])
                     {
-                        Global.activeOutDevType[ind] = OutContType.None;
+                        ActiveOutDevType[ind] = OutContType.None;
                         UnplugOutDev(ind, device);
                     }
                 }
                 else
                 {
-                    if (!getDInputOnly(ind))
+                    if (!_profileSettings.GetDInputOnly(ind))
                     {
                         touchPad[ind].ReplaceOneEuroFilterPair();
                         //touchPad[ind].ReplaceOneEuroFilterPair();
@@ -2632,7 +2656,7 @@ namespace DS4Windows
                 if (removingStatus)
                 {
                     CurrentState[ind].Battery = PreviousState[ind].Battery = 0; // Reset for the next connection's initial status change.
-                    if (!useDInputOnly[ind])
+                    if (!_profileSettings.UseDInputOnlyArray[ind])
                     {
                         UnplugOutDev(ind, device);
                     }
@@ -2685,7 +2709,7 @@ namespace DS4Windows
                     //eventDispatcher.Invoke(() =>
                     //{
                     slotManager.RemoveController(device, ind);
-                    if (isUsingOSCSender())
+                    if (_appSettings.UseOscSender)
                     {
                         oscSender.Send(new SharpOSC.OscMessage("/ds4windows/monitor/" + ind + "/plug", 0));
                     }
@@ -2694,8 +2718,8 @@ namespace DS4Windows
                     touchPad[ind] = null;
                     lag[ind] = false;
                     inWarnMonitor[ind] = false;
-                    useDInputOnly[ind] = true;
-                    Global.activeOutDevType[ind] = OutContType.None;
+                    _profileSettings.UseDInputOnlyArray[ind] = true;
+                    ActiveOutDevType[ind] = OutContType.None;
                     /* Leave up to Auto Profile system to change the following flags? */
                     //Global.useTempProfile[ind] = false;
                     //Global.tempprofilename[ind] = string.Empty;
@@ -2812,7 +2836,7 @@ namespace DS4Windows
                                 // parent device state
                                 DS4State tempMapState = MappedState[jointInd];
                                 Mapping.TempMouseJoystick(jointInd, tempMapState);
-                                if (!useDInputOnly[jointInd])
+                                if (!_profileSettings.UseDInputOnlyArray[jointInd])
                                 {
                                     outputDevices[jointInd]?.ConvertandSendReport(tempMapState, jointInd);
                                 }
@@ -2870,10 +2894,10 @@ namespace DS4Windows
 
                 }
 
-                if (!useDInputOnly[ind])
+                if (!_profileSettings.UseDInputOnlyArray[ind])
                 {
                     // Perform this virtual trigger button check in post
-                    if (activeOutDevType[ind] == OutContType.DS4)
+                    if (ActiveOutDevType[ind] == OutContType.DS4)
                     {
                         DS4TriggerOutputMode trigMode = Global.GetOutputDS4TriggerMode(ind);
                         if (trigMode == DS4TriggerOutputMode.Default)
@@ -3163,7 +3187,7 @@ namespace DS4Windows
                 LogDebug(DS4WinWPF.Properties.Resources.LatencyNotOverTen.Replace("*number*", (ind + 1).ToString()));
                 DS4LightBar.forcelight[ind] = false;
                 DS4LightBar.forcedFlash[ind] = 0;
-                device.LightBarColor = getMainColor(ind);
+                device.LightBarColor = _profileSettings.GetMainColor(ind);
             }
         }
 

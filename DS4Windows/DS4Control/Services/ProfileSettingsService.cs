@@ -779,5 +779,9 @@ namespace DS4Windows
         {
             ProfileSettingChanged?.Invoke(this, new ProfileSettingChangedEventArgs(deviceIndex, settingName, null, null));
         }
+
+        // ---- Phase6-Step2-2 (PR-2): 接続時のエクストラボタン再構築 ----
+        public void RefreshExtrasButtons(int deviceIndex, List<DS4Controls> buttons)
+            => Global.RefreshExtrasButtons(deviceIndex, buttons);
     }
 }

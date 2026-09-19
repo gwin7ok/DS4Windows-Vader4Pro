@@ -526,5 +526,33 @@ namespace DS4Windows.Services
             add => Global.UDPServerSmoothingBetaChanged += value;
             remove => Global.UDPServerSmoothingBetaChanged -= value;
         }
+
+        // ---- Phase6-Step2-2 (PR-2): UDP サーバ平滑化パラメータ ----
+        // 値の変更は Global 側のプロパティが UDPServerSmoothing*Changed イベントを発火する（従来と同一）。
+        public double UDPServerSmoothingMincutoff
+        {
+            get => Global.UDPServerSmoothingMincutoff;
+            set
+            {
+                if (Global.UDPServerSmoothingMincutoff != value)
+                {
+                    Global.UDPServerSmoothingMincutoff = value;
+                    NotifyChanged(nameof(UDPServerSmoothingMincutoff));
+                }
+            }
+        }
+
+        public double UDPServerSmoothingBeta
+        {
+            get => Global.UDPServerSmoothingBeta;
+            set
+            {
+                if (Global.UDPServerSmoothingBeta != value)
+                {
+                    Global.UDPServerSmoothingBeta = value;
+                    NotifyChanged(nameof(UDPServerSmoothingBeta));
+                }
+            }
+        }
     }
 }

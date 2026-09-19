@@ -78,5 +78,9 @@ namespace DS4Windows.DI
         ControlServiceDeviceOptions DeviceOptions { get; }
         event EventHandler UDPServerSmoothingMincutoffChanged;
         event EventHandler UDPServerSmoothingBetaChanged;
+
+        // ---- Phase6-Step2-2 (PR-2): UDP サーバ平滑化パラメータ（Global への薄い委譲）----
+        double UDPServerSmoothingMincutoff { get; set; }
+        double UDPServerSmoothingBeta { get; set; }
     }
 }

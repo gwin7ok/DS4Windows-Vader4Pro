@@ -91,5 +91,9 @@ namespace DS4Windows
                 }
             }
         }
+
+        // ---- Phase6-Step2-2 (PR-2): 接続時のコントローラー固有設定の読込 ----
+        public bool LoadControllerConfigsForDevice(DS4Device device)
+            => Global.LoadControllerConfigs(device);
     }
 }

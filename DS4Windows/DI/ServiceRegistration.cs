@@ -28,6 +28,7 @@ namespace DS4Windows.DI
             services.AddSingleton<IProfileSettingsService, ProfileSettingsService>();
             services.AddSingleton<IProfileXmlStore, ProfileXmlStore>();
             services.AddSingleton<IProfileRepository, ProfileRepository>();
+            services.AddSingleton<IProfileSlotApplier, ProfileSlotApplier>();
             services.AddSingleton<ISpecialActionRepository, SpecialActionRepository>();
 
             // Phase 3 Step 3-6: プロセス検査・昇格起動サービスの登録
@@ -90,7 +91,12 @@ namespace DS4Windows.DI
                     sp.GetRequiredService<IProfileSettingsService>(),
                     sp.GetRequiredService<IAppSettingsService>(),
                     sp.GetRequiredService<IEnvironmentService>(),
-                    sp.GetRequiredService<IPathService>()
+                    sp.GetRequiredService<IPathService>(),
+                    () => sp.GetRequiredService<IOutputSlotService>(), // 決定D1: 遅延解決（OutputSlotService → ControlService の逆依存を回避）
+                    sp.GetRequiredService<IProfileRepository>(),
+                    sp.GetRequiredService<IDeviceStateService>(),
+                    sp.GetRequiredService<IProfileXmlStore>(),
+                    sp.GetRequiredService<IProfileSlotApplier>()
                 );
             });
             services.AddSingleton<IDeviceStateAccessor>(sp => sp.GetRequiredService<ControlService>());

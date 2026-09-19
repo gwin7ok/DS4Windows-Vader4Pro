@@ -1,9 +1,9 @@
 # Phase6-Step2 計画書: `ControlService.cs` のGlobal直参照解消
 
 作成日: 2026-09-09  
-改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記）  
+改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: PR-1・PR-1b 完了（ビルド・テスト成功、コミット済み `da16de4`／`5400257`、実機確認は OSC/UDP のみ未実施）・決定O3=A／O1=B 確定・PR-1c 実装済み（レビュー待ち）・O4（O1 の具体形）決定待ち  
+状態: PR-1・PR-1b・PR-1c 完了（ビルド・テスト成功、コミット済み。実機確認は OSC/UDP のみ未実施）・決定O1=B／O3=A／O4=B-2 確定（モデル図 01／03／04 の変更も承認）・PR-2 実装済み（レビュー待ち）  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -58,17 +58,18 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 | **D3** | KBM ハンドラの生成・差し替え | **新規 `IVirtualKBMLifecycle`（1ファイル1型）**を追加し、実装 `OutputKBMHandlerLifecycle` は `Global` への薄い委譲とする。`IVirtualKBM`（送出専用）は変更しない（詳細は §4.2） |
 | **O2** | C2-01（`CURRENT_DS4_CONTROLLER_LIMIT` の静的初期化 `Global.IsWin8OrGreater()`） | **C（インスタンス化）を採用**（推奨案 B の「静的ヘルパーへ移設」ではなく、上限を DI サービスの値として扱う）。実装が大きいため、実施方式（段階／一括）は O3 で決定する。PR-1b で `IEnvironmentService.ControllerSlotLimit` / `UsingMaxControllers` を新設し、`ControlService` 内部を注入値へ移行した（§6 Step2-1b） |
 | **O3** | O2=C の実施方式 | **A（段階実施）**を採用。外部の未移行呼び出し元（15ファイル・54箇所）は、各 Step が対象ファイルを Pure DI 化する際に同時に置換し、`ControlService` の static 互換シムは Phase6-Step12 で削除する。DI サービス2件（`ProfileSettingsService`／`AutoProfileService`）は Step2 内の PR-1c で実施する |
-| **O1** | C2-47（`Global.ApplyProfileToSlot`）の扱い | **B（`ControlService` が `IProfileApplicationService` に直接依存せず、委譲によって適用する）を採用**。理由: Pure DI の方向性を重視するため。K1（§0.3.5）により `IProfileApplicationService.ApplyProfile` へ直接置換できないことも踏まえ、具体形は O4 で決定する |
+| **O1** | C2-47（`Global.ApplyProfileToSlot`）の扱い | **B（`ControlService` が `IProfileApplicationService` に直接依存せず、委譲によって適用する）を採用**。理由: Pure DI の方向性を重視するため。K1（§0.3.5）により `IProfileApplicationService.ApplyProfile` へ直接置換できないことも踏まえ、具体形は O4（B-2）で確定 |
+| **O4** | O1=B の具体形（C2-47） | **B-2（注入ポート）を採用**、モデル図の変更（`IProfileSlotApplier` の追加）も承認（2026-09-19）。`ControlService` が自身で定義する `IProfileSlotApplier.ApplyToSlot(slotIndex, profileName, source)`（戻り値あり）をコンストラクタで受け取り、実装 `ProfileSlotApplier` は当面 `Global.ApplyProfileToSlot` へ委譲する。文字どおりのイベント方式（B-1）は、戻り値を後続処理が使うこと、購読者不在だと無言で失敗する（§2.2 機能維持に反する）ことから採用しない |
 
 #### 0.3.3 未決事項
 
-| ID | 論点 | 決定時期 |
-|---|---|---|
-| **O4** | O1=B の具体形（C2-47）。(B-1) 適用要求イベント: `ControlService` がイベントを発火し、上位が購読して適用する。戻り値（`profileLoaded`）を後続処理が使うため、イベント引数に結果を書き戻す形になり、購読者がいないと適用されないまま無言で失敗する（§2.2 機能維持に反する）。(B-2) 注入ポート: `ControlService` が自身で定義する狭いインターフェース（例: `IProfileSlotApplier.ApplyToSlot(slot, profile, source)`、戻り値あり）をコンストラクタで受け取る。実装は当面 `Global.ApplyProfileToSlot` へ委譲し、`ControlService` への逆依存を持たない。B の趣旨（依存の逆転）を保ち、Pure DI・同期の戻り値・起動時配線の漏れ検出（コンテナ構築時）を満たす。新規インターフェースのためモデル図 03／04 への追記が必要 | PR-2 着手前に、メリット・デメリット・推奨（B-2）を提示して決定。モデル図の変更は指示を仰ぐ |
+現在、未決事項はない（O1〜O4 は §0.3.2 で確定済み）。
 
 #### 0.3.4 モデル図の連動更新
 
 `docs-forDIMG/Model-Diagram/` の 01〜04 を本改訂と同時に更新した（`IVirtualKBMLifecycle` の追加、`ControlService` の依存一覧の更新、過渡期の逆依存の注記）。図が示す目標構造（`OutputSlotService` は `IOutputSlotStore` のみに依存、`ProfileApplicationService` は `ControlService` に依存しない）は変更していない。
+
+**2026-09-19 追加（O4=B-2、ユーザー承認済みのモデル図変更）**: `IProfileSlotApplier`（実装 `ProfileSlotApplier`、2.変換・Singleton）を 01（コンポーネント図・点線の委譲辺）／03（クラス図）／04（サービス一覧・`ControlService` の依存）に追加し、01 にあった `ControlService → IProfileApplicationService` の辺を `ControlService → IProfileSlotApplier` に置換した。04 §4 の `ProfileApplicationService → ControlService` の暫定措置の記述も更新した。
 
 
 #### 0.3.5 実施中に判明した既知の課題
@@ -164,7 +165,7 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 | C2-44 | 2116, 2123, 2141 Q | `PrepareConnectedInput...` | `IsFirstConnection(i)`, `MarkConnected(i)` | (b) | N | `_deviceStateService.IsFirstConnection(i)`, `_deviceStateService.MarkConnected(i)` |
 | C2-45 | 2128, 2131, 2154, 2156 U | `PrepareConnectedInput...` | `containsLinkedProfile(s)`, `getLinkedProfile(s)` | (b) | N | `_profileRepository.ContainsLinkedProfile(s)`, `_profileRepository.GetLinkedProfile(s)` |
 | C2-46 | 2137, 2146, 2151, 2157, 2162 Q/U | `PrepareConnectedInput...` | `OlderProfilePath[i]`, `SelectedProfile[i]`, `LinkedProfileUI[i]` | (a) | N | `_profileRepository.OlderProfilePath[i]`, `SelectedProfile[i]`, `LinkedProfileUI[i]` |
-| C2-47 | 2168 Q | `PrepareConnectedInput...` | `ApplyProfileToSlot(i, ...)` | (b) | N | **O1=B（確定）／具体形は O4 で決定**。決定までは `Global.ApplyProfileToSlot` を温存。`IProfileApplicationService` への直接置換は K1 のため行わない |
+| C2-47 | 2168 Q | `PrepareConnectedInput...` | `ApplyProfileToSlot(i, ...)` | (b) | N | **O1=B／O4=B-2（確定）→ PR-2 で実装済み**: `_profileSlotApplier.ApplyToSlot(i, profile, ProfileChangeSource.ControlService)`（`IProfileSlotApplier`、実装は `Global.ApplyProfileToSlot` へ委譲）。`IProfileApplicationService` への直接置換は K1 のため行わない |
 | C2-48 | 2174, 3128 U | `PrepareConnectedInput...`, `LagFlashWarning` | `getMainColor(index)` | (a) | N/H条件 | `_profileSettings.GetMainColor(index)` |
 | C2-49 | 2257, 2260, 2269, 2275 Q | UDP 平滑化設定 | `UDPServerSmoothingMincutoff`, `UDPServerSmoothingBeta` | (b) | N | `_appSettings.UDPServerSmoothingMincutoff`, `_appSettings.UDPServerSmoothingBeta` |
 
@@ -398,7 +399,7 @@ namespace DS4Windows.Services
 【Phase6-Step2 マイクロステップ構成】
 ├─ Step2-0: 着手前提検証・ベースライン記録（実装なし）
 ├─ Step2-1 (PR-1): 非ホットパスの環境・パス・基本設定（ID: C2-03〜08, 21〜27, 32, 34〜39）※C2-01=O2決定待ち、C2-02=D2温存、C2-33/40=PR-3
-├─ Step2-2 (PR-2): 出力スロット・プロファイル状態・接続イベント（ID: C2-28〜31, 41〜49）[20参照]
+├─ Step2-2 (PR-2): 出力スロット・プロファイル状態・接続イベント（ID: C2-28〜31, 41〜49）
 ├─ Step2-3 (PR-3): KBMハンドラ初期化・ライフサイクル整理（ID: C2-09〜20, 33, 40）
 ├─ Step2-4 (PR-4): 入力処理ホットパス（条件付き・低頻度分岐）（ID: C2-51〜54, 56, 58, 64〜65）[14参照]
 ├─ Step2-5 (PR-5): 入力処理ホットパス（毎レポート最頻度経路）（ID: C2-50, 55, 57, 59〜63, 66）[18参照]
@@ -464,15 +465,17 @@ namespace DS4Windows.Services
 
 ### Step2-2 (PR-2): 出力スロット・プロファイル状態・接続イベント
 - **対象**: ID: C2-28〜C2-31, C2-41〜C2-49（`PluginOutDev`, `useDInputOnly`, `activeOutDevType`, `PrepareConnectedInputControllerSettingEvents`）
-- **着手時に決定**: O1（C2-47 `ApplyProfileToSlot` の方式）。メリット・デメリット・推奨を提示して承認を得てから実装する。
-- **作業内容**:
-  1. `IDeviceStateService`, `IProfileRepository`, `IProfileXmlStore`, `IProfileSettingsService` に必要なシムを追加（§4.1）。
-  2. `ControlService` コンストラクタに `Func<IOutputSlotService>`（D1）, `IProfileRepository`, `IDeviceStateService`, `IProfileXmlStore` を必須引数として追加。`ActiveOutDevType` 配列参照のキャッシュを実装する（§3.2）。
-  3. C2-28（旧C2-01: `Global.OutContType` → `_profileSettings.OutContType`）を含む対象箇所を置換。
-  4. C2-47 は O1 の決定に従う。
+- **決定済み**: O1=B／O4=B-2（C2-47）。§0.3.2 参照。
+- **作業内容（実装済み）**:
+  1. シムの追加（いずれも `Global` への薄い委譲）: `IAppSettingsService`（`UDPServerSmoothingMincutoff`／`UDPServerSmoothingBeta`、`double`）、`IProfileSettingsService.RefreshExtrasButtons`、`IProfileXmlStore.LoadControllerConfigsForDevice`（戻り値は `Global.LoadControllerConfigs` と同じ `bool`）、`IProfileRepository.ContainsLinkedProfile`／`GetLinkedProfile`、`IDeviceStateService.IsFirstConnection`／`MarkConnected`。
+  2. 新規 `IProfileSlotApplier`／`ProfileSlotApplier`（各1ファイル1型、`DS4Windows.Services`）を追加し、`ServiceRegistration` に Singleton 登録。実装には K1 を理由とする技術的負債コメントを付与した。
+  3. `ControlService` コンストラクタに `Func<IOutputSlotService>`（D1）、`IProfileRepository`、`IDeviceStateService`、`IProfileXmlStore`、`IProfileSlotApplier` を必須引数として追加（D2）。`ActiveOutDevType` は private アクセサ（配列参照を初回に1回だけキャッシュ）を経由する（§3.2）。`ServiceRegistration` のファクトリも更新した。
+  4. 対象箇所を置換: `OutContType`／`GetDInputOnly`／`UseDInputOnlyArray`（計12箇所）、`ActiveOutDevType`（10箇所）、`RefreshExtrasButtons`、`LoadControllerConfigsForDevice`、`UseOscSender`（2箇所。残る On_Report 内の1箇所は PR-5）、初回接続判定、リンクプロファイル、`SelectedProfile`／`LinkedProfileUI`／`OlderProfilePath`、`ApplyToSlot`、`GetMainColor`（2箇所）、UDP 平滑化（4箇所）。`ControlService.cs` の修飾 `Global.` 行（コメント除く）は 49 → 28 行。
+- **既存テストへの影響**: `IProfileXmlStore` を実装するテスト用モック2件（`AppSettingsServiceTests.MockProfileXmlStore`、`ProfileRepositoryTests.FakeProfileXmlStore`）に新メンバを追加した。PR-1 で作成した `ControlServiceDiWiringTests` の `ControlService` 生成呼び出しを新シグネチャへ更新した。
 - **検証**:
-  - 単体テスト: スロット別の `OutContType`, `useDInputOnly`, `activeOutDevType` の読み書き分離を検証。
-  - 単体テスト（D1）: コンストラクタ内で `Func<IOutputSlotService>` が呼ばれないこと。実コンテナで `ControlService` を解決しても `OutputSlotService` の `_control` が非nullで、`OutputSlotManager` が二重に作られないこと。
+  - `ControlServicePr2ShimEquivalenceTests`: UDP 平滑化（状態共有・イベント発火）、初回接続判定、リンクプロファイル（コロン除去を含む）、`ProfileSlotApplier` の委譲等価性（範囲外スロット・空のプロファイル名）、`RefreshExtrasButtons(null)`。
+  - `ControlServicePr2DiWiringTests`: `ProfileSlotApplier` の解決、`ControlService` の解決、**D1**（コンストラクタ内で `Func<IOutputSlotService>` が呼ばれないこと）、新規必須引数の null 拒否。
+  - **未実装**: 「解決した `OutputSlotService` の `_control` が非 null で `OutputSlotManager` が二重化しない」検証。`_control` を外部から観測する手段がないため、Phase6-Step5（`OutputSlotService` の逆依存除去）で検証する。
   - 回帰テスト: `dotnet test` 全件合格を確認。
 
 ---
@@ -672,4 +675,10 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 
 - **実装**: §6 Step2-1c のとおり（`ProfileSettingsService`／`AutoProfileService`、新規テスト `EnvironmentServiceInjectionTests`）。
 - **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソース（既存診断 1,265 件）で新規エラー 0 件。既存テストの生成箇所は末尾の省略可能引数のため無変更で互換。
-- **未実施**: `dotnet build` / `dotnet test`（レビュー後に開発環境で実施）。
+- **自動検証**: ビルド、テストビルド、テスト実行の全てが成功（開発環境での実施結果）。
+
+### B.4 PR-2（Step2-2）: 2026-09-19
+
+- **実装**: §6 Step2-2 のとおり。新規は `IProfileSlotApplier`／`ProfileSlotApplier`、テスト `ControlServicePr2ShimEquivalenceTests`／`ControlServicePr2DiWiringTests`。
+- **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイル（xUnit は簡易スタブ）で新規エラー 0 件。`IProfileXmlStore` の追加メンバに追随できていなかった既存テストのモック2件は、この検査で見つけて修正した。
+- **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施）。実機では、コントローラーの接続時に、①初回接続時の保存プロファイル・リンクプロファイルの適用、②ライトバー色、③出力コントローラー（Xbox360／DS4）の種別切替、④DInput のみモードのスロットを重点的に確認する。

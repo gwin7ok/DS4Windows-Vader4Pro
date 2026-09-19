@@ -30,6 +30,9 @@ namespace DS4WindowsTests
 
             public bool LoadAppSettingsXml() => true;
             public bool SaveAppSettingsXml() => true;
+
+            // Phase6-Step2-2 (PR-2): IProfileXmlStore の拡張に追随（本テストでは使用しない）
+            public bool LoadControllerConfigsForDevice(DS4Device device) => true;
         }
 
         [Fact]

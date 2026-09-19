@@ -29,5 +29,10 @@ namespace DS4Windows.DI
         void SetDevice(int slotIndex, DS4Device device);
 
         event EventHandler<DeviceStateChangedEventArgs> DeviceStateChanged;
+
+
+        // ---- Phase6-Step2-2 (PR-2): 起動後の初回接続判定（Global への薄い委譲）----
+        bool IsFirstConnection(int slotIndex);
+        void MarkConnected(int slotIndex);
     }
 }

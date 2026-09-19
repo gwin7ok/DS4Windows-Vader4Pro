@@ -46,5 +46,10 @@ namespace DS4Windows.DI
 
         // ---- Phase5-Step13-7 Tier4: プロファイル未定義アクションの警告ログ出力 ----
         void EmitMissingActionLogsForDevice(int deviceIndex, bool forceEmit = false, string overrideProfileName = null);
+
+
+        // ---- Phase6-Step2-2 (PR-2): リンクプロファイル解決（Global への薄い委譲）----
+        bool ContainsLinkedProfile(string serial);
+        string GetLinkedProfile(string serial);
     }
 }

@@ -56,6 +56,7 @@ flowchart TD
         Core_Coordinator["ControlService / InputLoopCoordinator<br>(パイプライン統括・ループ実行)"]:::coreLayer
         Core_ContextPool["MappingPipelineContext Pool<br>(スロット別常駐バッファ・Zero-GC)"]:::coreLayer
         Core_ProfileApp["IProfileApplicationService<br>(プロファイル切替/復帰/Halt保護)"]:::coreLayer
+        Core_SlotApplier["IProfileSlotApplier<br>(接続時プロファイル適用の出力ポート。ControlService が定義)"]:::coreLayer
         Core_AutoProfile["IAutoProfileService<br>(プロセス監視切替)"]:::coreLayer
         Core_ActionMgr["IManagedActionManager<br>(アクション実行管理・トグル状態)"]:::coreLayer
         Core_Dispatcher["IMappingActionDispatcher<br>(アクション発火中継)"]:::coreLayer
@@ -77,7 +78,8 @@ flowchart TD
 
         Core_Coordinator --> Core_ContextPool
         Core_Coordinator --> Pipe_Master
-        Core_Coordinator --> Core_ProfileApp
+        Core_Coordinator --> Core_SlotApplier
+        Core_SlotApplier -. 委譲（フェーズG以降） .-> Core_ProfileApp
         Pipe_Master --> Core_Dispatcher
         Core_Dispatcher --> Core_ActionMgr
         Core_AutoProfile --> Core_ProfileApp
@@ -172,6 +174,9 @@ flowchart TD
 
     Out_Switcher --> Core_ProfileApp
     Core_ProfileApp --> Store_Profile
+
+%% 注釈補強（2026-09-19 Phase6-Step2 決定O1=B／O4=B-2 反映）
+%% - `ControlService` は `IProfileApplicationService` に直接依存せず、自身が定義する出力ポート `IProfileSlotApplier` のみに依存する（依存の逆転）。現状の実装は `Global.ApplyProfileToSlot` へ委譲し、K1（`IProfileApplicationService.ApplyProfile` のスロット上限ハードコード等）の是正後に `IProfileApplicationService` へ委譲する（点線）。
 
 %% 注釈補強（2026-09-19 Phase6-Step2 実地確認・決定D1〜D3反映）
 %% - 3-b に `IVirtualKBMLifecycle` を追加（決定D3）。`ControlService` が送出（`IVirtualKBM`）とライフサイクル（`IVirtualKBMLifecycle`）の両方を利用する。
