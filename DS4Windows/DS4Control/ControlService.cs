@@ -45,12 +45,12 @@ namespace DS4Windows
         // Might be useful for ScpVBus build
         public const int EXPANDED_CONTROLLER_COUNT = 8;
         public const int MAX_DS4_CONTROLLER_COUNT = Global.MAX_DS4_CONTROLLER_COUNT;
-#if FORCE_4_INPUT
-        public static int CURRENT_DS4_CONTROLLER_LIMIT = Global.OLD_XINPUT_CONTROLLER_COUNT;
-#else
-        public static int CURRENT_DS4_CONTROLLER_LIMIT = Global.IsWin8OrGreater() ? MAX_DS4_CONTROLLER_COUNT : Global.OLD_XINPUT_CONTROLLER_COUNT;
-#endif
-        public static bool USING_MAX_CONTROLLERS = CURRENT_DS4_CONTROLLER_LIMIT == EXPANDED_CONTROLLER_COUNT;
+        // TODO(技術的負債): 互換シム。値の SSOT は IEnvironmentService.ControllerSlotLimit / UsingMaxControllers。
+        // 未移行の外部呼び出し元（UI・ViewModel・ScpUtil・DTO・OutputSlotManager 等）のために static プロパティとして残す。
+        // 各呼び出し元はそれぞれの Step で IEnvironmentService の注入へ置換し、最終的に Phase6-Step12 で削除する
+        // （Phase6-Step2-Plan.md 決定O2/O3）。ControlService 内部は注入値 _controllerSlotLimit を使用する。
+        public static int CURRENT_DS4_CONTROLLER_LIMIT { get; } = EnvironmentService.ProcessControllerSlotLimit;
+        public static bool USING_MAX_CONTROLLERS { get; } = EnvironmentService.ProcessControllerSlotLimit == EXPANDED_CONTROLLER_COUNT;
         public DS4Device[] DS4Controllers = new DS4Device[MAX_DS4_CONTROLLER_COUNT];
         public DS4Device GetController(int deviceIndex)
         {
@@ -114,6 +114,8 @@ namespace DS4Windows
         private readonly DI.IAppSettingsService _appSettings;
         private readonly DI.IEnvironmentService _environmentService;
         private readonly DI.IPathService _pathService;
+        // コントローラースロット上限（現在接続台数ではない）。プロセス内で不変のためコンストラクタで1回だけ取得する。
+        private readonly int _controllerSlotLimit;
 
         private HashSet<string> hidDeviceHidingAffectedDevs = new HashSet<string>();
         private HashSet<string> hidDeviceHidingExemptedDevs = new HashSet<string>();
@@ -226,6 +228,7 @@ namespace DS4Windows
             this._appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
             this._environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
             this._pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            this._controllerSlotLimit = _environmentService.ControllerSlotLimit;
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 
@@ -1742,7 +1745,7 @@ namespace DS4Windows
                         device.DeviceSlotNumber = i;
                         PrepareConnectedInputControllerSettingEvents(numControllers, device, index: i);
 
-                        if (i >= CURRENT_DS4_CONTROLLER_LIMIT) // out of Xinput devices!
+                        if (i >= _controllerSlotLimit) // out of Xinput devices!
                             break;
                     }
                 }
@@ -2041,7 +2044,7 @@ namespace DS4Windows
                     }
 
                     for (int Index = 0, arlength = DS4Controllers.Length;
-                        Index < arlength && Index < CURRENT_DS4_CONTROLLER_LIMIT; Index++)
+                        Index < arlength && Index < _controllerSlotLimit; Index++)
                     {
                         if (DS4Controllers[Index] == null)
                         {
@@ -2569,7 +2572,7 @@ namespace DS4Windows
         {
             DS4Device device = (DS4Device)sender;
             int ind = -1;
-            for (int i = 0, arlength = CURRENT_DS4_CONTROLLER_LIMIT; ind == -1 && i < arlength; i++)
+            for (int i = 0, arlength = _controllerSlotLimit; ind == -1 && i < arlength; i++)
             {
                 DS4Device tempDev = DS4Controllers[i];
                 if (tempDev != null && device == tempDev)
@@ -3267,7 +3270,7 @@ namespace DS4Windows
 
         public void StartTPOff(int deviceID)
         {
-            if (deviceID < CURRENT_DS4_CONTROLLER_LIMIT)
+            if (deviceID < _controllerSlotLimit)
             {
                 TouchActive[deviceID] = false;
             }
@@ -3319,7 +3322,7 @@ namespace DS4Windows
         // sets the rumble adjusted with rumble boost. General use method
         public void setRumble(byte heavyMotor, byte lightMotor, int deviceNum)
         {
-            if (deviceNum < CURRENT_DS4_CONTROLLER_LIMIT)
+            if (deviceNum < _controllerSlotLimit)
             {
                 DS4Device device = DS4Controllers[deviceNum];
                 if (device != null)

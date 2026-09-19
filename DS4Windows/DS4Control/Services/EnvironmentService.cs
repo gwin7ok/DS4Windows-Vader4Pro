@@ -37,5 +37,24 @@ namespace DS4Windows
             Global.CheckHidHideAffectedStatus(deviceInstanceId, affectedDevs, exemptedDevices, force);
 
         public void PrepareAbsMonitorBounds(string edid) => Global.PrepareAbsMonitorBounds(edid);
+
+        // ---- Phase6-Step2-1b (決定O2=C): コントローラースロット上限 ----
+        // 旧 ControlService.CURRENT_DS4_CONTROLLER_LIMIT の計算（純粋な OS 判定＋ビルド定義）をここへ移設した。
+        // TODO(技術的負債): ControlService の static 互換シム（CURRENT_DS4_CONTROLLER_LIMIT / USING_MAX_CONTROLLERS）が
+        // 本値を共有するため static のまま保持している。互換シム撤去後（Phase6-Step12）はインスタンスフィールドへ戻す。
+        internal static readonly int ProcessControllerSlotLimit = CalculateControllerSlotLimit();
+
+        public int ControllerSlotLimit => ProcessControllerSlotLimit;
+
+        public bool UsingMaxControllers => ProcessControllerSlotLimit == ControlService.EXPANDED_CONTROLLER_COUNT;
+
+        private static int CalculateControllerSlotLimit()
+        {
+#if FORCE_4_INPUT
+            return Global.OLD_XINPUT_CONTROLLER_COUNT;
+#else
+            return Global.IsWin8OrGreater() ? Global.MAX_DS4_CONTROLLER_COUNT : Global.OLD_XINPUT_CONTROLLER_COUNT;
+#endif
+        }
     }
 }

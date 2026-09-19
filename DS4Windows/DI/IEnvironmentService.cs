@@ -29,5 +29,14 @@
             System.Collections.Generic.HashSet<string> exemptedDevices, bool force = false);
         /// <summary>画面座標系（マウス絶対座標計算用モニター境界）を再取得する。</summary>
         void PrepareAbsMonitorBounds(string edid);
+
+        // ---- Phase6-Step2-1b (決定O2=C): コントローラースロット上限のサービス化 ----
+        /// <summary>
+        /// 同時に扱えるコントローラースロット数の上限（<b>現在接続中の台数ではない</b>）。
+        /// OS 判定（Windows 8 以上で 8、未満で 4）とビルド定義 FORCE_4_INPUT から決まり、プロセス内で不変。
+        /// </summary>
+        int ControllerSlotLimit { get; }
+        /// <summary><see cref="ControllerSlotLimit"/> が拡張スロット数（8）であるか。</summary>
+        bool UsingMaxControllers { get; }
     }
 }

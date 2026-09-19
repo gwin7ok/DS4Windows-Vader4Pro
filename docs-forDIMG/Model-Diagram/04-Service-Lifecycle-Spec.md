@@ -24,7 +24,7 @@
 | 分類 | サービス（インターフェース） | 具象クラス（実装） | ライフタイム | 責務 / 役割 | 主な依存注入引数 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **基盤** | `IPathService` | `PathService` | **Singleton** | プロファイル・アプリデータ保存先パスの動的解決 | なし |
-| **基盤** | `IEnvironmentService` | `EnvironmentService` | **Singleton** | OS種別、管理者権限、ディスプレイ解像度情報、HidHide／FakerInput の導入状態、デバイスインスタンスID解決の提供 | なし |
+| **基盤** | `IEnvironmentService` | `EnvironmentService` | **Singleton** | OS種別、管理者権限、ディスプレイ解像度情報、HidHide／FakerInput の導入状態、デバイスインスタンスID解決、コントローラースロット上限（同時に扱えるスロット数の上限。接続台数ではない）の提供 | なし |
 | **基盤** | `INotificationService` | `AppNotificationService` | **Singleton** | OSトースト通知、ステータス通知の統一発行 | なし |
 | **基盤** | `XmlIoLock` | `XmlIoLock` | **Singleton** | プロセス内・スレッド間のファイル排他制御ロック | なし |
 | **基盤** | `IAppSettingsService` | `AppSettingsService` | **Singleton** | `AppSettings.xml` の永続化・設定値管理 | `IPathService`, `XmlIoLock` |
@@ -99,6 +99,9 @@
 | `OutputSlotService` → `ControlService` | コンストラクタで `_control = control ?? Program.rootHub`、`_slotManager` を `_control?.OutputslotMan` から取得 | `ControlService` 生成中に解決すると `_control` が null のまま固定され、`OutputSlotManager` が二重化する恐れ | `ControlService` は `Func<IOutputSlotService>` で遅延解決し、`ActiveOutDevType` 配列参照を初回にキャッシュ（決定D1） | Phase6-Step5（`OutputSlotService` 全面SSOT統合）。解消後は直接注入へ戻す |
 | `ProfileApplicationService` → `ControlService` | コンストラクタで `control ?? AppHost.GetService<ControlService>()` | `ControlService` 生成中に解決すると再帰生成の恐れ | `ControlService` からは直接注入しない（C2-47 の方式は Step2-2 着手時に決定） | 未定（Step2-2 の決定に従い、必要なら担当Stepを追加） |
 | `ProfileRepository` → `ControlService` | メソッド内で `AppHost.GetService<ControlService>()` を実行時に呼ぶ（コンストラクタ依存ではない） | 生成順序の問題は無いが、Service Locator が残る | 現状維持 | 未定 |
+
+%% 注釈補強（2026-09-19 Phase6-Step2 決定O2=C 反映）
+%% - `IEnvironmentService` に「コントローラースロット上限」（`ControllerSlotLimit` / `UsingMaxControllers`）を追加。旧 `ControlService` の static フィールドをサービスの値へ移行する。未移行の呼び出し元向けの static 互換シムは Phase6-Step12 で削除予定。
 
 %% 注釈補強（2026-09-19 Phase6-Step2 実地確認・決定D1〜D3反映）
 %% - 新規サービス `IVirtualKBMLifecycle` / `OutputKBMHandlerLifecycle`（3.出力、Singleton）を追加（決定D3）。`IVirtualKBM`（送出専用）は変更しない。

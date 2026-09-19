@@ -1,9 +1,9 @@
 # Phase6-Step2 計画書: `ControlService.cs` のGlobal直参照解消
 
 作成日: 2026-09-09  
-改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正）  
+改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: 決定D1〜D3 承認済み（2026-09-19）・PR-1 実装済み（レビュー待ち）・O2（C2-01）決定待ち  
+状態: PR-1 完了（ビルド・テスト成功、コミット済み `da16de4`、実機確認は OSC/UDP のみ未実施）・決定O2=C 確定／PR-1b 実装済み（レビュー待ち）・O1／O3 決定待ち  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -49,24 +49,32 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 
 ※ この環境には `dotnet` が無く、ビルド・テスト・ベンチマークは実行していない。上表は grep による静的確認のみに基づく。ビルド／テスト／実機は各PRの検証手順（§6・§7）に従い手元で実施する。
 
-#### 0.3.2 確定した決定事項（2026-09-19、いずれも推奨案を承認）
+#### 0.3.2 確定した決定事項（2026-09-19。D1〜D3 は推奨案を承認、O2 は推奨（B）と異なる C を選択）
 
 | ID | 論点 | 確定内容 |
 |---|---|---|
 | **D1** | `ControlService` → `IOutputSlotService` の循環（`OutputSlotService` が `ControlService` に依存） | `ControlService` には `IOutputSlotService` を直接注入せず、**`Func<IOutputSlotService>`（遅延解決）**を注入する。初回使用時に解決し、`ActiveOutDevType` 配列参照を1回だけキャッシュしてホットパスは配列直接参照とする（詳細は §3.2）。`OutputSlotService` 側の逆依存除去は Phase6-Step5 で実施し、その時点で `Func` を直接注入へ戻す |
 | **D2** | コンストラクタの `AppHost.GetService` フォールバック | **新規引数はすべて必須引数（Pure DI）**とし、`?? AppHost.GetService<T>()` フォールバックは新設しない。`ServiceRegistration` のファクトリで全て解決する。既存の `profileSettings ?? Global.ProfileSettingsServiceInstance` のみ、過渡期の防御コードとして本文内に残す（Step12 で削除判断） |
 | **D3** | KBM ハンドラの生成・差し替え | **新規 `IVirtualKBMLifecycle`（1ファイル1型）**を追加し、実装 `OutputKBMHandlerLifecycle` は `Global` への薄い委譲とする。`IVirtualKBM`（送出専用）は変更しない（詳細は §4.2） |
+| **O2** | C2-01（`CURRENT_DS4_CONTROLLER_LIMIT` の静的初期化 `Global.IsWin8OrGreater()`） | **C（インスタンス化）を採用**（推奨案 B の「静的ヘルパーへ移設」ではなく、上限を DI サービスの値として扱う）。実装が大きいため、実施方式（段階／一括）は O3 で決定する。PR-1b で `IEnvironmentService.ControllerSlotLimit` / `UsingMaxControllers` を新設し、`ControlService` 内部を注入値へ移行した（§6 Step2-1b） |
 
 #### 0.3.3 未決事項
 
 | ID | 論点 | 決定時期 |
 |---|---|---|
-| **O2** | C2-01（`CURRENT_DS4_CONTROLLER_LIMIT` の静的初期化 `Global.IsWin8OrGreater()`）の扱い。`public static` フィールドで、初期化時点ではインスタンスを注入できず、全ソリューションで約60箇所から参照されるためインスタンス化は現実的でない。`IsWin8OrGreater` は状態を持たない純粋な OS 判定（§4.5 カテゴリB相当） | PR-1 レビュー時に、メリット・デメリット・推奨を提示して決定（PR-1 では未着手） |
-| **O1** | C2-47（`Global.ApplyProfileToSlot`）の循環回避方式。`ProfileApplicationService` も `ControlService` に依存しているため、D1 と同様の `Func<IProfileApplicationService>`、イベント通知、`IProfileRepository.LoadProfileToSlot` 系の低レベルAPI利用などが候補。`Global.ApplyProfileToSlot` はログ組立・変更元（`ProfileChangeSource`）を伴うため、単純な置換では挙動差が出る恐れがある | Step2-2（PR-2）着手時に、メリット・デメリット・推奨を提示して決定 |
+| **O3** | O2=C の実施方式。外部の未移行呼び出し元が54箇所（15ファイル）あり、その多くは Step5／8／9／10／12 の対象ファイルである。(A) 段階実施: 各 Step が対象ファイルを Pure DI 化する際に同時に置換し、`ControlService` の static 互換シムは Step12 で削除する。(B) 一括実施: 54箇所を Step2 内で全置換し、互換シムを即時に撤去する | PR-1b レビュー時に、メリット・デメリット・推奨（A）を提示して決定 |
+| **O1** | C2-47（`Global.ApplyProfileToSlot`）の扱い。`IProfileApplicationService.ApplyProfile` は `Global.ApplyProfileToSlot` と等価ではない（§0.3.5 K1）ため、(A) `Func<IProfileApplicationService>` への置換は、先に K1 の是正と等価性確認が必要。(B) イベント経由の委譲は過剰設計。(C) `Global.ApplyProfileToSlot` を温存（同メソッドの XML コメントが既に「フェーズGで `IProfileApplicationService` へ完全委譲」と予告済み） | Step2-2（PR-2）着手時に、メリット・デメリット・推奨（C）を提示して決定 |
 
 #### 0.3.4 モデル図の連動更新
 
 `docs-forDIMG/Model-Diagram/` の 01〜04 を本改訂と同時に更新した（`IVirtualKBMLifecycle` の追加、`ControlService` の依存一覧の更新、過渡期の逆依存の注記）。図が示す目標構造（`OutputSlotService` は `IOutputSlotStore` のみに依存、`ProfileApplicationService` は `ControlService` に依存しない）は変更していない。
+
+
+#### 0.3.5 実施中に判明した既知の課題
+
+| ID | 内容 | 影響 | 対応 |
+|---|---|---|---|
+| **K1** | `ProfileApplicationService.ApplyProfile`（`DS4Control/Services/ProfileApplicationService.cs`）は `deviceIndex >= 4` をハードコードで拒否する（`Global.ApplyProfileToSlot` は `CURRENT_DS4_CONTROLLER_LIMIT` = 最大8 まで許可）。また `source == MappingAction` 以外では `device.HaltReportingRunAction` の内側で適用するが、`ControlService` の接続処理（C2-47）から呼ぶと Halt が入れ子になる可能性がある | C2-47 を `IProfileApplicationService` へ置換すると、スロット5〜8で適用が失敗し、接続時の挙動も変わり得る。現行の呼び出し元（`Global.ApplyProfileToSlot` → `Global.ApplyProfile`）は当該サービスを経由しないため、現時点では顕在化していない | O1 の決定に合わせて扱う。是正する場合はスロット上限の参照を `IEnvironmentService.ControllerSlotLimit` へ替えることが自然（O2 と連動） |
 
 ---
 
@@ -102,7 +110,7 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 
 | ID | 行番号・形式 | メソッド／経路 | 参照メンバ | 分類 | ホットパス | 移行先サービス・メンバ／方針 |
 |---|---|---|---|---|---|---|
-| C2-01 | 51 Q | 静的初期化 | `IsWin8OrGreater()` | (b) | N | **O2（未決）**: `public static` フィールドの初期化子のためインスタンス注入不可。PR-1 では未着手（`Global.IsWin8OrGreater()` を温存） |
+| C2-01 | 51 Q | 静的初期化 | `IsWin8OrGreater()` | (b) | N | **O2=C（確定）→ PR-1b で実装済み**: `IEnvironmentService.ControllerSlotLimit` / `UsingMaxControllers` を新設。`ControlService` 内部は注入値 `_controllerSlotLimit` を使用し、static は互換シム（外部54箇所の移行は O3 に従う）。`ControlService.cs` から `Global.IsWin8OrGreater()` 参照は消える |
 | C2-02 | 204 Q | コンストラクタ | `ProfileSettingsServiceInstance` | (a) | N | **D2**: 過渡期の防御コードとして温存（`profileSettings ?? Global.ProfileSettingsServiceInstance`）。技術的負債コメント付与済み。Phase6-Step12 で削除判断 |
 | C2-03 | 242 Q | コンストラクタ | `DeviceOptions` | (b) | N | `IAppSettingsService.DeviceOptions`（`BackingStore.deviceOptions` 委譲） |
 | C2-04 | 250 Q | コンストラクタ | `UDPServerSmoothingMincutoffChanged` | (b) | N | `IAppSettingsService.UDPServerSmoothingMincutoffChanged` イベント購読 |
@@ -419,6 +427,32 @@ namespace DS4Windows.Services
 
 ---
 
+### Step2-1b (PR-1b): C2-01 コントローラースロット上限のサービス化（決定O2=C）
+- **上限の意味**: `CURRENT_DS4_CONTROLLER_LIMIT` は「同時に扱えるスロット数の**上限**」（Windows 8 以上で 8、未満で 4。ビルド定義 `FORCE_4_INPUT` で 4 固定）であり、現在接続中のコントローラー台数ではない。`USING_MAX_CONTROLLERS` は上限が 8 かどうかの派生値。旧実装は `public static` フィールドの初期化子で `Global.IsWin8OrGreater()` を呼んでいたため、インスタンスを注入できなかった。
+- **作業内容（実装済み）**:
+  1. `IEnvironmentService` に `int ControllerSlotLimit { get; }` と `bool UsingMaxControllers { get; }` を追加。計算（OS 判定＋`FORCE_4_INPUT`）は `EnvironmentService` へ移設し、値はプロセス内で不変のため `internal static readonly` で1回だけ確定する。
+  2. `ControlService` 内部の5箇所（`Start`／`HotPlug`／`On_SyncChange`／`StartTPOff`／`setRumble`）は、コンストラクタで取得した `_controllerSlotLimit`（int フィールド）を使用する。`setRumble` は頻繁に呼ばれるため、インターフェース呼び出しを避けてキャッシュ値を使う。
+  3. `CURRENT_DS4_CONTROLLER_LIMIT` / `USING_MAX_CONTROLLERS` は、外部54箇所が未移行のため static プロパティの互換シムとして残す。値は `EnvironmentService` と同一の静的値を共有し、技術的負債コメント（理由・正規参照先・撤去予定 Step12）を付与した。
+- **互換シムを `Global.EnvironmentServiceInstance` 経由にしなかった理由**: 同プロパティは DI が未構築の場面でフォールバック生成と GUI ログ（`[Legacy] ... Fallback instance used`）を毎回出す。上限は `for` ループの条件式で毎回評価されるため、テストや起動初期にログが大量に出る恐れがある。また `ControlService` の型初期化中に `AppHost` を呼ぶと、DI 構築中の再入になる。
+- **検証**: `ControllerSlotLimitTests`（旧計算式との一致、範囲、`UsingMaxControllers` の判定、`EXPANDED_CONTROLLER_COUNT` と `Global.MAX_DS4_CONTROLLER_COUNT` の一致、互換シムとの値共有）。
+- **残る移行対象（外部54箇所・15ファイル）と担当案（O3 承認後に各 Step 計画書へ反映）**:
+
+| 呼び出し元 | 箇所数 | 担当案 | 置換方法 |
+|---|---:|---|---|
+| `OutputSlotManager.cs` | 3 | Step5 | コンストラクタで上限を受け取る（引数なしのコンストラクタは互換のため残す） |
+| `Services/ProfileSettingsService.cs` | 4 | PR-1c（提案） | `IEnvironmentService` をコンストラクタ注入（既存テストの `new ProfileSettingsService()` の修正を伴う） |
+| `Services/AutoProfileService.cs` | 2 | PR-1c（提案） | 同上（`AutoProfileChecker` と `AutoProfileServiceTests` の生成箇所の修正を伴う） |
+| `ScpUtil.cs`（`Global` 内部の static メソッド） | 8 | Step12 | `Global.EnvironmentServiceInstance` 経由へ（Global 内部のためシム扱い） |
+| `DTOXml/AutoProfilesDTO.cs` | 2 | Step10 | 引数渡し |
+| `ProfileSettingsViewModel.cs` | 10 | Step9 | コンストラクタ注入（`IViewModelFactory` 経由） |
+| `ProfileEditor.xaml.cs` | 8 | Step8 | `ProfileSettingsViewModel` へ移設するロジックと同時に置換 |
+| `MainWindow.xaml.cs` | 2 | Step8 | 同上（MainWindow 解体推進の一環） |
+| `AutoProfilesViewModel.cs`／`AutoProfiles.xaml.cs` | 2／2 | Step10 | コンストラクタ注入／`AppHost` 経由 |
+| `RecordBoxViewModel.cs`／`BindingWindowViewModel.cs`／`BindingWindow.xaml.cs` | 3／3／1 | Step10 | 同上 |
+| `SpecialActions/CheckBatteryViewModel.cs`／`CurrentOutDeviceViewModel.cs` | 3／1 | Step10 | 同上 |
+
+---
+
 ### Step2-2 (PR-2): 出力スロット・プロファイル状態・接続イベント
 - **対象**: ID: C2-28〜C2-31, C2-41〜C2-49（`PluginOutDev`, `useDInputOnly`, `activeOutDevType`, `PrepareConnectedInputControllerSettingEvents`）
 - **着手時に決定**: O1（C2-47 `ApplyProfileToSlot` の方式）。メリット・デメリット・推奨を提示して承認を得てから実装する。
@@ -538,7 +572,8 @@ namespace DS4Windows.Services
 - [ ] 表1〜表3に定義された全66箇所の実移行対象が、DIサービス経由の呼び出しへ置換されていること。
 - [ ] 表4に定義された明示的除外項目（const定数3件、ViGEmバックエンド5件、計8参照）以外の `Global.` 直接参照が `ControlService.cs` から完全に根絶されていること。
 - [ ] `ControlService.cs` 冒頭の `using static DS4Windows.Global;` ディレクティブが安全に削除されていること。
-- [ ] 例外として残る `Global` 参照が、C2-02（D2: 防御コード）と C2-01（O2 の決定内容）のみであり、いずれも技術的負債コメントまたは除外表への追記で理由が記録されていること。
+- [ ] `ControlService.cs` に例外として残る `Global` 参照が、C2-02（D2: 防御コード）のみであり、技術的負債コメントで理由が記録されていること。
+- [ ] `CURRENT_DS4_CONTROLLER_LIMIT` / `USING_MAX_CONTROLLERS` の外部呼び出し元が、O3 で決定した方式に従い移行され、Phase6-Step12 で互換シムが削除されること。
 - [ ] コンストラクタ注入において、`ProfileApplicationService` および `OutputSlotService` との循環依存が発生していないこと（D1、O1 の決定内容に従うこと）。
 - [ ] `ControlService` のコンストラクタに `AppHost.GetService` フォールバックが新設されておらず、新規引数がすべて必須であること（D2）。
 - [ ] `IVirtualKBMLifecycle` / `OutputKBMHandlerLifecycle` が1ファイル1型で追加され、`Global.outputKBMHandler` への直接アクセスに技術的負債コメントが付与されていること（D3）。
@@ -595,3 +630,30 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 | `GetGyroOutMode` | 2785 | C2-58 |
 | `GetOutputDS4TriggerMode` | 2861 | C2-61 |
 | `GetSASteeringWheelEmulationAxis` | 2911 | C2-64 |
+
+---
+
+## 付録B: 実施・検証記録
+
+### B.1 PR-1（Step2-1）: 2026-09-19
+
+- **コミット**: `da16de4`（`For-DI-migration-work`）
+- **自動検証**: ビルド、テストビルド、テスト実行の全てが成功（開発環境での実施結果）
+- **実機確認**（ユーザー実施）:
+
+| # | 項目 | 結果 | 確認内容 |
+|---|---|---|---|
+| 1 | OSC / UDP の起動・停止 | **未実施** | 対応するサードパーティアプリを所持していないため実施できず |
+| 2 | HidHide 有効時のデバイス隠蔽 | OK | 正常に隠蔽されることを確認 |
+| 3 | 排他モード（Hide DS4 Controller） | OK | HidHide 側の隠蔽を解除した状態で確認。ON: `joy.cpl` では2つのコントローラーが見えるが、パッドテストサイトでは仮想コントローラーの出力のみが反映される。OFF: パッドテストサイトでデフォルトのボタン出力と仮想コントローラーの出力の両方が反映される |
+| 4 | プロセス優先度 | OK | 設定に応じてタスクマネージャの優先度が変わることを確認 |
+| 5 | QuickCharge | OK | ON: Bluetooth 接続中に USB ケーブルを挿すと、Bluetooth が切断されると同時に USB 接続のコントローラーが接続され、仮想コントローラーも有効になる。OFF: Bluetooth 接続は維持され、USB 接続のコントローラーは接続状態にならない |
+| 6 | 停止時の BT 切断（DCBT） | OK | ON: 機能停止や DS4Windows 終了時に Bluetooth 接続も切断される。OFF: Bluetooth 接続は維持される |
+
+- **未検証項目**: OSC / UDP の実機送受信。PR-1 の変更（有効フラグ・ポート・アドレスの読み出しを `IAppSettingsService` 経由へ変更、UDP 平滑化イベントの購読を転送に変更）は、単体テスト（`ControlServiceShimEquivalenceTests`）で Global との状態共有とイベント転送を検証済みだが、実際の送受信は確認できていない。Step11 の実機検証マトリクスへ持ち越し、受信側のツールを用意できた時点で確認する。
+
+### B.2 PR-1b（Step2-1b）: 2026-09-19
+
+- **実装**: §6 Step2-1b のとおり（`IEnvironmentService`／`EnvironmentService`／`ControlService`、新規テスト `ControllerSlotLimitTests`）。
+- **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソース（既存診断 1,265 件）で新規エラー 0 件を確認。テストファイルも xUnit の簡易スタブで検証した。
+- **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施）。
