@@ -3,7 +3,7 @@
 作成日: 2026-09-09  
 改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記／PR-3 検証結果、配置基準の決定（案2）と Step13-1 の挿入の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: **Step2 の全 PR（PR-1〜PR-6）の実装が完了**。PR-1〜PR-5・Step13-1 はビルド・テスト成功、リモート反映済み。**PR-6 は実装済み（ビルド・テスト確認待ち）**。実機確認は OSC/UDP、PR-4 の一部、PR-5 の全項目を Phase6-Step11 へ先送り  
+状態: **Step2 の全 PR（PR-1〜PR-6）の実装が完了**。PR-1〜PR-5・Step13-1 はビルド・テスト成功、リモート反映済み。**PR-6 はビルド・テストビルド成功、テスト実行で1件失敗（テストの実行順序依存。修正版のテストを提供）**。実機確認は OSC/UDP、PR-4 の一部、PR-5 の全項目を Phase6-Step11 へ先送り  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -774,3 +774,13 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 | 12 | `dotnet build -c Release` の警告・エラーが0件 | 要確認 | PR-1〜PR-5 のビルド成功は確認済み。警告数の確認は PR-6 のビルド後に実施 |
 | 13 | 全自動テストが100%成功 | PR-5 まで済 | PR-6 のテスト実行後に確定 |
 | 14 | 実機での接続・切断・入力追従・プロファイル切替が正常 | 一部 | PR-1〜PR-4 で実施した範囲は問題なし。先送り項目は Phase6-Step11 §3.3 の先送り台帳で確認する |
+
+### B.11 PR-6 の検証結果: 2026-09-20
+
+- **自動検証**: ビルド、テストビルドは成功。テスト実行で1件失敗し、その状態でリモートへ反映済み。
+  - 失敗したテスト: `ControlServicePr5ShimEquivalenceTests.TouchpadActiveArray_OfDiSingleton_IsTheSameArrayAsGlobalTouchActive`（B.9 で修正したテスト。今回は `Assert.Same(Global.ProfileSettingsServiceInstance, service)` で失敗）。PR-6 の変更（`using static` の削除）とは無関係。
+  - **原因はテストの実行順序への依存**: `Global.ProfileSettingsServiceInstance` には public の setter があり、既存テスト（`ProfileSettingsServiceTests`、`ProfileRepositoryTests`、`ProfileSettingsViewModelTests`）が、テスト用のサービスを代入したまま元に戻さない。PR-6 でテストクラスが増えて実行順序が変わり、本テストの実行時点で `Global` が DI の Singleton とは別のインスタンスを参照していた。本番コードは setter を使わないため、本番の動作には影響しない。
+  - **修正**: 本テストは、`Global.ProfileSettingsServiceInstance` を DI の Singleton に**明示的に配線**し、検証後に元へ戻す形に改めた（`WithGlobalWiredTo`）。同じく `Global.ProfileSettingsServiceInstance` 経由の値（`getEnableTouchToggle`／`getRumbleBoost`）を比較する `TouchOutMode_And_OutputDS4TriggerMode_MatchGlobalGetters` も、同様に配線して比較する形にした（現状は成功しているが、実行順序に依存し得るため）。
+  - 再点検: PR-2〜PR-6 の自作テストのうち、`Global.ProfileSettingsServiceInstance` の参照先に依存するものは上記2件のみ。他は BackingStore（`Global.store`）を直接共有する値の比較か、値を読み捨てる計測であり、影響なし。
+  - **教訓（テスト作成ルール）**: `Global` の static 状態を書き換えたまま戻さない既存テストがあるため、`Global` の参照先（`ProfileSettingsServiceInstance` など）に依存するテストは、必ず明示的に配線し、終了後に復元する。既存テスト側の後始末の欠落は、Step10b またはテスト整理の際に是正する候補として記録する。
+- **未確認**: 修正版のテスト全件合格、警告数の確認（付録C の項目 12・13）。

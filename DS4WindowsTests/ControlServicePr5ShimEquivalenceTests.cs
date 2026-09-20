@@ -142,30 +142,52 @@ namespace DS4WindowsTests
             }
         }
 
+        /// <summary>
+        /// Global.ProfileSettingsServiceInstance を指定のサービスに配線して body を実行し、終了後に元へ戻す。
+        /// 他のテスト（ProfileSettingsServiceTests など）が Global.ProfileSettingsServiceInstance を差し替えたまま
+        /// 戻さないことがあり、テストの実行順序によって Global の参照先が変わるため、本テストでは
+        /// 本番と同じ配線（Global が DI の Singleton を参照する状態）を明示的に作ってから検証する。
+        /// </summary>
+        private static void WithGlobalWiredTo(IProfileSettingsService service, Action body)
+        {
+            IProfileSettingsService original = Global.ProfileSettingsServiceInstance;
+            try
+            {
+                Global.ProfileSettingsServiceInstance = service;
+                body();
+            }
+            finally
+            {
+                Global.ProfileSettingsServiceInstance = original;
+            }
+        }
+
         [Fact]
         public void TouchpadActiveArray_OfDiSingleton_IsTheSameArrayAsGlobalTouchActive()
         {
             // TouchpadActiveArray はサービスのインスタンスが保持する状態（BackingStore ではない）。
-            // そのため、new ProfileSettingsService() で作った別インスタンスではなく、
-            // ControlService が実際に受け取る DI の Singleton を対象にする。
-            // Global.touchpadActive／TouchActive は Global.ProfileSettingsServiceInstance 経由で同じ Singleton を参照するため、
-            // CheckForTouchToggle／StartTPOff が書き換える配列と、Global 側の読み取りが同一であること（孤立配列でないこと）を確認する。
+            // new ProfileSettingsService() で作った別インスタンスではなく、ControlService が実際に受け取る
+            // DI の Singleton を対象にする。本番では Global.ProfileSettingsServiceInstance も同じ Singleton を返すため、
+            // CheckForTouchToggle／StartTPOff が書き換える配列と、Global.TouchActive／touchpadActive の読み取りは同一になる。
             IProfileSettingsService service = DS4WinWPF.AppHost.GetService<IProfileSettingsService>();
 
-            Assert.Same(Global.ProfileSettingsServiceInstance, service);
-            Assert.Same(Global.touchpadActive, service.TouchpadActiveArray);
+            WithGlobalWiredTo(service, () =>
+            {
+                Assert.Same(Global.ProfileSettingsServiceInstance, service);
+                Assert.Same(Global.touchpadActive, service.TouchpadActiveArray);
 
-            const int slot = 0;
-            bool original = service.TouchpadActiveArray[slot];
-            try
-            {
-                service.TouchpadActiveArray[slot] = !original;
-                Assert.Equal(!original, Global.GetTouchActive(slot));
-            }
-            finally
-            {
-                service.TouchpadActiveArray[slot] = original;
-            }
+                const int slot = 0;
+                bool original = service.TouchpadActiveArray[slot];
+                try
+                {
+                    service.TouchpadActiveArray[slot] = !original;
+                    Assert.Equal(!original, Global.GetTouchActive(slot));
+                }
+                finally
+                {
+                    service.TouchpadActiveArray[slot] = original;
+                }
+            });
         }
 
         [Fact]
@@ -173,11 +195,16 @@ namespace DS4WindowsTests
         {
             const int slot = 0;
 
-            Assert.Equal(Global.IsUsingTouchpadForControls(slot),
-                _profileSettings.TouchOutMode[slot] == TouchpadOutMode.Controls);
-            Assert.Equal(Global.GetOutputDS4TriggerMode(slot), _profileSettings.OutputDS4TriggerMode[slot]);
-            Assert.Equal(Global.getEnableTouchToggle(slot), _profileSettings.GetEnableTouchToggle(slot));
-            Assert.Equal(Global.getRumbleBoost(slot), _profileSettings.GetRumbleBoost(slot));
+            // Global.getEnableTouchToggle／getRumbleBoost は Global.ProfileSettingsServiceInstance 経由のため、
+            // 比較対象のサービスに Global を配線してから比較する（実行順序に依存しないようにする）。
+            WithGlobalWiredTo(_profileSettings, () =>
+            {
+                Assert.Equal(Global.IsUsingTouchpadForControls(slot),
+                    _profileSettings.TouchOutMode[slot] == TouchpadOutMode.Controls);
+                Assert.Equal(Global.GetOutputDS4TriggerMode(slot), _profileSettings.OutputDS4TriggerMode[slot]);
+                Assert.Equal(Global.getEnableTouchToggle(slot), _profileSettings.GetEnableTouchToggle(slot));
+                Assert.Equal(Global.getRumbleBoost(slot), _profileSettings.GetRumbleBoost(slot));
+            });
         }
     }
 }
