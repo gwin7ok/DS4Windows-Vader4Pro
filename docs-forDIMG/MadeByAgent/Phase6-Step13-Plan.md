@@ -343,3 +343,18 @@ git diff --cached -M100% --name-status | Select-String -NotMatch '^R100'
 - **配置の確認**（HEAD `c28381f`）: `DS4Windows/` 直下の `.cs` は `App.xaml.cs`、`GlobalSuppressions.cs`、`KeyboardSettings.cs`、`StartupMethods.cs` の4件のみ（R5 のとおり）。`Updater/` 3件、`Core/Logging/` 5件、`Core/Utilities/` 5件、`DS4Control/Profiles/` 4件、`Actions/` 49件、`DS4Control/Services/` 27件、`DI/` 29件。`Notifications/` は消滅した。
 - **自動検証**: ビルド、テストビルドは成功。テスト実行で2件のエラー。**原因は移動そのものではなく、静的初期化の循環という潜在的な欠陥**（ファイル移動でコンパイル順序が変わり、テストの実行順序が変わって表に出た）。`Phase6-Step2-Plan.md` 付録 B.13 に原因と是正を記録した。
 - **Step13 の状況**: 13-1〜13-5 の移動（合計44件）が完了した。残りは 13-6（Phase6 範囲外への引き継ぎ）のみ。テスト是正版の確認後に、Step13（13-1〜13-5）の完了を確定する。
+
+### 完了確定: 2026-09-21
+
+13-1〜13-5（`.cs` ファイル44件の配置整理）の完了を確定した。§8 の完了条件の確認結果は次のとおり。
+
+| # | 完了条件 | 結果 |
+|---|---|---|
+| 1 | 13-1〜13-5 が完了し、検証（全件 `R100`、ビルド、テスト、起動スモーク）が合格している | 済。ビルド、テストビルド、テスト実行の全件成功、Release ビルドはエラー・警告なし。13-1 は起動スモーク（起動、接続、プロファイル適用、プロファイル切替）も問題なし。`R100` 検証の結果は個別の報告がなく、配置が想定どおりであること（HEAD `c68329f`）を確認した |
+| 2 | `copilot-instructions.md` §3.4 が反映されている | 済 |
+| 3 | `DS4Windows/` 直下の `.cs` が R5 のファイルのみ | 済（`App.xaml.cs`、`StartupMethods.cs`、`GlobalSuppressions.cs`、`KeyboardSettings.cs` の4件） |
+| 4 | `DS4Control/` 直下に DI 登録される型が残っていない | 済。`ServiceRegistration` に登録された実装クラス31件は、`DS4Control/Services/` に24件、`Actions/` に7件で、`DS4Control/` 直下には0件（機械的に確認） |
+| 5 | 13-6 の引き継ぎ内容が最終クリーンアップフェーズの計画に記載されている | 一部。引き継ぎ内容は本書 §3 と §1.1 に記載済み。最終クリーンアップフェーズの計画書は未作成のため、作成時に取り込む |
+
+- 13-6 の引き継ぎ内容: `DI/` の契約の最終配置（`DI/` を配線専用にする）、`DS4WindowsTests/` の構造整理、`Actions/` 内のサブフォルダ化、名前空間とフォルダの一致（案4）。
+- 副産物: 13-2〜13-5 の適用後に見つかった静的初期化の循環（`Phase6-Step2-Plan.md` 付録 B.13）を是正した。
