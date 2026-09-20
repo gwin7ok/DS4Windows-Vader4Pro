@@ -245,7 +245,7 @@ git mv "DS4Windows/WindowLayoutDefaults.cs" "DS4Windows/Core/Utilities/WindowLay
 
 ### 5.2 実行
 1. §4 の該当ステージのコマンドを上から順に実行する。
-2. `urls.txt` に、移動したファイルの旧パスを指す行がある場合は、新パスへ更新する（本書と同時に提供する `urls.txt` は 13-1 分を反映済み）。
+2. `urls.txt`（ファイルのURL一覧）は、利用者がファイル構成の変更後にバッチ処理で更新する。移動の作業には含めない。
 
 ### 5.3 検証
 1. **全件が rename であること（内容変更がないこと）**:
@@ -282,7 +282,7 @@ git diff --cached -M100% --name-status | Select-String -NotMatch '^R100'
 | 移動先の衝突 | 全44件で、移動先に同名ファイルなし。移動元も全件存在 |
 | 名前空間×フォルダの規約 | `.editorconfig` で Style カテゴリは `none`、`TreatWarningsAsErrors=false`。新フォルダへの移動でビルドは影響を受けない（`.editorconfig` の適用外リストは 13-2 で拡張） |
 | CI | `.github/workflows/release.yml` は csproj のパスのみ参照。影響なし |
-| 旧パスを文字列で参照するファイル | 履歴文書（Phase1〜6 の報告書・計画書）と `Phase6-Step1-Audit/manifest.json` は過去時点の記録のため更新しない。現行の運用文書と `urls.txt` は該当ステージで更新する |
+| 旧パスを文字列で参照するファイル | 履歴文書（Phase1〜6 の報告書・計画書）と `Phase6-Step1-Audit/manifest.json` は過去時点の記録のため更新しない。現行の運用文書は該当ステージで更新する。`urls.txt` は利用者のバッチ処理で更新する |
 | `DS4WindowsTests/` | 直下に52件（サブフォルダは `TestData`、`ActionControllerTests`）。本 Step では移動しない（13-6） |
 
 ---
@@ -316,5 +316,5 @@ git diff --cached -M100% --name-status | Select-String -NotMatch '^R100'
 | Step2（`ControlService`） | 13-1 は Step2-PR-4 の前に実施する。13-2〜13-5 は Step2 完了後（PR-6 の後）・Step3 着手前が推奨 |
 | Step3〜Step10 | 各 Step の計画書に書かれたファイルパスは、13-1〜13-5 の対象ファイルについて変わる。各 Step の着手時に、対象ファイルの現在のパスを確認する（各 PR で grep 台帳を再作成する既存ルールで足りる） |
 | Step12（`ScpUtil.cs` の旧シム削除） | 本 Step では `ScpUtil.cs` を移動しない。影響なし |
-| 1ファイル1型の是正（別途、位置を決定） | 本 Step（13-1〜13-5）の**後**に実施する。移動してから分割することで、新設する型のファイルが最終の配置先に作られる |
+| Step10b（1ファイル1型の全数是正、Step10 と Step11 の間） | 本 Step（13-1〜13-5）の**後**に実施する。移動してから分割することで、新設する型のファイルが最終の配置先に作られる |
 | Phase7（`Mapping.cs` の instance 化） | 影響なし |
