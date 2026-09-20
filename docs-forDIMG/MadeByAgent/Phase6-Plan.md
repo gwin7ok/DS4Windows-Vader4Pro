@@ -1,14 +1,15 @@
 # フェーズ6計画書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
 作成日: 2026-09-09  
-改定日: 2026-09-19（Step1再監査および全ステップ［Step2〜Step12］確定実装計画書に基づく全面改訂）  
+改定日: 2026-09-20（Step13［.cs ファイル配置の統一］を新設）／2026-09-19（Step1再監査および全ステップ［Step2〜Step12］確定実装計画書に基づく全面改訂）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ: `Phase5-Plan.md`（Step1〜15、ドメイン集約型・完了済み）  
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
 参照調査・各ステップ計画書:  
   - `Phase6-Step1-Completion-Summary.md`（Step1詳細再監査・全762参照走査記録）  
   - `Phase6-Step1-Core-Reference-Evidence.md` / `Phase6-Step1-UI-Reference-Evidence.md`  
-  - `Phase6-Step2-Plan.md` 〜 `Phase6-Step12-Plan.md`（各ステップ確定実装計画書）  
+  - `Phase6-Step2-Plan.md` 〜 `Phase6-Step13-Plan.md`（各ステップ確定実装計画書）  
+  - `Phase6-Unified-Deployment-Plan-and-Safe-Phased-Transition-Work-Plan.md`（Step13 の参照原案）  
 
 ---
 
@@ -46,10 +47,10 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 
 ---
 
-## 1. 実施ステップ一覧（全12ステップ、ドメイン集約型）
+## 1. 実施ステップ一覧（全13ステップ、ドメイン集約型）
 
 ```text
-【Phase6 全12ステップ構成】
+【Phase6 全13ステップ構成】
 [完了] Phase6-Step1: 詳細監査と対象確定（全762参照走査、実参照約404箇所特定・分類確定）
 
 ── [ドメイン1: コア層（信号変換・入力監視境界）] ──
@@ -70,6 +71,9 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 ── [ドメイン4: 検証・仕上げ] ──
 ├─ Phase6-Step11: 2層構造・階層化総合検証（自動回帰テスト全件 ＋ Vader 4 Pro/DS4/DualSense 実機検証）
 └─ Phase6-Step12: 呼出元0件旧静的シムの安全防壁付き物理削除 ＆ Phase6最終完了判定
+
+── [ドメイン5: 横断（構造整理）] ──
+└─ Phase6-Step13: .cs ファイル配置の統一（git mv のみ・挙動変更なし。13-1 は Step2-PR-4 の前、13-2〜13-5 は Step2 完了後・Step3 着手前が推奨。番号は末尾だが実施時期は途中から始まる）
 ```
 
 ---
@@ -173,6 +177,23 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 
 ---
 
+### 【ドメイン5: 横断（構造整理）】
+
+#### Phase6-Step13: `.cs` ファイル配置の統一（段階実施・挙動変更なし）
+- **対象**: `DS4Windows/` 配下の `.cs` 44ファイル（`DS4Control/` と `DS4Control/Services/` の配置基準の不統一、Actions サブシステムの二重配置、ルート直下の機能ファイル、`NotificationService` の孤立）。
+- **確定方針**: 現 Step は**案2**（インターフェースを `DI/` に一元化、実装は `DS4Control/Services/`、Actions は `Actions/`）を適用し、将来は案4（層別再編・名前空間の一致）へ進む。移動は `git mv` のみで、ファイルの内容・名前空間は変更しない。配置ルールは `copilot-instructions.md` §3.4 に明文化した。
+- **ステージ構成**:
+  - 13-1（旧 PR-L、20件）: 契約7件を `DI/` へ、`ProfileSlotApplier` を `Services/` へ、直下の Actions 名前空間12件を `Actions/` へ。**Step2-PR-4 の前に実施（決定済み）**。
+  - 13-2（8件）: 更新3件を `Updater/` へ、ログ5件を `Core/Logging/` へ。
+  - 13-3（1件）: `NotificationService` を `DS4Control/Services/` へ。
+  - 13-4（6件）: `ActionManager`、`ActionRegistry` と関連コントローラー4件を `Actions/` へ。
+  - 13-5（9件）: プロファイル補助4件を `DS4Control/Profiles/` へ、ユーティリティ5件を `Core/Utilities/` へ。
+  - 13-6: Phase6 範囲外への引き継ぎ（`DI/` の契約の最終配置、テスト構造の整理、名前空間とフォルダの一致）。
+- **検証**: 各ステージで、`git diff --cached -M100% --name-status` の全行が `R100` であること（内容変更なし）、ビルド・テスト全件成功、起動スモーク。
+- 詳細は `Phase6-Step13-Plan.md` を正本とする。
+
+---
+
 ## 3. アーキテクチャ・ガードレール
 
 1. **ホットパス性能維持（ゼロアロケーション）**:
@@ -196,6 +217,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 4. 全自動テスト（Actions / Standalone / Phase6新規テスト全件）が 100% 成功していること。
 5. Flydigi Vader 4 Pro コントローラーを含む実機マトリクス検証（10大セクション）が全件「○（合格）」であること。
 6. 呼出元0件となった旧静的ラッパーが安全防壁付きで物理削除され、`ScpUtil.cs` のスリム化が安全に達成されていること。
+7. Step13（13-1〜13-5）が完了し、`.cs` ファイルの配置が `copilot-instructions.md` §3.4 の配置ルールに従っていること（全移動が内容変更なしの rename として検証済みであること）。
 
 ---
 
@@ -207,7 +229,8 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 - **Step 4〜6**: 信号出力層・スロットSSOT・追従（3〜4日）
 - **Step 7〜10**: 起動・UI層・MVVM移設・小型UI（4〜5日）
 - **Step 11〜12**: 2層総合検証・実機テスト・物理削除・完了判定（2〜3日）
-- **合計想定工数**: 約13〜17日（順次マイクロステップPR運用）
+- **Step 13**: `.cs` ファイル配置の統一（13-1〜13-5、約1.5〜2日）
+- **合計想定工数**: 約15〜19日（Step13 を含む。順次マイクロステップPR運用）
 
 ### 5.2 全体プロジェクト（Phase 0 〜 Phase 7）における位置づけ
 - **全体進捗率**: **約 60〜65%**（Phase0〜5完了 ＋ Phase6-Step1完了・全計画書確定）。

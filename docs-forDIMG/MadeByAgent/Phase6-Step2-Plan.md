@@ -1,9 +1,9 @@
 # Phase6-Step2 計画書: `ControlService.cs` のGlobal直参照解消
 
 作成日: 2026-09-09  
-改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記）  
+改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記／PR-3 検証結果、配置基準の決定（案2）と Step13-1 の挿入の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: PR-1・PR-1b・PR-1c・PR-2 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP のみ未実施）・PR-3 実装済み（レビュー待ち）  
+状態: PR-1・PR-1b・PR-1c・PR-2・PR-3 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP のみ未実施）・**次は Step13-1（配置整理、Step2-PR-4 の前）→ PR-4**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -401,6 +401,7 @@ namespace DS4Windows.Services
 ├─ Step2-1 (PR-1): 非ホットパスの環境・パス・基本設定（ID: C2-03〜08, 21〜27, 32, 34〜39）※C2-01=O2決定待ち、C2-02=D2温存、C2-33/40=PR-3
 ├─ Step2-2 (PR-2): 出力スロット・プロファイル状態・接続イベント（ID: C2-28〜31, 41〜49）
 ├─ Step2-3 (PR-3): KBMハンドラ初期化・ライフサイクル整理（ID: C2-09〜20, 33, 40）
+├─ Step13-1（旧 PR-L）: `.cs` ファイルの配置整理（git mv のみ、20件。`Phase6-Step13-Plan.md` 参照）
 ├─ Step2-4 (PR-4): 入力処理ホットパス（条件付き・低頻度分岐）（ID: C2-51〜54, 56, 58, 64〜65）[14参照]
 ├─ Step2-5 (PR-5): 入力処理ホットパス（毎レポート最頻度経路）（ID: C2-50, 55, 57, 59〜63, 66）[18参照]
 └─ Step2-6 (PR-6): using static DS4Windows.Global; 削除・未修飾参照ゼロ検証・最終クリーンアップ
@@ -693,4 +694,12 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 
 - **実装**: §6 Step2-3 のとおり。新規は `IVirtualKBMLifecycle`／`OutputKBMHandlerLifecycle`、テスト `VirtualKBMLifecycleTests`／`ControlServicePr3DiWiringTests`／`ControlServiceTestFactory`。
 - **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイル（xUnit は簡易スタブ）で新規エラー 0 件。
-- **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施。手順は §6 Step2-3 の検証欄）。
+- **自動検証**: ビルド、テストビルド、テスト実行の全てが成功（開発環境での実施結果）。リモートリポジトリへ反映済み。
+- **実機確認**（ユーザー実施）: 提示した3項目（①通常起動での KBM 出力、②FakerInput 未導入環境での `-virtualkbm fakerinput` 指定によるフォールバック、③開始→停止→開始の繰り返し）— すべて問題なし。
+
+### B.6 配置基準の決定（案2）と Step13-1 の挿入: 2026-09-20
+
+- **背景**: `DS4Control/` と `DS4Control/Services/` の配置基準が曖昧であることを、ユーザーが指摘した。実地調査で、契約の置き場が `DI/`（21件）と `Services/`（7件）に分かれていること、DI 登録される実装が直下（`ProfileSlotApplier`、`Default*Factory` など）に混在していること、Actions サブシステムが `DS4Control/` 直下（12件）と `Actions/`（31件）に分かれていることを確認した。
+- **決定**: 現 Step は**案2**（インターフェースを `DI/` に一元化、実装は `DS4Control/Services/`、Actions は `Actions/`）、将来は案4（層別再編）。移動は Step2-PR-4 の前に実施する（`git mv` のコマンド一覧で提供）。
+- **反映**: 配置ルール R1〜R7 を `copilot-instructions.md` §3.4 に追記。移動は Phase6 の新設 Step13 として計画化した（`Phase6-Step13-Plan.md`。Step2 に関わる 13-1 の20件は本 Step の PR-4 の前、残り 13-2〜13-5 は Step2 完了後）。
+- **影響**: 本書 §4.1 などが挙げる `DS4Control/Services/IVirtualKBM.cs` などのパスは、13-1 の実施後に `DI/` 配下となる（名前空間は変更しない）。
