@@ -554,5 +554,19 @@ namespace DS4Windows.Services
                 }
             }
         }
+
+        // ---- Phase6-Step2-4 (PR-4): 遅延警告時のライトバー点滅 ----
+        public bool FlashWhenLate
+        {
+            get => Global.FlashWhenLate;
+            set
+            {
+                if (Global.FlashWhenLate != value)
+                {
+                    Global.FlashWhenLate = value;
+                    NotifyChanged(nameof(FlashWhenLate));
+                }
+            }
+        }
     }
 }

@@ -82,5 +82,8 @@ namespace DS4Windows.DI
         // ---- Phase6-Step2-2 (PR-2): UDP サーバ平滑化パラメータ（Global への薄い委譲）----
         double UDPServerSmoothingMincutoff { get; set; }
         double UDPServerSmoothingBeta { get; set; }
+
+        // ---- Phase6-Step2-4 (PR-4): 遅延警告時のライトバー点滅（Global への薄い委譲）----
+        bool FlashWhenLate { get; set; }
     }
 }

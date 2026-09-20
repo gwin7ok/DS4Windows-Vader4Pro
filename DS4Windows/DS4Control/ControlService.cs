@@ -2334,14 +2334,14 @@ namespace DS4Windows
 
         public void CheckProfileOptions(int ind, DS4Device device, bool startUp = false)
         {
-            device.ModifyFeatureSetFlag(VidPidFeatureSet.NoOutputData, !getEnableOutputDataToDS4(ind));
-            if (!getEnableOutputDataToDS4(ind))
+            device.ModifyFeatureSetFlag(VidPidFeatureSet.NoOutputData, !_profileSettings.GetEnableOutputDataToDS4(ind));
+            if (!_profileSettings.GetEnableOutputDataToDS4(ind))
                 LogDebug("Output data to DS4 disabled. Lightbar and rumble events are not written to DS4 gamepad. If the gamepad is connected over BT then IdleDisconnect option is recommended to let DS4Windows to close the connection after long period of idling.");
 
-            device.setIdleTimeout(getIdleDisconnectTimeout(ind));
-            device.setBTPollRate(getBTPollRate(ind));
+            device.setIdleTimeout(_profileSettings.GetIdleDisconnectTimeout(ind));
+            device.setBTPollRate(_profileSettings.GetBTPollRate(ind));
 
-            touchPad[ind].ResetTrackAccel(getTrackballFriction(ind));
+            touchPad[ind].ResetTrackAccel(_profileSettings.GetTrackballFriction(ind));
             touchPad[ind].ResetToggleGyroModes();
 
             //Global.TouchOutMode[ind] = TouchpadOutMode.MouseJoystick;
@@ -2355,14 +2355,14 @@ namespace DS4Windows
             device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, _profileSettings.R2OutputSettings[ind].TriggerEffect,
                 _profileSettings.R2OutputSettings[ind].TrigEffectSettings);
 
-            device.RumbleAutostopTime = getRumbleAutostopTime(ind);
+            device.RumbleAutostopTime = _profileSettings.GetRumbleAutostopTime(ind);
             device.setRumble(0, 0);
             device.LightBarColor = _profileSettings.GetMainColor(ind);
 
             // DualSense specific profile settings
             if (device is InputDevices.DualSenseDevice dualsense)
             {
-                switch (DualSenseRumbleEmulationMode[ind])
+                switch (_profileSettings.DualSenseRumbleEmulationMode[ind])
                 {
                     case InputDevices.DualSenseDevice.RumbleEmulationMode.Disabled:
                         dualsense.UseRumble = false;
@@ -2378,7 +2378,7 @@ namespace DS4Windows
                         dualsense.UseAccurateRumble = true;
                         break;
                 }
-                dualsense.HapticPowerLevel = DualSenseHapticPowerLevel[ind];
+                dualsense.HapticPowerLevel = _profileSettings.DualSenseHapticPowerLevel[ind];
             }
 
             if (!startUp)
@@ -2389,7 +2389,7 @@ namespace DS4Windows
 
         private void CheckLauchProfileOption(int ind, DS4Device device)
         {
-            string programPath = LaunchProgram[ind];
+            string programPath = _profileSettings.LaunchProgram[ind];
             if (programPath != string.Empty)
             {
                 Process[] localAll = Process.GetProcesses();
@@ -2438,7 +2438,7 @@ namespace DS4Windows
 
             // Carry over initial profile wheel smoothing values to filter instances.
             // Set up event hooks to keep values in sync
-            SteeringWheelSmoothingInfo wheelSmoothInfo = WheelSmoothInfo[ind];
+            SteeringWheelSmoothingInfo wheelSmoothInfo = _profileSettings.WheelSmoothInfo[ind];
             wheelSmoothInfo.SetFilterAttrs(tempFilter);
             wheelSmoothInfo.SetRefreshEvents(tempFilter);
 
@@ -2461,7 +2461,7 @@ namespace DS4Windows
             _profileSettings.L2ModInfo[ind].MaxOutputChanged += (sender, e) =>
             {
                 TriggerDeadZoneZInfo tempInfo = sender as TriggerDeadZoneZInfo;
-                L2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(Math.Max(tempInfo.maxOutput, tempInfo.maxZone) / 100.0 * 255.0);
+                _profileSettings.L2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(Math.Max(tempInfo.maxOutput, tempInfo.maxZone) / 100.0 * 255.0);
 
                 // Refresh trigger effect
                 device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, _profileSettings.L2OutputSettings[tempIdx].TriggerEffect,
@@ -2470,7 +2470,7 @@ namespace DS4Windows
             _profileSettings.L2ModInfo[ind].MaxZoneChanged += (sender, e) =>
             {
                 TriggerDeadZoneZInfo tempInfo = sender as TriggerDeadZoneZInfo;
-                L2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(Math.Max(tempInfo.maxOutput, tempInfo.maxZone) / 100.0 * 255.0);
+                _profileSettings.L2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(Math.Max(tempInfo.maxOutput, tempInfo.maxZone) / 100.0 * 255.0);
 
                 // Refresh trigger effect
                 device.PrepareTriggerEffect(InputDevices.TriggerId.LeftTrigger, _profileSettings.L2OutputSettings[tempIdx].TriggerEffect,
@@ -2486,7 +2486,7 @@ namespace DS4Windows
             _profileSettings.R2ModInfo[ind].MaxOutputChanged += (sender, e) =>
             {
                 TriggerDeadZoneZInfo tempInfo = sender as TriggerDeadZoneZInfo;
-                R2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(tempInfo.maxOutput / 100.0 * 255.0);
+                _profileSettings.R2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(tempInfo.maxOutput / 100.0 * 255.0);
 
                 // Refresh trigger effect
                 device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, _profileSettings.R2OutputSettings[tempIdx].TriggerEffect,
@@ -2495,7 +2495,7 @@ namespace DS4Windows
             _profileSettings.R2ModInfo[ind].MaxZoneChanged += (sender, e) =>
             {
                 TriggerDeadZoneZInfo tempInfo = sender as TriggerDeadZoneZInfo;
-                R2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(tempInfo.maxOutput / 100.0 * 255.0);
+                _profileSettings.R2OutputSettings[tempIdx].TrigEffectSettings.maxValue = (byte)(tempInfo.maxOutput / 100.0 * 255.0);
 
                 // Refresh trigger effect
                 device.PrepareTriggerEffect(InputDevices.TriggerId.RightTrigger, _profileSettings.R2OutputSettings[tempIdx].TriggerEffect,
@@ -2593,7 +2593,7 @@ namespace DS4Windows
 
             if (ind >= 0)
             {
-                OnDeviceSerialChange(this, ind, device.getMacAddress());
+                _deviceStateService.OnDeviceSerialChange(this, ind, device.getMacAddress());
             }
         }
 
@@ -2802,11 +2802,11 @@ namespace DS4Windows
                     {
                         // Emit missing-action logs once per profile-apply (respect suppression).
                         // Note: Profile logging is already done by ApplyProfile in PrepareConnectedInputControllerSettingEvents
-                        if (File.Exists(Path.Combine(appdatapath, "Profiles", $"{ProfilePath[ind]}.xml")))
+                        if (File.Exists(Path.Combine(_pathService.AppDataPath, "Profiles", $"{_profileRepository.ProfilePath[ind]}.xml")))
                         {
                             try
                             {
-                                Global.store.EmitMissingActionLogsForDevice(ind, false);
+                                _profileRepository.EmitMissingActionLogsForDevice(ind, false);
                             }
                             catch { }
                         }
@@ -2828,7 +2828,7 @@ namespace DS4Windows
                         jointInd != DS4Device.DEFAULT_JOINT_SLOT_NUMBER)
                     {
                         // Output changes from Gyro data early. Seems better to ME... REE
-                        GyroOutMode imuOutMode = Global.GetGyroOutMode(device.JointDeviceSlotNumber);
+                        GyroOutMode imuOutMode = _profileSettings.GetGyroOutMode(device.JointDeviceSlotNumber);
                         if (imuOutMode != GyroOutMode.None)
                         {
                             if (imuOutMode == GyroOutMode.Mouse)
@@ -2954,7 +2954,7 @@ namespace DS4Windows
                 {
                     // UseDInputOnly profile may re-map sixaxis gyro sensor values as a VJoy joystick axis (steering wheel emulation mode using VJoy output device). Handle this option because VJoy output works even in USeDInputOnly mode.
                     // If steering wheel emulation uses LS/RS/R2/L2 output axies then the profile should NOT use UseDInputOnly option at all because those require a virtual output device.
-                    SASteeringWheelEmulationAxisType steeringWheelMappedAxis = Global.GetSASteeringWheelEmulationAxis(ind);
+                    SASteeringWheelEmulationAxisType steeringWheelMappedAxis = _profileSettings.GetSASteeringWheelEmulationAxis(ind);
                     switch (steeringWheelMappedAxis)
                     {
                         case SASteeringWheelEmulationAxisType.None: break;
@@ -3178,7 +3178,7 @@ namespace DS4Windows
             {
                 lag[ind] = true;
                 LogDebug(string.Format(DS4WinWPF.Properties.Resources.LatencyOverTen, (ind + 1), device.Latency), true);
-                if (getFlashWhenLate())
+                if (_appSettings.FlashWhenLate)
                 {
                     DS4Color color = new DS4Color { red = 50, green = 0, blue = 0 };
                     DS4LightBar.forcedColor[ind] = color;

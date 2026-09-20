@@ -3,7 +3,7 @@
 作成日: 2026-09-09  
 改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記／PR-3 検証結果、配置基準の決定（案2）と Step13-1 の挿入の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: PR-1・PR-1b・PR-1c・PR-2・PR-3 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP のみ未実施）・**次は Step13-1（配置整理、Step2-PR-4 の前）→ PR-4**  
+状態: PR-1・PR-1b・PR-1c・PR-2・PR-3・Step13-1 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP のみ未実施）・**PR-4 実装済み（レビュー待ち）**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -401,7 +401,7 @@ namespace DS4Windows.Services
 ├─ Step2-1 (PR-1): 非ホットパスの環境・パス・基本設定（ID: C2-03〜08, 21〜27, 32, 34〜39）※C2-01=O2決定待ち、C2-02=D2温存、C2-33/40=PR-3
 ├─ Step2-2 (PR-2): 出力スロット・プロファイル状態・接続イベント（ID: C2-28〜31, 41〜49）
 ├─ Step2-3 (PR-3): KBMハンドラ初期化・ライフサイクル整理（ID: C2-09〜20, 33, 40）
-├─ Step13-1（旧 PR-L）: `.cs` ファイルの配置整理（git mv のみ、20件。`Phase6-Step13-Plan.md` 参照）
+├─ Step13-1（旧 PR-L）: `.cs` ファイルの配置整理（git mv のみ、20件。`Phase6-Step13-Plan.md` 参照）【完了】
 ├─ Step2-4 (PR-4): 入力処理ホットパス（条件付き・低頻度分岐）（ID: C2-51〜54, 56, 58, 64〜65）[14参照]
 ├─ Step2-5 (PR-5): 入力処理ホットパス（毎レポート最頻度経路）（ID: C2-50, 55, 57, 59〜63, 66）[18参照]
 └─ Step2-6 (PR-6): using static DS4Windows.Global; 削除・未修飾参照ゼロ検証・最終クリーンアップ
@@ -500,14 +500,19 @@ namespace DS4Windows.Services
 ---
 
 ### Step2-4 (PR-4): 入力処理ホットパス（条件付き・低頻度分岐）
-- **対象**: ID: C2-51〜C2-54, C2-56, C2-58, C2-64〜C2-65（初回Report時ログ、結合ジャイロ、ステアリング軸、オプションチェック）
-- **作業内容**:
-  1. C2-58（旧C2-02: `Global.GetGyroOutMode` → `_profileSettings.GetGyroOutMode`）を置換。
-  2. C2-64（旧C2-03: `Global.GetSASteeringWheelEmulationAxis` → `_profileSettings.GetSASteeringWheelEmulationAxis`）を置換。
-  3. 初回Report時のプロファイル欠落ログ出力（`EmitMissingActionLogsForDevice`）を置換。
+- **対象**: ID: C2-51〜C2-54, C2-56, C2-58, C2-64〜C2-65（オプションチェック、初回 Report 時ログ、結合ジャイロ、ステアリング軸、シリアル変更通知、遅延警告）
+- **作業内容（実装済み）**:
+  1. シムの追加（いずれも `Global` への薄い委譲）: `IAppSettingsService.FlashWhenLate`（C2-65）、`IDeviceStateService.OnDeviceSerialChange`（C2-54。`Global.DeviceSerialChange` の購読者へ従来と同一の引数で通知）。
+  2. 既存の `IProfileSettingsService` のメンバへ置換: `GetEnableOutputDataToDS4`／`GetIdleDisconnectTimeout`／`GetBTPollRate`／`GetTrackballFriction`／`GetRumbleAutostopTime`／`DualSenseRumbleEmulationMode`／`DualSenseHapticPowerLevel`（C2-51、`CheckProfileOptions`）、`LaunchProgram`（C2-52）、`WheelSmoothInfo`／`L2OutputSettings`／`R2OutputSettings`（C2-53）、`GetGyroOutMode`（C2-58）、`GetSASteeringWheelEmulationAxis`（C2-64）。
+  3. `_pathService.AppDataPath`／`_profileRepository.ProfilePath`／`EmitMissingActionLogsForDevice`（C2-56、初回 Report 時のプロファイル欠落ログ）へ置換。
+  4. `ControlService.cs` の修飾 `Global.` 行（コメント除く）は 14 → 11 行。残りは、定数（`MAX_DS4_CONTROLLER_COUNT`、`TEST_PROFILE_INDEX`）、ViGEm 関連（除外）、C2-02（決定D2 で温存）、PR-5 の対象（`IsUsingUDPServerSmoothing`、`UseIconChoice`、`GetOutputDS4TriggerMode`）。
+  5. コンストラクタの引数は変更していない（新しい依存はない）。
+- **パフォーマンス上の所見**: `Global.GetGyroOutMode`／`GetSASteeringWheelEmulationAxis` は内部で `ProfileSettingsServiceInstance`（DI の実体を解決する Legacy 経路）へ再委譲していたため、`_profileSettings` の直接呼び出しに替えることで、初回 Report 処理の間接呼び出しが1段減る。
+- **挙動差**: `Path.Combine(appdatapath, ...)` の `appdatapath` を `_pathService.AppDataPath` に替えた。`PathService` は `Global.appdatapath` が空でなければその値を返すため、通常の実行時は同一。起動前など未初期化の状態のみ結果が異なり得る（`PathService` 側のフォールバック値になる）。
 - **検証**:
-  - 単体テスト: 結合スロットでのジャイロモード取得、ステアリング軸取得の独立性を検証。
+  - `ControlServicePr4ShimEquivalenceTests`: `FlashWhenLate` の状態共有、`OnDeviceSerialChange` が `Global.DeviceSerialChange` を同じ引数で発火すること、`GetGyroOutMode`／`GetSASteeringWheelEmulationAxis`／`ProfilePath` の取得が**ヒープ割り当て0**であること（入力ループのゼロアロケーション方針）。
   - 回帰テスト: `dotnet test` 全件合格を確認。
+  - 実機（レビュー後）: ①コントローラー接続時のオプション適用（ライトバー・タッチパッド・トリガー効果の設定がプロファイルどおりに反映されること、DualSense があれば振動エミュレーションの設定）、②プロファイルの「起動プログラム」設定（`LaunchProgram`）、③ステアリング軸のスペシャルアクション、④デバイスの接続・切断の繰り返し（シリアル変更通知）、⑤ジョイントデバイス（Joy-Con 結合）があればジャイロの動作。
 
 ---
 
@@ -703,3 +708,10 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 - **決定**: 現 Step は**案2**（インターフェースを `DI/` に一元化、実装は `DS4Control/Services/`、Actions は `Actions/`）、将来は案4（層別再編）。移動は Step2-PR-4 の前に実施する（`git mv` のコマンド一覧で提供）。
 - **反映**: 配置ルール R1〜R7 を `copilot-instructions.md` §3.4 に追記。移動は Phase6 の新設 Step13 として計画化した（`Phase6-Step13-Plan.md`。Step2 に関わる 13-1 の20件は本 Step の PR-4 の前、残り 13-2〜13-5 は Step2 完了後）。
 - **影響**: 本書 §4.1 などが挙げる `DS4Control/Services/IVirtualKBM.cs` などのパスは、13-1 の実施後に `DI/` 配下となる（名前空間は変更しない）。
+
+### B.7 Step13-1 の実施と PR-4 の実装: 2026-09-20
+
+- **Step13-1**（配置整理、20件）: 実施済み。ビルド・テストビルド・テスト実行の全てが成功。起動スモーク（起動、コントローラー接続、プロファイル適用、プロファイル切替のスペシャルアクション）はすべて問題なし。詳細は `Phase6-Step13-Plan.md` 付録。
+- **PR-4**: 実装済み（§6 Step2-4 のとおり）。新規はテスト `ControlServicePr4ShimEquivalenceTests`。
+- **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイル（xUnit は簡易スタブ）で新規エラー 0 件。
+- **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施。手順は §6 Step2-4 の検証欄）。

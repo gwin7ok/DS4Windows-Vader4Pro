@@ -94,5 +94,10 @@ namespace DS4Windows
         public bool IsFirstConnection(int slotIndex) => Global.IsFirstConnection(slotIndex);
 
         public void MarkConnected(int slotIndex) => Global.MarkConnected(slotIndex);
+
+        // ---- Phase6-Step2-4 (PR-4): デバイスのシリアル変更通知 ----
+        // Global.DeviceSerialChange（static イベント）の購読者へ、従来と同一の引数で通知する。
+        public void OnDeviceSerialChange(object sender, int slotIndex, string serial)
+            => Global.OnDeviceSerialChange(sender, slotIndex, serial);
     }
 }
