@@ -44,7 +44,8 @@ trim_trailing_whitespace = true
 # コア層（DS4Control, DI, Actions）は、WPF UI層(DS4WinWPF)とは意図的に分離し
 # 「DS4Windows」名前空間を採用するアーキテクチャ設計であるため、
 # フォルダ構造と名前空間を一致させるコードスタイル規約の適用外として宣言する
-[DS4Windows/{DS4Control,DI,Actions}/**.cs]
+# （Phase6-Step13-2 で、機能フォルダ Core/Logging・Core/Utilities・Updater を追加）
+[DS4Windows/{DS4Control,DI,Actions,Core,Updater}/**.cs]
 dotnet_style_namespace_match_folder = false
 
 # Win32 P/Invoke 移行推奨（SYSLIB1054）および情報レベルの提案メッセージを抑制
