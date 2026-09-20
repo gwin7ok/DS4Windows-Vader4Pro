@@ -51,13 +51,37 @@ namespace DS4Windows
         // ---- Phase6-Step2-3 (PR-3): FakerInput 導入バージョン ----
         public string FakerInputVersion => Global.fakerInputVersion;
 
+        // 静的初期化の循環を避けるため、この計算は Global のメソッド（Global.IsWin8OrGreater 等）を呼ばず自己完結させる。
+        // Global は明示的な静的コンストラクタを持ち、その初期化中に OutputSlotManager（→ ControlService.CURRENT_DS4_CONTROLLER_LIMIT
+        // → 本クラスの ProcessControllerSlotLimit）が生成される。本クラスの静的初期化から Global の静的初期化を起こすと、
+        // 初期化の順序（EnvironmentService が最初に触れられた場合）によって、循環の途中の値 0 が ControlService.CURRENT_DS4_CONTROLLER_LIMIT
+        // に確定してしまう。const（Global.MAX_DS4_CONTROLLER_COUNT 等）は定数として埋め込まれるため、Global の静的初期化を起こさない。
+        // 回帰ガード: EnvironmentServiceStaticInitGuardTests
         private static int CalculateControllerSlotLimit()
         {
 #if FORCE_4_INPUT
             return Global.OLD_XINPUT_CONTROLLER_COUNT;
 #else
-            return Global.IsWin8OrGreater() ? Global.MAX_DS4_CONTROLLER_COUNT : Global.OLD_XINPUT_CONTROLLER_COUNT;
+            return IsWin8OrGreaterCore() ? Global.MAX_DS4_CONTROLLER_COUNT : Global.OLD_XINPUT_CONTROLLER_COUNT;
 #endif
+        }
+
+        // TODO(技術的負債): Global.IsWin8OrGreater と同一の判定。上記の理由で Global を経由せず複製している。
+        // Phase6-Step12 で Global.IsWin8OrGreater を本メソッドへ委譲して一本化する。
+        private static bool IsWin8OrGreaterCore()
+        {
+            bool result = false;
+            if (System.Environment.OSVersion.Version.Major > 6)
+            {
+                result = true;
+            }
+            else if (System.Environment.OSVersion.Version.Major == 6 &&
+                System.Environment.OSVersion.Version.Minor >= 2)
+            {
+                result = true;
+            }
+
+            return result;
         }
     }
 }

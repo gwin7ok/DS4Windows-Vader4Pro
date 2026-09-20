@@ -336,3 +336,10 @@ git diff --cached -M100% --name-status | Select-String -NotMatch '^R100'
 - 移動後、`DS4Windows/` 直下に残る `.cs` は `App.xaml.cs`、`StartupMethods.cs`、`GlobalSuppressions.cs`、`KeyboardSettings.cs` の4件になる（R5 のとおり）。
 - 13-2 に含める `.editorconfig` の変更（適用外リストへ `Core`、`Updater` を追加）は、`.editorconfig` の更新版として提供した。
 - **実施の進め方（任意）**: 4ステージはいずれも `git mv` のみで、ステージごとの `R100` 検証を通すため、ビルド・テストは最後に1回でもよい（コミットはステージごとに分ける。失敗した場合は、コミット単位で原因を特定できる）。
+
+### 13-2〜13-5: 2026-09-20 実施済み
+
+- **実施内容**: §4 の 13-2〜13-5 の `git mv` 一覧（24件）を適用し、`.editorconfig` の更新（適用外リストへ `Core`、`Updater` を追加）を反映して、リモートリポジトリへ反映済み（HEAD `c28381f`）。
+- **配置の確認**（HEAD `c28381f`）: `DS4Windows/` 直下の `.cs` は `App.xaml.cs`、`GlobalSuppressions.cs`、`KeyboardSettings.cs`、`StartupMethods.cs` の4件のみ（R5 のとおり）。`Updater/` 3件、`Core/Logging/` 5件、`Core/Utilities/` 5件、`DS4Control/Profiles/` 4件、`Actions/` 49件、`DS4Control/Services/` 27件、`DI/` 29件。`Notifications/` は消滅した。
+- **自動検証**: ビルド、テストビルドは成功。テスト実行で2件のエラー。**原因は移動そのものではなく、静的初期化の循環という潜在的な欠陥**（ファイル移動でコンパイル順序が変わり、テストの実行順序が変わって表に出た）。`Phase6-Step2-Plan.md` 付録 B.13 に原因と是正を記録した。
+- **Step13 の状況**: 13-1〜13-5 の移動（合計44件）が完了した。残りは 13-6（Phase6 範囲外への引き継ぎ）のみ。テスト是正版の確認後に、Step13（13-1〜13-5）の完了を確定する。

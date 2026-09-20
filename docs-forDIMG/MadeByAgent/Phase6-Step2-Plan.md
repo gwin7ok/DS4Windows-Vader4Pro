@@ -438,6 +438,7 @@ namespace DS4Windows.Services
   1. `IEnvironmentService` に `int ControllerSlotLimit { get; }` と `bool UsingMaxControllers { get; }` を追加。計算（OS 判定＋`FORCE_4_INPUT`）は `EnvironmentService` へ移設し、値はプロセス内で不変のため `internal static readonly` で1回だけ確定する。
   2. `ControlService` 内部の5箇所（`Start`／`HotPlug`／`On_SyncChange`／`StartTPOff`／`setRumble`）は、コンストラクタで取得した `_controllerSlotLimit`（int フィールド）を使用する。`setRumble` は頻繁に呼ばれるため、インターフェース呼び出しを避けてキャッシュ値を使う。
   3. `CURRENT_DS4_CONTROLLER_LIMIT` / `USING_MAX_CONTROLLERS` は、外部54箇所が未移行のため static プロパティの互換シムとして残す。値は `EnvironmentService` と同一の静的値を共有し、技術的負債コメント（理由・正規参照先・撤去予定 Step12）を付与した。
+- **静的初期化の循環に関する是正（2026-09-20、付録 B.13）**: 上限の計算は `Global` のメソッドを呼ばず自己完結させる（`Global` の静的初期化を起こさない）。
 - **互換シムを `Global.EnvironmentServiceInstance` 経由にしなかった理由**: 同プロパティは DI が未構築の場面でフォールバック生成と GUI ログ（`[Legacy] ... Fallback instance used`）を毎回出す。上限は `for` ループの条件式で毎回評価されるため、テストや起動初期にログが大量に出る恐れがある。また `ControlService` の型初期化中に `AppHost` を呼ぶと、DI 構築中の再入になる。
 - **検証**: `ControllerSlotLimitTests`（旧計算式との一致、範囲、`UsingMaxControllers` の判定、`EXPANDED_CONTROLLER_COUNT` と `Global.MAX_DS4_CONTROLLER_COUNT` の一致、互換シムとの値共有）。
 - **残る移行対象（外部54箇所・15ファイル）と担当案（O3 承認後に各 Step 計画書へ反映）**:
@@ -808,3 +809,17 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 | 4 | `OutputSlotService`／`ProfileApplicationService`／`ProfileRepository` の `ControlService` への逆依存（`ControlService` は `Func<IOutputSlotService>` の遅延解決で回避中）と、`OutputSlotService` の二重実体化の検証 | Phase6-Step5 |
 | 5 | `Global.ProfileSettingsServiceInstance` を差し替えたまま元に戻さない既存テスト3ファイル | Step10b またはテスト整理で是正 |
 | 6 | 置換前後の処理時間比較（±5%）と、先送りした実機確認 | Phase6-Step11 |
+
+### B.13 静的初期化の循環による、テスト実行時エラー2件の是正: 2026-09-20
+
+Step13-2〜13-5（配置整理）の適用後、ビルド、テストビルドは成功したが、テスト実行で2件のエラーが出た。ログに出ていたのは `OutputSlotServiceTests.OutputSlots_ReturnsInitializedSlots`（期待 8、実際 0）。もう1件はログに含まれていなかったが、同じ原因で失敗する `ControllerSlotLimitTests.ControlServiceStaticShim_SharesValueWithService`（`EnvironmentService` は 8、`ControlService.CURRENT_DS4_CONTROLLER_LIMIT` は 0）と推定される。
+
+- **原因（PR-1b の設計の潜在的な欠陥）**: PR-1b で、上限の計算 `EnvironmentService.CalculateControllerSlotLimit()` を `Global.IsWin8OrGreater()` を呼ぶ形にした。`Global` は明示的な静的コンストラクタ（`static Global()`）を持つため、このメソッドを呼ぶと `Global` の静的初期化が起こる。`Global` の静的初期化中には、フォールバック用の `OutputSlotService`（→ `new OutputSlotManager()`）が生成され、`OutputSlotManager` は `ControlService.CURRENT_DS4_CONTROLLER_LIMIT`（= `EnvironmentService.ProcessControllerSlotLimit`）を読む。
+  - **`EnvironmentService` が最初に触れられた場合**: `EnvironmentService` の静的初期化 → `Global` の静的初期化 → `OutputSlotManager` → `ControlService` の静的初期化 → `EnvironmentService.ProcessControllerSlotLimit`（初期化の途中のため 0）が `ControlService.CURRENT_DS4_CONTROLLER_LIMIT` に**確定**する（以降ずっと 0）。
+  - **なぜ今になって出たか**: ファイルの移動でコンパイル順序が変わり、テストクラスの実行順序が変わった。その結果、`EnvironmentService` を先に触れるテストが、`Global` や `ControlService` を先に触れるテストより前に実行された。移動そのものが原因ではなく、実行順序に依存していた潜在的な欠陥が表に出た。
+  - **本番への影響**: 本番では、起動の早い段階で `Global` が先に触れられるため（`Global` → `OutputSlotManager` → `ControlService` → `EnvironmentService` の順）、循環は発生しない。ただし、この順序に依存する設計は脆いため是正した。
+- **再現**: 4つのクラス（`Global` 相当の静的コンストラクタ付き、`OutputSlotManager`、`ControlService`、`EnvironmentService`）を模した小さなプログラムで、初期化順序（`EnvironmentService` 先／`ControlService` 先／`Global` 先）ごとに確認した。現行の設計では `EnvironmentService` が先のとき、`ControlService.CURRENT_DS4_CONTROLLER_LIMIT` が 0 になった。自己完結させた設計では、全ての順序で 8 になった。
+- **是正**: `EnvironmentService` の上限の計算から、`Global` のメソッドの呼び出しを除いた。OS の判定（`Environment.OSVersion`）は、`Global.IsWin8OrGreater()` と同一のロジックを自己完結したメソッド `IsWin8OrGreaterCore` として複製した（技術的負債コメント付き。Phase6-Step12 で `Global.IsWin8OrGreater()` をこのメソッドへ委譲して一本化する）。`Global.MAX_DS4_CONTROLLER_COUNT` などの const は、コンパイル時に定数として埋め込まれるため、`Global` の静的初期化を起こさない。
+- **回帰ガード**: `EnvironmentServiceStaticInitGuardTests`（新規）が、上限の計算のソースが const 以外の `Global` メンバを参照していないことを固定する。ソースを探す処理は、共通ヘルパー `SourceFileLocator`（新規）に切り出し、`ControlServiceGlobalReferenceGuardTests` もこれを使うように変更した。
+- **教訓**: `static` の初期化子（静的コンストラクタを含む）から、静的コンストラクタを持つ型（`Global` など）のメソッドや非 const メンバを呼ばない。初期化の順序によって、循環の途中の値（0 や null）が `static` の値に確定する恐れがある。
+- **未確認**: 修正版でのテスト全件合格。

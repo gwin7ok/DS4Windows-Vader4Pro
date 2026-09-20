@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Xunit;
 using Xunit.Abstractions;
@@ -39,32 +38,8 @@ namespace DS4WindowsTests
             { "vigemInstalled", 1 },
         };
 
-        private static string FindControlServiceSource([CallerFilePath] string thisFile = "")
-        {
-            const string relative = "DS4Windows/DS4Control/ControlService.cs";
-            var starts = new List<string>();
-            if (!string.IsNullOrEmpty(thisFile) && Path.IsPathRooted(thisFile))
-            {
-                starts.Add(Path.GetDirectoryName(thisFile));
-            }
-            starts.Add(AppContext.BaseDirectory);
-
-            foreach (string start in starts)
-            {
-                string dir = start;
-                while (!string.IsNullOrEmpty(dir))
-                {
-                    string candidate = Path.Combine(dir, relative.Replace('/', Path.DirectorySeparatorChar));
-                    if (File.Exists(candidate))
-                    {
-                        return candidate;
-                    }
-                    dir = Path.GetDirectoryName(dir);
-                }
-            }
-
-            return null;
-        }
+        private static string FindControlServiceSource()
+            => SourceFileLocator.Find("DS4Windows/DS4Control/ControlService.cs");
 
         private static string StripComment(string line)
         {
