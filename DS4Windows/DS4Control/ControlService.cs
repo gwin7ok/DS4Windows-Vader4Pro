@@ -33,7 +33,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using DS4WinWPF.DS4Forms;
-using static DS4Windows.Global;
 
 namespace DS4Windows
 {
@@ -1818,7 +1817,7 @@ namespace DS4Windows
             else
             {
                 string logMessage = string.Empty;
-                if (!vigemInstalled)
+                if (!Global.vigemInstalled)
                 {
                     logMessage = "ViGEmBus is not installed";
                 }

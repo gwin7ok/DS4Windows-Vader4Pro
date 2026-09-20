@@ -3,7 +3,7 @@
 作成日: 2026-09-09  
 改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記／PR-3 検証結果、配置基準の決定（案2）と Step13-1 の挿入の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: PR-1・PR-1b・PR-1c・PR-2・PR-3・PR-4・Step13-1 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP と PR-4 の一部を Step11 へ先送り）・**PR-5 反映済み（テスト1件はテストの誤りのため修正版を提供。再確認待ち）→ 残りは PR-6 のみ**  
+状態: **Step2 の全 PR（PR-1〜PR-6）の実装が完了**。PR-1〜PR-5・Step13-1 はビルド・テスト成功、リモート反映済み。**PR-6 は実装済み（ビルド・テスト確認待ち）**。実機確認は OSC/UDP、PR-4 の一部、PR-5 の全項目を Phase6-Step11 へ先送り  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -196,6 +196,8 @@ Phase6上位計画（`Phase6-Plan.md` §0.2）では、`ControlService.cs` の�
 ---
 
 ### 表4: 明示的除外項目（ID: C2-EX01 〜 C2-EX07、計8参照）
+
+> **2026-09-20 追記**: C2-EX02（`OLD_XINPUT_CONTROLLER_COUNT`）は、O2（スロット上限のサービス化）で `EnvironmentService` へ移設したため、`ControlService.cs` には残っていない。PR-6 完了時点の `Global.` 参照は、EX01・EX03〜EX07 の7項目（8箇所）と、C2-02（決定D2）の1箇所、計9箇所（付録C 参照）。
 
 | ID | 行番号 | 参照メンバ | 除外理由（根拠） |
 |---|---|---|---|
@@ -543,9 +545,12 @@ namespace DS4Windows.Services
   2. コンパイルを通し、意図しない無修飾 Global 参照が残存していないことを Roslyn コンパイラで完全に検出・解消する。
   3. 表4の明示的除外（`MAX_DS4_CONTROLLER_COUNT` 等の const、ViGEmバックエンド）のみが `Global.` 修飾で残っていることを確認する。
   4. `ServiceRegistration.cs` の `ControlService` 解決ファクトリが、全引数（D1の `Func<IOutputSlotService>`、D3の `IVirtualKBMLifecycle` を含む）を解決していることを最終確認する（更新自体は各PRで実施済み）。
-- **事前調査（PR-5 の状態、Roslyn の意味診断）**: `using static DS4Windows.Global;` を外したときに新たに未解決になる名前は `vigemInstalled`（`ControlService.cs` の ViGEm バックエンド関連、1箇所）のみ。`Global.vigemInstalled` と修飾して残す（ViGEm は本プランの除外対象のため、表4に **C2-EX07** として追記する）。
+- **事前調査（PR-5 の状態、Roslyn の意味診断）**: `using static DS4Windows.Global;` を外したときに新たに未解決になる名前は `vigemInstalled`（`ControlService.cs` の ViGEm バックエンド関連、1箇所）のみ。`Global.vigemInstalled` と修飾して残す（表4 の **C2-EX07**〔ViGEm 除外〕として、計画時から定義済みの項目）。
+- **作業内容（実装済み）**: `using static DS4Windows.Global;` を削除し、`vigemInstalled` を `Global.vigemInstalled` へ修飾した。差分は2行のみ（削除1行・変更1行）。
+- **結果**: `ControlService.cs` の `Global.` 出現は **9 箇所（コメント除く）** で、内訳は C2-EX01（`MAX_DS4_CONTROLLER_COUNT`）1、C2-EX03（`TEST_PROFILE_INDEX`）1、C2-EX04（`RefreshViGEmBusInfo`）1、C2-EX05（`IsRunningSupportedViGEmBus`）2、C2-EX06（`vigembusVersion`）2、C2-EX07（`vigemInstalled`）1、C2-02（`ProfileSettingsServiceInstance`、決定D2）1。C2-EX02（`OLD_XINPUT_CONTROLLER_COUNT`）は、O2（スロット上限のサービス化）で `EnvironmentService` へ移設したため、`ControlService.cs` には残っていない。
 - **検証**:
-  - 静的解析: `ControlService.cs` 内の `Global.` 出現箇所が除外リスト（表4の8件＋C2-EX07）と完全一致することを確認。
+  - 静的解析: Roslyn の意味診断を変更前後で比較し、全ソースで新規エラー 0 件。
+  - 回帰ガード `ControlServiceGlobalReferenceGuardTests`: `using static DS4Windows.Global` が無いこと、および `Global.` 参照が上記の許容リスト（メンバ名と出現回数）と完全一致することを固定する。今後 `Global` 参照が混入すると、テストが失敗する。
   - 回帰テスト: 全テストプロジェクトの完全ビルド・実行でグリーンを確認。
 
 ---
@@ -741,3 +746,31 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
   - **修正**: テストを、DI の Singleton（`AppHost.GetService<IProfileSettingsService>()`）を対象にし、`Global.ProfileSettingsServiceInstance` と同一であること、`Global.touchpadActive` と同一の配列であることを検証する形に改めた（`TouchpadActiveArray_OfDiSingleton_IsTheSameArrayAsGlobalTouchActive`）。
   - 同種の問題（インスタンス保持の状態を別インスタンスと比較する）がないか、PR-2〜PR-5 のテストを見直した。`new ProfileSettingsService()` を使う他のテストは、BackingStore を共有する値の比較か、値を読み捨てるだけの計測であり、影響なし。
 - **未確認**: 修正版のテスト全件合格、実機確認（実施するか、Step11 へ先送りするかはユーザー判断）。
+
+### B.10 PR-5 の最終結果と PR-6 の実装: 2026-09-20
+
+- **PR-5**: 修正版のテストで、ビルド、テストビルド、テスト実行の全てが成功し、リモートへ反映済み。実機確認は全項目を Phase6-Step11 へ先送り（`Phase6-Step11-Plan.md` §3.3）。
+- **PR-6**: 実装済み（§6 Step2-6 のとおり）。新規はテスト `ControlServiceGlobalReferenceGuardTests`。
+- **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイルで新規エラー 0 件。
+- **未実施**: `dotnet build` / `dotnet test`（レビュー後に開発環境で実施）。
+
+---
+
+## 付録C: Step2 完了確認（§9 チェックリストの状況、2026-09-20）
+
+| # | 完了条件（§9） | 状況 | 根拠・備考 |
+|---|---|---|---|
+| 1 | 表1〜3 の全66箇所が DI サービス経由へ置換されている | 済 | 65 ID を置換。C2-02 は決定D2 により防御コードとして温存（技術的負債コメント付き） |
+| 2 | 表4 以外の `Global.` 直接参照が根絶されている | 済 | 残り9箇所はすべて除外項目（EX01・EX03〜EX07、C2-02）。`ControlServiceGlobalReferenceGuardTests` で固定 |
+| 3 | `using static DS4Windows.Global;` が削除されている | 済（PR-6） | ビルド・テスト確認待ち |
+| 4 | 例外として残る `Global` 参照が C2-02 のみで、理由が記録されている | 済 | `ControlService` コンストラクタの技術的負債コメント（Phase6-Step12 で削除判断） |
+| 5 | `CURRENT_DS4_CONTROLLER_LIMIT`／`USING_MAX_CONTROLLERS` の外部呼び出し元の移行 | Step2 の範囲外（O3=A） | 各 Step（Step5／8／9／10）で置換し、Step12 で互換シムを削除。担当は `Phase6-Step2-Plan.md` §6 Step2-1b の表 |
+| 6 | 循環依存が発生していない | 済 | D1（`Func<IOutputSlotService>` の遅延解決）、O1／O4（`IProfileSlotApplier`）。`ControlServicePr2DiWiringTests` などで確認 |
+| 7 | コンストラクタに `AppHost.GetService` フォールバックがなく、新規引数がすべて必須 | 済 | `ControlServiceTestFactory` による必須引数の null 拒否テスト（PR-1〜PR-5 の各 DiWiringTests） |
+| 8 | `IVirtualKBMLifecycle`／`OutputKBMHandlerLifecycle` が1ファイル1型で、直接アクセスに技術的負債コメントがある | 済（PR-3） | — |
+| 9 | `Model-Diagram/01〜04` が実装結果と一致している | 済 | D1〜D3、O1〜O4 の反映を 01・03・04 に実施済み |
+| 10 | 追加した DI シムが、正本と連動する薄い委譲である | 済 | 各 PR の `*ShimEquivalenceTests` で状態共有・イベント発火を検証 |
+| 11 | ホットパスでゼロアロケーション・遅延劣化なし | 一部 | ゼロアロケーションは PR-4・PR-5 のテストで確認済み。置換前後 ±5% の処理時間比較は Step11 の実機で実施 |
+| 12 | `dotnet build -c Release` の警告・エラーが0件 | 要確認 | PR-1〜PR-5 のビルド成功は確認済み。警告数の確認は PR-6 のビルド後に実施 |
+| 13 | 全自動テストが100%成功 | PR-5 まで済 | PR-6 のテスト実行後に確定 |
+| 14 | 実機での接続・切断・入力追従・プロファイル切替が正常 | 一部 | PR-1〜PR-4 で実施した範囲は問題なし。先送り項目は Phase6-Step11 §3.3 の先送り台帳で確認する |
