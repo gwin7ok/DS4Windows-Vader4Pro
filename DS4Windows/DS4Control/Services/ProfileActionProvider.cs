@@ -42,5 +42,9 @@ namespace DS4Windows
                 AppLogger.LogTrace($"[DI] ProfileActionProvider.GetProfileAction: Slot {deviceIndex}, Action '{actionName}'");
             return action;
         }
+
+        // ---- Phase6-Step2-5 (PR-5): スペシャルアクション数 ----
+        // 毎レポート評価される経路から呼ばれるため、BackingStore の値を直接返す（従来の Global.getProfileActionCount と同一）。
+        public int GetProfileActionCount(int deviceIndex) => _config.profileActionCount[deviceIndex];
     }
 }

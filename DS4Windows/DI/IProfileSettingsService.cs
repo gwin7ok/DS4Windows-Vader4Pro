@@ -258,5 +258,9 @@ namespace DS4Windows.DI
 
         // ---- Phase6-Step2-2 (PR-2): 接続時のエクストラボタン再構築（Global への薄い委譲）----
         void RefreshExtrasButtons(int deviceIndex, List<DS4Controls> buttons);
+
+        // ---- Phase6-Step2-5 (PR-5): カスタムアクション／エクストラの有無（毎レポート評価。割り当てなし）----
+        bool ContainsCustomAction(int deviceIndex);
+        bool ContainsCustomExtras(int deviceIndex);
     }
 }

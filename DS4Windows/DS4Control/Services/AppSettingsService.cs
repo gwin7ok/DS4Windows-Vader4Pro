@@ -568,5 +568,33 @@ namespace DS4Windows.Services
                 }
             }
         }
+
+        // ---- Phase6-Step2-5 (PR-5): 入力処理ホットパスで参照する設定 ----
+        // 毎レポート評価される経路から呼ばれるため、BackingStore の値を直接返し、キャッシュ・割り当て・ログを行わない。
+        public bool UseUdpServerSmoothing
+        {
+            get => Global.UseUDPSeverSmoothing;
+            set
+            {
+                if (Global.UseUDPSeverSmoothing != value)
+                {
+                    Global.UseUDPSeverSmoothing = value;
+                    NotifyChanged(nameof(UseUdpServerSmoothing));
+                }
+            }
+        }
+
+        public int FlashWhenLateAt
+        {
+            get => Global.FlashWhenLateAt;
+            set
+            {
+                if (Global.FlashWhenLateAt != value)
+                {
+                    Global.FlashWhenLateAt = value;
+                    NotifyChanged(nameof(FlashWhenLateAt));
+                }
+            }
+        }
     }
 }

@@ -50,6 +50,9 @@ namespace DS4WindowsTests
                 _actions.TryGetValue(actionName, out var action);
                 return action;
             }
+
+            // Phase6-Step2-5 (PR-5): IProfileActionProvider の拡張に追随（本テストでは使用しない）
+            public int GetProfileActionCount(int deviceIndex) => _actions.Count;
         }
 
         [Fact]

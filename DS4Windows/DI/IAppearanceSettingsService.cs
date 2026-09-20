@@ -16,5 +16,8 @@ namespace DS4Windows.DI
         /// 指定したトレイアイコン種別に対応するリソースパスを取得します。
         /// </summary>
         string GetIconResourcePath(TrayIconChoice choice);
+
+        // ---- Phase6-Step2-5 (PR-5): バッテリー残量の変化通知（Global.BatteryChanged への薄い委譲）----
+        void InvokeBatteryChanged(byte percentage);
     }
 }

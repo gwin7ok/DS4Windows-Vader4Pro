@@ -85,5 +85,9 @@ namespace DS4Windows.DI
 
         // ---- Phase6-Step2-4 (PR-4): 遅延警告時のライトバー点滅（Global への薄い委譲）----
         bool FlashWhenLate { get; set; }
+
+        // ---- Phase6-Step2-5 (PR-5): 入力処理ホットパスで参照する設定（Global への薄い委譲。独自のキャッシュは持たない）----
+        bool UseUdpServerSmoothing { get; set; }
+        int FlashWhenLateAt { get; set; }
     }
 }

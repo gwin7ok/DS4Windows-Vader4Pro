@@ -132,6 +132,11 @@ namespace DS4Windows
         // Phase6-Step2-3 (PR-3): KBM 出力の送出（IVirtualKBM）とハンドラのライフサイクル（IVirtualKBMLifecycle）を分離（決定D3）
         private readonly Services.IVirtualKBM _virtualKBM;
         private readonly Services.IVirtualKBMLifecycle _kbmLifecycle;
+
+        // Phase6-Step2-5 (PR-5): 入力処理ホットパス（On_Report）で参照するサービス。
+        // いずれも呼び出し1回あたりの新規オブジェクト割り当て・ログ・キャッシュを行わない（ゼロアロケーション方針）。
+        private readonly DI.IAppearanceSettingsService _appearanceSettings;
+        private readonly DI.IProfileActionProvider _profileActionProvider;
         // コントローラースロット上限（現在接続台数ではない）。プロセス内で不変のためコンストラクタで1回だけ取得する。
         private readonly int _controllerSlotLimit;
 
@@ -243,7 +248,9 @@ namespace DS4Windows
             DI.IProfileXmlStore profileXmlStore,
             Services.IProfileSlotApplier profileSlotApplier,
             Services.IVirtualKBM virtualKBM,
-            Services.IVirtualKBMLifecycle kbmLifecycle)
+            Services.IVirtualKBMLifecycle kbmLifecycle,
+            DI.IAppearanceSettingsService appearanceSettings,
+            DI.IProfileActionProvider profileActionProvider)
         {
             this.cmdParser = cmdParser;
             this._deviceRegistry = deviceRegistry;
@@ -261,6 +268,8 @@ namespace DS4Windows
             this._profileSlotApplier = profileSlotApplier ?? throw new ArgumentNullException(nameof(profileSlotApplier));
             this._virtualKBM = virtualKBM ?? throw new ArgumentNullException(nameof(virtualKBM));
             this._kbmLifecycle = kbmLifecycle ?? throw new ArgumentNullException(nameof(kbmLifecycle));
+            this._appearanceSettings = appearanceSettings ?? throw new ArgumentNullException(nameof(appearanceSettings));
+            this._profileActionProvider = profileActionProvider ?? throw new ArgumentNullException(nameof(profileActionProvider));
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 
@@ -1845,7 +1854,7 @@ namespace DS4Windows
                 DS4State stateForUdp = TempState[tempIdx];
 
                 CurrentState[tempIdx].CopyTo(stateForUdp);
-                if (Global.IsUsingUDPServerSmoothing())
+                if (_appSettings.UseUdpServerSmoothing)
                 {
                     if (stateForUdp.elapsedTime == 0)
                     {
@@ -2754,7 +2763,7 @@ namespace DS4Windows
 
                 if (inWarnMonitor[ind])
                 {
-                    int flashWhenLateAt = getFlashWhenLateAt();
+                    int flashWhenLateAt = _appSettings.FlashWhenLateAt;
                     if (!lag[ind] && device.Latency >= flashWhenLateAt)
                     {
                         lag[ind] = true;
@@ -2815,9 +2824,9 @@ namespace DS4Windows
                     device.firstReport = false;
                 }
 
-                if (device.PrimaryDevice && Global.UseIconChoice == TrayIconChoice.Battery)
+                if (device.PrimaryDevice && _appearanceSettings.UseIconChoice == TrayIconChoice.Battery)
                 {
-                    InvokeBatteryChanged(cState.Battery);
+                    _appearanceSettings.InvokeBatteryChanged(cState.Battery);
                 }
 
                 if (!device.PrimaryDevice)
@@ -2833,7 +2842,7 @@ namespace DS4Windows
                         {
                             if (imuOutMode == GyroOutMode.Mouse)
                             {
-                                outputKBMHandler.Sync();
+                                _virtualKBM.Sync();
                             }
                             else if (imuOutMode == GyroOutMode.MouseJoystick)
                             {
@@ -2858,7 +2867,7 @@ namespace DS4Windows
                     return;
                 }
 
-                if (getEnableTouchToggle(ind))
+                if (_profileSettings.GetEnableTouchToggle(ind))
                 {
                     CheckForTouchToggle(ind, cState, pState);
                 }
@@ -2868,13 +2877,13 @@ namespace DS4Windows
                 cState = Mapping.SetCurveAndDeadzone(ind, cState, TempState[ind]);
 
                 if (!recordingMacro && (_profileSettings.GetUseTempProfile(ind) ||
-                    containsCustomAction(ind) || containsCustomExtras(ind) ||
-                    getProfileActionCount(ind) > 0))
+                    _profileSettings.ContainsCustomAction(ind) || _profileSettings.ContainsCustomExtras(ind) ||
+                    _profileActionProvider.GetProfileActionCount(ind) > 0))
                 {
                     DS4State tempMapState = MappedState[ind];
                     DS4State oscMapState = oscState[ind];
 
-                    if (isUsingOSCSender())
+                    if (_appSettings.UseOscSender)
                     {
                         OSCPreMappingStep(ind, cState, tempMapState, oscMapState);
                     }
@@ -2890,7 +2899,7 @@ namespace DS4Windows
                     tempMapState.TrackPadTouch0 = cState.TrackPadTouch0;
                     tempMapState.TrackPadTouch1 = cState.TrackPadTouch1;
 
-                    if (isUsingOSCServer())
+                    if (_appSettings.UseOscServer)
                     {
                         OSCPostMappingStep(tempMapState, oscMapState);
                     }
@@ -2904,7 +2913,7 @@ namespace DS4Windows
                     // Perform this virtual trigger button check in post
                     if (ActiveOutDevType[ind] == OutContType.DS4)
                     {
-                        DS4TriggerOutputMode trigMode = Global.GetOutputDS4TriggerMode(ind);
+                        DS4TriggerOutputMode trigMode = _profileSettings.OutputDS4TriggerMode[ind];
                         if (trigMode == DS4TriggerOutputMode.Default)
                         {
                             cState.L2Btn = cState.L2 > 0;
@@ -3276,18 +3285,18 @@ namespace DS4Windows
 
         protected void CheckForTouchToggle(int deviceID, DS4State cState, DS4State pState)
         {
-            if (!IsUsingTouchpadForControls(deviceID) && cState.Touch1 && pState.PS)
+            if (_profileSettings.TouchOutMode[deviceID] != TouchpadOutMode.Controls && cState.Touch1 && pState.PS)
             {
-                if (GetTouchActive(deviceID) && touchreleased[deviceID])
+                if (_profileSettings.TouchpadActiveArray[deviceID] && touchreleased[deviceID])
                 {
-                    TouchActive[deviceID] = false;
+                    _profileSettings.TouchpadActiveArray[deviceID] = false;
                     LogDebug(DS4WinWPF.Properties.Resources.TouchpadMovementOff);
                     AppLogger.LogToTray(DS4WinWPF.Properties.Resources.TouchpadMovementOff);
                     touchreleased[deviceID] = false;
                 }
                 else if (touchreleased[deviceID])
                 {
-                    TouchActive[deviceID] = true;
+                    _profileSettings.TouchpadActiveArray[deviceID] = true;
                     LogDebug(DS4WinWPF.Properties.Resources.TouchpadMovementOn);
                     AppLogger.LogToTray(DS4WinWPF.Properties.Resources.TouchpadMovementOn);
                     touchreleased[deviceID] = false;
@@ -3301,7 +3310,7 @@ namespace DS4Windows
         {
             if (deviceID < _controllerSlotLimit)
             {
-                TouchActive[deviceID] = false;
+                _profileSettings.TouchpadActiveArray[deviceID] = false;
             }
         }
 
@@ -3365,7 +3374,7 @@ namespace DS4Windows
         public void SetDevRumble(DS4Device device,
             byte heavyMotor, byte lightMotor, int deviceNum)
         {
-            byte boost = getRumbleBoost(deviceNum);
+            byte boost = _profileSettings.GetRumbleBoost(deviceNum);
             uint lightBoosted = ((uint)lightMotor * (uint)boost) / 100;
             if (lightBoosted > 255)
                 lightBoosted = 255;

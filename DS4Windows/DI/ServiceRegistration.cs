@@ -99,7 +99,9 @@ namespace DS4Windows.DI
                     sp.GetRequiredService<IProfileXmlStore>(),
                     sp.GetRequiredService<IProfileSlotApplier>(),
                     sp.GetRequiredService<IVirtualKBM>(),
-                    sp.GetRequiredService<IVirtualKBMLifecycle>()
+                    sp.GetRequiredService<IVirtualKBMLifecycle>(),
+                    sp.GetRequiredService<IAppearanceSettingsService>(),
+                    sp.GetRequiredService<IProfileActionProvider>()
                 );
             });
             services.AddSingleton<IDeviceStateAccessor>(sp => sp.GetRequiredService<ControlService>());

@@ -3,7 +3,7 @@
 作成日: 2026-09-09  
 改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記／PR-3 検証結果、配置基準の決定（案2）と Step13-1 の挿入の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: PR-1・PR-1b・PR-1c・PR-2・PR-3・Step13-1 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP のみ未実施）・**PR-4 実装済み（レビュー待ち）**  
+状態: PR-1・PR-1b・PR-1c・PR-2・PR-3・PR-4・Step13-1 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP と PR-4 の一部を Step11 へ先送り）・**PR-5 実装済み（レビュー待ち）→ 残りは PR-6 のみ**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -512,19 +512,27 @@ namespace DS4Windows.Services
 - **検証**:
   - `ControlServicePr4ShimEquivalenceTests`: `FlashWhenLate` の状態共有、`OnDeviceSerialChange` が `Global.DeviceSerialChange` を同じ引数で発火すること、`GetGyroOutMode`／`GetSASteeringWheelEmulationAxis`／`ProfilePath` の取得が**ヒープ割り当て0**であること（入力ループのゼロアロケーション方針）。
   - 回帰テスト: `dotnet test` 全件合格を確認。
-  - 実機（レビュー後）: ①コントローラー接続時のオプション適用（ライトバー・タッチパッド・トリガー効果の設定がプロファイルどおりに反映されること、DualSense があれば振動エミュレーションの設定）、②プロファイルの「起動プログラム」設定（`LaunchProgram`）、③ステアリング軸のスペシャルアクション、④デバイスの接続・切断の繰り返し（シリアル変更通知）、⑤ジョイントデバイス（Joy-Con 結合）があればジャイロの動作。
+  - 実機（実施結果: ①・④は実施し問題なし。②・③・⑤は実施せず、まとめて実機テストを行う Phase6-Step11 へ先送り → `Phase6-Step11-Plan.md` §3.3）: ①コントローラー接続時のオプション適用（ライトバー・タッチパッド・トリガー効果の設定がプロファイルどおりに反映されること、DualSense があれば振動エミュレーションの設定）、②プロファイルの「起動プログラム」設定（`LaunchProgram`）、③ステアリング軸のスペシャルアクション、④デバイスの接続・切断の繰り返し（シリアル変更通知）、⑤ジョイントデバイス（Joy-Con 結合）があればジャイロの動作。
 
 ---
 
 ### Step2-5 (PR-5): 入力処理ホットパス（毎レポート最頻度経路）
-- **対象**: ID: C2-50, C2-55, C2-57, C2-59〜C2-63, C2-66（`On_Report` 最頻度経路、タッチトグル、KBM Sync、遅延警告）
-- **作業内容**:
-  1. `IAppearanceSettingsService`, `IProfileActionProvider` をコンストラクタへ必須引数として追加（D2）し、`ServiceRegistration` のファクトリを更新。
-  2. `On_Report` 内の残存 `Global` 参照（`useDInputOnly`, `Sync()`, `TouchActive`, `containsCustomAction` 等）を一挙に置換。
-  3. 新規オブジェクト割り当て・クローンが一切発生していないことをコードレビューで厳格確認。
+- **対象**: ID: C2-50, C2-55, C2-57, C2-59〜C2-63, C2-66（`On_Report` 最頻度経路、タッチトグル、KBM Sync、遅延警告）。なお C2-60（`useDInputOnly`）と C2-63 の `activeOutDevType` は、PR-2 で置換済みだった。
+- **作業内容（実装済み）**:
+  1. コンストラクタに `IAppearanceSettingsService`、`IProfileActionProvider` を必須引数として追加（D2）。`ServiceRegistration` のファクトリも更新した。
+  2. シムの追加（いずれも `Global`／BackingStore の値を直接返し、キャッシュ・割り当て・ログを行わない）: `IAppSettingsService.UseUdpServerSmoothing`／`FlashWhenLateAt`、`IAppearanceSettingsService.InvokeBatteryChanged`（`Global.BatteryChanged` の購読者へ従来と同一の送信元・引数で通知）、`IProfileActionProvider.GetProfileActionCount`、`IProfileSettingsService.ContainsCustomAction`／`ContainsCustomExtras`。
+  3. 置換した参照: UDP 平滑化（C2-50）、遅延警告の閾値（C2-55）、トレイアイコン選択とバッテリー変化通知（C2-57）、KBM の `Sync`（C2-59、`_virtualKBM.Sync()`）、タッチトグルの有効判定・DS4 トリガーモード（C2-61）、カスタムアクション／エクストラ・スペシャルアクション数（C2-62）、OSC 送信・サーバー設定（C2-63）、タッチパッドの出力モード判定・アクティブ状態・振動ブースト（C2-66）。
+  4. `ControlService.cs` の修飾 `Global.` 行（コメント除く）は 11 → 8 行。残りは定数、C2-02（決定D2）、ViGEm 関連、`TEST_PROFILE_INDEX`。
+- **確認事項（コードレビュー）**:
+  - タッチパッドのアクティブ配列は、`ProfileSettingsService.TouchpadActiveArray` と `Global.touchpadActive`／`TouchActive` が同一の配列を指すこと（孤立配列でないこと）をテストで固定した。`Global.touchpadActive` の setter は Legacy 経路のログを出すが、getter は出さない。今回の置換で入力ループ内の書込みは `TouchpadActiveArray` の要素書込みになり、配列の参照自体は毎回取得するためキャッシュしていない。
+  - `outputKBMHandler.Sync()` を `_virtualKBM.Sync()` に替えると、ハンドラが null のときの結果が「例外」から「何もしない」に変わる（PR-3 と同じ扱い。`InitOutputKBMHandler` が `Start()` の前に必ず実行されるため通常は発生しない）。
+  - `Global.IsUsingTouchpadForControls` は `touchOutMode[index] == Controls` の判定であり、`_profileSettings.TouchOutMode[index] != TouchpadOutMode.Controls` と同値。
 - **検証**:
-  - ベンチマーク: `On_Report` 処理時間のプロファイル計測（置換前後の処理時間比較）。
+  - `ControlServicePr5ShimEquivalenceTests`（Global との状態共有・イベント発火・配列の同一性）、`ControlServicePr5DiWiringTests`（解決・null 拒否）、`ControlServiceHotPathAllocationTests`（On_Report 相当の16個の取得が200,000回で**ヒープ割り当て0**であること、1回あたりの時間が緩い上限〔20µs〕を超えないこと）。
+  - 既存テスト `ProfileActionChainServiceTests` のモックに `GetProfileActionCount` を追加した。
+  - 処理時間の厳密な比較（置換前後 ±5%）は、実機での On_Report 全体の計測（§7.2）で行う。アプリの「入力遅延／出力遅延」の最大値表示（コントローラー読み取り画面）を、PR-4 の状態と PR-5 の状態で比較する方法が使える。
   - 回帰テスト: `dotnet test` 全件合格を確認。
+  - 実機（実施するか、Step11 へ先送りするかはレビュー時に判断）: ①通常操作（ボタン・スティック・ジャイロ）が従来どおり反映されること、②タッチパッドのトグル（PS ボタン＋タッチ）でタッチパッド操作が ON／OFF できること、③KBM 出力（キーボード・マウスの割当）、④スペシャルアクション・エクストラが設定されたプロファイルで、割当どおりに動作すること、⑤トレイアイコンをバッテリー表示に設定し、バッテリー残量の変化が反映されること、⑥遅延警告時のライトバー点滅設定（`FlashWhenLate`）、⑦DS4 のトリガーモード設定（DualSense 系があれば）、⑧OSC／UDP の送受信（対応ツールを用意できる場合）。
 
 ---
 
@@ -535,8 +543,9 @@ namespace DS4Windows.Services
   2. コンパイルを通し、意図しない無修飾 Global 参照が残存していないことを Roslyn コンパイラで完全に検出・解消する。
   3. 表4の明示的除外（`MAX_DS4_CONTROLLER_COUNT` 等の const、ViGEmバックエンド）のみが `Global.` 修飾で残っていることを確認する。
   4. `ServiceRegistration.cs` の `ControlService` 解決ファクトリが、全引数（D1の `Func<IOutputSlotService>`、D3の `IVirtualKBMLifecycle` を含む）を解決していることを最終確認する（更新自体は各PRで実施済み）。
+- **事前調査（PR-5 の状態、Roslyn の意味診断）**: `using static DS4Windows.Global;` を外したときに新たに未解決になる名前は `vigemInstalled`（`ControlService.cs` の ViGEm バックエンド関連、1箇所）のみ。`Global.vigemInstalled` と修飾して残す（ViGEm は本プランの除外対象のため、表4に **C2-EX07** として追記する）。
 - **検証**:
-  - 静的解析: `ControlService.cs` 内の `Global.` 出現箇所が除外リスト（表4の8件）と完全一致することを確認。
+  - 静的解析: `ControlService.cs` 内の `Global.` 出現箇所が除外リスト（表4の8件＋C2-EX07）と完全一致することを確認。
   - 回帰テスト: 全テストプロジェクトの完全ビルド・実行でグリーンを確認。
 
 ---
@@ -715,3 +724,11 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 - **PR-4**: 実装済み（§6 Step2-4 のとおり）。新規はテスト `ControlServicePr4ShimEquivalenceTests`。
 - **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイル（xUnit は簡易スタブ）で新規エラー 0 件。
 - **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施。手順は §6 Step2-4 の検証欄）。
+
+### B.8 PR-4 の検証結果と PR-5 の実装: 2026-09-20
+
+- **PR-4**: ビルド・テストビルド・テスト実行の全てが成功し、リモートへ反映済み。実機確認は、①接続時のオプション適用、④デバイスの接続・切断の繰り返し（シリアル変更通知）を実施し、問題なし。②起動プログラム設定、③ステアリング軸のスペシャルアクション、⑤Joy-Con 結合デバイスのジャイロは実施せず、まとめて実機テストを行う Phase6-Step11 へ先送りした（`Phase6-Step11-Plan.md` §3.3 に登録）。
+- **PR-5**: 実装済み（§6 Step2-5 のとおり）。新規はテスト `ControlServicePr5ShimEquivalenceTests`／`ControlServicePr5DiWiringTests`／`ControlServiceHotPathAllocationTests`。
+- **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイル（xUnit は簡易スタブ）で新規エラー 0 件。この検査で、`IProfileActionProvider` を実装する既存テストのモック（`ProfileActionChainServiceTests`）が新メンバに追随していないことを見つけ、修正した。
+- **PR-6 の事前調査**: `using static` を外して未解決になる名前は `vigemInstalled` の1件のみ（§6 Step2-6）。
+- **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施。手順は §6 Step2-5 の検証欄）。
