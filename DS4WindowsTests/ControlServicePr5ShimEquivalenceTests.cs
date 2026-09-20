@@ -1,6 +1,7 @@
 using System;
 using Xunit;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4Windows.Services;
 
 namespace DS4WindowsTests
@@ -142,22 +143,28 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void TouchpadActiveArray_IsTheSameArrayAsGlobalTouchActive()
+        public void TouchpadActiveArray_OfDiSingleton_IsTheSameArrayAsGlobalTouchActive()
         {
-            // CheckForTouchToggle／StartTPOff は TouchpadActiveArray の要素を書き換える。
-            // Global.TouchActive／Global.touchpadActive と同一の配列を指していること（孤立配列でないこと）。
-            Assert.Same(Global.touchpadActive, _profileSettings.TouchpadActiveArray);
+            // TouchpadActiveArray はサービスのインスタンスが保持する状態（BackingStore ではない）。
+            // そのため、new ProfileSettingsService() で作った別インスタンスではなく、
+            // ControlService が実際に受け取る DI の Singleton を対象にする。
+            // Global.touchpadActive／TouchActive は Global.ProfileSettingsServiceInstance 経由で同じ Singleton を参照するため、
+            // CheckForTouchToggle／StartTPOff が書き換える配列と、Global 側の読み取りが同一であること（孤立配列でないこと）を確認する。
+            IProfileSettingsService service = DS4WinWPF.AppHost.GetService<IProfileSettingsService>();
+
+            Assert.Same(Global.ProfileSettingsServiceInstance, service);
+            Assert.Same(Global.touchpadActive, service.TouchpadActiveArray);
 
             const int slot = 0;
-            bool original = _profileSettings.TouchpadActiveArray[slot];
+            bool original = service.TouchpadActiveArray[slot];
             try
             {
-                _profileSettings.TouchpadActiveArray[slot] = !original;
+                service.TouchpadActiveArray[slot] = !original;
                 Assert.Equal(!original, Global.GetTouchActive(slot));
             }
             finally
             {
-                _profileSettings.TouchpadActiveArray[slot] = original;
+                service.TouchpadActiveArray[slot] = original;
             }
         }
 

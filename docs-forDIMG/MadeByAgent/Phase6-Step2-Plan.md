@@ -3,7 +3,7 @@
 作成日: 2026-09-09  
 改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記／PR-3 検証結果、配置基準の決定（案2）と Step13-1 の挿入の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: PR-1・PR-1b・PR-1c・PR-2・PR-3・PR-4・Step13-1 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP と PR-4 の一部を Step11 へ先送り）・**PR-5 実装済み（レビュー待ち）→ 残りは PR-6 のみ**  
+状態: PR-1・PR-1b・PR-1c・PR-2・PR-3・PR-4・Step13-1 完了（ビルド・テスト成功、リモート反映済み。実機確認は OSC/UDP と PR-4 の一部を Step11 へ先送り）・**PR-5 反映済み（テスト1件はテストの誤りのため修正版を提供。再確認待ち）→ 残りは PR-6 のみ**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -732,3 +732,12 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 - **静的検証**: Roslyn の意味診断を変更前後で比較し、DS4Windows 全ソースおよびテストプロジェクト全ファイル（xUnit は簡易スタブ）で新規エラー 0 件。この検査で、`IProfileActionProvider` を実装する既存テストのモック（`ProfileActionChainServiceTests`）が新メンバに追随していないことを見つけ、修正した。
 - **PR-6 の事前調査**: `using static` を外して未解決になる名前は `vigemInstalled` の1件のみ（§6 Step2-6）。
 - **未実施**: `dotnet build` / `dotnet test` / 実機確認（レビュー後に開発環境で実施。手順は §6 Step2-5 の検証欄）。
+
+### B.9 PR-5 の検証結果: 2026-09-20
+
+- **自動検証**: ビルド、テストビルドは成功。テスト実行で1件失敗し、その状態でリモートへ反映済み。
+  - 失敗したテスト: `ControlServicePr5ShimEquivalenceTests.TouchpadActiveArray_IsTheSameArrayAsGlobalTouchActive`（`Assert.Same` の失敗）。
+  - **原因はテストの誤り**（本番コードの問題ではない）: `TouchpadActiveArray` は BackingStore ではなく、サービスの**インスタンスが保持する状態**（`_touchpadActive`）である。テストは `new ProfileSettingsService()` で作った別インスタンスの配列と、`Global.touchpadActive`（DI の Singleton の配列）を比較していたため、別の配列になっていた。`ControlService` が実際に受け取るのは DI の Singleton で、`Global.ProfileSettingsServiceInstance` も同じ Singleton を返す（`AppHost.CreateHost` は1プロセスに1つのホストを保持する）ため、本番では同一の配列を参照する。
+  - **修正**: テストを、DI の Singleton（`AppHost.GetService<IProfileSettingsService>()`）を対象にし、`Global.ProfileSettingsServiceInstance` と同一であること、`Global.touchpadActive` と同一の配列であることを検証する形に改めた（`TouchpadActiveArray_OfDiSingleton_IsTheSameArrayAsGlobalTouchActive`）。
+  - 同種の問題（インスタンス保持の状態を別インスタンスと比較する）がないか、PR-2〜PR-5 のテストを見直した。`new ProfileSettingsService()` を使う他のテストは、BackingStore を共有する値の比較か、値を読み捨てるだけの計測であり、影響なし。
+- **未確認**: 修正版のテスト全件合格、実機確認（実施するか、Step11 へ先送りするかはユーザー判断）。
