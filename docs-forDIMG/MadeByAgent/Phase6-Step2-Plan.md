@@ -3,7 +3,7 @@
 作成日: 2026-09-09  
 改訂日: 2026-09-19（決定D1〜D3の反映・実地再確認による是正・モデル図連動更新／PR-1 実装に伴う対象ID・型の是正／PR-1 検証記録・決定O2=C・PR-1b 実装の追記／決定O3=A・O1=B、PR-1b 検証結果、PR-1c 実装の追記／決定O4=B-2・モデル図変更の承認、PR-1c 検証結果、PR-2 実装の追記／PR-2 検証結果・`ProfileRepository` 統合の記録、PR-3 実装の追記／PR-3 検証結果、配置基準の決定（案2）と Step13-1 の挿入の追記）  
 前回改訂: 2026-09-18（Phase6-Step1 コア参照エビデンスに基づく全74箇所網羅・Pure DI設計・ホットパス性能保護の全面拡充改訂）  
-状態: **Step2 の全 PR（PR-1〜PR-6）の実装が完了**。PR-1〜PR-5・Step13-1 はビルド・テスト成功、リモート反映済み。**PR-6 はビルド・テストビルド成功、テスト実行で1件失敗（テストの実行順序依存。修正版のテストを提供）**。実機確認は OSC/UDP、PR-4 の一部、PR-5 の全項目を Phase6-Step11 へ先送り  
+状態: **Step2 の全 PR（PR-1〜PR-6）と Step13-1 が完了**（ビルド・テストビルド・テスト実行の全件成功、リモート反映済み）。実機確認の一部（OSC/UDP、PR-4 の一部、PR-5 の全項目）は Phase6-Step11 へ先送り。残りはビルド警告数の確認のみ（付録C 項目12）  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -762,7 +762,7 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 |---|---|---|---|
 | 1 | 表1〜3 の全66箇所が DI サービス経由へ置換されている | 済 | 65 ID を置換。C2-02 は決定D2 により防御コードとして温存（技術的負債コメント付き） |
 | 2 | 表4 以外の `Global.` 直接参照が根絶されている | 済 | 残り9箇所はすべて除外項目（EX01・EX03〜EX07、C2-02）。`ControlServiceGlobalReferenceGuardTests` で固定 |
-| 3 | `using static DS4Windows.Global;` が削除されている | 済（PR-6） | ビルド・テスト確認待ち |
+| 3 | `using static DS4Windows.Global;` が削除されている | 済（PR-6） | ビルド・テスト成功を確認済み |
 | 4 | 例外として残る `Global` 参照が C2-02 のみで、理由が記録されている | 済 | `ControlService` コンストラクタの技術的負債コメント（Phase6-Step12 で削除判断） |
 | 5 | `CURRENT_DS4_CONTROLLER_LIMIT`／`USING_MAX_CONTROLLERS` の外部呼び出し元の移行 | Step2 の範囲外（O3=A） | 各 Step（Step5／8／9／10）で置換し、Step12 で互換シムを削除。担当は `Phase6-Step2-Plan.md` §6 Step2-1b の表 |
 | 6 | 循環依存が発生していない | 済 | D1（`Func<IOutputSlotService>` の遅延解決）、O1／O4（`IProfileSlotApplier`）。`ControlServicePr2DiWiringTests` などで確認 |
@@ -771,8 +771,8 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
 | 9 | `Model-Diagram/01〜04` が実装結果と一致している | 済 | D1〜D3、O1〜O4 の反映を 01・03・04 に実施済み |
 | 10 | 追加した DI シムが、正本と連動する薄い委譲である | 済 | 各 PR の `*ShimEquivalenceTests` で状態共有・イベント発火を検証 |
 | 11 | ホットパスでゼロアロケーション・遅延劣化なし | 一部 | ゼロアロケーションは PR-4・PR-5 のテストで確認済み。置換前後 ±5% の処理時間比較は Step11 の実機で実施 |
-| 12 | `dotnet build -c Release` の警告・エラーが0件 | 要確認 | PR-1〜PR-5 のビルド成功は確認済み。警告数の確認は PR-6 のビルド後に実施 |
-| 13 | 全自動テストが100%成功 | PR-5 まで済 | PR-6 のテスト実行後に確定 |
+| 12 | `dotnet build -c Release` の警告・エラーが0件 | 要確認 | ビルド成功（エラー0件）は PR-6 まで確認済み。**警告数は未報告**（Release ビルドの警告数を確認して報告する） |
+| 13 | 全自動テストが100%成功 | 済 | PR-6（B.11 の修正版テスト）まで全件成功を確認済み |
 | 14 | 実機での接続・切断・入力追従・プロファイル切替が正常 | 一部 | PR-1〜PR-4 で実施した範囲は問題なし。先送り項目は Phase6-Step11 §3.3 の先送り台帳で確認する |
 
 ### B.11 PR-6 の検証結果: 2026-09-20
@@ -783,4 +783,28 @@ grep による機械抽出（メンバ別・行番号）。無修飾参照（`us
   - **修正**: 本テストは、`Global.ProfileSettingsServiceInstance` を DI の Singleton に**明示的に配線**し、検証後に元へ戻す形に改めた（`WithGlobalWiredTo`）。同じく `Global.ProfileSettingsServiceInstance` 経由の値（`getEnableTouchToggle`／`getRumbleBoost`）を比較する `TouchOutMode_And_OutputDS4TriggerMode_MatchGlobalGetters` も、同様に配線して比較する形にした（現状は成功しているが、実行順序に依存し得るため）。
   - 再点検: PR-2〜PR-6 の自作テストのうち、`Global.ProfileSettingsServiceInstance` の参照先に依存するものは上記2件のみ。他は BackingStore（`Global.store`）を直接共有する値の比較か、値を読み捨てる計測であり、影響なし。
   - **教訓（テスト作成ルール）**: `Global` の static 状態を書き換えたまま戻さない既存テストがあるため、`Global` の参照先（`ProfileSettingsServiceInstance` など）に依存するテストは、必ず明示的に配線し、終了後に復元する。既存テスト側の後始末の欠落は、Step10b またはテスト整理の際に是正する候補として記録する。
-- **未確認**: 修正版のテスト全件合格、警告数の確認（付録C の項目 12・13）。
+- **修正版の結果**: ビルド、テストビルド、テスト実行の全てが成功し、リモートへ反映済み。警告数は未報告（付録C 項目 12）。
+
+### B.12 Step2 の完了: 2026-09-20
+
+`ControlService.cs` の Global 直接参照の解消（Phase6-Step2）が、全 PR で完了した。
+
+| 項目 | 結果 |
+|---|---|
+| 実施した PR | PR-1、PR-1b、PR-1c、PR-2、PR-3、PR-4、PR-5、PR-6（＋配置整理 Step13-1） |
+| 対象 ID | 66 件中 65 件を置換。C2-02 は決定D2 により防御コードとして温存 |
+| `ControlService.cs` の `Global.` 参照（コメント除く） | 75 → **9 箇所**（すべて表4 の除外項目と C2-02）。`using static` は削除済み |
+| 新設した型 | `IProfileSlotApplier`／`ProfileSlotApplier`（決定O1=B・O4=B-2）、`IVirtualKBMLifecycle`／`OutputKBMHandlerLifecycle`（決定D3）。DI の既存インターフェースには、薄い委譲のシムを追加した |
+| 新規テスト | 14 ファイル（うち1件はテスト用の `ControlServiceTestFactory`）。シム等価性、DI 配線・必須引数の null 拒否、ゼロアロケーション、Global 参照の回帰ガードを含む |
+| 実機確認 | PR-1〜PR-4 の実施範囲は問題なし。先送り分は `Phase6-Step11-Plan.md` §3.3 の先送り台帳に登録済み |
+
+**持ち越し事項**:
+
+| # | 事項 | 担当・時期 |
+|---|---|---|
+| 1 | `CURRENT_DS4_CONTROLLER_LIMIT`／`USING_MAX_CONTROLLERS` の外部呼び出し元（15ファイル・54箇所）の移行と、互換シムの削除 | Step5／8／9／10 で置換、Step12 で削除（O3=A。§6 Step2-1b の表） |
+| 2 | K1: `IProfileApplicationService.ApplyProfile` の `deviceIndex >= 4` のハードコードと、Halt の入れ子（`ProfileSlotApplier` は当面 `Global.ApplyProfileToSlot` へ委譲） | Global.ApplyProfileToSlot の「フェーズG」（`IProfileApplicationService` への完全委譲）の前に是正 |
+| 3 | C2-02: `profileSettings ?? Global.ProfileSettingsServiceInstance` の防御コード | Phase6-Step12 で削除判断 |
+| 4 | `OutputSlotService`／`ProfileApplicationService`／`ProfileRepository` の `ControlService` への逆依存（`ControlService` は `Func<IOutputSlotService>` の遅延解決で回避中）と、`OutputSlotService` の二重実体化の検証 | Phase6-Step5 |
+| 5 | `Global.ProfileSettingsServiceInstance` を差し替えたまま元に戻さない既存テスト3ファイル | Step10b またはテスト整理で是正 |
+| 6 | 置換前後の処理時間比較（±5%）と、先送りした実機確認 | Phase6-Step11 |

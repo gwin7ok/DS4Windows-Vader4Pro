@@ -165,7 +165,7 @@ git mv "DS4Windows/LoggerHolder.cs" "DS4Windows/Core/Logging/LoggerHolder.cs"
 git mv "DS4Windows/StatusLogMsg.cs" "DS4Windows/Core/Logging/StatusLogMsg.cs"
 ```
 
-追加作業: `.editorconfig` の名前空間×フォルダ規約の適用外リスト `[DS4Windows/{DS4Control,DI,Actions}/**.cs]` を、新設フォルダを含む `[DS4Windows/{DS4Control,DI,Actions,Core,Updater}/**.cs]` へ拡張する（このコミットに含める。現状は Style カテゴリが `none` のためビルドへの影響はないが、意図を明示する）。
+追加作業: `.editorconfig` の名前空間×フォルダ規約の適用外リスト `[DS4Windows/{DS4Control,DI,Actions}/**.cs]` を、新設フォルダを含む `[DS4Windows/{DS4Control,DI,Actions,Core,Updater}/**.cs]` へ拡張する（このコミットに含める。現状は Style カテゴリが `none` のためビルドへの影響はないが、意図を明示する）。**手順の注意**: `.editorconfig` の変更は `M`（変更）であり、§5.3 の「全行が `R100`」の検証に混ざる。移動の検証（`git add -A` → `R100` 以外の行がないこと）を通した**後**に `.editorconfig` を反映し、`git add .editorconfig` してから同じコミットに含める。
 
 ### 13-3: NotificationService の集約（1件）
 
@@ -329,3 +329,10 @@ git diff --cached -M100% --name-status | Select-String -NotMatch '^R100'
 - **自動検証**: ビルド、テストビルド、テスト実行の全てが成功（開発環境での実施結果）。
 - **起動スモーク**（ユーザー実施）: DS4Windows の起動、コントローラーの接続、プロファイルの適用、プロファイル切替のスペシャルアクションの実行 — すべて問題なし。
 - **残り**: 13-2〜13-5 は Step2 の完了後（Step3 の着手前）に実施する。
+
+### 13-2〜13-5: 事前検証（HEAD `5785af9`、2026-09-20）
+
+- 4ステージの移動 24 件（13-2: 8、13-3: 1、13-4: 6、13-5: 9）について、移動元がすべて存在し、移動先に同名ファイルがないことを再確認した（問題なし）。
+- 移動後、`DS4Windows/` 直下に残る `.cs` は `App.xaml.cs`、`StartupMethods.cs`、`GlobalSuppressions.cs`、`KeyboardSettings.cs` の4件になる（R5 のとおり）。
+- 13-2 に含める `.editorconfig` の変更（適用外リストへ `Core`、`Updater` を追加）は、`.editorconfig` の更新版として提供した。
+- **実施の進め方（任意）**: 4ステージはいずれも `git mv` のみで、ステージごとの `R100` 検証を通すため、ビルド・テストは最後に1回でもよい（コミットはステージごとに分ける。失敗した場合は、コミット単位で原因を特定できる）。
