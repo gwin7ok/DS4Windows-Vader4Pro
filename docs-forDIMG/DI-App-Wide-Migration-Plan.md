@@ -560,7 +560,7 @@ Viewの改修は最小限に抑えられる。17件全てに個別インター�
 | フェーズ5 | DIサービス内部Legacy経路監査と責務分離 | 横断 | サービス内部の`Global`/`Program.rootHub`再委譲の監査・是正（Step1〜15） | 新規設計 | 進行中（Step1-13完了、Step14実機検証・Step15削除判断が残） |
 | **フェーズ6（新設）** | **残存Global実利用箇所の解体** | 横断（信号変換層/入力監視層境界・信号出力層・UI層） | 呼出元193件をDIサービス経由へ置換。仮想コントローラー部分（カテゴリE）は対象外 | `Phase6-Plan.md` | 未着手（Phase5-Step14/15完了後に着手） |
 | **フェーズ7（新設・延期）** | **`Mapping.cs`完全instance化** | 2-a（信号変換層） | `Mapping`のstatic中心設計を段階的にinstance化 | Phase6完了後に個別計画書を新設 | 未着手（Phase6完了後に検討開始） |
-| **フェーズ8（新設、2026-09-23）** | **Controls／SpecialActions統一トリガーディスパッチ** | 2-a/2-b（信号変換層の統合） | Controlsタブ・SpecialActionsタブの「トリガー成立→処理実行」を単一の実行時経路に統合。UI・設定の保存/読込は分離を維持 | `Phase8-Unified-Trigger-Dispatch-Plan.md`（既存の未配線抽象化`IActionBinding`系、稼働中の`Actions.Action`系の両方を調査済み） | 計画立案（決定事項D1〜D5の承認待ち、Phase7完了後に着手） |
+| **フェーズ8（新設、2026-09-23）** | **Controls／SpecialActions統一トリガーディスパッチ** | 2-a/2-b（信号変換層の統合） | Controlsタブ・SpecialActionsタブの「トリガー成立→処理実行」を単一の実行時経路に統合。UI・設定の保存/読込は分離を維持 | `Phase8-Unified-Trigger-Dispatch-Plan.md`（既存の未配線抽象化`IActionBinding`系、稼働中の`Actions.Action`系の両方を調査済み） | **決定事項D1〜D5確定済み（2026-09-23）**。未着手（Phase7完了後に着手） |
 
 ### 6.2 フェーズ0: 基盤整備（1〜2日）
 
@@ -830,11 +830,13 @@ DIサービス経由で一貫して動作する状態**を完成させる。
 
 #### 6.13.3 結論
 
-実現可能と判断した。ただし系統Aをそのまま復活させるのではなく、実際に稼働している系統Bを
-処理実行側の土台としつつ、トリガー成立判定側を新設する設計とする。詳細な決定事項
-（土台とする既存型の選定、トリガー条件クラスの単純/組み合わせ統合方針、移行の進め方、
-フェーズの位置づけ、未配線の系統Aの削除可否）は `docs-forDIMG/MadeByAgent/Phase8-Unified-Trigger-Dispatch-Plan.md`
-の決定事項D1〜D5を参照。
+実現可能と判断した。2026-09-23、決定事項D1〜D5を確定：統一抽象化の**構造は未配線の系統A
+（`IActionBinding`等）を土台とし、中身は稼働実績のある系統B（`Actions.Action`系）から移植・
+委譲する**（D1=A2採用）。トリガー条件はControls/SpecialActions共通の汎用クラスに統合し（D2）、
+既存経路と並行構築のうえアクション種別ごとに段階移行する（D3）。決定の詳細・根拠、および
+移行過程で判明したKeyタイプ固有の注意点（`KeyOutputAction`を`KeyAction`へ委譲する形に書き直す
+必要がある）は `docs-forDIMG/MadeByAgent/Phase8-Unified-Trigger-Dispatch-Plan.md` の
+決定事項D1〜D5を参照。
 
 #### 6.13.4 着手前提
 
