@@ -276,6 +276,10 @@
 ### 6.5 持ち越し事項（Step2 付録 B.12）
 外部呼び出し元54箇所の移行（Step5/8/9/10、Step12 で互換シム削除）、K1（`IProfileApplicationService.ApplyProfile` の `deviceIndex >= 4`）、C2-02（Step12 で削除判断）、`OutputSlotService` などの逆依存（Step5）、後始末のない既存テスト3ファイル、処理時間比較と先送りの実機確認（Step11 §3.3）、**K2（新規、2026-09-22）**: `Global.GetProfileActionIndexOf`（`ScpUtil.cs` 3494〜3499行）およびその移植先 `ProfileActionProvider.GetProfileActionIndexOf`（Phase6-Step3-1で新設）は、`Dictionary.TryGetValue` が未検出時に `out` 引数を `default(int)`（＝0）で上書きする仕様により、アクション名が未検出の場合も `-1` ではなく `0` を返す（インデックス0の定義済みアクションと区別がつかない）。Step3-1では既存挙動の忠実な移植として温存し、修正の要否はテスト（`Phase6Step3ContractExtensionTests.GetProfileActionIndexOf_SharesStateWithGlobal`）作成時に判明した。呼び出し元（`Mapping.cs` 等）が本当に `-1` を「未検出」判定に使っているか、Step3 のいずれかのバッチ着手時に確認し、対応要否を判断する。
 
+**K3（新規、2026-09-22、Mapping.cs のバグ調査で判明・恒久対応が必要）**: `PlayMacro`（`Mapping.cs`）の二重実行防止ガードは、本来 `IsMacroRunning`（`ActionInstanceState`）一本で「トリガー成立後、その処理が実行中かどうか」を判定すべきところ、SpecialAction 経由（`action != null`）にしか効いておらず、Controls タブの直接マクロ割り当て（`action == null`）は素通りしていた（入力ポーリングのたびに新しい `Task` を生成しようとし、216ms 間隔で約64回もの無駄な `Task` 生成が発生することを実機ログで確認）。暫定対策として、`control` 単位の独立したフラグ `macroDispatchInFlight`（+`macroDispatchLock`）を新設し、Task 生成前に同期的にチェック・設定する形で二重実行を防止した（`MappingPlayMacroDispatchGuardTests.cs` で検証）。
+
+**恒久対応の申し送り**: これは対症療法であり、根本原因は「トリガー判定層」と「マクロ実行層」が `Mapping.cs` 内で分離できていないことにある。`docs-forDIMG/Model-Diagram/02-Layer-Architecture-Diagram.md`・`03-Class-Interface-Diagram.md` が示す理想構造（§3.3 の 2-d マクロの分解／3-b KBM出力）では、マクロの「実行」は Controls 由来か SpecialActions 由来かに関わらず単一の実行層（`IVirtualKBM` 経由の逐次送出）に一本化され、二重実行防止もその単一の実行層で一元的に行われる想定である。Phase7（`Mapping.cs` 完全 instance 化、`DI-App-Wide-Migration-Plan.md` §6.9）で、今回の `macroDispatchInFlight` を含めて再設計し、`action`（SpecialAction）の有無で分岐する現在の二重ガード構造を解消すること。
+
 ### 6.6 Step3 着手時の確認事項
 - （着手前の想定。実地確認で150件に更新済み。下段参照）対象は `Mapping.cs` の Global 直接参照。Phase7（`Mapping.cs` の完全 instance 化）の下地として、静的結合を段階的に減らす方針（`DI-App-Wide-Migration-Plan.md` §5.5・§6.9）。
 - `Mapping.cs` は `Global` 以外の静的結合（`Program.rootHub` 直接参照1件、Service Locator 6件）を含む。いずれも Step3 の対象外（`Phase6-Step3-Reality-Check-Ledger.md` §3.3）。

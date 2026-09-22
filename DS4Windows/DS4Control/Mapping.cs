@@ -1003,6 +1003,31 @@ namespace DS4Windows
 
         //mapcustom
         public static bool[] macrodone = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
+
+        // ---- 暫定対策（申し送り: 下記コメント参照）----
+        // PlayMacro の「二重実行防止ガード」は、SpecialAction 経由（action != null）にしか
+        // 効いていなかった。Controls タブの直接マクロ割り当て（action == null）は、ボタンが
+        // 押されている間、入力ポーリングのたびに PlayMacro が呼ばれ続けるにもかかわらず、
+        // 二重実行防止ガードが素通りになり、既に実行中／クールダウン中でも毎ティック新しい
+        // Task を生成しようとしていた（216ms 間隔で約64回の無駄な Task 生成を実測）。
+        //
+        // macrodone[control] は PlayMacroTask 内部で「実際にキー送信を行うか」の判定に
+        // 使われている既存の実体であり、意味を変えずに流用することはできない（Task 生成前で
+        // true にしてしまうと、PlayMacroTask 内部の判定が常に false になり、通常マクロが
+        // 一切実行されなくなる）。そのため、Task 生成前だけを見る独立した実体を新設する。
+        //
+        // 【申し送り事項（恒久対応が必要）】
+        // これは暫定対策であり、根本的には「トリガー判定層」と「マクロ実行層」が分離できて
+        // いないことが原因である。docs-forDIMG/Model-Diagram/02-Layer-Architecture-Diagram.md・
+        // 03-Class-Interface-Diagram.md が示す理想構造（§3.3 の 2-d マクロの分解／3-b KBM出力）
+        // では、マクロの「実行」は Controls 由来か SpecialActions 由来かに関わらず単一の
+        // 実行層（IVirtualKBM 経由の逐次送出）に一本化される想定であり、二重実行防止も
+        // その単一の実行層で一元的に行われるべきである。Phase7（Mapping.cs 完全 instance 化、
+        // DI-App-Wide-Migration-Plan.md §6.9）で、この場当たり的な macroDispatchInFlight を
+        // 含めて再設計すること。
+        private static readonly bool[] macroDispatchInFlight = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
+        private static readonly object macroDispatchLock = new object();
+
         // debounce for SpecialAction toggle (milliseconds)
         private const int ToggleDebounceMs = 30;
         // hold toggled-on clear for a short window after toggle to avoid rapid reset during bouncy inputs
@@ -6236,11 +6261,36 @@ namespace DS4Windows
 
             // Startup guard: if a macro iteration is already running for this action/device,
             // skip starting another macro and log the decision (DECISION=RUN/NORUN).
+            //
+            // 暫定対策: action != null（SpecialAction経由）は上記の ActionInstanceState.IsMacroRunning
+            // で判定されるが、action == null（Controls タブの直接マクロ割り当て）にはこれが効かない
+            // （st が常に null のため isRunning が常に false になる）。そのため、control 単位の
+            // macroDispatchInFlight で同様の二重実行防止を行う。SpecialAction 経由の呼び出しは
+            // 常に control == DS4Controls.None で呼ばれるため、この分岐には入らず影響しない。
+            // 詳細・恒久対応の申し送りは macroDispatchInFlight 宣言部のコメントを参照。
+            bool controlIndexValid = control != DS4Controls.None;
+            int controlDispatchIdx = controlIndexValid ? DS4ControltoInt(control) : -1;
+
             try
             {
-                bool isRunning = st != null ? st.IsMacroRunning : false;
+                bool actionRunning = st != null && st.IsMacroRunning;
+                bool controlDispatchInFlight = false;
+
+                if (controlIndexValid)
+                {
+                    lock (macroDispatchLock)
+                    {
+                        controlDispatchInFlight = macroDispatchInFlight[controlDispatchIdx];
+                        if (!controlDispatchInFlight)
+                        {
+                            macroDispatchInFlight[controlDispatchIdx] = true;
+                        }
+                    }
+                }
+
+                bool isRunning = actionRunning || controlDispatchInFlight;
                 string decision = isRunning ? "NORUN" : "RUN";
-                AppLogger.LogTrace($"PlayMacro START GUARD: action={action?.name} device={device} IsMacroRunning={isRunning} DECISION={decision}");
+                AppLogger.LogTrace($"PlayMacro START GUARD: action={action?.name} device={device} control={control} IsMacroRunning={actionRunning} ControlDispatchInFlight={controlDispatchInFlight} DECISION={decision}");
                 if (isRunning) return;
             }
             catch { }
@@ -6480,6 +6530,18 @@ namespace DS4Windows
                 if (actionDoneState != null)
                 {
                     try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                }
+
+                // 暫定対策: PlayMacro の START GUARD で確保した control 単位の
+                // ディスパッチ中フラグを、このマクロ実行（1回の PlayMacroTask 呼び出し。
+                // HoldMacro/RepeatMacro の内部再実行ループも含む）の終了時に必ず解除する。
+                if (control != DS4Controls.None)
+                {
+                    try
+                    {
+                        lock (macroDispatchLock) { macroDispatchInFlight[DS4ControltoInt(control)] = false; }
+                    }
+                    catch { }
                 }
             }
             try { AppLogger.LogTrace($"PlayMacroTask END: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)}"); } catch { }
