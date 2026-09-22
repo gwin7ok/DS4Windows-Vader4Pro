@@ -8,7 +8,10 @@ namespace DS4WindowsTests
     /// <summary>
     /// SpecialActionsListViewModel.SortActions の是正（チェックボックス列クリック時に
     /// 「直前のソート列・方向」が第2ソートキーとして使われず、Active 列の昇順の向きも
-    /// 逆になっていたバグの修正）を検証する。
+    /// 逆になっていたバグの修正。さらに、XAML 側のヘッダー Tag="Trigger"/"Action" と
+    /// GetColumnComparison のキー名（旧: "TypeName"/"Controls"）が不一致で、
+    /// これら2列をクリックしてもヘッダーの矢印だけ動いて実際には並び替わらなかった
+    /// バグの修正）を検証する。
     /// </summary>
     public class SpecialActionsListViewModelSortTests
     {
@@ -97,6 +100,54 @@ namespace DS4WindowsTests
             vm.SortActions("Active", ListSortDirection.Ascending);
 
             Assert.Equal(new[] { "Bravo", "Alpha", "Delta", "Charlie" }, vm.ActionCol.Select(i => i.ActionName));
+        }
+
+        // ---- Trigger/Action 列（XAML 側の Tag="Trigger"/"Action" に対応。
+        //      実データは Controls/TypeName プロパティ。過去に Tag 値と
+        //      GetColumnComparison のキー名が不一致で、クリックしてもヘッダーの
+        //      矢印だけ動いて実際には並び替わらないバグがあったため、回帰防止に追加）----
+
+        private static SpecialActionsListViewModel CreateVmWithControlsAndType(
+            params (string name, string controls, string typeName)[] items)
+        {
+            var vm = new SpecialActionsListViewModel(0, null, null, null, null, null);
+            int index = 0;
+            foreach (var (name, controls, typeName) in items)
+            {
+                var item = new SpecialActionItem(null, name, index++)
+                {
+                    Controls = controls,
+                    TypeName = typeName
+                };
+                vm.ActionCol.Add(item);
+            }
+            return vm;
+        }
+
+        [Fact]
+        public void SortActions_TriggerColumn_SortsByControlsProperty()
+        {
+            var vm = CreateVmWithControlsAndType(
+                ("Alpha", "R1", "Key"),
+                ("Bravo", "L1", "Macro"),
+                ("Charlie", "PS+R1", "Key"));
+
+            vm.SortActions("Trigger", ListSortDirection.Ascending);
+
+            Assert.Equal(new[] { "L1", "PS+R1", "R1" }, vm.ActionCol.Select(i => i.Controls));
+        }
+
+        [Fact]
+        public void SortActions_ActionColumn_SortsByTypeNameProperty()
+        {
+            var vm = CreateVmWithControlsAndType(
+                ("Alpha", "R1", "Macro"),
+                ("Bravo", "L1", "Key"),
+                ("Charlie", "PS+R1", "ProfileSwitch"));
+
+            vm.SortActions("Action", ListSortDirection.Ascending);
+
+            Assert.Equal(new[] { "Key", "Macro", "ProfileSwitch" }, vm.ActionCol.Select(i => i.TypeName));
         }
     }
 }

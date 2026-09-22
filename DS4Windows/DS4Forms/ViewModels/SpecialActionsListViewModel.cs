@@ -196,12 +196,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     // 昇順ではチェック有り(true)を上に、降順ではチェック無し(false)を上にする。
                     if (asc) return (x, y) => y.Active.CompareTo(x.Active);
                     return (x, y) => x.Active.CompareTo(y.Active);
-                case "TypeName":
-                    if (asc) return (x, y) => string.Compare(x.TypeName, y.TypeName, StringComparison.CurrentCultureIgnoreCase);
-                    return (x, y) => string.Compare(y.TypeName, x.TypeName, StringComparison.CurrentCultureIgnoreCase);
-                case "Controls":
+                case "Trigger":
+                    // XAML側のヘッダーボタン Tag="Trigger" に対応。実データは Controls プロパティ。
                     if (asc) return (x, y) => string.Compare(x.Controls, y.Controls, StringComparison.CurrentCultureIgnoreCase);
                     return (x, y) => string.Compare(y.Controls, x.Controls, StringComparison.CurrentCultureIgnoreCase);
+                case "Action":
+                    // XAML側のヘッダーボタン Tag="Action" に対応。実データは TypeName プロパティ。
+                    if (asc) return (x, y) => string.Compare(x.TypeName, y.TypeName, StringComparison.CurrentCultureIgnoreCase);
+                    return (x, y) => string.Compare(y.TypeName, x.TypeName, StringComparison.CurrentCultureIgnoreCase);
                 default:
                     return null;
             }
