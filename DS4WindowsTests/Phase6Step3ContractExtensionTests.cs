@@ -112,7 +112,15 @@ namespace DS4WindowsTests
                 Global.store.profileActionIndexDict[slot]["TestAction"] = 3;
 
                 Assert.Equal(3, _actionProvider.GetProfileActionIndexOf(slot, "TestAction"));
-                Assert.Equal(-1, _actionProvider.GetProfileActionIndexOf(slot, "NoSuchAction"));
+
+                // Dictionary<TKey,TValue>.TryGetValue は未検出時に out 引数を default(int)(=0) で
+                // 上書きする。Global.GetProfileActionIndexOf も全く同じ実装（3494〜3499行）のため、
+                // 未検出時は -1 ではなく 0 を返す（既存の挙動。Step3-1では変更しない）。
+                Assert.Equal(0, _actionProvider.GetProfileActionIndexOf(slot, "NoSuchAction"));
+                Assert.Equal(
+                    Global.GetProfileActionIndexOf(slot, "NoSuchAction"),
+                    _actionProvider.GetProfileActionIndexOf(slot, "NoSuchAction"));
+
                 Assert.Equal(
                     Global.GetProfileActionIndexOf(slot, "TestAction"),
                     _actionProvider.GetProfileActionIndexOf(slot, "TestAction"));
