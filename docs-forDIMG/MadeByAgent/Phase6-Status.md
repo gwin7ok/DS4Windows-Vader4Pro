@@ -1,7 +1,7 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
 最終更新日: 2026-09-21  
-状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3 計画全面改訂（実地突き合わせ・論点1〜4決定、2026-09-21）** / Step10b（1ファイル1型の全数是正）新設 / Step3〜Step12 計画確定・承認待ち（**次は Step3-1〜3-7。新しいセッションで着手**）  
+状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1（契約整備4件）実装済み・ビルド未検証（2026-09-21）** / Step10b（1ファイル1型の全数是正）新設 / Step3-2〜Step12 計画確定・承認待ち（**次は Step3-2。開発者側のビルド・テスト確認後にコミット→着手**）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -14,7 +14,7 @@
 | :--- | :--- | :--- | :---: | :---: | :--- | :---: |
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
-| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 150箇所（Step3-1〜3-7） | 計画確定・承認待ち | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | 未着手 (Step3-1〜3-7) |
+| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 150箇所（Step3-1〜3-7） | Step3-1完了・実装済み（ビルド未検証） | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1完了 (Step3-2〜3-7 未着手) |
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 73箇所 | 計画確定・承認待ち | `Phase6-Step4-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
@@ -62,8 +62,18 @@
 
 ---
 
-### Phase6-Step3: `Mapping.cs` の段階的引数渡し【計画確定・承認待ち（全面改訂済み）】
-- **進捗率**: **0%（未着手・計画確定済み）**
+### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1 完了・実装済み（ビルド未検証）】
+- **進捗率**: **Step3-1 完了（0/7バッチのうち契約整備1件完了）、Step3-2〜3-7 未着手**
+- **Step3-1 実装内容（2026-09-21実装、ビルド・テスト実行は開発者側で確認予定）**:
+  - 新設 `IDisplayCoordinateService`／`DisplayCoordinateService`（`UseAllMonitors`、`PrepareAbsMonitorBounds`、`TranslateCoorToAbsDisplay`）。`ServiceRegistration.cs` に登録済み。
+  - **決定D1を確認済みの単一呼び出し元（`ControlService.cs`のみ）で実現**: `IEnvironmentService.PrepareAbsMonitorBounds` を削除し（実装1件・モック0件を確認済みのため、委譲シムを残さず完全移設）、`ControlService` のコンストラクタに `IDisplayCoordinateService` を追加（必須引数、Pure DI）。`SystemEvents_DisplaySettingsChanged` の呼び出し元を新サービス経由に変更。
+  - `IProfileXmlStore.SaveControllerConfigsForDevice` を追加（`Global.SaveControllerConfigs` へ委譲。対の `LoadControllerConfigsForDevice` と同型）。
+  - `IProfileActionProvider.GetProfileActionIndexOf` を追加（`Global.GetProfileActionIndexOf` へ委譲）。
+  - `IProfileActionProvider.GetProfileActionsRaw`（**論点4の早期解消に必要な追加契約。当初4件の外**）を新設。`GetProfileActionNames` の `ToArray()` によるホットパス割り当てを避けるため、コピーなしで実体の `List<string>` を返す。
+  - `IProfileSettingsService.GetControlSettingsGroup` を追加（`SafeConfig.ds4controlSettings[deviceIndex]` への委譲。`GetDS4CSetting` と同型）。
+  - 既存の `IProfileXmlStore`/`IProfileActionProvider` 実装クラス（テスト用スタブ含む、`AppSettingsServiceTests.cs`／`ProfileRepositoryTests.cs`／`ProfileActionChainServiceTests.cs`の3ファイル）を契約拡張に追随させ、コンパイル断絶を防止済み。
+  - 単体テスト `Phase6Step3ContractExtensionTests.cs` を新設（Global との状態・参照共有を検証。`SaveControllerConfigsForDevice` のみ、実DS4Device依存のため契約実装の存在確認に留め、値の等価性は `LoadControllerConfigsForDevice` と同様に実機確認へ委ねる）。ControlService の新DI配線検証テストも追加。
+  - **未検証事項**: この環境には dotnet がなく、`dotnet build`/`dotnet test` を実行できていない。開発者側でのビルド・テスト実行を経てからコミットすること。
 - **2026-09-21 実地突き合わせによる方針転換**: 旧案A（非ホット10件のみ実装しホット101件はPhase7へ一括引き継ぎ）は、行番号・分類が現行コードと一致しないことが判明し撤回。`Phase6-Step3-Reality-Check-Ledger.md` を作成し、実参照150件（うち135件は既存契約で機械的に置換可能）と確定した。
 - **確定方針（4論点）**:
   - 論点1（範囲）: **C＝段階的に解消**。150件全件をStep3-1〜3-7の7バッチに分けて解消し、Phase7への丸ごと引き継ぎは行わない。
@@ -240,7 +250,7 @@
 
 ### 6.1 現在地
 - 完了: Step1（詳細監査）、Step2（`ControlService.cs`、66 ID）、Step13（配置整理 44件）。
-- 次: Step3（`Mapping.cs`、実参照150件、Step3-1〜3-7の7バッチ）。その後 Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。
+- 次: Step3-2（非ホット・条件付き経路の引数渡し化。`Phase6-Step3-Plan.md` §3参照）。Step3-1（契約整備）は実装済みだがビルド・テスト未検証のため、開発者側の確認・コミット後に着手する。その後 Step3-3〜3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。
 
 ### 6.2 確定済みの決定事項（要約）
 - **Step2**: D1（`Func<IOutputSlotService>` の遅延解決）、D2（新規コンストラクタ引数はすべて必須の Pure DI）、D3（`IVirtualKBMLifecycle`）、O1=B／O4=B-2（`IProfileSlotApplier`）、O2=C／O3=A（スロット上限のサービス化と段階移行）。詳細は `Phase6-Step2-Plan.md` §0.3.2。
@@ -268,5 +278,5 @@
 ### 6.6 Step3 着手時の確認事項
 - （着手前の想定。実地確認で150件に更新済み。下段参照）対象は `Mapping.cs` の Global 直接参照。Phase7（`Mapping.cs` の完全 instance 化）の下地として、静的結合を段階的に減らす方針（`DI-App-Wide-Migration-Plan.md` §5.5・§6.9）。
 - `Mapping.cs` は `Global` 以外の静的結合（`Program.rootHub` 直接参照1件、Service Locator 6件）を含む。いずれも Step3 の対象外（`Phase6-Step3-Reality-Check-Ledger.md` §3.3）。
-- **2026-09-21 実地突き合わせ完了**: `Phase6-Step3-Reality-Check-Ledger.md` を作成・コミット済み。実参照は150件（旧計画の「12件」「115件」から確定値に更新）。`Phase6-Step3-Plan.md` を全面改訂し、論点1〜4の決定（C／S3／新設`IDisplayCoordinateService`ほか／機械置換不可2項目の選択肢）を反映済み。次回はStep3-1（契約整備）から着手する。
+- **2026-09-21 実地突き合わせ完了**: `Phase6-Step3-Reality-Check-Ledger.md` を作成・コミット済み。実参照は150件（旧計画の「12件」「115件」から確定値に更新）。`Phase6-Step3-Plan.md` を全面改訂し、論点1〜4の決定（C／S3／新設`IDisplayCoordinateService`ほか／機械置換不可2項目の選択肢）を反映済み。Step3-1（契約整備）は実装済み（ビルド未検証）。次回は開発者側のビルド・テスト確認・コミット後、Step3-2から着手する。
 - ファイルの配置は Step13 で変わっている（`ActionManager` など、Action 系は `Actions/` へ移動済み）。パスは現行の HEAD で確認する。

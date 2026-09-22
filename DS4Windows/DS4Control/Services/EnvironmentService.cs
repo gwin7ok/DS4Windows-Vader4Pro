@@ -36,8 +36,6 @@ namespace DS4Windows
             System.Collections.Generic.HashSet<string> exemptedDevices, bool force = false) =>
             Global.CheckHidHideAffectedStatus(deviceInstanceId, affectedDevs, exemptedDevices, force);
 
-        public void PrepareAbsMonitorBounds(string edid) => Global.PrepareAbsMonitorBounds(edid);
-
         // ---- Phase6-Step2-1b (決定O2=C): コントローラースロット上限 ----
         // 旧 ControlService.CURRENT_DS4_CONTROLLER_LIMIT の計算（純粋な OS 判定＋ビルド定義）をここへ移設した。
         // TODO(技術的負債): ControlService の static 互換シム（CURRENT_DS4_CONTROLLER_LIMIT / USING_MAX_CONTROLLERS）が

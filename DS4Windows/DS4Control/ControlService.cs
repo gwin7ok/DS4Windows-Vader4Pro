@@ -112,6 +112,7 @@ namespace DS4Windows
         // 薄い委譲サービス経由で参照する（Pure DI: コンストラクタ注入のみ。AppHost.Services は使用しない）。
         private readonly DI.IAppSettingsService _appSettings;
         private readonly DI.IEnvironmentService _environmentService;
+        private readonly DI.IDisplayCoordinateService _displayCoordinateService;
         private readonly DI.IPathService _pathService;
 
         // Phase6-Step2-2 (PR-2)
@@ -249,7 +250,8 @@ namespace DS4Windows
             Services.IVirtualKBM virtualKBM,
             Services.IVirtualKBMLifecycle kbmLifecycle,
             DI.IAppearanceSettingsService appearanceSettings,
-            DI.IProfileActionProvider profileActionProvider)
+            DI.IProfileActionProvider profileActionProvider,
+            DI.IDisplayCoordinateService displayCoordinateService)
         {
             this.cmdParser = cmdParser;
             this._deviceRegistry = deviceRegistry;
@@ -269,6 +271,7 @@ namespace DS4Windows
             this._kbmLifecycle = kbmLifecycle ?? throw new ArgumentNullException(nameof(kbmLifecycle));
             this._appearanceSettings = appearanceSettings ?? throw new ArgumentNullException(nameof(appearanceSettings));
             this._profileActionProvider = profileActionProvider ?? throw new ArgumentNullException(nameof(profileActionProvider));
+            this._displayCoordinateService = displayCoordinateService ?? throw new ArgumentNullException(nameof(displayCoordinateService));
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 
@@ -326,7 +329,8 @@ namespace DS4Windows
 
         private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
         {
-            _environmentService.PrepareAbsMonitorBounds(string.Empty);
+            // Phase6-Step3-1: IEnvironmentService から IDisplayCoordinateService へ移設（決定D1）。
+            _displayCoordinateService.PrepareAbsMonitorBounds(string.Empty);
         }
 
         //private void OutputslotMan_SlotAssigned(OutputSlotManager sender, int slotNum, OutSlotDevice outSlotDev)

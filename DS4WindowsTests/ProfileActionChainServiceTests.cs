@@ -51,8 +51,21 @@ namespace DS4WindowsTests
                 return action;
             }
 
-            // Phase6-Step2-5 (PR-5): IProfileActionProvider の拡張に追随（本テストでは使用しない）
+            // Phase6-Step2-5 (PR-5) / Phase6-Step3-1: IProfileActionProvider の拡張に追随（本テストでは使用しない）
             public int GetProfileActionCount(int deviceIndex) => _actions.Count;
+
+            public int GetProfileActionIndexOf(int deviceIndex, string actionName)
+            {
+                int index = 0;
+                foreach (var key in _actions.Keys)
+                {
+                    if (key == actionName) return index;
+                    index++;
+                }
+                return -1;
+            }
+
+            public IReadOnlyList<string> GetProfileActionsRaw(int deviceIndex) => _actions.Keys.ToList();
         }
 
         [Fact]

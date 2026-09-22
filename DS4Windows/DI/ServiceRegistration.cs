@@ -18,6 +18,8 @@ namespace DS4Windows.DI
             services.AddSingleton<IPathService, PathService>();
             services.AddSingleton<IDeviceStateService, DeviceStateService>();
             services.AddSingleton<IEnvironmentService, EnvironmentService>();
+            // Phase6-Step3-1: 画面座標系（絶対マウス出力用）サービス
+            services.AddSingleton<IDisplayCoordinateService, DisplayCoordinateService>();
             services.AddSingleton<IAppearanceSettingsService, AppearanceSettingsService>();
             services.AddSingleton<INotificationService, AppNotificationService>();
 
@@ -101,7 +103,8 @@ namespace DS4Windows.DI
                     sp.GetRequiredService<IVirtualKBM>(),
                     sp.GetRequiredService<IVirtualKBMLifecycle>(),
                     sp.GetRequiredService<IAppearanceSettingsService>(),
-                    sp.GetRequiredService<IProfileActionProvider>()
+                    sp.GetRequiredService<IProfileActionProvider>(),
+                    sp.GetRequiredService<IDisplayCoordinateService>()
                 );
             });
             services.AddSingleton<IDeviceStateAccessor>(sp => sp.GetRequiredService<ControlService>());

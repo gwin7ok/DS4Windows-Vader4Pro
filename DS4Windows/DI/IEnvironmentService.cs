@@ -12,6 +12,10 @@
     /// 実装されており（Phase5-Step13で是正済みの「IAppSettingsService 7プロパティ孤立バグ」と
     /// 同一パターンの重複）、実害はなかったものの将来の誤接続を誘発する地雷であったため撤去した。
     /// 永続設定は必ず <see cref="IAppSettingsService"/> 経由でアクセスすること。
+    ///
+    /// 【Phase6-Step3-1】<c>PrepareAbsMonitorBounds</c> は、同じ画面座標状態
+    /// （absDisplayBounds/fullDesktopBounds/absUseAllMonitors）を扱う
+    /// <see cref="IDisplayCoordinateService"/> へ移設した（決定D1）。
     /// </summary>
     public interface IEnvironmentService
     {
@@ -27,8 +31,6 @@
         bool CheckHidHideAffectedStatus(string deviceInstanceId,
             System.Collections.Generic.HashSet<string> affectedDevs,
             System.Collections.Generic.HashSet<string> exemptedDevices, bool force = false);
-        /// <summary>画面座標系（マウス絶対座標計算用モニター境界）を再取得する。</summary>
-        void PrepareAbsMonitorBounds(string edid);
 
         // ---- Phase6-Step2-1b (決定O2=C): コントローラースロット上限のサービス化 ----
         /// <summary>

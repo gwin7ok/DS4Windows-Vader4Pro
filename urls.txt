@@ -805,6 +805,7 @@ https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step13-Plan.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step2-Plan.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step3-Plan.md
+https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step3-Reality-Check-Ledger.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step4-Plan.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step5-Plan.md
 https://raw.githubusercontent.com/gwin7ok/DS4Windows-Vader4Pro/refs/heads/For-DI-migration-work/docs-forDIMG/MadeByAgent/Phase6-Step6-Plan.md

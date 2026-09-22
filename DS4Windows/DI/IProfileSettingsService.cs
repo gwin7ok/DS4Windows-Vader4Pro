@@ -262,5 +262,8 @@ namespace DS4Windows.DI
         // ---- Phase6-Step2-5 (PR-5): カスタムアクション／エクストラの有無（毎レポート評価。割り当てなし）----
         bool ContainsCustomAction(int deviceIndex);
         bool ContainsCustomExtras(int deviceIndex);
+
+        // ---- Phase6-Step3-1: デバイスの入力→出力割り当てグループ（毎レポート評価。割り当てなし）----
+        ControlSettingsGroup GetControlSettingsGroup(int deviceIndex);
     }
 }

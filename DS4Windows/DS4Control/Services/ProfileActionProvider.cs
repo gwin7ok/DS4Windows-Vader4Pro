@@ -46,5 +46,18 @@ namespace DS4Windows
         // ---- Phase6-Step2-5 (PR-5): スペシャルアクション数 ----
         // 毎レポート評価される経路から呼ばれるため、BackingStore の値を直接返す（従来の Global.getProfileActionCount と同一）。
         public int GetProfileActionCount(int deviceIndex) => _config.profileActionCount[deviceIndex];
+
+        // ---- Phase6-Step3-1: スペシャルアクション名→定義済みインデックス ----
+        public int GetProfileActionIndexOf(int deviceIndex, string actionName)
+        {
+            int index = -1;
+            _config?.profileActionIndexDict[deviceIndex].TryGetValue(actionName, out index);
+            return index;
+        }
+
+        // ---- Phase6-Step3-1: アクション名一覧（コピーなし）----
+        // 毎レポート評価される経路から呼ばれるため、BackingStore の List<string> を直接返す
+        // （従来の Global.getProfileActions と同一。GetProfileActionNames の ToArray() は使わない）。
+        public IReadOnlyList<string> GetProfileActionsRaw(int deviceIndex) => _config?.profileActions[deviceIndex];
     }
 }

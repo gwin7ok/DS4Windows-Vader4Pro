@@ -789,5 +789,9 @@ namespace DS4Windows
         public bool ContainsCustomAction(int deviceIndex) => SafeConfig.containsCustomAction[deviceIndex];
 
         public bool ContainsCustomExtras(int deviceIndex) => SafeConfig.containsCustomExtras[deviceIndex];
+
+        // ---- Phase6-Step3-1: 入力→出力割り当てグループ ----
+        // 毎レポート評価される経路から呼ばれるため、BackingStore の配列を直接参照する（従来の Global.GetControlSettingsGroup と同一）。
+        public ControlSettingsGroup GetControlSettingsGroup(int deviceIndex) => SafeConfig?.ds4controlSettings[deviceIndex];
     }
 }
