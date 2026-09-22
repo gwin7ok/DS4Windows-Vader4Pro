@@ -38,10 +38,10 @@ namespace DS4WinWPF.DS4Forms
     {
         // ...既存フィールド...
 
-        public string ActiveSortButtonContent => GetSortButtonContent("Active", currentSortColumn, currentSortAsc);
-        public string NameSortButtonContent => GetSortButtonContent("Name", currentSortColumn, currentSortAsc);
-        public string TriggerSortButtonContent => GetSortButtonContent("Trigger", currentSortColumn, currentSortAsc);
-        public string ActionSortButtonContent => GetSortButtonContent("Action", currentSortColumn, currentSortAsc);
+        public string ActiveSortButtonContent => GetSortButtonContent("Active", specialActionsVM?.CurrentSortColumn ?? "Name", specialActionsVM?.CurrentSortAscending ?? true);
+        public string NameSortButtonContent => GetSortButtonContent("Name", specialActionsVM?.CurrentSortColumn ?? "Name", specialActionsVM?.CurrentSortAscending ?? true);
+        public string TriggerSortButtonContent => GetSortButtonContent("Trigger", specialActionsVM?.CurrentSortColumn ?? "Name", specialActionsVM?.CurrentSortAscending ?? true);
+        public string ActionSortButtonContent => GetSortButtonContent("Action", specialActionsVM?.CurrentSortColumn ?? "Name", specialActionsVM?.CurrentSortAscending ?? true);
 
         private string GetSortButtonContent(string col, string currentCol, bool asc)
         {
@@ -204,14 +204,10 @@ namespace DS4WinWPF.DS4Forms
         // 統一ソート処理
         private void SortSpecialActionsList(string columnName, bool asc)
         {
-            // 保存されていたソート状態をログに出す
-            var prevCol = currentSortColumn;
-            var prevAsc = currentSortAsc;
-
-            currentSortColumn = columnName;
-            currentSortAsc = asc;
-
-            AppLogger.LogDebug($"[SortSpecialActionsList] Called: column={columnName}, asc={asc}, prevCol={prevCol}, prevAsc={prevAsc}");
+            // Phase6系の是正: 「直前のソート列・方向」は SpecialActionsListViewModel が
+            // 唯一の実体として保持する（CurrentSortColumn/CurrentSortAscending）。
+            // ここでは SortActions 呼び出し前の値をログ用に読むだけで、View 側では保持しない。
+            AppLogger.LogDebug($"[SortSpecialActionsList] Called: column={columnName}, asc={asc}, prevCol={specialActionsVM?.CurrentSortColumn}, prevAsc={specialActionsVM?.CurrentSortAscending}");
 
             // 1) ViewModel-side sort execution
             AppLogger.LogDebug($"[SortSpecialActionsList] Calling specialActionsVM.SortActions");
@@ -1836,7 +1832,7 @@ namespace DS4WinWPF.DS4Forms
                 baseSpeActPanel.Visibility = Visibility.Visible;
                 // After adding a new special action, re-apply the current sort
                 // so the list reflects the user's chosen sort column and order.
-                SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                SortSpecialActionsList(specialActionsVM.CurrentSortColumn, specialActionsVM.CurrentSortAscending);
                 // Persistence and cache update deferred to Apply/Save to avoid
                 // emitting removed-invalid logs at UI-time.
             };
@@ -1915,7 +1911,7 @@ namespace DS4WinWPF.DS4Forms
                     // After editing an existing special action, re-apply the
                     // current sort so any name/type changes are reflected
                     // according to the current sort column and direction.
-                    SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                    SortSpecialActionsList(specialActionsVM.CurrentSortColumn, specialActionsVM.CurrentSortAscending);
                 };
             }
         }
@@ -2231,7 +2227,7 @@ namespace DS4WinWPF.DS4Forms
                         if (specialActionsHeaderLoadedCount >= targetCount)
                         {
                             App.logHolder?.Logger?.Debug("[EnsureSpecialActionsHeadersAssigned] all headers loaded - calling SortSpecialActionsList");
-                            SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                            SortSpecialActionsList(specialActionsVM.CurrentSortColumn, specialActionsVM.CurrentSortAscending);
                         }
                     };
 
@@ -2460,9 +2456,8 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        // ソート状態保持
-        private string currentSortColumn = "Name";
-        private bool currentSortAsc = true;
+        // ソート状態（列名・方向）は SpecialActionsListViewModel.CurrentSortColumn /
+        // CurrentSortAscending が唯一の実体。View 側では保持しない（二重状態の解消）。
 
         // 列ヘッダークリックイベント
         void SpecialActionsHeader_Click(object sender, RoutedEventArgs e)
@@ -2471,9 +2466,11 @@ namespace DS4WinWPF.DS4Forms
             var col = btn?.Tag as string;
             if (col != null)
             {
+                string currentCol = specialActionsVM?.CurrentSortColumn ?? "Name";
+                bool currentAsc = specialActionsVM?.CurrentSortAscending ?? true;
                 // Log: sort state just before click
-                AppLogger.LogDebug($"[SpecialActionsHeader_Click] Click: col={col}, currentSortColumn={currentSortColumn}, currentSortAsc={currentSortAsc}");
-                bool asc = col != currentSortColumn ? true : !currentSortAsc;
+                AppLogger.LogDebug($"[SpecialActionsHeader_Click] Click: col={col}, currentSortColumn={currentCol}, currentSortAsc={currentAsc}");
+                bool asc = col != currentCol ? true : !currentAsc;
                 AppLogger.LogDebug($"[SpecialActionsHeader_Click] Determined sort direction: col={col}, asc={asc}");
                 SortSpecialActionsList(col, asc);
                 AppLogger.LogDebug($"[SpecialActionsHeader_Click] Column click handling complete: {col}");

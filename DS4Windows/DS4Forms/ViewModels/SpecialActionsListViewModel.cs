@@ -122,42 +122,88 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool ItemSelected => specialActionIndex >= 0;
 
+        // Phase6系の他の是正と同様、直前にソートした列・方向を「唯一の実体」として本 ViewModel が保持する。
+        // View（ProfileEditor.xaml.cs）側で同じ情報を別途保持すると二重状態になるため、
+        // View はヘッダー表示や再ソート時に本プロパティを参照する（CurrentSortColumn/CurrentSortAscending）。
+        private string lastSortedPropertyName = "Name";
+        private ListSortDirection lastSortedDirection = ListSortDirection.Ascending;
+
+        /// <summary>直近に <see cref="SortActions"/> で適用したソート列名。</summary>
+        public string CurrentSortColumn => lastSortedPropertyName;
+
+        /// <summary>直近に <see cref="SortActions"/> で適用したソート方向。</summary>
+        public ListSortDirection CurrentSortDirection => lastSortedDirection;
+
+        /// <summary><see cref="CurrentSortDirection"/> が昇順かどうか（View 側の bool 引数用の簡便プロパティ）。</summary>
+        public bool CurrentSortAscending => lastSortedDirection == ListSortDirection.Ascending;
+
         public void SortActions(string propertyName, ListSortDirection direction)
         {
             List<SpecialActionItem> items = actionCol.ToList();
             actionCol.Clear();
 
-            switch (propertyName)
+            Comparison<SpecialActionItem> primary = GetColumnComparison(propertyName, direction);
+
+            // 直前にソートしていた列が今回と異なる場合、それを第2ソートキーとして使う
+            // （直前の方向をそのまま維持する）。例: 名前昇順の状態から Active 列をクリックすると、
+            // Active（クリックした方向）→ 名前昇順 の順で並ぶ。
+            Comparison<SpecialActionItem> secondary =
+                (lastSortedPropertyName != propertyName)
+                    ? GetColumnComparison(lastSortedPropertyName, lastSortedDirection)
+                    : null;
+
+            items.Sort((x, y) =>
             {
-                case "Name":
-                    if (direction == ListSortDirection.Ascending)
-                        items.Sort((x, y) => string.Compare(x.ActionName, y.ActionName, StringComparison.CurrentCultureIgnoreCase));
-                    else
-                        items.Sort((x, y) => string.Compare(y.ActionName, x.ActionName, StringComparison.CurrentCultureIgnoreCase));
-                    break;
-                case "Active":
-                    if (direction == ListSortDirection.Ascending)
-                        items.Sort((x, y) => x.Active.CompareTo(y.Active));
-                    else
-                        items.Sort((x, y) => y.Active.CompareTo(x.Active));
-                    break;
-                case "TypeName":
-                    if (direction == ListSortDirection.Ascending)
-                        items.Sort((x, y) => string.Compare(x.TypeName, y.TypeName, StringComparison.CurrentCultureIgnoreCase));
-                    else
-                        items.Sort((x, y) => string.Compare(y.TypeName, x.TypeName, StringComparison.CurrentCultureIgnoreCase));
-                    break;
-                case "Controls":
-                    if (direction == ListSortDirection.Ascending)
-                        items.Sort((x, y) => string.Compare(x.Controls, y.Controls, StringComparison.CurrentCultureIgnoreCase));
-                    else
-                        items.Sort((x, y) => string.Compare(y.Controls, x.Controls, StringComparison.CurrentCultureIgnoreCase));
-                    break;
-            }
+                int cmp = primary?.Invoke(x, y) ?? 0;
+                if (cmp != 0) return cmp;
+
+                if (secondary != null)
+                {
+                    cmp = secondary(x, y);
+                    if (cmp != 0) return cmp;
+                }
+
+                // 最終タイブレーク: アクション名（プロファイル内で一意）で確定的な順序にする。
+                // List<T>.Sort は不安定ソートのため、これがないと主・第2キーとも同値の要素の
+                // 順序が実行のたびに変わり得る。
+                return string.Compare(x.ActionName, y.ActionName, StringComparison.CurrentCultureIgnoreCase);
+            });
 
             foreach (var item in items)
             {
                 actionCol.Add(item);
+            }
+
+            lastSortedPropertyName = propertyName;
+            lastSortedDirection = direction;
+            OnPropertyChanged(nameof(CurrentSortColumn));
+            OnPropertyChanged(nameof(CurrentSortDirection));
+            OnPropertyChanged(nameof(CurrentSortAscending));
+        }
+
+        /// <summary>
+        /// 指定した列・方向に対応する比較関数を返す。未知の列名の場合は null（比較なし＝同値扱い）。
+        /// </summary>
+        private static Comparison<SpecialActionItem> GetColumnComparison(string propertyName, ListSortDirection direction)
+        {
+            bool asc = direction == ListSortDirection.Ascending;
+            switch (propertyName)
+            {
+                case "Name":
+                    if (asc) return (x, y) => string.Compare(x.ActionName, y.ActionName, StringComparison.CurrentCultureIgnoreCase);
+                    return (x, y) => string.Compare(y.ActionName, x.ActionName, StringComparison.CurrentCultureIgnoreCase);
+                case "Active":
+                    // 昇順ではチェック有り(true)を上に、降順ではチェック無し(false)を上にする。
+                    if (asc) return (x, y) => y.Active.CompareTo(x.Active);
+                    return (x, y) => x.Active.CompareTo(y.Active);
+                case "TypeName":
+                    if (asc) return (x, y) => string.Compare(x.TypeName, y.TypeName, StringComparison.CurrentCultureIgnoreCase);
+                    return (x, y) => string.Compare(y.TypeName, x.TypeName, StringComparison.CurrentCultureIgnoreCase);
+                case "Controls":
+                    if (asc) return (x, y) => string.Compare(x.Controls, y.Controls, StringComparison.CurrentCultureIgnoreCase);
+                    return (x, y) => string.Compare(y.Controls, x.Controls, StringComparison.CurrentCultureIgnoreCase);
+                default:
+                    return null;
             }
         }
 
