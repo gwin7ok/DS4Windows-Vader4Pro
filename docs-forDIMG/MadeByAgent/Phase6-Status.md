@@ -74,7 +74,7 @@
   - 既存の `IProfileXmlStore`/`IProfileActionProvider` 実装クラス（テスト用スタブ含む、`AppSettingsServiceTests.cs`／`ProfileRepositoryTests.cs`／`ProfileActionChainServiceTests.cs`の3ファイル）を契約拡張に追随させ、コンパイル断絶を防止済み。
   - 単体テスト `Phase6Step3ContractExtensionTests.cs` を新設（Global との状態・参照共有を検証。`SaveControllerConfigsForDevice` のみ、実DS4Device依存のため契約実装の存在確認に留め、値の等価性は `LoadControllerConfigsForDevice` と同様に実機確認へ委ねる）。ControlService の新DI配線検証テストも追加。
   - **未検証事項**: この環境には dotnet がなく、`dotnet build`/`dotnet test` を実行できていない。開発者側でのビルド・テスト実行を経てからコミットすること。
-  - **2026-09-22 テスト失敗の修正**: ビルド・テストビルドは成功したが、`GetProfileActionIndexOf_SharesStateWithGlobal` が失敗（期待値 `-1` に対し実際は `0`）。原因はテスト側の誤った期待値で、本番コード（`ProfileActionProvider.GetProfileActionIndexOf`）は `Global.GetProfileActionIndexOf`（ScpUtil.cs 3494〜3499行）と完全に同一実装であることを確認済み。`Dictionary.TryGetValue` は未検出時に `out` 引数を `default(int)`（＝0）で上書きするため、`Global` 側も本来 `-1` ではなく `0` を返す既存の挙動である（Step3-1では変更しない）。テストの期待値を `0` に修正し、`Global` との直接比較アサーションも追加した。
+  - **2026-09-22 テスト失敗の修正**: ビルド・テストビルドは成功したが、`GetProfileActionIndexOf_SharesStateWithGlobal` が失敗（期待値 `-1` に対し実際は `0`）。原因はテスト側の誤った期待値で、本番コード（`ProfileActionProvider.GetProfileActionIndexOf`）は `Global.GetProfileActionIndexOf`（ScpUtil.cs 3494〜3499行）と完全に同一実装であることを確認済み。`Dictionary.TryGetValue` は未検出時に `out` 引数を `default(int)`（＝0）で上書きするため、`Global` 側も本来 `-1` ではなく `0` を返す既存の挙動である（Step3-1では変更しない）。テストの期待値を `0` に修正し、`Global` との直接比較アサーションも追加した。この挙動自体の修正要否は持ち越し事項 K2（§6.5）として記録した。
 - **2026-09-21 実地突き合わせによる方針転換**: 旧案A（非ホット10件のみ実装しホット101件はPhase7へ一括引き継ぎ）は、行番号・分類が現行コードと一致しないことが判明し撤回。`Phase6-Step3-Reality-Check-Ledger.md` を作成し、実参照150件（うち135件は既存契約で機械的に置換可能）と確定した。
 - **確定方針（4論点）**:
   - 論点1（範囲）: **C＝段階的に解消**。150件全件をStep3-1〜3-7の7バッチに分けて解消し、Phase7への丸ごと引き継ぎは行わない。
@@ -274,7 +274,7 @@
 6. **ホットパス**: 新しい取得系のシムは、割り当て・ログ・キャッシュを行わない（`ControlServiceHotPathAllocationTests`）。
 
 ### 6.5 持ち越し事項（Step2 付録 B.12）
-外部呼び出し元54箇所の移行（Step5/8/9/10、Step12 で互換シム削除）、K1（`IProfileApplicationService.ApplyProfile` の `deviceIndex >= 4`）、C2-02（Step12 で削除判断）、`OutputSlotService` などの逆依存（Step5）、後始末のない既存テスト3ファイル、処理時間比較と先送りの実機確認（Step11 §3.3）。
+外部呼び出し元54箇所の移行（Step5/8/9/10、Step12 で互換シム削除）、K1（`IProfileApplicationService.ApplyProfile` の `deviceIndex >= 4`）、C2-02（Step12 で削除判断）、`OutputSlotService` などの逆依存（Step5）、後始末のない既存テスト3ファイル、処理時間比較と先送りの実機確認（Step11 §3.3）、**K2（新規、2026-09-22）**: `Global.GetProfileActionIndexOf`（`ScpUtil.cs` 3494〜3499行）およびその移植先 `ProfileActionProvider.GetProfileActionIndexOf`（Phase6-Step3-1で新設）は、`Dictionary.TryGetValue` が未検出時に `out` 引数を `default(int)`（＝0）で上書きする仕様により、アクション名が未検出の場合も `-1` ではなく `0` を返す（インデックス0の定義済みアクションと区別がつかない）。Step3-1では既存挙動の忠実な移植として温存し、修正の要否はテスト（`Phase6Step3ContractExtensionTests.GetProfileActionIndexOf_SharesStateWithGlobal`）作成時に判明した。呼び出し元（`Mapping.cs` 等）が本当に `-1` を「未検出」判定に使っているか、Step3 のいずれかのバッチ着手時に確認し、対応要否を判断する。
 
 ### 6.6 Step3 着手時の確認事項
 - （着手前の想定。実地確認で150件に更新済み。下段参照）対象は `Mapping.cs` の Global 直接参照。Phase7（`Mapping.cs` の完全 instance 化）の下地として、静的結合を段階的に減らす方針（`DI-App-Wide-Migration-Plan.md` §5.5・§6.9）。
