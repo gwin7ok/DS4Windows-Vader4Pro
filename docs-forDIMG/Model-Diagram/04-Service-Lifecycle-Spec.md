@@ -25,6 +25,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **基盤** | `IPathService` | `PathService` | **Singleton** | プロファイル・アプリデータ保存先パスの動的解決 | なし |
 | **基盤** | `IEnvironmentService` | `EnvironmentService` | **Singleton** | OS種別、管理者権限、ディスプレイ解像度情報、HidHide／FakerInput の導入状態、デバイスインスタンスID解決、コントローラースロット上限（同時に扱えるスロット数の上限。接続台数ではない）の提供 | なし |
+| **基盤** | `IDisplayCoordinateService` | `DisplayCoordinateService` | **Singleton** | 絶対マウス出力用の画面座標系（使用モニター境界・デスクトップ全体範囲）の保持と、入力座標から画面座標への変換 | なし |
 | **基盤** | `INotificationService` | `AppNotificationService` | **Singleton** | OSトースト通知、ステータス通知の統一発行 | なし |
 | **基盤** | `XmlIoLock` | `XmlIoLock` | **Singleton** | プロセス内・スレッド間のファイル排他制御ロック | なし |
 | **基盤** | `IAppSettingsService` | `AppSettingsService` | **Singleton** | `AppSettings.xml` の永続化・設定値管理 | `IPathService`, `XmlIoLock` |
@@ -121,3 +122,7 @@
 %% - リソース破棄順序（LIFO/逆順破棄）は現状のガードレール（ドライバ破棄順序、切断時クリーンアップ）と一致。未適用項目はStep2以降に適用（Phase6-Status.md 参照）。
 %% - c（除外 ≈ 304件）の改修対象外原則を維持（Classification-Metrics.md, C-Classification-Count.md 参照）。a（契約候補）とb（要設計 ≈ 458件）が改修対象。
 %% - Phase5証跡（Step14/15未完了）の内容検証は別途必要（Phase5-Evidence-Check.md 参照）。本監査（Phase6-Step1）は中間成果として記録（報告書§7維持：Step2承認根拠には使用しない）。
+
+%% 注釈補強（2026-09-21 Phase6-Step3 実地突き合わせ・論点3決定反映）
+%% - `IDisplayCoordinateService`（`DisplayCoordinateService` が実装）を新設。`Mapping.cs` の画面座標変換処理（`absUseAllMonitors`／`TranslateCoorToAbsDisplay`）の移行先。`IEnvironmentService.PrepareAbsMonitorBounds` と同じ状態（`absDisplayBounds`/`fullDesktopBounds`/`absUseAllMonitors`）を扱うため、実装時に本サービスへ集約し `IEnvironmentService` 側は薄い委譲として残すか、両立が可能かを Step3-1 で確定する。
+%% - `IProfileXmlStore` に `SaveControllerConfigsForDevice` を追加予定（対の `LoadControllerConfigsForDevice` は Phase6-Step2-2 で追加済み）。

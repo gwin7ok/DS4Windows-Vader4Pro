@@ -236,9 +236,22 @@ classDiagram
     %% ==========================================
     class IProfileXmlStore {
         <<interface>>
-        +LoadProfileXml(string path) ProfileDTO
-        +SaveProfileXml(string path, ProfileDTO dto) bool
+        +LoadProfileXml(int deviceIndex, bool launchProgram, ControlService control, ...) bool
+        +SaveProfileXml(int deviceIndex, string profileName) bool
+        +LoadAppSettingsXml() bool
+        +SaveAppSettingsXml() bool
+        +LoadControllerConfigsForDevice(DS4Device device) bool
+        +SaveControllerConfigsForDevice(DS4Device device) bool
     }
+    class IDisplayCoordinateService {
+        <<interface>>
+        +UseAllMonitors bool
+        +TranslateCoorToAbsDisplay(double inX, double inY, out double outX, out double outY)
+        +PrepareAbsMonitorBounds(string edid)
+    }
+    class DisplayCoordinateService {
+    }
+    IDisplayCoordinateService <|.. DisplayCoordinateService : implements
     class IDeviceOptionRepository {
         <<interface>>
         +GetDeviceOptions~T~(string mac) T
@@ -287,3 +300,7 @@ classDiagram
 %% - Transport/Parser 分離（IHidTransport + IInputReportParser）は DS4Device（87件）の解体と一致。パケット解析の単体テスト担保は理想構造の責務として維持。
 %% - Phase5証跡（Step14/15未完了）の前提条件を維持（証跡存在確認済み、内容検証別途必要）。
 %% - ガードレール（10項目）の未適用項目はStep2以降の実装時に適用（Phase6-Status.md 参照）。
+
+%% 注釈補強（2026-09-21 Phase6-Step3 実地突き合わせ・論点3決定反映）
+%% - `IProfileXmlStore` のメンバ一覧を実装済みの現行シグネチャに合わせて更新（`LoadProfileXml`/`SaveProfileXml` は `(path, ProfileDTO)` ではなく `deviceIndex` 主体、`LoadAppSettingsXml`/`SaveAppSettingsXml`/`LoadControllerConfigsForDevice` を追加）。あわせて `SaveControllerConfigsForDevice`（Step3 で新設予定）を追加。
+%% - `IDisplayCoordinateService`（`DisplayCoordinateService` が実装）を新設。`Mapping.cs` の `absUseAllMonitors`／`TranslateCoorToAbsDisplay`（Step1エビデンス §2 分類c）の移行先。既存 `IEnvironmentService.PrepareAbsMonitorBounds` は同じ画面座標状態（`absDisplayBounds`/`fullDesktopBounds`/`absUseAllMonitors`）を更新する処理のため本サービスへ集約し、`IEnvironmentService` 側は薄い委譲として残す（Step3-1 で実装時に確定）。
