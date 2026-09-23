@@ -1,7 +1,7 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
-最終更新日: 2026-09-21  
-状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1 完了確定（ビルド・テスト・実機確認済み、2026-09-22）** / **Step3-2 実装済み・ビルド未検証（2026-09-23）** / Step10b（1ファイル1型の全数是正）新設 / Step3-3〜Step12 計画確定・承認待ち（**次は Step3-3。開発者側のStep3-2ビルド・テスト確認後にコミット→着手**）  
+最終更新日: 2026-09-23  
+状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / Step3-3〜Step12 計画確定・承認待ち（**次は Step3-3**）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -14,7 +14,7 @@
 | :--- | :--- | :--- | :---: | :---: | :--- | :---: |
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
-| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 150箇所（Step3-1〜3-7） | Step3-1完了・実装済み（ビルド未検証） | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1完了 (Step3-2〜3-7 未着手) |
+| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 150箇所（Step3-1〜3-7） | **Step3-1・Step3-2完了（ビルド・テスト・実機確認済み）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-2完了（Step3-3〜3-7 未着手） |
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 73箇所 | 計画確定・承認待ち | `Phase6-Step4-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
@@ -26,7 +26,7 @@
 | **Step 11**| 2層構造・階層化総合検証 | 全自動テスト ＋ 実機検証 | - | 計画確定・承認待ち | `Phase6-Step11-Plan.md` | 未着手 |
 | **Step 12**| 旧シム物理削除 ＆ 完了判定 | `ScpUtil.cs` | 呼出元0件ラッパー | 計画確定・承認待ち | `Phase6-Step12-Plan.md` | 未着手 (PR-1〜4) |
 | **Step 13**| `.cs` ファイル配置の統一 | `DS4Windows/` 配下の44ファイル | git mv のみ | **完了（44/44、2026-09-21 確定）** | `Phase6-Step13-Plan.md` | 13-6 は Phase6 範囲外（最終クリーンアップ） |
-| **合計** | **Phase6 全域** | **約40ファイル ＋ 配置統一44ファイル ＋ 分割55ファイル** | **約404箇所** | **計画策定100% / 実装: Step1・Step2 完了** | **全Step計画書完備（Step13 を含む）** | - |
+| **合計** | **Phase6 全域** | **約40ファイル ＋ 配置統一44ファイル ＋ 分割55ファイル** | **約404箇所** | **計画策定100% / 実装: Step1・Step2・Step3-1・Step3-2・Step13 完了** | **全Step計画書完備（Step13 を含む）** | - |
 
 ---
 
@@ -62,8 +62,8 @@
 
 ---
 
-### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1・Step3-2 実装済み（Step3-1はビルド・テスト・実機確認済み。Step3-2はビルド未検証）】
-- **進捗率**: **Step3-1 完了（ビルド・テスト・実機確認済み）、Step3-2 実装済み（ビルド未検証）、Step3-3〜3-7 未着手**
+### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1・Step3-2 完了（ともにビルド・テスト・実機確認済み）】
+- **進捗率**: **Step3-1・Step3-2 完了（ともにビルド・テスト・実機確認済み）、Step3-3〜3-7 未着手**
 - **Step3-1 実装内容（2026-09-21実装、2026-09-22 ビルド・テスト・実機確認完了）**:
   - 新設 `IDisplayCoordinateService`／`DisplayCoordinateService`（`UseAllMonitors`、`PrepareAbsMonitorBounds`、`TranslateCoorToAbsDisplay`）。`ServiceRegistration.cs` に登録済み。
   - **決定D1を確認済みの単一呼び出し元（`ControlService.cs`のみ）で実現**: `IEnvironmentService.PrepareAbsMonitorBounds` を削除し（実装1件・モック0件を確認済みのため、委譲シムを残さず完全移設）、`ControlService` のコンストラクタに `IDisplayCoordinateService` を追加（必須引数、Pure DI）。`SystemEvents_DisplaySettingsChanged` の呼び出し元を新サービス経由に変更。
@@ -82,12 +82,12 @@
   - 論点3（未定義メンバの移行先）: モニター座標系→新設 `IDisplayCoordinateService`（モデル図03・04に反映済み）、`SaveControllerConfigsForDevice`→`IProfileXmlStore`、`GetProfileActionIndexOf`→`IProfileActionProvider`、`GetControlSettingsGroup`→`IProfileSettingsService`。
   - 論点4（機械置換できない4項目）: 3項目（`getProfileActions`/`GetProfileAction`/`GetActions`系）はStep3-2で早期解消。残り2項目（`reverseX360ButtonMapping`のClone、`Global.ApplyProfile`フォールバック）は選択肢を提示し実装Step直前に個別確認（既定案は計画書§2.4に明記）。
 - **対象**: 実参照150件（置換可135、契約追加要8、要判断4、温存3）。バッチ構成はStep3-1（契約整備）〜Step3-7（温存・要判断の最終処理）。
-- **Step3-2 実装内容（2026-09-23実装、ビルド未検証）**: 対象12件（`ProfilePath`、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`、`getProfileActions`/`GetProfileAction`/`GetActions`系）を全て解消。
+- **Step3-2 実装内容（2026-09-23実装・ビルド・テスト・実機確認済み）**: 対象12件（`ProfilePath`、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`、`getProfileActions`/`GetProfileAction`/`GetActions`系）を全て解消。
   - **重要な発見**: `MapCustom`/`MapCustomAction`/`Scale360degreeGyroAxis`/`SAWheelEmulationCalibration` はいずれも既に `ControlService ctrl` を引数として受け取っていたため、想定していたコンテキスト構造体（Phase6-Step3-Plan.md §2.1）は不要だった。`ControlService` に読み取り専用の `internal` プロパティ5件（`ProfileActionProvider`/`ProfileXmlStore`/`DisplayCoordinateService`/`ProfileRepository`/`SpecialActionRepository`）を追加し、`ctrl.XxxService.Method(...)` の形でアクセスする方式で解消（S3方針に合致、新規 static Service Locator は追加していない）。
   - `ControlService` に新規必須コンストラクタ引数 `ISpecialActionRepository` を追加（`GetActions()`置換に必要。`ServiceRegistration.cs` も追随）。
   - `Mapping.cs` 内の診断ログ専用ヘルパー `LogActionDoneCountOnTrigger` にのみ `ControlService ctrl` パラメータを新規追加（呼び出し元11箇所を更新）。これが本バッチで唯一のメソッドシグネチャ変更。
   - テスト: `ControlServiceStep3Step2DiWiringTests.cs`（新規DI配線・5プロパティの実体一致検証）、`MappingLogActionDoneCountOnTriggerTests.cs`（シグネチャ変更・null安全性の回帰防止）を新設。`MapCustom`/`MapCustomAction` 自体を直接駆動するテストは、既存 `MappingSpecialActionSuppressionTests.cs` 冒頭コメントの通り本プロジェクトでも困難なため見送り、挙動保持の確認はビルド・実機確認に委ねる。
-  - **未検証事項**: この環境には dotnet がなく、`dotnet build`/`dotnet test` を実行できていない。開発者側でのビルド・テスト実行を経てからコミットすること。
+  - **検証結果（確定・2026-09-23）**: ビルド・テストとも成功。テスト失敗1件（`EnvironmentServiceInjectionTests`、`Global.appdatapath` 未設定）は新規テスト追加でxUnit実行順序が変わり既存の脆弱性（他テストの副作用への暗黙依存、Step2教訓 §6.4-1 該当）が表面化したもので、冪等ガード追加により修正済み。実機確認も完了（コントローラー接続・プロファイル適用・切替のスペシャルアクション等、問題なし）。実機確認中に判明した `[DI]` ログ過多の問題は解消済み（詳細は §6.5 K4 参照）。
 
 ---
 
@@ -243,21 +243,22 @@
 - **全体進捗率（工数・作業ボリューム）**: **約 60〜65% 到達**
 - **設計・不確実性・リスク消化度**: **約 75〜80% 突破**  
   （最大の難所であった Issue 7 / SSOT 確立をクリアし、Phase6 の全約404箇所の移行先が 1 行単位で確定したため、手戻り・未知のリスクは実質ゼロ）
+- **Phase8の新設（2026-09-23）**: 上記マップは Phase 0〜7 時点のものだが、Phase7 完了後の独立フェーズとして「Phase8: Controls/SpecialActions統合ディスパッチ」を新設した（詳細は §6.7、計画書 `Phase8-Unified-Trigger-Dispatch-Plan.md`）。工数比率は Phase7 完了後に確定するため、本マップには未反映。
 
 ---
 
 ## 5. 直近の次アクション
 
-1. **Step3-1**（契約整備: `IDisplayCoordinateService` 新設、`IProfileXmlStore`/`IProfileActionProvider`/`IProfileSettingsService` へのメンバ追加）に着手する。`Phase6-Step3-Plan.md`（2026-09-21全面改訂版）§2.3・§3 のバッチ構成に従う。
-2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12）で進める。
+1. **Step3-3**（画面座標変換の引数渡し化。`IDisplayCoordinateService` を実際に消費する最初のバッチ）に着手する。`Phase6-Step3-Plan.md` §3 のバッチ構成に従う。
+2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12 → Phase7 → Phase8）で進める。Phase8（Controls/SpecialActions統合ディスパッチ）は Phase7 完了後の独立フェーズとして新設済み（詳細は §6.7）。
 
 ---
 
-## 6. 次セッションへの引き継ぎ（2026-09-21、Step3 着手前）
+## 6. 次セッションへの引き継ぎ（2026-09-23、Step3-3 着手前）
 
 ### 6.1 現在地
-- 完了: Step1（詳細監査）、Step2（`ControlService.cs`、66 ID）、Step13（配置整理 44件）。
-- 次: Step3-3（画面座標変換の引数渡し化。`Phase6-Step3-Plan.md` §3参照）。Step3-2は実装済みだがビルド・テスト未検証のため、開発者側の確認・コミット後に着手する。その後 Step3-4〜3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。
+- 完了: Step1（詳細監査）、Step2（`ControlService.cs`、66 ID）、Step3-1・Step3-2（`Mapping.cs`、契約整備＋非ホット12件。ともにビルド・テスト・実機確認済み）、Step13（配置整理 44件）。
+- 次: Step3-3（画面座標変換の引数渡し化。`Phase6-Step3-Plan.md` §3参照）。その後 Step3-4〜3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。Phase6完了後は Phase7、その後 Phase8（新設、§6.7）。
 
 ### 6.2 確定済みの決定事項（要約）
 - **Step2**: D1（`Func<IOutputSlotService>` の遅延解決）、D2（新規コンストラクタ引数はすべて必須の Pure DI）、D3（`IVirtualKBMLifecycle`）、O1=B／O4=B-2（`IProfileSlotApplier`）、O2=C／O3=A（スロット上限のサービス化と段階移行）。詳細は `Phase6-Step2-Plan.md` §0.3.2。
@@ -288,8 +289,26 @@
 
 **K4（新規、2026-09-23、対応不要と判断・記録のみ）**: `Mapping.cs` の `MapCustom`（Stage3）・`MapCustomAction` は、毎入力レポートごとに、プロファイルで有効なアクション名一覧をループし、各名前について `IProfileActionProvider.GetProfileAction` で辞書（`profileActionDict`）を都度検索して `SpecialAction` 定義を取り直している（プロファイルが変わらない限り毎回同じ結果になる、本質的に無駄な再検索）。この呼び出しに付いていた `[DI]` Trace ログが実機ログを埋め尽くす問題は既に解消済み（`ProfileActionProvider.GetProfileAction` からログを削除、`Phase6-Step3-Plan.md` §2.4.1・§3.1参照）。残る「辞書検索そのものの無駄」については、Step3内で暫定キャッシュ対応を行うか、Phase8まで先送りするかを比較検討した結果、**先送りを決定した**。理由: (1) 暫定対応には新規キャッシュ設計・無効化ロジック（プロファイル読込時の `CalculateProfileActionDicts` へのフック等）・専用テストが新たに必要になる、(2) この暫定コードは Phase7 のinstance化変換対象が1つ増えるだけで、Phase7側の作業量そのものは減らない、(3) Phase8（`Phase8-Unified-Trigger-Dispatch-Plan.md` §2 の `TriggerBinding`、プロファイル読込時に1回だけ解決してリストを作る設計）で最終的に置き換えられ、暫定実装は使い捨てになる、(4) 残存する実害はO(1)辞書検索を毎レポート約40回行うだけの小さなCPUコストのみで、ログ問題（実害の本体）は既に解消済み。Step3-2で対応済みの `GetProfileAction` 呼び出し箇所（`ctrl.ProfileActionProvider.GetProfileAction(...)`）は、このK4決定により現状のまま変更しない。
 
+**K5（新規、2026-09-23、解決済み）**: Step3-2の実機確認と並行して発見された `SpecialActionsListViewModel.SortActions`（Controls/SpecialActionsタブの一覧ソート順）のバグを修正した。決定: B1採用（View側が個別に持っていた二重のソート状態を完全に削除し、ViewModel側に一元化）、G1（Trigger列の第2キーは直前の実際の方向を維持する）、アクション名を最終タイブレークとして追加。この対応中に、`GetColumnComparison` のTrigger/Action列判定で使われる case ラベルの不一致という別バグも発見し、あわせて修正した。ビルド・テスト・実機確認とも問題なし。
+
 ### 6.6 Step3 着手時の確認事項
 - （着手前の想定。実地確認で150件に更新済み。下段参照）対象は `Mapping.cs` の Global 直接参照。Phase7（`Mapping.cs` の完全 instance 化）の下地として、静的結合を段階的に減らす方針（`DI-App-Wide-Migration-Plan.md` §5.5・§6.9）。
 - `Mapping.cs` は `Global` 以外の静的結合（`Program.rootHub` 直接参照1件、Service Locator 6件）を含む。いずれも Step3 の対象外（`Phase6-Step3-Reality-Check-Ledger.md` §3.3）。
-- **2026-09-21 実地突き合わせ完了**: `Phase6-Step3-Reality-Check-Ledger.md` を作成・コミット済み。実参照は150件（旧計画の「12件」「115件」から確定値に更新）。`Phase6-Step3-Plan.md` を全面改訂し、論点1〜4の決定（C／S3／新設`IDisplayCoordinateService`ほか／機械置換不可2項目の選択肢）を反映済み。Step3-1（契約整備）は実装済み（ビルド未検証）。次回は開発者側のビルド・テスト確認・コミット後、Step3-2から着手する。
+- **2026-09-21 実地突き合わせ完了**: `Phase6-Step3-Reality-Check-Ledger.md` を作成・コミット済み。実参照は150件（旧計画の「12件」「115件」から確定値に更新）。`Phase6-Step3-Plan.md` を全面改訂し、論点1〜4の決定（C／S3／新設`IDisplayCoordinateService`ほか／機械置換不可2項目の選択肢）を反映済み。
+- **2026-09-23 Step3-1・Step3-2 完了**: いずれもビルド・テスト・実機確認済み（コミット済み）。次回は Step3-3 から着手する。
 - ファイルの配置は Step13 で変わっている（`ActionManager` など、Action 系は `Actions/` へ移動済み）。パスは現行の HEAD で確認する。
+
+### 6.7 Phase8の新設（Controls/SpecialActions統合ディスパッチ）
+
+**経緯（2026-09-23）**: ユーザーから、Controls/SpecialActionsタブの「トリガー成立→処理実行」ディスパッチを統合できないかとの提案・調査依頼があった。調査の結果、コードベースには未配線の `IActionBinding` 系（系統A）と、実際に稼働中の `Actions.Action` 系（系統B）という2系統が並存していることが判明した。統合は実現可能と判断し、Phase7完了後の独立フェーズ「Phase8」として新設した。
+
+**成果物**: `docs-forDIMG/MadeByAgent/Phase8-Unified-Trigger-Dispatch-Plan.md` を新規作成。`DI-App-Wide-Migration-Plan.md` にも §6.13 等で組み込み済み。
+
+**決定事項（D1〜D5、2026-09-23確定・実装着手はPhase7完了後）**:
+- D1: A2採用（構造は系統A、中身は系統Bから移植。Macro/プロファイル切替/プログラム起動の3種類は既に `IOutputAction` 実装済みと判明し移植ほぼ不要、Keyタイプのみ委譲に書き直す方針をStep2で確定）。
+- D2: B1（汎用 `ComboTriggerInputAction` で統合）。
+- D3: C1（Strangler Fig パターンで段階的に置き換え）。
+- D4: D4-1（独立フェーズとし、Phase7完了後に着手）。
+- D5: E2の変形（系統Aは削除せず本採用、系統Bを段階的に削除）。
+
+**モデル図への影響**: 現時点ではモデル図（`docs-forDIMG/Model-Diagram/` 01〜04）の変更は未実施。変更が必要になった場合はStep2着手時にユーザーへ指摘し指示を仰ぐ。
