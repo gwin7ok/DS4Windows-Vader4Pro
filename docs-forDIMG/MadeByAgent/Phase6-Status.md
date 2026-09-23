@@ -286,6 +286,8 @@
 
 **恒久対応の申し送り**: これは対症療法であり、根本原因は「トリガー判定層」と「マクロ実行層」が `Mapping.cs` 内で分離できていないことにある。`docs-forDIMG/Model-Diagram/02-Layer-Architecture-Diagram.md`・`03-Class-Interface-Diagram.md` が示す理想構造（§3.3 の 2-d マクロの分解／3-b KBM出力）では、マクロの「実行」は Controls 由来か SpecialActions 由来かに関わらず単一の実行層（`IVirtualKBM` 経由の逐次送出）に一本化され、二重実行防止もその単一の実行層で一元的に行われる想定である。Phase7（`Mapping.cs` 完全 instance 化、`DI-App-Wide-Migration-Plan.md` §6.9）で、今回の `macroDispatchInFlight` を含めて再設計し、`action`（SpecialAction）の有無で分岐する現在の二重ガード構造を解消すること。
 
+**K4（新規、2026-09-23、対応不要と判断・記録のみ）**: `Mapping.cs` の `MapCustom`（Stage3）・`MapCustomAction` は、毎入力レポートごとに、プロファイルで有効なアクション名一覧をループし、各名前について `IProfileActionProvider.GetProfileAction` で辞書（`profileActionDict`）を都度検索して `SpecialAction` 定義を取り直している（プロファイルが変わらない限り毎回同じ結果になる、本質的に無駄な再検索）。この呼び出しに付いていた `[DI]` Trace ログが実機ログを埋め尽くす問題は既に解消済み（`ProfileActionProvider.GetProfileAction` からログを削除、`Phase6-Step3-Plan.md` §2.4.1・§3.1参照）。残る「辞書検索そのものの無駄」については、Step3内で暫定キャッシュ対応を行うか、Phase8まで先送りするかを比較検討した結果、**先送りを決定した**。理由: (1) 暫定対応には新規キャッシュ設計・無効化ロジック（プロファイル読込時の `CalculateProfileActionDicts` へのフック等）・専用テストが新たに必要になる、(2) この暫定コードは Phase7 のinstance化変換対象が1つ増えるだけで、Phase7側の作業量そのものは減らない、(3) Phase8（`Phase8-Unified-Trigger-Dispatch-Plan.md` §2 の `TriggerBinding`、プロファイル読込時に1回だけ解決してリストを作る設計）で最終的に置き換えられ、暫定実装は使い捨てになる、(4) 残存する実害はO(1)辞書検索を毎レポート約40回行うだけの小さなCPUコストのみで、ログ問題（実害の本体）は既に解消済み。Step3-2で対応済みの `GetProfileAction` 呼び出し箇所（`ctrl.ProfileActionProvider.GetProfileAction(...)`）は、このK4決定により現状のまま変更しない。
+
 ### 6.6 Step3 着手時の確認事項
 - （着手前の想定。実地確認で150件に更新済み。下段参照）対象は `Mapping.cs` の Global 直接参照。Phase7（`Mapping.cs` の完全 instance 化）の下地として、静的結合を段階的に減らす方針（`DI-App-Wide-Migration-Plan.md` §5.5・§6.9）。
 - `Mapping.cs` は `Global` 以外の静的結合（`Program.rootHub` 直接参照1件、Service Locator 6件）を含む。いずれも Step3 の対象外（`Phase6-Step3-Reality-Check-Ledger.md` §3.3）。
