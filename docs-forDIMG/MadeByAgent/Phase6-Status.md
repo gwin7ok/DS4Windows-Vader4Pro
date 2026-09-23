@@ -1,7 +1,7 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
 最終更新日: 2026-09-23  
-状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 実装済み（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テスト・実機確認待ち）** / Step3-6〜Step12 計画確定・承認待ち（**Step3-5 確認後、次は Step3-6**）  
+状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み）** / Step3-6〜Step12 計画確定・承認待ち（**次は Step3-6**） / BindingWindow のテンキー右端欠けを修正（2026-09-24、UI 微修正。詳細は §6.9）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -14,7 +14,7 @@
 | :--- | :--- | :--- | :---: | :---: | :--- | :---: |
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
-| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 73箇所（Step3-1・3-2・3-4完了、Step3-3は対象消滅、Step3-5実装済み、残Step3-6〜3-7） | Step3-1・Step3-2・Step3-4完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-5実装済み（ビルド・テスト・実機確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1・3-2・3-4完了、Step3-5実装済み（Step3-6〜3-7 未着手） |
+| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 73箇所（Step3-1・3-2・3-4・3-5完了、Step3-3は対象消滅、残Step3-6〜3-7） | Step3-1・Step3-2・Step3-4・Step3-5完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1・3-2・3-4・3-5完了（Step3-6〜3-7 未着手） |
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 73箇所 | 計画確定・承認待ち | `Phase6-Step4-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
@@ -63,7 +63,7 @@
 ---
 
 ### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1・Step3-2 完了、Step3-3 対象消滅】
-- **進捗率**: **Step3-1・Step3-2・Step3-4 完了（いずれもビルド・テスト・実機確認済み）、Step3-3 対象消滅（§6.8）、Step3-5 実装済み（ビルド・テスト・実機確認待ち）、Step3-6〜3-7 未着手**
+- **進捗率**: **Step3-1・Step3-2・Step3-4・Step3-5 完了（いずれもビルド・テスト・実機確認済み）、Step3-3 対象消滅（§6.8）、Step3-6〜3-7 未着手**
 - **Step3-1 実装内容（2026-09-21実装、2026-09-22 ビルド・テスト・実機確認完了）**:
   - 新設 `IDisplayCoordinateService`／`DisplayCoordinateService`（`UseAllMonitors`、`PrepareAbsMonitorBounds`、`TranslateCoorToAbsDisplay`）。`ServiceRegistration.cs` に登録済み。
   - **決定D1を確認済みの単一呼び出し元（`ControlService.cs`のみ）で実現**: `IEnvironmentService.PrepareAbsMonitorBounds` を削除し（実装1件・モック0件を確認済みのため、委譲シムを残さず完全移設）、`ControlService` のコンストラクタに `IDisplayCoordinateService` を追加（必須引数、Pure DI）。`SystemEvents_DisplaySettingsChanged` の呼び出し元を新サービス経由に変更。
@@ -96,13 +96,13 @@
   - **テスト**: `MappingArgumentPassThroughTests.cs`（引数のサービスの値が使われていることを、独立した `BackingStore` 2つの出力比較で検証、6件）、`MappingHotPathAllocationTests.cs`（割り当て0バイトの固定）、`MappingSetCurveAndDeadzoneGlobalReferenceGuardTests.cs`（`using static` 経由の Global 参照の再混入を検出するソース走査ガード）を新設。詳細は `Phase6-Step3-Plan.md` §3.3。
   - **未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は未実行。ユーザー側でビルド・テスト・実機確認（LS/RS/L2/R2 の入力の挙動、ControllerReadings 画面の表示）を行ってからコミットすること。
 
-- **Step3-5 実装内容（2026-09-24実装、ビルド・テスト・実機確認待ち）**: `SetCurveAndDeadzone` のジャイロ系（SX/SZ）13件、`ApplyStickCalibration` 8件、`Commit` の `outputKBMMapping` 24件（計45件）を解消。**Step3の残実参照数は 118 → 73**。
+- **Step3-5 実装内容（2026-09-24実装、同日ビルド・テストビルド・テスト実行成功・実機確認完了）**: `SetCurveAndDeadzone` のジャイロ系（SX/SZ）13件、`ApplyStickCalibration` 8件、`Commit` の `outputKBMMapping` 24件（計45件）を解消。**Step3の残実参照数は 118 → 73**。
   - **`Commit` の扱い（着手前に選択肢を提示し、案 C1 を採用）**: `ctrl` を持たない `Commit(int device)` は、`Commit(int device, IProfileSettingsService settings)` へ引数追加（S3）。呼び出し元は `ControlService` の2箇所（切断時の `Task.Run` 内と入力ループ末尾）で、既存の `_profileSettings` を渡す。`outputKBMMapping.` 24箇所は `settings.OutputKBMMapping.` へ置換（使用のたびに読み、ローカルへキャッシュしない）。不採用: C2（`ControlService ctrl` を渡す。過剰な結合）、C3（`Mapping` の static `profileSettings` を使う。Ledger §3.1 の束縛ハザードが顕在化する）。
   - **その他の変更**: `ApplyStickCalibration` に `settings` 引数を追加（呼び出し元は `SetCurveAndDeadzone` 内の1箇所のみ）。ジャイロ系13件は `SetCurveAndDeadzone` が既に持つ `settings` で置換（`IsUsingSAForControls(i)` → `settings.GyroOutputMode[i] == GyroOutMode.Controls`）。契約・`ServiceRegistration.cs`・`ControlService` のコンストラクタは変更なし。モデル図の変更なし。
   - **挙動の同一性**: いずれも同じ `BackingStore`（`Global.store`）の同じ配列・BezierCurve インスタンスを返し、`Commit` は `ControlService` が初期化した `_profileSettings.OutputKBMMapping` と同一のインスタンスを読む。割り当て・ログ・キャッシュの追加なし。
   - **テスト**: `MappingArgumentPassThroughTests.cs`（ジャイロ系8件・ドリフト補正2件を追加）、`MappingHotPathAllocationTests.cs`（ジャイロ変換分岐と `ApplyStickCalibration` の割り当て0バイトを追加）、`MappingSetCurveAndDeadzoneGlobalReferenceGuardTests.cs`（対象メンバーにジャイロ系13種を追加）、`MappingCommitAndCalibrationGlobalReferenceGuardTests.cs`（新規、`ApplyStickCalibration`・`Commit` のソース走査ガード）。`Commit` の挙動テストは、出力先 `IVirtualKBM` を実 DI ホストから解決し実際に入力を送出してしまうため追加していない（ガードと実機確認で担保）。
   - **Step3-6 の事前整理（決定は着手時）**: 非同期マクロ経路（`PlayMacro`→`PlayMacroTask`→`PlayMacroCodeValue`／`EndMacro`／`AltTabSwapping`、約9メソッド・約35呼び出し箇所）の扱いは、M1（`IProfileSettingsService` を引数で末端まで通す。`DefaultMacroPlayer` への依存追加が必要で、**モデル図 04 の `IMacroPlayer` の依存列の変更をユーザーへ確認する**）を推奨。詳細は `Phase6-Step3-Plan.md` §3.4.1。
-  - **未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は未実行。ユーザー側でビルド・テスト・実機確認（キーボード・マウス出力、ジャイロのスティック出力、ドリフト補正）を行ってからコミットすること。
+  - **検証結果（確定・2026-09-24）**: ビルド・テストビルド・テスト実行とも成功し、コミットしてリモートリポジトリに反映済み。実機確認も完了（キーボード・マウス出力［クリック・トグル・ホイール・ホイールの押しっぱなしリピート］、ジャイロのスティック出力［感度・デッドゾーン・出力カーブ］、ドリフト補正［X/Y Axis Offset］、すべて問題なし）。
 ---
 
 ### Phase6-Step4: マウスエミュレーション系のPure DI化【計画確定・承認待ち】
@@ -263,7 +263,7 @@
 
 ## 5. 直近の次アクション
 
-1. **Step3-5**（`SetCurveAndDeadzone` のジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は実装済み。ユーザーのビルド・テスト・実機確認を経てコミットする（`Phase6-Step3-Plan.md` §3.4）。確認後、**Step3-6**（ボタン・マウス・アクション設定・6軸、非同期マクロ経路を含む。着手前に §3.4.1 の M1〜M3 とモデル図 04 の変更を確認）に着手する。Step3-4 は完了確定（2026-09-24）。Step3-3は対象コード自体がAbs Mouse機能削除に伴い消滅したため、コミット・確認作業は不要（詳細は §6.8）。
+1. **Step3-5**（`SetCurveAndDeadzone` のジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.4）。次は **Step3-6**（ボタン・マウス・アクション設定・6軸、非同期マクロ経路を含む。着手前に §3.4.1 の M1〜M3 とモデル図 04 の変更を確認）に着手する。Step3-4 も完了確定（2026-09-24）。Step3-3は対象コード自体がAbs Mouse機能削除に伴い消滅したため、コミット・確認作業は不要（詳細は §6.8）。
 2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12 → Phase7 → Phase8）で進める。Phase8（Controls/SpecialActions統合ディスパッチ）は Phase7 完了後の独立フェーズとして新設済み（詳細は §6.7）。
 
 ---
@@ -274,7 +274,7 @@
 - 完了: Step1（詳細監査）、Step2（`ControlService.cs`、66 ID）、Step3-1・Step3-2（`Mapping.cs`、契約整備＋非ホット12件。ともにビルド・テスト・実機確認済み）、Step13（配置整理 44件）。
 - Step3-3は対象消滅（Abs Mouse機能削除、§6.8参照）。Step3の残実参照数は150→145に更新。
 - Step3-4（`SetCurveAndDeadzone` のスティック・トリガー系27件）は完了確定（2026-09-24、ビルド・テスト・実機確認済み）。
-- Step3-5（ジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は実装済み（ビルド・テスト・実機確認待ち、§2 Step3 の実装内容参照）。Step3 の残実参照数は 73。
+- Step3-5（ジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は完了確定（2026-09-24、ビルド・テスト・実機確認済み、§2 Step3 の実装内容参照）。Step3 の残実参照数は 73。
 - 次: Step3-6（ボタン・マウス・アクション設定・6軸、非同期マクロ経路を含む）。その後 Step3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。Phase6完了後は Phase7、その後 Phase8（新設、§6.7）。
 
 ### 6.2 確定済みの決定事項（要約）
@@ -356,3 +356,14 @@
 **ビルド確認（確定・2026-09-23）**: ビルド・テストビルド・テスト実行とも成功。実機確認も完了（コントローラー接続確認済み）：(1) Abs Mouse機能を使用していたプロファイルの読込・保存で該当設定が無警告でUnbound/初期値にフォールバックすることを確認、(2) タッチパッドの他の出力モード（Mouse／Controls／MouseJoystick／Passthru、インデックス詰め後）が引き続き正常動作することを確認、(3) Controlsタブのバインディングウィンドウから「Abs Mouse」タブが消えていること、Otherタブから「Absolute Mouse Options」「Abs Display Monitor」設定が消えていることを確認。コミットしてリモートリポジトリに反映済み。
 
 **削除漏れの修正（2026-09-23、ユーザーのビルドエラー報告により発覚）**: `ControlService.PreLoadReset(int ind)` 内に `Mapping.absMouseOutputState[ind].Reset();` の呼び出しが1箇所残存しており、`absMouseOutputState`フィールド削除に伴いビルドエラー（CS0117）となっていた。該当呼び出しを削除して解消。この修正を反映した上で上記のビルド・テスト・実機確認が完了している。
+
+
+### 6.9 BindingWindow のテンキー右端の欠けの修正（2026-09-24、UI 微修正・機能変更なし）
+
+**症状**: Controls タブのボタン設定ウィンドウ（`BindingWindow`、「KB & Rel Mouse」タブ）で、テンキー領域の右端（`−`／`+`／`Enter`）が切れて表示され、その右の音量ボタン列（Vol／Vol／Mute）はマウス画像の裏に隠れていた。Step3-5 の実機確認中にユーザーが発見した（DI 移行とは無関係の既存のレイアウト不具合）。
+
+**原因**（幅の数値はいずれも XAML からの概算。この環境では画面を描画して実測していない）: `mainBindGrid` の列が星（`*`）比率で `0.99*`（メインキー）／`0.71*`（ナビゲーション＋テンキー）／`0.3*` ＋ `MinWidth=140`（マウス画像）と定義されていた。ウィンドウ幅 1020 のとき、右の Extra パネル（幅160）を除いた `mainBindGrid` は約836。マウス列が最小幅140を確保するため、ナビゲーション＋テンキー列は約288になる。一方、この列の中身（ナビゲーション140＋テンキー5列［ボタン36＋余白4を4列、1.25倍幅の列を1つ］）は約350の幅を必要とするため、約60が欠けていた。
+
+**修正**（`BindingWindow.xaml` の `mainBindGrid` の列定義のみ、1箇所）: ナビゲーション＋テンキーの列を `0.71*` から `Auto`（内容の幅に合わせる）に変更した。メインキー列（`0.99*`）とマウス列（`0.3*`、`MinWidth=140`）の比率は変更していない。結果として、メインキー列の実効幅が、計算上の見込みで約402から約346へ約14%狭くなり（横幅の拡大率を小さくする）、テンキー列が内容幅（約350）をいつも確保するようになった。ウィンドウ幅を変えても欠けは再発しない。`ExposeMode.ForPressToggle`／`Keyboard` でマウス列の幅を0にする既存処理の結果は、従来と実質同じ（メインキー列が残りの幅を使う）。ボタンの大きさ・並び・マウス画像側・コードビハインドは変更していない。
+
+**確認項目**: (1) テンキーの `−`／`+`／`Enter`、およびその右の音量ボタン列（Vol／Vol／Mute）が最後まで表示され、マウス画像と重ならないこと。(2) メインキー（特にファンクションキー F10〜F12、`BkSpace`）のラベルが切れずに読めること（狭まった分の副作用の確認。切れる場合は、F キーの左余白 `midMar`［現在6］の縮小、またはマウス列の `MinWidth`［現在140、キャンバス幅は120］の縮小で調整できる）。(3) 従来どおりキー・マウス操作の割り当てができること。

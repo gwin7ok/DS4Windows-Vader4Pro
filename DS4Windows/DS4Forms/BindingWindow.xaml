@@ -242,8 +242,10 @@
 
                             <Grid.ColumnDefinitions>
                                 <!-- Left: 文字キー、Middle: カーソル/Home/テンキー、Right: マウス -->
+                                <!-- Middle（カーソル/Home/テンキー）は内容の幅に合わせる（Auto）。
+                                     星比率（旧 0.71*）だと、マウス列の MinWidth に押されて狭まり、テンキー右端が欠けていた。 -->
                                 <ColumnDefinition Width="0.99*" />
-                                <ColumnDefinition Width="0.71*" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="0.3*" MinWidth="140" />
                             </Grid.ColumnDefinitions>
                             <UniformGrid Columns="1" Grid.Column="0">

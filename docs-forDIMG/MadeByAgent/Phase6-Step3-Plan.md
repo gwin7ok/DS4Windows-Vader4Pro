@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は実装済み（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テスト・実機確認待ち。§3.4）**。次はStep3-6。残実参照数は150→145（Abs Mouse削除）→118（Step3-4）→73（Step3-5）に更新。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。次はStep3-6。残実参照数は150→145（Abs Mouse削除）→118（Step3-4）→73（Step3-5）に更新。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -128,7 +128,7 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | **Step3-2** | 非ホット・条件付き経路の引数渡し化 | `ProfilePath`（5257）、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`（8249/8423/8546、`Scale360degreeGyroAxis`＝SA操舵輪エミュレーション有効時のみ到達）、`getProfileActions`/`GetProfileAction`/`GetActions` 系（3274/3285/4887/4938/4946/4978/5320/5324、§2.4.1 の方針で解消） | 12 | **完了（2026-09-23、ビルド・テスト・実機確認済み）。実施記録は §3.1 参照** |
 | **Step3-3** | ~~画面座標変換の引数渡し化~~ | ~~`absUseAllMonitors`/`TranslateCoorToAbsDisplay`/`ButtonAbsMouseInfos`（3640, 3658, 3668, 3674, 3676、絶対マウス出力使用時のみ到達）~~ | ~~5~~ | **対象消滅（2026-09-23）。Abs Mouse機能削除によりMapCustomの該当ブロック自体を撤去。詳細は §3.2、`Phase6-Status.md` §6.8参照** |
 | **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | LS/RS/L2/R2 のローテーション・アンチスナップバック・デッドゾーン・感度・スクエアスティック・カーブモード・ベジェ曲線 | 27（計画時の概算「約20」を実地確認で確定） | **完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録は §3.3 参照**。純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
-| **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する。**実装済み（2026-09-24、ビルド・テスト・実機確認待ち）。実施記録・`Commit` の扱いの決定（C1）は §3.4 参照** |
+| **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する。**完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録・`Commit` の扱いの決定（C1）は §3.4 参照** |
 | **Step3-6** | 残りのホットパス（ボタン・マウス・アクション設定・6軸） | `reverseX360ButtonMapping`（§2.4.2 の選択後）、`GetControlSettingsGroup`、`ButtonMouseInfos`、`SXSens`/`SZSens` 等、`PlayMacroCodeValue` 内の `outputKBMMapping` | 約35 | 着手前に §2.4.2 を確認 ／ 着手前に §3.4.1（非同期マクロ経路の扱い M1〜M3）も確認する |
 | **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する |
 
@@ -239,7 +239,9 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 - `MappingCommitAndCalibrationGlobalReferenceGuardTests.cs`（新規）: `ApplyStickCalibration` と `Commit` のソース走査ガード（`settings` 引数の存在、`Global` メンバー［ドリフト補正4種・`outputKBMMapping`］の再混入なし、`settings.OutputKBMMapping.` 経由の参照の存在）。
 - **`Commit` の挙動テストは追加していない**: 出力先の `IVirtualKBM` を実 DI ホスト（`AppHost`）から解決しており、テストから実行すると実際にマウス・キー入力を送出してしまうため。ソース走査ガードと実機確認で担保する。
 
-**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) キーボード・マウス出力（ボタン割り当てのキー・マウスクリック、トグル、ホイール、ホイールの押しっぱなしリピート）が変更前と同じ挙動であること、(2) ジャイロをスティック（Controls）出力に割り当てた場合の感度・デッドゾーン・出力カーブが変更前と同じであること、(3) スティックのドリフト補正が設定どおりに効くこと。
+**検証結果（確定・2026-09-24）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。実機確認は下記3項目とも問題なし: (1) キーボード・マウス出力（ボタン割り当てのキー・マウスクリック、トグル、ホイール、ホイールの押しっぱなしリピート）、(2) ジャイロをスティック（Controls）出力に割り当てた場合の感度・デッドゾーン・出力カーブ、(3) スティックのドリフト補正（X/Y Axis Offset）。
+
+**（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) キーボード・マウス出力（ボタン割り当てのキー・マウスクリック、トグル、ホイール、ホイールの押しっぱなしリピート）が変更前と同じ挙動であること、(2) ジャイロをスティック（Controls）出力に割り当てた場合の感度・デッドゾーン・出力カーブが変更前と同じであること、(3) スティックのドリフト補正が設定どおりに効くこと。
 
 #### 3.4.1 Step3-6 の事前整理: 非同期マクロ経路の扱い（決定は Step3-6 着手時。方向性のみ記録）
 
