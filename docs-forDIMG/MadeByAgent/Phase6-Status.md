@@ -1,7 +1,7 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
 最終更新日: 2026-09-23  
-状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）、Step3-6a 完了確定（グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ Step11 へ先送り］）、Step3-6b 実装済み（グループ B の12件、方針 P2。ビルド・テスト・実機確認待ち）** / Step3-6c〜Step12 計画確定・承認待ち（**次は Step3-6b の実機確認後に Step3-6c**） / BindingWindow のテンキー右端欠けを修正・完了確定（2026-09-24、UI 微修正。詳細は §6.9）  
+状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）、Step3-6a 完了確定（グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ Step11 へ先送り］）、Step3-6b 完了確定（グループ B の12件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）、Step3-6c 実装済み（グループ C の19件、方針 P2。ビルド・テスト・実機確認待ち）** / Step3-7〜Step12 計画確定・承認待ち（**次は Step3-6c の実機確認後に Step3-7**） / BindingWindow のテンキー右端欠けを修正・完了確定（2026-09-24、UI 微修正。詳細は §6.9）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -14,7 +14,7 @@
 | :--- | :--- | :--- | :---: | :---: | :--- | :---: |
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
-| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 22箇所（2026-09-24 再集計。Step3-1・3-2・3-4・3-5・3-6a完了、Step3-3は対象消滅、Step3-6b実装済み、残Step3-6c・3-7） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-6b実装済み（ビルド・テスト・実機確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1・3-2・3-4・3-5・3-6a完了、Step3-6b実装済み（Step3-6c・3-7 未着手） |
+| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 3箇所（2026-09-24 再集計。Step3-1・3-2・3-4・3-5・3-6a・3-6b完了、Step3-3は対象消滅、Step3-6c実装済み、残Step3-7の温存3件のみ） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-6c実装済み（ビルド・テスト・実機確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1・3-2・3-4・3-5・3-6a・3-6b完了、Step3-6c実装済み（Step3-7 未着手） |
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 73箇所 | 計画確定・承認待ち | `Phase6-Step4-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
@@ -63,7 +63,7 @@
 ---
 
 ### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1・Step3-2 完了、Step3-3 対象消滅】
-- **進捗率**: **Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a 完了（いずれもビルド・テスト・実機確認済み）、Step3-3 対象消滅（§6.8）、Step3-6b 実装済み（ビルド・テスト・実機確認待ち）、Step3-6c・3-7 未着手**
+- **進捗率**: **Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b 完了（いずれもビルド・テスト・実機確認済み）、Step3-3 対象消滅（§6.8）、Step3-6c 実装済み（ビルド・テスト・実機確認待ち）、Step3-7 未着手**
 - **Step3-1 実装内容（2026-09-21実装、2026-09-22 ビルド・テスト・実機確認完了）**:
   - 新設 `IDisplayCoordinateService`／`DisplayCoordinateService`（`UseAllMonitors`、`PrepareAbsMonitorBounds`、`TranslateCoorToAbsDisplay`）。`ServiceRegistration.cs` に登録済み。
   - **決定D1を確認済みの単一呼び出し元（`ControlService.cs`のみ）で実現**: `IEnvironmentService.PrepareAbsMonitorBounds` を削除し（実装1件・モック0件を確認済みのため、委譲シムを残さず完全移設）、`ControlService` のコンストラクタに `IDisplayCoordinateService` を追加（必須引数、Pure DI）。`SystemEvents_DisplaySettingsChanged` の呼び出し元を新サービス経由に変更。
@@ -109,10 +109,15 @@
   - **テスト**: `ProfileSettingsServiceReverseX360ButtonMappingTests.cs`（新規、同一参照・コピー版の独立性・割り当て0バイト）、`MappingControlPathGlobalReferenceGuardTests.cs`（新規、グループ A の7メソッドのソース走査ガード）。
   - **検証結果（確定・2026-09-24）**: ビルド・テストビルド・テスト実行とも成功し、コミットしてリモートリポジトリに反映済み。実機確認は、Xbox→DS4 のボタン割り当て、ボタン→キー／マクロとキー解放、スペシャルアクション、ボタンによるマウス移動と Change Mouse Sensitivity、デッドゾーン0のときのマウス移動がすべて問題なし。ステアリングホイールエミュレーション（vJoy 環境がないため実施できず）は `Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録した。
   - **（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は未実行。ユーザー側でビルド・テスト・実機確認（Xbox→DS4 のボタン割り当て、ボタン→キー／マクロとキー解放、スペシャルアクションのトリガー、ボタンによるマウス移動と Change Mouse Sensitivity、デッドゾーン0のときのマウス移動）を行ってからコミットすること。ステアリングホイールエミュレーション（vJoy 環境が必要）は、環境がなければ Step11 の先送り台帳へ登録する。
-- **Step3-6b 実装内容（2026-09-24実装、ビルド・テスト・実機確認待ち）**: グループ B（`ctrl` を持たない判定補助メソッド群）の12件を解消。**Step3の残実参照数は 34 → 22**（Step3-6c 19＋Step3-7 の温存3）。
+- **Step3-6b 実装内容（2026-09-24実装、同日ビルド・テストビルド・テスト実行成功・実機確認完了）**: グループ B（`ctrl` を持たない判定補助メソッド群）の12件を解消。**Step3の残実参照数は 34 → 22**（Step3-6c 19＋Step3-7 の温存3）。
   - **方式（決定 P2）**: 呼び出し元が約50箇所と多く `ctrl` を持たないため、引数渡しは行わず、`Mapping` の既存の静的フィールド `profileSettings` から読む。`IsUsingSAForControls(device)`（6件）は private ヘルパー `IsUsingGyroForControls(int device)`（`profileSettings.GyroOutputMode[device] == GyroOutMode.Controls`）に集約し、`SXSens`／`SZSens`（4件、`GetBoolMappingExternal`）と `Global.outputKBMMapping`（2件、`GetMouseWheelMapping`）は `profileSettings` 経由に置換。Phase7 の instance 化で解消する旨の TODO を付与。契約・`ControlService`・モデル図の変更なし。
   - **テスト**: `MappingHelperMethodsGlobalReferenceGuardTests.cs`（新規、グループ B の7メソッドのソース走査ガード）、`MappingGyroControlsHelperTests.cs`（新規、ヘルパーと `Global.IsUsingSAForControls` の一致）。
-  - **未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は未実行。ユーザー側でビルド・テスト・実機確認（ジャイロによるボタン判定、ジャイロ出力モードがコントロール以外のときの非干渉、スティック／トリガーによるマウスホイール上下）を行ってからコミットすること。
+  - **検証結果（確定・2026-09-24）**: ビルド・テストビルド・テスト実行とも成功し、コミットしてリモートリポジトリに反映済み。実機確認（ジャイロによるボタン判定、ジャイロ出力モードがコントロール以外のときの非干渉、スティック／トリガーによるマウスホイール上下）はすべて問題なし。
+  - **（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は未実行。ユーザー側でビルド・テスト・実機確認（ジャイロによるボタン判定、ジャイロ出力モードがコントロール以外のときの非干渉、スティック／トリガーによるマウスホイール上下）を行ってからコミットすること。
+- **Step3-6c 実装内容（2026-09-24実装、ビルド・テスト・実機確認待ち）**: グループ C（非同期マクロ再生経路）の19件を解消。**Step3の残実参照数は 22 → 3**（Step3-7 の温存3件のみ）。
+  - **方式（決定 P2）**: マクロ再生は別スレッドで動き、入口が `ctrl` を持たない `DefaultMacroPlayer` 経由にもあるため、引数渡しは行わず、`Mapping` の静的 `profileSettings` から読む。`PlayMacroCodeValue`（14件）・`AltTabSwapping`（3件）・`AltTabSwappingRelease`（2件）の `outputKBMMapping.` を `profileSettings.OutputKBMMapping.` に置換し、Phase7 の instance 化で解消する旨の TODO を各メソッド冒頭に付与。シグネチャ・契約・`ControlService`・`DefaultMacroPlayer`・モデル図の変更なし。K3（マクロ二重ガード）にも触れていない。`Mapping.cs` 全体から `outputKBMMapping` への `Global` 参照がなくなった。
+  - **テスト**: `MappingMacroPathGlobalReferenceGuardTests.cs`（新規、3メソッドのソース走査ガードと、`Mapping.cs` 全体に `outputKBMMapping` への Global 参照がないことの固定）。マクロ再生自体は実際の入力を送出するため挙動テストは追加していない。
+  - **未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は未実行。ユーザー側でビルド・テスト・実機確認（キー入力マクロ、マウスクリックを含むマクロ、Alt+Tab マクロ、スペシャルアクションのマクロ、繰り返しマクロの二重実行がないこと）を行ってからコミットすること。
 ---
 
 ### Phase6-Step4: マウスエミュレーション系のPure DI化【計画確定・承認待ち】
@@ -273,20 +278,20 @@
 
 ## 5. 直近の次アクション
 
-1. **Step3-5**（`SetCurveAndDeadzone` のジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.4）。**Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）。Step3-6a**（`ctrl` から読める経路の24件＋契約追加 R1）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.5）。**Step3-6b**（判定補助メソッド群12件、方針 P2）は実装済み。ユーザーのビルド・テスト・実機確認を経てコミットする（`Phase6-Step3-Plan.md` §3.6）。確認後、**Step3-6b**（判定補助メソッド群、方針 P2。実装済み、実機確認待ち）→**Step3-6c**（非同期マクロ経路、方針 P2）→ Step3-7 へ進む。Step3-4 も完了確定（2026-09-24）。Step3-3は対象コード自体がAbs Mouse機能削除に伴い消滅したため、コミット・確認作業は不要（詳細は §6.8）。
+1. **Step3-5**（`SetCurveAndDeadzone` のジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.4）。**Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）。Step3-6a**（`ctrl` から読める経路の24件＋契約追加 R1）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.5）。**Step3-6b**（判定補助メソッド群12件、方針 P2）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.6）。**Step3-6c**（非同期マクロ経路19件、方針 P2）は実装済み。ユーザーのビルド・テスト・実機確認を経てコミットする（`Phase6-Step3-Plan.md` §3.7）。確認後、Step3-7（温存3件の最終処理と `using static DS4Windows.Global;` の削除可否判定）へ進む。Step3-4 も完了確定（2026-09-24）。Step3-3は対象コード自体がAbs Mouse機能削除に伴い消滅したため、コミット・確認作業は不要（詳細は §6.8）。
 2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12 → Phase7 → Phase8）で進める。Phase8（Controls/SpecialActions統合ディスパッチ）は Phase7 完了後の独立フェーズとして新設済み（詳細は §6.7）。
 
 ---
 
-## 6. 次セッションへの引き継ぎ（2026-09-24、Step3-6b の実機確認待ち）
+## 6. 次セッションへの引き継ぎ（2026-09-24、Step3-6c の実機確認待ち）
 
 ### 6.1 現在地
 - 完了: Step1（詳細監査）、Step2（`ControlService.cs`、66 ID）、Step3-1・Step3-2（`Mapping.cs`、契約整備＋非ホット12件。ともにビルド・テスト・実機確認済み）、Step13（配置整理 44件）。
 - Step3-3は対象消滅（Abs Mouse機能削除、§6.8参照）。Step3の残実参照数は150→145に更新。
 - Step3-4（`SetCurveAndDeadzone` のスティック・トリガー系27件）は完了確定（2026-09-24、ビルド・テスト・実機確認済み）。
 - Step3-5（ジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は完了確定（2026-09-24、ビルド・テスト・実機確認済み、§2 Step3 の実装内容参照）。Step3 の残実参照数は 73。
-- Step3-6a（`ctrl` から読める経路の24件＋契約追加 R1）は完了確定（2026-09-24）。Step3-6b（判定補助メソッド群12件、P2）は実装済み（ビルド・テスト・実機確認待ち）。Step3 の残実参照数は 22（2026-09-24 再集計）。
-- 次: Step3-6c（非同期マクロ経路、P2）。その後 Step3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。Phase6完了後は Phase7、その後 Phase8（新設、§6.7）。
+- Step3-6a（`ctrl` から読める経路の24件＋契約追加 R1）は完了確定（2026-09-24）。Step3-6b（判定補助メソッド群12件、P2）は完了確定（2026-09-24）。Step3-6c（非同期マクロ経路19件、P2）は実装済み（ビルド・テスト・実機確認待ち）。Step3 の残実参照数は 3（Step3-7 の温存3件のみ）。
+- 次: Step3-7（温存3件の最終処理、§2.4.3 の選択［既定 K-1］と `using static DS4Windows.Global;` の削除可否判定。着手前に確認する）。その後 Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。Phase6完了後は Phase7、その後 Phase8（新設、§6.7）。
 
 ### 6.2 確定済みの決定事項（要約）
 - **Step2**: D1（`Func<IOutputSlotService>` の遅延解決）、D2（新規コンストラクタ引数はすべて必須の Pure DI）、D3（`IVirtualKBMLifecycle`）、O1=B／O4=B-2（`IProfileSlotApplier`）、O2=C／O3=A（スロット上限のサービス化と段階移行）。詳細は `Phase6-Step2-Plan.md` §0.3.2。

@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は完了確定（2026-09-24、グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ先送り］。§3.5）。Step3-6b は実装済み（グループ B の12件。ビルド・テスト・実機確認待ち。§3.6）**。次は Step3-6b の実機確認後に Step3-6c。残実参照数は、Step3-5 完了後の再集計（2026-09-24）で **58件**と判明した（従来の記載「118」「73」は、Step3-2 で解消した12件の引き算漏れによる過大）。Step3-6a 完了後は34件、Step3-6b 完了後は22件（3-6c 19＋Step3-7 の温存3）。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は完了確定（2026-09-24、グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ先送り］。§3.5）。Step3-6b は完了確定（2026-09-24、グループ B の12件。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.6）。Step3-6c は実装済み（グループ C の19件。ビルド・テスト・実機確認待ち。§3.7）**。次は Step3-6c の実機確認後に Step3-7。残実参照数は、Step3-5 完了後の再集計（2026-09-24）で **58件**と判明した（従来の記載「118」「73」は、Step3-2 で解消した12件の引き算漏れによる過大）。Step3-6a 完了後は34件、Step3-6b 完了後は22件、Step3-6c 完了後は3件（Step3-7 の温存3のみ）。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -132,8 +132,8 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | LS/RS/L2/R2 のローテーション・アンチスナップバック・デッドゾーン・感度・スクエアスティック・カーブモード・ベジェ曲線 | 27（計画時の概算「約20」を実地確認で確定） | **完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録は §3.3 参照**。純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
 | **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する。**完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録・`Commit` の扱いの決定（C1）は §3.4 参照** |
 | **Step3-6a** | 残りのホットパス: `ctrl` から読める経路（グループ A） | `MapCustom`／`ProcessControlSettingAction`／`MapCustomAction`／`getMouseMapping`／`Scale360degreeGyroAxis`（いずれも `ControlService ctrl` を持つ）の `getProfileActionCount`／`GetSASteeringWheelEmulationAxis`／`ButtonMouseInfos`／`outputKBMMapping`／`GetDS4CSetting`／`getLSDeadzone`／`getRSDeadzone`／`SAWheelFuzzValues`／`getSXDeadzone`／`WheelSmoothInfo`／`getSXAntiDeadzone`、`reverseX360ButtonMapping`（決定 R1）、および `ctrl` を持たない `ReleaseActionKeys`／`IfAxisIsNotModified`（`settings` 引数を追加） | 24 | **完了確定（2026-09-24、ビルド・テスト・実機確認済み。ステアリングホイールエミュレーションのみ Step11 へ先送り）。実施記録は §3.5 参照** |
-| **Step3-6b** | 判定補助メソッド群（グループ B） | `GetByteMapping`／`GetBoolMappingExternal`／`GetBoolMapping`／`getBoolSpecialActionMapping`／`GetBoolActionMapping`／`GetXYAxisMapping` の `IsUsingSAForControls`（6）・`SXSens`／`SZSens`（4）、`GetMouseWheelMapping` の `Global.outputKBMMapping`（2）。**方針 P2（`Mapping` の静的 `profileSettings` を利用。決定 2026-09-24、§3.4.1）** | 12 | 呼び出し元が多く（約50箇所）`ctrl` を持たないため引数渡しは行わない。TODO コメント（Phase7 の instance 化で解消）を付ける。**実装済み（2026-09-24、ビルド・テスト・実機確認待ち）。実施記録は §3.6 参照** |
-| **Step3-6c** | 非同期マクロ経路（グループ C） | `PlayMacroCodeValue`（14）・`AltTabSwapping`（3）・`AltTabSwappingRelease`（2）の `outputKBMMapping`。**方針 P2（決定 2026-09-24、§3.4.1）** | 19 | モデル図 04 の変更は不要。K3（マクロ二重ガード）は Phase7 で再設計するため触れない |
+| **Step3-6b** | 判定補助メソッド群（グループ B） | `GetByteMapping`／`GetBoolMappingExternal`／`GetBoolMapping`／`getBoolSpecialActionMapping`／`GetBoolActionMapping`／`GetXYAxisMapping` の `IsUsingSAForControls`（6）・`SXSens`／`SZSens`（4）、`GetMouseWheelMapping` の `Global.outputKBMMapping`（2）。**方針 P2（`Mapping` の静的 `profileSettings` を利用。決定 2026-09-24、§3.4.1）** | 12 | 呼び出し元が多く（約50箇所）`ctrl` を持たないため引数渡しは行わない。TODO コメント（Phase7 の instance 化で解消）を付ける。**完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録は §3.6 参照** |
+| **Step3-6c** | 非同期マクロ経路（グループ C） | `PlayMacroCodeValue`（14）・`AltTabSwapping`（3）・`AltTabSwappingRelease`（2）の `outputKBMMapping`。**方針 P2（決定 2026-09-24、§3.4.1）** | 19 | モデル図 04 の変更は不要。K3（マクロ二重ガード）は Phase7 で再設計するため触れない。**実装済み（2026-09-24、ビルド・テスト・実機確認待ち）。実施記録は §3.7 参照** |
 | **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する |
 
 バッチの粒度・順序は、Step3-1 完了後の実地確認（各バッチ着手前に該当範囲を再 grep する。`DI-App-Wide-Migration-Plan.md` §6.11）で必要に応じて見直す。
@@ -321,7 +321,28 @@ Step3-6 の `PlayMacroCodeValue`（14件）・`AltTabSwapping`／`AltTabSwapping
 - `MappingGyroControlsHelperTests.cs`（新規）: リフレクションで `IsUsingGyroForControls` を呼び、出力モード（Controls／None／Mouse）を切り替えたときに `Global.IsUsingSAForControls` と同じ結果を返すことを検証（検証後は元の値へ戻す）。
 - 静的 `profileSettings` を読む経路は、テストでサービスを差し替えても追随しない（型初期化時に1回だけ束縛。`Phase6-Status.md` §6.4 の教訓1）ため、引数渡しの検証（`MappingArgumentPassThroughTests`）と同じ方式のテストは追加していない。
 
-**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) ジャイロをコントロール（スティック・ボタン）に割り当てた場合の、ジャイロによるボタン判定（`GyroXPos`／`GyroXNeg`／`GyroZPos`／`GyroZNeg` を割り当てたボタンの反応）、(2) ジャイロ出力モードをコントロール以外（マウス等）にしたとき、ジャイロがボタン判定に影響しないこと、(3) スティックやトリガーをマウスホイールの上下に割り当てた場合のホイール回転（`GetMouseWheelMapping`）。(1)(2) はジャイロを使えるコントローラー（DS4／DualSense／Vader 4 Pro のジャイロ）が必要。
+**検証結果（確定・2026-09-24）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。実機確認は下記の項目1〜3がすべて問題なし（ジャイロによるボタン判定、ジャイロ出力モードがコントロール以外のときの非干渉、スティック／トリガーによるマウスホイール上下）。
+
+**（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) ジャイロをコントロール（スティック・ボタン）に割り当てた場合の、ジャイロによるボタン判定（`GyroXPos`／`GyroXNeg`／`GyroZPos`／`GyroZNeg` を割り当てたボタンの反応）、(2) ジャイロ出力モードをコントロール以外（マウス等）にしたとき、ジャイロがボタン判定に影響しないこと、(3) スティックやトリガーをマウスホイールの上下に割り当てた場合のホイール回転（`GetMouseWheelMapping`）。(1)(2) はジャイロを使えるコントローラー（DS4／DualSense／Vader 4 Pro のジャイロ）が必要。
+
+### 3.7 Step3-6c 実施記録（2026-09-24）
+
+**対象（グループ C、19件）**: 非同期マクロ再生経路の `outputKBMMapping`（`PlayMacroCodeValue` 14件、`AltTabSwapping` 3件、`AltTabSwappingRelease` 2件）。マクロ再生は別スレッドで動き、入口が `ctrl` を持たない `DefaultMacroPlayer`（`PlayMacroDirect`／`EndMacroDirect`）経由にもあるため、決定 P2（§3.4.1）に従い引数渡しは行わず、`Mapping` の静的 `profileSettings` から読む。
+
+| 対象 | 変更 |
+|---|---|
+| `PlayMacroCodeValue` | `outputKBMMapping.` 14箇所（マウスボタンの押下・解放、X ボタン、`macroKeyTranslate`／`GetRealEventKey` によるキー変換）を `profileSettings.OutputKBMMapping.` に置換 |
+| `AltTabSwapping` | `outputKBMMapping.KEY_TAB` 3箇所を置換 |
+| `AltTabSwappingRelease` | `outputKBMMapping.KEY_TAB`／`KEY_LALT` 2箇所を置換 |
+| TODO コメント | 3メソッドの冒頭に、Phase7 の instance 化（コンストラクタ注入）で解消する旨の TODO を付与（`copilot-instructions.md` §3.3 原則4） |
+
+シグネチャの変更・契約の変更・`ControlService`・`DefaultMacroPlayer`・モデル図の変更はなし（M1 のようなバケツリレーは行っていない）。K3（マクロ二重ガード `macroDispatchInFlight`）にも触れていない。これで `Mapping.cs` 全体から `outputKBMMapping` への `Global` 参照（非修飾・`Global.` 修飾とも）がなくなった。
+
+**挙動の同一性（実装前に確認）**: 置換前の `outputKBMMapping` は `Global.ProfileSettingsServiceInstance.OutputKBMMapping`（DI の Singleton。呼び出しのたびに解決）を返す。置換後の静的 `profileSettings` は `AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance` で束縛され、通常は同じ Singleton を指す。読み取りは使用のたびに行い（キャッシュしない）、`RefreshOutputKBMHandler` でマッピングが再構築されたときも従来どおり新しいものを読む。割り当て・ログ・キャッシュの追加はない。相違点: 静的 `profileSettings` は型初期化時に1回だけ束縛されるため、テストで `Global.ProfileSettingsServiceInstance` を差し替えても追随しない（`Phase6-Status.md` §6.4 の教訓1）。
+
+**テスト**: `MappingMacroPathGlobalReferenceGuardTests.cs`（新規）: 3メソッドのソース走査ガード（`outputKBMMapping` の非修飾・`Global.` 修飾の参照が残っていないこと、`profileSettings.OutputKBMMapping.` 経由であること）と、`Mapping.cs` 全体に `outputKBMMapping` への `Global` 参照がないことの固定。走査の方式は実ファイルに対して事前に検証済み。マクロ再生自体は実際のキー・マウス入力を送出するため、挙動テストは追加していない（ガードと実機確認で担保）。既存の `MappingPlayMacroDispatchGuardTests`（`PlayMacro` をリフレクションで呼ぶ）は、`PlayMacro` のシグネチャを変更していないため影響を受けない。
+
+**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) Controls タブでボタンにキー入力のマクロ（「Record A Macro」で記録）を割り当てて動作すること、(2) マウスクリック（左・右・中・X ボタン）を含むマクロが動作すること、(3) Alt+Tab のウィンドウ切り替えマクロ（押している間 Tab で切り替え、離すと確定）が動作すること、(4) スペシャルアクションのマクロ（`DefaultMacroPlayer` 経由の入口を含む）が動作すること。あわせて、押し続けの繰り返しマクロ（Repeat while held）が二重に走らないこと（K3 のガードの回帰確認）も見る。
 
 ---
 

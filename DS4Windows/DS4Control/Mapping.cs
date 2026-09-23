@@ -6348,6 +6348,7 @@ namespace DS4Windows
 
         private static bool PlayMacroCodeValue(int device, bool[] macrocontrol, DS4KeyType keyType, int macroCodeValue, bool[] keydown)
         {
+            // TODO(Phase6-Step3-6c, 決定P2): 非同期マクロ経路（別スレッド、ctrl を持たない連鎖）のため、Mapping の静的 profileSettings から読む。Phase7 の instance 化（コンストラクタ注入）で解消する。
             bool doDelayOnCaller = false;
             if (macroCodeValue >= 261 && macroCodeValue <= DS4ControlSettings.MAX_MACRO_VALUE)
             {
@@ -6373,28 +6374,28 @@ namespace DS4Windows
                         //anything above 255 is not a keyvalue
                         case 256:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseLeftDown");
-                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_LEFTDOWN);
                             break;
                         case 257:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseRightDown");
-                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
                             break;
                         case 258:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseMiddleDown");
-                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
                             break;
                         case 259:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonDown btn=1");
-                            VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                            VirtualKBM.PerformMouseButtonEventAlt(profileSettings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
                             break;
                         case 260:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonDown btn=2");
-                            VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                            VirtualKBM.PerformMouseButtonEventAlt(profileSettings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
                             break;
 
                         default:
-                            uint eventMacroCode = !outputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
-                                outputKBMMapping.GetRealEventKey((uint)macroCodeValue);
+                            uint eventMacroCode = !profileSettings.OutputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
+                                profileSettings.OutputKBMMapping.GetRealEventKey((uint)macroCodeValue);
 
                             if (keyType.HasFlag(DS4KeyType.ScanCode))
                             {
@@ -6417,28 +6418,28 @@ namespace DS4Windows
                         //anything above 255 is not a keyvalue
                         case 256:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseLeftUp");
-                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_LEFTUP);
                             break;
                         case 257:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseRightUp");
-                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_RIGHTUP);
                             break;
                         case 258:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseMiddleUp");
-                            VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_MIDDLEUP);
                             break;
                         case 259:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonUp btn=1");
-                            VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                            VirtualKBM.PerformMouseButtonEventAlt(profileSettings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
                             break;
                         case 260:
                             AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonUp btn=2");
-                            VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                            VirtualKBM.PerformMouseButtonEventAlt(profileSettings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
                             break;
 
                         default:
-                            uint eventMacroCode = !outputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
-                                outputKBMMapping.GetRealEventKey((uint)macroCodeValue);
+                            uint eventMacroCode = !profileSettings.OutputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
+                                profileSettings.OutputKBMMapping.GetRealEventKey((uint)macroCodeValue);
 
                             if (keyType.HasFlag(DS4KeyType.ScanCode))
                             {
@@ -6537,11 +6538,12 @@ namespace DS4Windows
 
         private static void AltTabSwapping(int wait, int device)
         {
+            // TODO(Phase6-Step3-6c, 決定P2): 非同期マクロ経路（別スレッド、ctrl を持たない連鎖）のため、Mapping の静的 profileSettings から読む。Phase7 の instance 化（コンストラクタ注入）で解消する。
             if (altTabDone)
             {
                 altTabDone = false;
                 AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyPress TAB");
-                VirtualKBM.PerformKeyPress(outputKBMMapping.KEY_TAB);
+                VirtualKBM.PerformKeyPress(profileSettings.OutputKBMMapping.KEY_TAB);
             }
             else
             {
@@ -6550,22 +6552,23 @@ namespace DS4Windows
                 {
                     oldAltTabNow = altTabNow;
                     AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyPress TAB");
-                    VirtualKBM.PerformKeyPress(outputKBMMapping.KEY_TAB);
+                    VirtualKBM.PerformKeyPress(profileSettings.OutputKBMMapping.KEY_TAB);
                     AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyRelease TAB");
-                    VirtualKBM.PerformKeyRelease(outputKBMMapping.KEY_TAB);
+                    VirtualKBM.PerformKeyRelease(profileSettings.OutputKBMMapping.KEY_TAB);
                 }
             }
         }
 
         private static void AltTabSwappingRelease()
         {
+            // TODO(Phase6-Step3-6c, 決定P2): 非同期マクロ経路（別スレッド、ctrl を持たない連鎖）のため、Mapping の静的 profileSettings から読む。Phase7 の instance 化（コンストラクタ注入）で解消する。
             if (altTabNow < DateTime.UtcNow - TimeSpan.FromMilliseconds(10)) //in case multiple controls are mapped to alt+tab
             {
                 altTabDone = true;
                 AppLogger.LogDebug($"EVENT SENT [INLINE] event=AltTab KeyRelease TAB");
-                VirtualKBM.PerformKeyRelease(outputKBMMapping.KEY_TAB);
+                VirtualKBM.PerformKeyRelease(profileSettings.OutputKBMMapping.KEY_TAB);
                 AppLogger.LogDebug($"EVENT SENT [INLINE] event=AltTab KeyRelease LALT");
-                VirtualKBM.PerformKeyRelease(outputKBMMapping.KEY_LALT);
+                VirtualKBM.PerformKeyRelease(profileSettings.OutputKBMMapping.KEY_LALT);
                 altTabNow = DateTime.UtcNow;
                 oldAltTabNow = DateTime.UtcNow - TimeSpan.FromDays(1);
             }
