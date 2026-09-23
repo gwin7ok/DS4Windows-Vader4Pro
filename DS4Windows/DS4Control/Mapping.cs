@@ -3662,7 +3662,7 @@ namespace DS4Windows
                     double outX = 0.0, outY = 0.0;
                     //outX = absMouseOut.x;
                     //outY = absMouseOut.y;
-                    if (absUseAllMonitors)
+                    if (ctrl.DisplayCoordinateService.UseAllMonitors)
                     {
                         outX = absMouseOut.x;
                         outY = absMouseOut.y;
@@ -3680,7 +3680,7 @@ namespace DS4Windows
                         double tempX = 0.0, tempY = 0.0;
                         //Global.TranslateCoorToAbsDisplay(absMouseOut.x, absMouseOut.y,
                         //    out outX, out outY);
-                        Global.TranslateCoorToAbsDisplay(absMouseOut.x, absMouseOut.y,
+                        ctrl.DisplayCoordinateService.TranslateCoorToAbsDisplay(absMouseOut.x, absMouseOut.y,
                             out tempX, out tempY);
                     }
 
@@ -3690,15 +3690,15 @@ namespace DS4Windows
                 }
                 else if (absMouseOut.previousDirty)
                 {
-                    ButtonAbsMouseInfo buttonAbsMouseInfo = ButtonAbsMouseInfos[device];
+                    ButtonAbsMouseInfo buttonAbsMouseInfo = ctrl.ProfileSettingsService.ButtonAbsMouseInfos[device];
                     if (buttonAbsMouseInfo.snapToCenter)
                     {
                         absMouseOut.CalculateDeadCoords(buttonAbsMouseInfo, out double releaseX,
                             out double releaseY);
 
-                        if (!Global.absUseAllMonitors)
+                        if (!ctrl.DisplayCoordinateService.UseAllMonitors)
                         {
-                            Global.TranslateCoorToAbsDisplay(releaseX, releaseY,
+                            ctrl.DisplayCoordinateService.TranslateCoorToAbsDisplay(releaseX, releaseY,
                                 out releaseX, out releaseY);
                         }
 

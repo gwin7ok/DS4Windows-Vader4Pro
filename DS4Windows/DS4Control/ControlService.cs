@@ -150,6 +150,10 @@ namespace DS4Windows
         internal DI.IDisplayCoordinateService DisplayCoordinateService => _displayCoordinateService;
         internal DI.IProfileRepository ProfileRepository => _profileRepository;
         internal DI.ISpecialActionRepository SpecialActionRepository => _specialActionRepository;
+        // Phase6-Step3-3: MapCustom の ButtonAbsMouseInfos（絶対マウス出力の座標系設定）参照を
+        // ctrl 経由の引数渡しへ切り替えるために追加。既存の _profileSettings フィールドをそのまま公開するのみで、
+        // 新規サービス・新規フィールドは追加していない。
+        internal DI.IProfileSettingsService ProfileSettingsService => _profileSettings;
 
         private HashSet<string> hidDeviceHidingAffectedDevs = new HashSet<string>();
         private HashSet<string> hidDeviceHidingExemptedDevs = new HashSet<string>();

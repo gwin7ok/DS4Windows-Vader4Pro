@@ -1,7 +1,7 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
 最終更新日: 2026-09-23  
-状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / Step3-3〜Step12 計画確定・承認待ち（**次は Step3-3**）  
+状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 実装済み・ビルド未検証（2026-09-23）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / Step3-4〜Step12 計画確定・承認待ち（**次は Step3-4。開発者側のStep3-3ビルド・テスト確認後にコミット→着手**）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -14,7 +14,7 @@
 | :--- | :--- | :--- | :---: | :---: | :--- | :---: |
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
-| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 150箇所（Step3-1〜3-7） | **Step3-1・Step3-2完了（ビルド・テスト・実機確認済み）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-2完了（Step3-3〜3-7 未着手） |
+| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 150箇所（Step3-1〜3-7） | Step3-1・Step3-2完了（ビルド・テスト・実機確認済み）、**Step3-3実装済み（ビルド未検証）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-3完了/実装済み（Step3-4〜3-7 未着手） |
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 73箇所 | 計画確定・承認待ち | `Phase6-Step4-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
@@ -62,8 +62,8 @@
 
 ---
 
-### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1・Step3-2 完了（ともにビルド・テスト・実機確認済み）】
-- **進捗率**: **Step3-1・Step3-2 完了（ともにビルド・テスト・実機確認済み）、Step3-3〜3-7 未着手**
+### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1・Step3-2 完了、Step3-3 実装済み（ビルド未検証）】
+- **進捗率**: **Step3-1・Step3-2 完了（ともにビルド・テスト・実機確認済み）、Step3-3 実装済み（ビルド未検証）、Step3-4〜3-7 未着手**
 - **Step3-1 実装内容（2026-09-21実装、2026-09-22 ビルド・テスト・実機確認完了）**:
   - 新設 `IDisplayCoordinateService`／`DisplayCoordinateService`（`UseAllMonitors`、`PrepareAbsMonitorBounds`、`TranslateCoorToAbsDisplay`）。`ServiceRegistration.cs` に登録済み。
   - **決定D1を確認済みの単一呼び出し元（`ControlService.cs`のみ）で実現**: `IEnvironmentService.PrepareAbsMonitorBounds` を削除し（実装1件・モック0件を確認済みのため、委譲シムを残さず完全移設）、`ControlService` のコンストラクタに `IDisplayCoordinateService` を追加（必須引数、Pure DI）。`SystemEvents_DisplaySettingsChanged` の呼び出し元を新サービス経由に変更。
@@ -88,6 +88,12 @@
   - `Mapping.cs` 内の診断ログ専用ヘルパー `LogActionDoneCountOnTrigger` にのみ `ControlService ctrl` パラメータを新規追加（呼び出し元11箇所を更新）。これが本バッチで唯一のメソッドシグネチャ変更。
   - テスト: `ControlServiceStep3Step2DiWiringTests.cs`（新規DI配線・5プロパティの実体一致検証）、`MappingLogActionDoneCountOnTriggerTests.cs`（シグネチャ変更・null安全性の回帰防止）を新設。`MapCustom`/`MapCustomAction` 自体を直接駆動するテストは、既存 `MappingSpecialActionSuppressionTests.cs` 冒頭コメントの通り本プロジェクトでも困難なため見送り、挙動保持の確認はビルド・実機確認に委ねる。
   - **検証結果（確定・2026-09-23）**: ビルド・テストとも成功。テスト失敗1件（`EnvironmentServiceInjectionTests`、`Global.appdatapath` 未設定）は新規テスト追加でxUnit実行順序が変わり既存の脆弱性（他テストの副作用への暗黙依存、Step2教訓 §6.4-1 該当）が表面化したもので、冪等ガード追加により修正済み。実機確認も完了（コントローラー接続・プロファイル適用・切替のスペシャルアクション等、問題なし）。実機確認中に判明した `[DI]` ログ過多の問題は解消済み（詳細は §6.5 K4 参照）。
+- **Step3-3 実装内容（2026-09-23実装、ビルド未検証）**: 対象5件（`MapCustom` の絶対マウス出力座標変換：`absUseAllMonitors` 参照2、`TranslateCoorToAbsDisplay` 呼出2、`ButtonAbsMouseInfos` 参照1）を全て解消。`IDisplayCoordinateService`（Step3-1で新設済み）を実際に消費する最初のバッチ。
+  - `MapCustom` は既に `ControlService ctrl` を引数として受け取っているため、Step3-2と同じ方式（`ctrl.XxxService.Method(...)`）で解消。`ctrl.DisplayCoordinateService.UseAllMonitors`／`ctrl.DisplayCoordinateService.TranslateCoorToAbsDisplay(...)` に置換。
+  - `ButtonAbsMouseInfos`（`IProfileSettingsService` の既存契約メンバー）を公開する `internal` プロパティが `ControlService` に無かったため、新規に `ProfileSettingsService` プロパティ（既存の `_profileSettings` フィールドを返すのみ）を追加し、`ctrl.ProfileSettingsService.ButtonAbsMouseInfos[device]` に置換。新規サービス・新規フィールドは追加していない。
+  - `GetAbsMouseMapping` 内の同名メンバー（別メソッド）は本バッチの対象外（Step3-6以降で扱う）。
+  - テスト: `ControlServiceStep3Step3DiWiringTests.cs`（新規、`ProfileSettingsService` プロパティのDI配線検証）を新設。`MapCustom` 自体の直接駆動テストは Step3-2 と同じ理由で見送り、挙動保持の確認はビルド・実機確認（絶対マウス出力モード使用時）に委ねる。
+  - **未検証事項**: この環境には dotnet がなく、`dotnet build`/`dotnet test` を実行できていない。開発者側でのビルド・テスト・実機確認を経てからコミットすること。
 
 ---
 
@@ -249,16 +255,17 @@
 
 ## 5. 直近の次アクション
 
-1. **Step3-3**（画面座標変換の引数渡し化。`IDisplayCoordinateService` を実際に消費する最初のバッチ）に着手する。`Phase6-Step3-Plan.md` §3 のバッチ構成に従う。
+1. **Step3-3 は実装済み（ビルド未検証、2026-09-23）**。開発者側のビルド・テスト・実機確認（絶対マウス出力モード使用時）を経てコミット後、**Step3-4**（`SetCurveAndDeadzone` のスティック・トリガー系前半）に着手する。`Phase6-Step3-Plan.md` §3 のバッチ構成に従う。
 2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12 → Phase7 → Phase8）で進める。Phase8（Controls/SpecialActions統合ディスパッチ）は Phase7 完了後の独立フェーズとして新設済み（詳細は §6.7）。
 
 ---
 
-## 6. 次セッションへの引き継ぎ（2026-09-23、Step3-3 着手前）
+## 6. 次セッションへの引き継ぎ（2026-09-23、Step3-4 着手前）
 
 ### 6.1 現在地
 - 完了: Step1（詳細監査）、Step2（`ControlService.cs`、66 ID）、Step3-1・Step3-2（`Mapping.cs`、契約整備＋非ホット12件。ともにビルド・テスト・実機確認済み）、Step13（配置整理 44件）。
-- 次: Step3-3（画面座標変換の引数渡し化。`Phase6-Step3-Plan.md` §3参照）。その後 Step3-4〜3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。Phase6完了後は Phase7、その後 Phase8（新設、§6.7）。
+- 実装済み・ビルド未検証: Step3-3（画面座標変換の引数渡し化、5件。`Phase6-Step3-Plan.md` §3.2参照）。開発者側のビルド・テスト・実機確認・コミット後、Step3-4から着手する。
+- 次: Step3-4（`SetCurveAndDeadzone` のスティック・トリガー系前半、約20件）。その後 Step3-5〜3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。Phase6完了後は Phase7、その後 Phase8（新設、§6.7）。
 
 ### 6.2 確定済みの決定事項（要約）
 - **Step2**: D1（`Func<IOutputSlotService>` の遅延解決）、D2（新規コンストラクタ引数はすべて必須の Pure DI）、D3（`IVirtualKBMLifecycle`）、O1=B／O4=B-2（`IProfileSlotApplier`）、O2=C／O3=A（スロット上限のサービス化と段階移行）。詳細は `Phase6-Step2-Plan.md` §0.3.2。
@@ -295,7 +302,8 @@
 - （着手前の想定。実地確認で150件に更新済み。下段参照）対象は `Mapping.cs` の Global 直接参照。Phase7（`Mapping.cs` の完全 instance 化）の下地として、静的結合を段階的に減らす方針（`DI-App-Wide-Migration-Plan.md` §5.5・§6.9）。
 - `Mapping.cs` は `Global` 以外の静的結合（`Program.rootHub` 直接参照1件、Service Locator 6件）を含む。いずれも Step3 の対象外（`Phase6-Step3-Reality-Check-Ledger.md` §3.3）。
 - **2026-09-21 実地突き合わせ完了**: `Phase6-Step3-Reality-Check-Ledger.md` を作成・コミット済み。実参照は150件（旧計画の「12件」「115件」から確定値に更新）。`Phase6-Step3-Plan.md` を全面改訂し、論点1〜4の決定（C／S3／新設`IDisplayCoordinateService`ほか／機械置換不可2項目の選択肢）を反映済み。
-- **2026-09-23 Step3-1・Step3-2 完了**: いずれもビルド・テスト・実機確認済み（コミット済み）。次回は Step3-3 から着手する。
+- **2026-09-23 Step3-1・Step3-2 完了**: いずれもビルド・テスト・実機確認済み（コミット済み）。
+- **2026-09-23 Step3-3 実装済み（ビルド未検証）**: 開発者側のビルド・テスト・実機確認・コミット後、Step3-4 から着手する。
 - ファイルの配置は Step13 で変わっている（`ActionManager` など、Action 系は `Actions/` へ移動済み）。パスは現行の HEAD で確認する。
 
 ### 6.7 Phase8の新設（Controls/SpecialActions統合ディスパッチ）

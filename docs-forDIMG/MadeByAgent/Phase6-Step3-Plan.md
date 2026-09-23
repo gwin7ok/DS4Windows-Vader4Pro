@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。次は Step3-3（§3 参照）。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 実装済み・ビルド未検証（2026-09-23）**。開発者側の確認・コミット後、Step3-4へ。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -126,7 +126,7 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 |---|---|---|---:|---|
 | **Step3-1** | 契約整備（新設・拡張のみ、`Mapping.cs` 不変更） | `IDisplayCoordinateService` 新設＋登録、`IProfileXmlStore.SaveControllerConfigsForDevice` 追加、`IProfileActionProvider.GetProfileActionIndexOf` 追加、`IProfileSettingsService.GetControlSettingsGroup` 追加、各モックテスト追加 | - | §2.3 の D1/D2 をここで確定 |
 | **Step3-2** | 非ホット・条件付き経路の引数渡し化 | `ProfilePath`（5257）、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`（8249/8423/8546、`Scale360degreeGyroAxis`＝SA操舵輪エミュレーション有効時のみ到達）、`getProfileActions`/`GetProfileAction`/`GetActions` 系（3274/3285/4887/4938/4946/4978/5320/5324、§2.4.1 の方針で解消） | 12 | **完了（2026-09-23、ビルド・テスト・実機確認済み）。実施記録は §3.1 参照** |
-| **Step3-3** | 画面座標変換の引数渡し化 | `absUseAllMonitors`/`TranslateCoorToAbsDisplay`/`ButtonAbsMouseInfos`（3640, 3658, 3668, 3674, 3676、絶対マウス出力使用時のみ到達） | 5 | `IDisplayCoordinateService` を実際に消費する最初のバッチ |
+| **Step3-3** | 画面座標変換の引数渡し化 | `absUseAllMonitors`/`TranslateCoorToAbsDisplay`/`ButtonAbsMouseInfos`（3640, 3658, 3668, 3674, 3676、絶対マウス出力使用時のみ到達） | 5 | **実装済み（2026-09-23、ビルド・テスト未検証）。実施記録は §3.2 参照** |
 | **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | ローテーション・アンチスナップバック・デッドゾーン・感度・ベジェ曲線（1595〜2227 台の約20件） | 約20 | 純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
 | **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | スクエアスティック・ジャイロ・カーブモード・ドリフト補正・`outputKBMMapping`（`Commit` 24件） | 約44 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する |
 | **Step3-6** | 残りのホットパス（ボタン・マウス・アクション設定・6軸） | `reverseX360ButtonMapping`（§2.4.2 の選択後）、`GetControlSettingsGroup`、`ButtonMouseInfos`、`SXSens`/`SZSens` 等、`PlayMacroCodeValue` 内の `outputKBMMapping` | 約35 | 着手前に §2.4.2 を確認 |
@@ -147,6 +147,20 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 **テスト**: `ControlServiceStep3Step2DiWiringTests.cs`（新規DI配線・5プロパティの実体一致を検証）、`MappingLogActionDoneCountOnTriggerTests.cs`（新規）を追加。`Mapping.cs` の巨大メソッド自体（`MapCustom`/`MapCustomAction`等）を直接駆動するテストは、既存の `MappingSpecialActionSuppressionTests.cs` 冒頭コメントが指摘する通り本プロジェクトでも困難と判断し、今回は追加していない。挙動保持の確認はビルド・実機確認に委ねる。
 
 **2026-09-23 実機確認で判明したログ問題の修正**: 実機ログで、コントローラー接続直後から `[DI] ProfileActionProvider.GetProfileAction` が全プロファイルアクション分（約40件）× 継続的に流れ続ける状態を確認。原因は、`MapCustom` の Stage3（ボタン型SA判定）と `MapCustomAction` のアクション走査が、**元々（Step3-2着手前から）毎入力レポートごとにプロファイル内の全アクションをループしてGetProfileActionを呼んでいた**ため（この頻度自体はStep3-2が作り込んだものではない）。従来は `Global.GetProfileAction` にログが無かったためこの高頻度呼び出しが可視化されていなかったが、Step3-2で `ProfileActionProvider.GetProfileAction`（`[DI]` Traceログ付き）に置き換えたことで、Trace有効時に大量のログが流れ続けるようになった。`ProfileActionProvider.GetProfileAction` の `[DI]` Traceログを削除して対応（§2.4.1の記述も訂正済み）。なお、同じ実機ログ中に発生した `0002_DS4WDisconnect Controller` によるコントローラー切断は、ユーザーが意図して実行したものであり本件とは無関係（正常動作）。
+
+### 3.2 Step3-3 実施記録（2026-09-23）
+
+**対象**: `MapCustom`（`Mapping.cs`）内の絶対マウス出力（`absMouseOut`）座標変換ロジック、5箇所（`absUseAllMonitors` 参照2、`TranslateCoorToAbsDisplay` 呼出2、`ButtonAbsMouseInfos` 参照1）。`MapCustom` は Step3-2 と同様に既に `ControlService ctrl` を引数として受け取っているため、コンテキスト構造体や新規パラメータは不要だった。
+
+**実装内容**:
+- `absUseAllMonitors`（`using static DS4Windows.Global;` 経由のbare参照）と `Global.absUseAllMonitors`（明示修飾）を、いずれも `ctrl.DisplayCoordinateService.UseAllMonitors`（Step3-1で新設済みの `IDisplayCoordinateService`）に置換した。
+- `Global.TranslateCoorToAbsDisplay(...)` の呼び出し2箇所を `ctrl.DisplayCoordinateService.TranslateCoorToAbsDisplay(...)` に置換した。
+- `ButtonAbsMouseInfos[device]`（bare参照、`Global.ButtonAbsMouseInfos` 経由）を `ctrl.ProfileSettingsService.ButtonAbsMouseInfos[device]` に置換した。`IProfileSettingsService.ButtonAbsMouseInfos` は既存の契約メンバー（追加不要）だが、`ControlService` にはこれを公開する `internal` アクセサが無かったため、既存の `_profileSettings` フィールドをそのまま返す読み取り専用プロパティ `ProfileSettingsService` を新設した（Step3-2で追加した5プロパティと同じパターン。新規サービス・新規フィールドは追加していない）。
+- `GetAbsMouseMapping`（旧Ledger行6752相当、現在行6814）の `ButtonAbsMouseInfos[device]` は Step3-3の対象外（`MapCustom` 以外のメソッドのため）。Step3-6以降で扱う。
+
+**テスト**: `ControlServiceStep3Step3DiWiringTests.cs`（新規。新設した `ProfileSettingsService` プロパティが Composition Root の実体をそのまま返すことを検証。`DisplayCoordinateService` はStep3-1で追加済みのため `ControlServiceStep3Step2DiWiringTests.cs` で検証済み、対象外）。`MapCustom` 自体を直接駆動するテストは、Step3-2と同様の理由（`MappingSpecialActionSuppressionTests.cs` 冒頭コメント参照）で見送り、挙動保持の確認はビルド・実機確認（絶対マウス出力モード使用時の座標変換の動作確認）に委ねる。
+
+**未検証事項**: この環境には dotnet がなく、`dotnet build`/`dotnet test` を実行できていない。開発者側でのビルド・テスト・実機確認（絶対マウス出力を使用するプロファイルでの動作確認）を経てからコミットすること。
 
 ---
 
