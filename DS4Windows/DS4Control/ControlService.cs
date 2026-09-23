@@ -2694,7 +2694,7 @@ namespace DS4Windows
                     // Use Task to reset device synth state and commit it
                     Task.Run(() =>
                     {
-                        Mapping.Commit(ind);
+                        Mapping.Commit(ind, _profileSettings);
                     }).Wait();
 
                     try
@@ -2995,7 +2995,7 @@ namespace DS4Windows
                 }
 
                 // Output any synthetic events.
-                Mapping.Commit(ind);
+                Mapping.Commit(ind, _profileSettings);
 
                 // Update the Lightbar color
                 DS4LightBar.updateLightBar(device, ind);

@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は実装済み（2026-09-23、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認待ち。§3.3）**。次はStep3-5。残実参照数は150→145（Abs Mouse削除）→118（Step3-4）に更新。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は実装済み（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テスト・実機確認待ち。§3.4）**。次はStep3-6。残実参照数は150→145（Abs Mouse削除）→118（Step3-4）→73（Step3-5）に更新。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -127,9 +127,9 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | **Step3-1** | 契約整備（新設・拡張のみ、`Mapping.cs` 不変更） | `IDisplayCoordinateService` 新設＋登録、`IProfileXmlStore.SaveControllerConfigsForDevice` 追加、`IProfileActionProvider.GetProfileActionIndexOf` 追加、`IProfileSettingsService.GetControlSettingsGroup` 追加、各モックテスト追加 | - | §2.3 の D1/D2 をここで確定 |
 | **Step3-2** | 非ホット・条件付き経路の引数渡し化 | `ProfilePath`（5257）、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`（8249/8423/8546、`Scale360degreeGyroAxis`＝SA操舵輪エミュレーション有効時のみ到達）、`getProfileActions`/`GetProfileAction`/`GetActions` 系（3274/3285/4887/4938/4946/4978/5320/5324、§2.4.1 の方針で解消） | 12 | **完了（2026-09-23、ビルド・テスト・実機確認済み）。実施記録は §3.1 参照** |
 | **Step3-3** | ~~画面座標変換の引数渡し化~~ | ~~`absUseAllMonitors`/`TranslateCoorToAbsDisplay`/`ButtonAbsMouseInfos`（3640, 3658, 3668, 3674, 3676、絶対マウス出力使用時のみ到達）~~ | ~~5~~ | **対象消滅（2026-09-23）。Abs Mouse機能削除によりMapCustomの該当ブロック自体を撤去。詳細は §3.2、`Phase6-Status.md` §6.8参照** |
-| **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | LS/RS/L2/R2 のローテーション・アンチスナップバック・デッドゾーン・感度・スクエアスティック・カーブモード・ベジェ曲線 | 27（計画時の概算「約20」を実地確認で確定） | **実装済み（2026-09-23、ビルド・テスト・実機確認待ち）。実施記録は §3.3 参照**。純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
-| **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する |
-| **Step3-6** | 残りのホットパス（ボタン・マウス・アクション設定・6軸） | `reverseX360ButtonMapping`（§2.4.2 の選択後）、`GetControlSettingsGroup`、`ButtonMouseInfos`、`SXSens`/`SZSens` 等、`PlayMacroCodeValue` 内の `outputKBMMapping` | 約35 | 着手前に §2.4.2 を確認 |
+| **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | LS/RS/L2/R2 のローテーション・アンチスナップバック・デッドゾーン・感度・スクエアスティック・カーブモード・ベジェ曲線 | 27（計画時の概算「約20」を実地確認で確定） | **完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録は §3.3 参照**。純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
+| **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する。**実装済み（2026-09-24、ビルド・テスト・実機確認待ち）。実施記録・`Commit` の扱いの決定（C1）は §3.4 参照** |
+| **Step3-6** | 残りのホットパス（ボタン・マウス・アクション設定・6軸） | `reverseX360ButtonMapping`（§2.4.2 の選択後）、`GetControlSettingsGroup`、`ButtonMouseInfos`、`SXSens`/`SZSens` 等、`PlayMacroCodeValue` 内の `outputKBMMapping` | 約35 | 着手前に §2.4.2 を確認 ／ 着手前に §3.4.1（非同期マクロ経路の扱い M1〜M3）も確認する |
 | **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する |
 
 バッチの粒度・順序は、Step3-1 完了後の実地確認（各バッチ着手前に該当範囲を再 grep する。`DI-App-Wide-Migration-Plan.md` §6.11）で必要に応じて見直す。
@@ -201,7 +201,56 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 - `MappingHotPathAllocationTests.cs`: `SetCurveAndDeadzone` を2万回呼び、ウォームアップ後の割り当てが0バイトであることを確認する（新設した引数の取得経路がヒープ割り当てを追加していないことの固定）。
 - `MappingSetCurveAndDeadzoneGlobalReferenceGuardTests.cs`: `Mapping.cs` は Step3-7 まで `using static DS4Windows.Global;` を残すため、非修飾の Global メンバ呼び出しが再導入されてもコンパイルは通る。このため、`SetCurveAndDeadzone` 本体のソースを走査し、置換済み21種のメンバー名（`Global.` 修飾・非修飾の両方）が残っていないこと、および `IProfileSettingsService settings` の引数があることを確認する回帰ガード（`ControlServiceGlobalReferenceGuardTests` と同じ方式）。
 
-**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は、コントローラー接続時に LS/RS/L2/R2 の入力（デッドゾーン・感度・出力カーブ・スクエアスティック・ローテーション）が変更前と同じ挙動であること、および ControllerReadings（入力値のプレビュー画面）の表示が引き続き正常であること（UI 側の呼び出し元の確認）。
+**検証結果（確定・2026-09-24）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功、実機でも LS/RS/L2/R2 のデッドゾーン・感度・出力カーブ・スクエアスティック・ローテーション、および ControllerReadings 画面の入力値プレビューが変更前と同じ挙動であることを確認済み。
+
+**（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は、コントローラー接続時に LS/RS/L2/R2 の入力（デッドゾーン・感度・出力カーブ・スクエアスティック・ローテーション）が変更前と同じ挙動であること、および ControllerReadings（入力値のプレビュー画面）の表示が引き続き正常であること（UI 側の呼び出し元の確認）。
+
+### 3.4 Step3-5 実施記録（2026-09-24）
+
+**実地再確認の結果（HEAD `b0e70b8`）**: 対象は Ledger／§3 の表と一致する45件（`SetCurveAndDeadzone` のジャイロ系 SX/SZ 13件、`ApplyStickCalibration` 8件、`Commit` の `outputKBMMapping` 24件）。**Step3 の残実参照数は 118 → 73**。
+
+**着手前の確認と決定（2026-09-24）**: `ApplyStickCalibration` は呼び出し元が `SetCurveAndDeadzone` 内の1箇所のみ（外部呼び出しなし）、ジャイロ系は `settings` が既に引数にあるため、選択肢は不要（Step3-4 と同じ形）。`Commit(int device)` は `ctrl` を持たないため選択肢を提示し、**案 C1 を採用**した。
+
+| 案 | 内容 | 判断 |
+|---|---|---|
+| **C1（採用）** | `Commit(int device, IProfileSettingsService settings)` に引数追加。呼び出し2箇所（`ControlService` の切断時 `Task.Run` 内と入力ループ末尾）は既存の `_profileSettings` を渡す。24箇所は `outputKBMMapping.` を `settings.OutputKBMMapping.` に置換（使用のたびに読む。ローカルへのキャッシュはしない） | S3（引数渡し）に合致、モデル図の変更なし、割り当てゼロ |
+| C2 | `ControlService ctrl` を渡す | 不採用: `Commit` は `ctrl` の他の機能を使わず、過剰な結合になる |
+| C3 | `Mapping` の static `profileSettings` を使う | 不採用: 型初期化時に1回だけ束縛されるため Ledger §3.1 の束縛ハザードが `OutputKBMMapping`（インスタンス自身が状態を持つ）で顕在化する。S3 の決定にも反する |
+
+**変更内容**:
+
+| 対象 | 変更 |
+|---|---|
+| `Mapping.Commit` | シグネチャに `DS4Windows.DI.IProfileSettingsService settings` を追加。`outputKBMMapping.` 24箇所を `settings.OutputKBMMapping.` に置換 |
+| `Mapping.ApplyStickCalibration` | シグネチャに `settings` を追加（`public`。外部呼び出しなしを確認済み）。ドリフト補正 `RightStickDriftXAxis` 等 8箇所を `settings.XXX` に置換 |
+| `Mapping.SetCurveAndDeadzone`（ジャイロ系） | 13箇所を置換: `IsUsingSAForControls(device)` → `settings.GyroOutputMode[device] == GyroOutMode.Controls`、`getSXDeadzone`/`getSZDeadzone`/`getSXMaxzone`/`getSZMaxzone`/`getSXAntiDeadzone`/`getSZAntiDeadzone`/`getSXSens`/`getSZSens` → `settings.SXDeadzone[device]` 等、`getSXOutCurveMode`/`getSZOutCurveMode` → `settings.GetSxOutCurveMode(device)`/`GetSzOutCurveMode(device)`、`sxOutBezierCurveObj`/`szOutBezierCurveObj` → `settings.SxOutBezierCurveObj`/`SzOutBezierCurveObj`。`ApplyStickCalibration` の呼び出しは `settings` を渡す形に更新 |
+| `ControlService.cs`（呼び出し元） | `Mapping.Commit(ind, _profileSettings)`（2箇所）。コンストラクタ引数・プロパティの追加なし |
+| 契約（`DS4Windows/DI/`）・`ServiceRegistration.cs` | 変更なし（対応メンバーはすべて既存） |
+
+**挙動の同一性（実装前に確認）**:
+- ジャイロ系・ドリフト補正: 置換前の `Global` 側の getter は `ProfileSettingsServiceInstance` または `m_Config`（`Global.store`）経由、置換後の `IProfileSettingsService` 側は `SafeConfig`（`_config ?? Global.store`）経由で、同じ `BackingStore` の同じ配列・同じ BezierCurve インスタンスを返す。`IsUsingSAForControls(i)`（`m_Config.gyroOutMode[i] == Controls`）と `settings.GyroOutputMode[i] == Controls` も同じ配列を見る。`Clone()`・ログ・キャッシュはない（ホットパスの制約を満たす）。
+- `Commit`: 置換前の `Global.outputKBMMapping` は `Global.ProfileSettingsServiceInstance.OutputKBMMapping`（DI の Singleton）を返す。`ControlService` は `InitOutputKBMHandler` で同じ `_profileSettings` の `OutputKBMMapping` を初期化・`PopulateConstants`／`PopulateMappings` しており、`Commit` が読むインスタンスは初期化されたものと同一になる（`RefreshOutputKBMHandler` による null 化・再構築のタイミングも従来どおり。読み取りは使用時）。Ledger §3.1 の束縛ハザード（static 束縛のずれ）は、静的フィールドではなく呼び出し元の DI 済みインスタンスを渡すため発生しない。置換前は getter 2段（`Global.outputKBMMapping` → `ProfileSettingsServiceInstance`）、置換後は1回のプロパティ読み取りで、割り当ては増えない。
+- `Commit` が使う出力先 `VirtualKBM`（`AppHost.GetService<IVirtualKBM>() ?? Global.outputKBMHandler`）は Step3 の対象外（Ledger §3.3）であり、変更していない。
+
+**テスト**:
+- `MappingArgumentPassThroughTests.cs`（更新）: ジャイロ系（出力モード・SX/SZ 感度・SX/SZ デッドゾーン・SX/SZ 出力カーブ、8件）と `ApplyStickCalibration`（4軸のドリフト補正の値、0〜255 への丸め、2件）を追加。Step3-4 と同じく、互いに独立した `BackingStore` を持つ2つの `ProfileSettingsService` の出力比較で、引数の値が使われていることを検証する。
+- `MappingHotPathAllocationTests.cs`（更新）: ジャイロ→コントロール変換の分岐を通した `SetCurveAndDeadzone`、および `ApplyStickCalibration` が割り当て0バイトであることを固定。
+- `MappingSetCurveAndDeadzoneGlobalReferenceGuardTests.cs`（更新）: 回帰ガードの対象メンバーにジャイロ系13種を追加。
+- `MappingCommitAndCalibrationGlobalReferenceGuardTests.cs`（新規）: `ApplyStickCalibration` と `Commit` のソース走査ガード（`settings` 引数の存在、`Global` メンバー［ドリフト補正4種・`outputKBMMapping`］の再混入なし、`settings.OutputKBMMapping.` 経由の参照の存在）。
+- **`Commit` の挙動テストは追加していない**: 出力先の `IVirtualKBM` を実 DI ホスト（`AppHost`）から解決しており、テストから実行すると実際にマウス・キー入力を送出してしまうため。ソース走査ガードと実機確認で担保する。
+
+**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) キーボード・マウス出力（ボタン割り当てのキー・マウスクリック、トグル、ホイール、ホイールの押しっぱなしリピート）が変更前と同じ挙動であること、(2) ジャイロをスティック（Controls）出力に割り当てた場合の感度・デッドゾーン・出力カーブが変更前と同じであること、(3) スティックのドリフト補正が設定どおりに効くこと。
+
+#### 3.4.1 Step3-6 の事前整理: 非同期マクロ経路の扱い（決定は Step3-6 着手時。方向性のみ記録）
+
+Step3-6 の `PlayMacroCodeValue`（14件）・`AltTabSwapping`／`AltTabSwappingRelease`（計5件）は、マクロを別スレッドで再生する経路にあり、`ctrl` を持たない。実コード（HEAD `b0e70b8`）で連鎖の規模を確認した: `PlayMacro`（内部呼び出し7箇所、`PlayMacroDirect`、リフレクションで呼ぶ `MappingPlayMacroDispatchGuardTests`）→ `PlayMacroTask`（2箇所）→ `PlayMacroCodeValue`（6箇所）・`EndMacro` 3オーバーロード（約10箇所）・`AltTabSwapping`（1箇所）・`AltTabSwappingRelease`（3箇所）。合計は約9メソッド・約35呼び出し箇所。入口は2つあり、`MapCustomAction`／`ProcessControlSettingAction` は `ctrl` を持つが、`DefaultMacroPlayer`（DI 登録の `IMacroPlayer`）経由の `PlayMacroDirect`／`EndMacroDirect` は持たない。`DefaultMacroPlayer` は `MacroAction` のフォールバックとテスト2件が `new DefaultMacroPlayer()` で生成している。
+
+| 案 | 内容 | 評価 |
+|---|---|---|
+| **M1（推奨）** | `IProfileSettingsService` を引数で末端まで通す。`ctrl` を持つ入口は `ctrl.ProfileSettingsService` を渡し、`DefaultMacroPlayer` には `IProfileSettingsService` を追加する（既存の `IVirtualKBM virtualKBM = null` と同じ任意引数方式で `new DefaultMacroPlayer()` を壊さない） | S3 に合致。束縛ハザードなし。**モデル図 04 の `IMacroPlayer` の依存列に `IProfileSettingsService` を追加する変更が必要（ユーザーの指示待ち）** |
+| M2 | 非同期経路だけ、既存の static `profileSettings` を暫定利用し Phase7 へ引き継ぐ | 変更は最小だが、束縛ハザードが実害になり得る。S3 の決定と矛盾 |
+| M3 | マクロ再生を instance クラス（`MacroRunner` 等）へ切り出す | Phase7 規模。モデル図 02・03 の変更も必要。Step3 の範囲外 |
+
 
 ---
 

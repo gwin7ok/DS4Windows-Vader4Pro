@@ -7,19 +7,19 @@ using Xunit.Abstractions;
 namespace DS4WindowsTests
 {
     /// <summary>
-    /// Phase6-Step3-4: `Mapping.SetCurveAndDeadzone` のスティック・トリガー系（Step3-4 の対象27件）が、
+    /// Phase6-Step3-4／3-5: `Mapping.SetCurveAndDeadzone` のスティック・トリガー系（Step3-4 の27件）とジャイロ系 SX/SZ（Step3-5 の13件）が、
     /// `using static DS4Windows.Global;` 経由の非修飾参照（または `Global.` 修飾参照）へ戻っていないことを固定する回帰ガード。
     /// `Mapping.cs` は Step3-7 まで `using static DS4Windows.Global;` を残すため、非修飾の Global メンバ呼び出しが
     /// 誤って再導入されてもコンパイルは通る。本テストはその混入を検出する。
     /// ソースファイルが見つからない環境（ソースなしで実行される場合）では、検査を行わず合格とする。
-    /// Step3-5 で残りのジャイロ系（SX/SZ）を引数渡しへ移す際に、対象メンバを本ガードへ追加する。
+    /// `ApplyStickCalibration` と `Commit` は `MappingCommitAndCalibrationGlobalReferenceGuardTests` が担当する。
     /// </summary>
     public class MappingSetCurveAndDeadzoneGlobalReferenceGuardTests
     {
         private const string StartMarker = "public static DS4State SetCurveAndDeadzone(";
         private const string EndMarker = "public static DS4State ApplyStickCalibration(";
 
-        /// <summary>Step3-4 で `IProfileSettingsService` 経由へ置換済みの `Global` メンバ名。</summary>
+        /// <summary>Step3-4／3-5 で `IProfileSettingsService` 経由へ置換済みの `Global` メンバ名。</summary>
         private static readonly string[] MigratedGlobalMembers =
         {
             "getLSRotation", "getRSRotation",
@@ -30,6 +30,12 @@ namespace DS4WindowsTests
             "GetSquareStickInfo",
             "getLsOutCurveMode", "getRsOutCurveMode", "getL2OutCurveMode", "getR2OutCurveMode",
             "lsOutBezierCurveObj", "rsOutBezierCurveObj", "l2OutBezierCurveObj", "r2OutBezierCurveObj",
+            // Step3-5: ジャイロ系（SX/SZ）
+            "IsUsingSAForControls",
+            "getSXDeadzone", "getSZDeadzone", "getSXMaxzone", "getSZMaxzone",
+            "getSXAntiDeadzone", "getSZAntiDeadzone", "getSXSens", "getSZSens",
+            "getSXOutCurveMode", "getSZOutCurveMode",
+            "sxOutBezierCurveObj", "szOutBezierCurveObj",
         };
 
         private readonly ITestOutputHelper _output;

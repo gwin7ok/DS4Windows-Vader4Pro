@@ -1236,7 +1236,7 @@ namespace DS4Windows
         private const double MOUSESTICKMINVELOCITY = 67.5;
         //private const double MOUSESTICKMINVELOCITY = 40.0;
 
-        public static void Commit(int device)
+        public static void Commit(int device, DS4Windows.DI.IProfileSettingsService settings)
         {
             SyntheticState state = deviceState[device];
             syncStateLock.EnterWriteLock();
@@ -1284,46 +1284,46 @@ namespace DS4Windows
 
                 if (!mouseHandled)
                 {
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_LEFTDOWN);
                 }
 
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
                 }
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
                 }
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
-                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
                 }
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
-                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
                 }
             }
             else if (globalState.currentClicks.toggleCount != 0 && globalState.previousClicks.toggleCount == 0 && !globalState.currentClicks.toggle)
             {
                 if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_LEFTUP);
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_RIGHTUP);
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_MIDDLEUP);
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
-                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
-                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
             }
 
             if (globalState.currentClicks.toggleCount == 0 && globalState.previousClicks.toggleCount == 0)
@@ -1361,75 +1361,75 @@ namespace DS4Windows
 
                     if (!mouseHandled)
                     {
-                        VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                        VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_LEFTDOWN);
                     }
                 }
                 else if (globalState.currentClicks.leftCount == 0 && globalState.previousClicks.leftCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftUp");
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_LEFTUP);
                 }
 
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
                 }
                 else if (globalState.currentClicks.middleCount == 0 && globalState.previousClicks.middleCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleUp");
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_MIDDLEUP);
                 }
 
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
                 }
                 else if (globalState.currentClicks.rightCount == 0 && globalState.previousClicks.rightCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightUp");
-                    VirtualKBM.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_RIGHTUP);
                 }
 
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
-                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
                 }
                 else if (globalState.currentClicks.fourthCount == 0 && globalState.previousClicks.fourthCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonUp btn=1");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=1");
-                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
                 }
 
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
-                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
                 }
                 else if (globalState.currentClicks.fifthCount == 0 && globalState.previousClicks.fifthCount != 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonUp btn=2");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=2");
-                    VirtualKBM.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
                 }
 
                 if (globalState.currentClicks.wUpCount != 0 && globalState.previousClicks.wUpCount == 0)
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseWheelUp");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelUp");
-                    VirtualKBM.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_UP, 0);
+                    VirtualKBM.PerformMouseWheelEvent(settings.OutputKBMMapping.WHEEL_TICK_UP, 0);
                     oldnow = DateTime.UtcNow;
-                    wheel = outputKBMMapping.WHEEL_TICK_UP;
+                    wheel = settings.OutputKBMMapping.WHEEL_TICK_UP;
                 }
                 else if (globalState.currentClicks.wUpCount == 0 && globalState.previousClicks.wUpCount != 0)
                     wheel = 0;
@@ -1438,9 +1438,9 @@ namespace DS4Windows
                 {
                     AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseWheelDown");
                     AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelDown");
-                    VirtualKBM.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_DOWN, 0);
+                    VirtualKBM.PerformMouseWheelEvent(settings.OutputKBMMapping.WHEEL_TICK_DOWN, 0);
                     oldnow = DateTime.UtcNow;
-                    wheel = outputKBMMapping.WHEEL_TICK_DOWN;
+                    wheel = settings.OutputKBMMapping.WHEEL_TICK_DOWN;
                 }
                 if (globalState.currentClicks.wDownCount == 0 && globalState.previousClicks.wDownCount != 0)
                     wheel = 0;
@@ -1561,7 +1561,7 @@ namespace DS4Windows
             cState.CopyTo(dState);
             //DS4State dState = new DS4State(cState);
 
-            cState = ApplyStickCalibration(device, dState);
+            cState = ApplyStickCalibration(device, dState, settings);
 
 
             if (lsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Radial)
@@ -2553,17 +2553,17 @@ namespace DS4Windows
             }
 
 
-            bool saControls = IsUsingSAForControls(device);
+            bool saControls = settings.GyroOutputMode[device] == GyroOutMode.Controls;
             if (saControls && dState.Motion.outputGyroControls)
             {
-                int SXD = (int)(128d * getSXDeadzone(device));
-                int SZD = (int)(128d * getSZDeadzone(device));
-                double SXMax = getSXMaxzone(device);
-                double SZMax = getSZMaxzone(device);
-                double sxAntiDead = getSXAntiDeadzone(device);
-                double szAntiDead = getSZAntiDeadzone(device);
-                double sxsens = getSXSens(device);
-                double szsens = getSZSens(device);
+                int SXD = (int)(128d * settings.SXDeadzone[device]);
+                int SZD = (int)(128d * settings.SZDeadzone[device]);
+                double SXMax = settings.SXMaxzone[device];
+                double SZMax = settings.SZMaxzone[device];
+                double sxAntiDead = settings.SXAntiDeadzone[device];
+                double szAntiDead = settings.SZAntiDeadzone[device];
+                double sxsens = settings.SXSens[device];
+                double szsens = settings.SZSens[device];
                 int result = 0;
 
                 int gyroX = cState.Motion.accelX, gyroZ = cState.Motion.accelZ;
@@ -2609,7 +2609,7 @@ namespace DS4Windows
                         (int)Math.Min(128d, szsens * 128d * (absz / 128d));
                 }
 
-                int sxOutCurveMode = getSXOutCurveMode(device);
+                int sxOutCurveMode = settings.GetSxOutCurveMode(device);
                 if (sxOutCurveMode > 0)
                 {
                     double temp = dState.Motion.outputAccelX / 128.0;
@@ -2656,11 +2656,11 @@ namespace DS4Windows
                     else if (sxOutCurveMode == 6)
                     {
                         int signSA = Math.Sign(dState.Motion.outputAccelX);
-                        dState.Motion.outputAccelX = sxOutBezierCurveObj[device].arrayBezierLUT[Math.Min(Math.Abs(dState.Motion.outputAccelX), 128)] * signSA;
+                        dState.Motion.outputAccelX = settings.SxOutBezierCurveObj[device].arrayBezierLUT[Math.Min(Math.Abs(dState.Motion.outputAccelX), 128)] * signSA;
                     }
                 }
 
-                int szOutCurveMode = getSZOutCurveMode(device);
+                int szOutCurveMode = settings.GetSzOutCurveMode(device);
                 if (szOutCurveMode > 0 && dState.Motion.outputAccelZ != 0)
                 {
                     double temp = dState.Motion.outputAccelZ / 128.0;
@@ -2707,7 +2707,7 @@ namespace DS4Windows
                     else if (szOutCurveMode == 6)
                     {
                         int signSA = Math.Sign(dState.Motion.outputAccelZ);
-                        dState.Motion.outputAccelZ = szOutBezierCurveObj[device].arrayBezierLUT[Math.Min(Math.Abs(dState.Motion.outputAccelZ), 128)] * signSA;
+                        dState.Motion.outputAccelZ = settings.SzOutBezierCurveObj[device].arrayBezierLUT[Math.Min(Math.Abs(dState.Motion.outputAccelZ), 128)] * signSA;
                     }
                 }
             }
@@ -2715,28 +2715,28 @@ namespace DS4Windows
             return dState;
         }
 
-        public static DS4State ApplyStickCalibration(int device, DS4State state)
+        public static DS4State ApplyStickCalibration(int device, DS4State state, DS4Windows.DI.IProfileSettingsService settings)
         {
-            if (RightStickDriftXAxis[device] != 0)
+            if (settings.RightStickDriftXAxis[device] != 0)
             {
-                var translated = state.RX - RightStickDriftXAxis[device];
+                var translated = state.RX - settings.RightStickDriftXAxis[device];
                 state.RX = (byte)Math.Clamp(translated, 0, 255);
             }
-            if (RightStickDriftYAxis[device] != 0)
+            if (settings.RightStickDriftYAxis[device] != 0)
             {
-                var translated = state.RY - RightStickDriftYAxis[device];
+                var translated = state.RY - settings.RightStickDriftYAxis[device];
                 state.RY = (byte)Math.Clamp(translated, 0, 255);
             }
 
-            if (LeftStickDriftXAxis[device] != 0)
+            if (settings.LeftStickDriftXAxis[device] != 0)
             {
-                var translated = state.LX - LeftStickDriftXAxis[device];
+                var translated = state.LX - settings.LeftStickDriftXAxis[device];
                 state.LX = (byte)Math.Clamp(translated, 0, 255);
             }
 
-            if (LeftStickDriftYAxis[device] != 0)
+            if (settings.LeftStickDriftYAxis[device] != 0)
             {
-                var translated = state.LY - LeftStickDriftYAxis[device];
+                var translated = state.LY - settings.LeftStickDriftYAxis[device];
                 state.LY = (byte)Math.Clamp(translated, 0, 255);
             }
 
