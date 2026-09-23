@@ -91,7 +91,7 @@ Step3-1 の実装 PR 内で D1 を既定として進めるが、`ControlService`
 |---|---|---|
 | `getProfileActions(device)` → `PA.GetProfileActionNames(...)` | 使わず、`IProfileActionProvider.ProfileActions[device]`（`List<string>` の実体）を直接参照する形に置換する | `GetProfileActionNames` 相当は毎回 `ToArray()` する実装だが、`ProfileActions[device]` は元の `Global.getProfileActions` と同じ実体参照であり、割り当てが増えない |
 | `GetActions()` → `SA.Actions` | 使わず、`ISpecialActionRepository.ActionList`（実体）を参照する | `Actions` はコピーを返す実装のため。`ActionList` は元の `Global.GetActions()` と同じ実体参照 |
-| `GetProfileAction(device, name)` → `PA.GetProfileAction(...)` | そのまま置換する | `ProfileActionProvider.GetProfileAction` の Trace ログは `AppLogger.IsTraceEnabled` で保護されており、通常運用（Trace 無効）では bool 判定1回のみでヒープ割り当てを伴わない。ログ追加は copilot-instructions §2.3（DI 境界通過時の `[DI]` ログ付与）に沿った意図的な設計であり、既存不具合ではない |
+| `GetProfileAction(device, name)` → `PA.GetProfileAction(...)` | そのまま置換する。**ただし2026-09-23の実機確認で判明した理由により、`ProfileActionProvider.GetProfileAction`側の`[DI]` Traceログは削除した（§3.1追記参照）** | 割り当てコストの面では問題なし（`AppLogger.IsTraceEnabled`ガードによりTrace無効時はbool判定1回のみ）。ただし、このメソッドは`MapCustom`のStage3・`MapCustomAction`のアクション走査から**毎レポート・プロファイル内アクション数分（実測最大約40回）**呼ばれるホットパスであり、Trace有効時にログが大量に流れ続けて他のログが読めなくなる実害が実機確認で判明したため、ログ自体を削除した |
 
 #### 2.4.2 選択肢の提示が必要な項目 A: `reverseX360ButtonMapping`
 
@@ -145,6 +145,8 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 **シグネチャ変更が必要だった唯一の例**: `LogActionDoneCountOnTrigger`（`Mapping.cs` の診断ログ専用 private ヘルパー、`ctrl` 引数を持たない）には `ControlService ctrl` を新規パラメータとして追加し、11箇所の呼び出し元すべてを更新した。
 
 **テスト**: `ControlServiceStep3Step2DiWiringTests.cs`（新規DI配線・5プロパティの実体一致を検証）、`MappingLogActionDoneCountOnTriggerTests.cs`（新規）を追加。`Mapping.cs` の巨大メソッド自体（`MapCustom`/`MapCustomAction`等）を直接駆動するテストは、既存の `MappingSpecialActionSuppressionTests.cs` 冒頭コメントが指摘する通り本プロジェクトでも困難と判断し、今回は追加していない。挙動保持の確認はビルド・実機確認に委ねる。
+
+**2026-09-23 実機確認で判明したログ問題の修正**: 実機ログで、コントローラー接続直後から `[DI] ProfileActionProvider.GetProfileAction` が全プロファイルアクション分（約40件）× 継続的に流れ続ける状態を確認。原因は、`MapCustom` の Stage3（ボタン型SA判定）と `MapCustomAction` のアクション走査が、**元々（Step3-2着手前から）毎入力レポートごとにプロファイル内の全アクションをループしてGetProfileActionを呼んでいた**ため（この頻度自体はStep3-2が作り込んだものではない）。従来は `Global.GetProfileAction` にログが無かったためこの高頻度呼び出しが可視化されていなかったが、Step3-2で `ProfileActionProvider.GetProfileAction`（`[DI]` Traceログ付き）に置き換えたことで、Trace有効時に大量のログが流れ続けるようになった。`ProfileActionProvider.GetProfileAction` の `[DI]` Traceログを削除して対応（§2.4.1の記述も訂正済み）。なお、同じ実機ログ中に発生した `0002_DS4WDisconnect Controller` によるコントローラー切断は、ユーザーが意図して実行したものであり本件とは無関係（正常動作）。
 
 ---
 

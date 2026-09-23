@@ -38,8 +38,13 @@ namespace DS4Windows
                 action = act;
             }
 
-            if (AppLogger.IsTraceEnabled)
-                AppLogger.LogTrace($"[DI] ProfileActionProvider.GetProfileAction: Slot {deviceIndex}, Action '{actionName}'");
+            // Phase6-Step3-2是正: このメソッドは Mapping.cs の毎レポート評価（MapCustom の
+            // Stage3、MapCustomAction のアクション走査）から、プロファイル内のアクション数分
+            // （実測で最大約40回）呼ばれるホットパスである。[DI] ログをここに置くと、Trace有効時に
+            // 秒間数百〜数千行のログが流れ続け、他のTraceログが実質的に読めなくなる実害が
+            // 実機確認で判明した（Global.GetProfileAction の元実装にはログが無かった）。
+            // ログ自体の割り当てコスト（IsTraceEnabled ガード）は問題にならないが、ログの
+            // 可読性を著しく損なうため、本メソッドではログを出力しない。
             return action;
         }
 
