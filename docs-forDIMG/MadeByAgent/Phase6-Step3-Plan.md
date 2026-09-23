@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。次はStep3-6。残実参照数は150→145（Abs Mouse削除）→118（Step3-4）→73（Step3-5）に更新。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は実装済み（グループ A の24件＋契約追加 R1。ビルド・テスト・実機確認待ち。§3.5）**。次は Step3-6a の実機確認後に Step3-6b。残実参照数は、Step3-5 完了後の再集計（2026-09-24）で **58件**と判明した（従来の記載「118」「73」は、Step3-2 で解消した12件の引き算漏れによる過大）。Step3-6a 完了後は34件（3-6b 12＋3-6c 19＋Step3-7 の温存3）。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -105,6 +105,8 @@ Step3-1 の実装 PR 内で D1 を既定として進めるが、`ControlService`
 
 Step3 の対象バッチ（§3 Step3-6）着手前に確認する。
 
+**決定（2026-09-24）: R1 を採用**。`IProfileSettingsService` にコピーしない読み取り専用プロパティ `ReverseX360ButtonMapping`（`Global.reverseX360ButtonMapping` の参照をそのまま返す）を追加し、`GetReverseX360ButtonMapping()`（コピー版）はそのまま残す。モデル図 03 は `IProfileSettingsService` の個別メンバーを記載していないため変更不要。実装は Step3-6a（§3.5）。
+
 #### 2.4.3 選択肢の提示が必要な項目 B: `Global.ApplyProfile`（5303〜5333行のフォールバックブロック）
 
 このフォールバックは、`IProfileApplicationService` が DI 未登録の場合にのみ通る経路であり、外側で `HaltReportingRunAction` を呼び出したうえで `Global.ApplyProfile` を実行している。`IProfileApplicationService.ApplyProfile` に置き換える場合、同サービスの既知の不具合（K1: `deviceIndex >= 4` のスロットを拒否する、戻り値を捨てて成功扱いにする、Halt を自身で行わない）の影響を受ける。K1 は Step2 完了報告の持ち越し事項として既に記録されている（`Phase6-Status.md` §6.5）。
@@ -129,7 +131,9 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | **Step3-3** | ~~画面座標変換の引数渡し化~~ | ~~`absUseAllMonitors`/`TranslateCoorToAbsDisplay`/`ButtonAbsMouseInfos`（3640, 3658, 3668, 3674, 3676、絶対マウス出力使用時のみ到達）~~ | ~~5~~ | **対象消滅（2026-09-23）。Abs Mouse機能削除によりMapCustomの該当ブロック自体を撤去。詳細は §3.2、`Phase6-Status.md` §6.8参照** |
 | **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | LS/RS/L2/R2 のローテーション・アンチスナップバック・デッドゾーン・感度・スクエアスティック・カーブモード・ベジェ曲線 | 27（計画時の概算「約20」を実地確認で確定） | **完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録は §3.3 参照**。純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
 | **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する。**完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録・`Commit` の扱いの決定（C1）は §3.4 参照** |
-| **Step3-6** | 残りのホットパス（ボタン・マウス・アクション設定・6軸） | `reverseX360ButtonMapping`（§2.4.2 の選択後）、`GetControlSettingsGroup`、`ButtonMouseInfos`、`SXSens`/`SZSens` 等、`PlayMacroCodeValue` 内の `outputKBMMapping` | 約35 | 着手前に §2.4.2 を確認 ／ 着手前に §3.4.1（非同期マクロ経路の扱い M1〜M3）も確認する |
+| **Step3-6a** | 残りのホットパス: `ctrl` から読める経路（グループ A） | `MapCustom`／`ProcessControlSettingAction`／`MapCustomAction`／`getMouseMapping`／`Scale360degreeGyroAxis`（いずれも `ControlService ctrl` を持つ）の `getProfileActionCount`／`GetSASteeringWheelEmulationAxis`／`ButtonMouseInfos`／`outputKBMMapping`／`GetDS4CSetting`／`getLSDeadzone`／`getRSDeadzone`／`SAWheelFuzzValues`／`getSXDeadzone`／`WheelSmoothInfo`／`getSXAntiDeadzone`、`reverseX360ButtonMapping`（決定 R1）、および `ctrl` を持たない `ReleaseActionKeys`／`IfAxisIsNotModified`（`settings` 引数を追加） | 24 | **実装済み（2026-09-24、ビルド・テスト・実機確認待ち）。実施記録は §3.5 参照** |
+| **Step3-6b** | 判定補助メソッド群（グループ B） | `GetByteMapping`／`GetBoolMappingExternal`／`GetBoolMapping`／`getBoolSpecialActionMapping`／`GetBoolActionMapping`／`GetXYAxisMapping` の `IsUsingSAForControls`（6）・`SXSens`／`SZSens`（4）、`GetMouseWheelMapping` の `Global.outputKBMMapping`（2）。**方針 P2（`Mapping` の静的 `profileSettings` を利用。決定 2026-09-24、§3.4.1）** | 12 | 呼び出し元が多く（約50箇所）`ctrl` を持たないため引数渡しは行わない。TODO コメント（Phase7 の instance 化で解消）を付ける |
+| **Step3-6c** | 非同期マクロ経路（グループ C） | `PlayMacroCodeValue`（14）・`AltTabSwapping`（3）・`AltTabSwappingRelease`（2）の `outputKBMMapping`。**方針 P2（決定 2026-09-24、§3.4.1）** | 19 | モデル図 04 の変更は不要。K3（マクロ二重ガード）は Phase7 で再設計するため触れない |
 | **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する |
 
 バッチの粒度・順序は、Step3-1 完了後の実地確認（各バッチ着手前に該当範囲を再 grep する。`DI-App-Wide-Migration-Plan.md` §6.11）で必要に応じて見直す。
@@ -243,7 +247,7 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 
 **（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) キーボード・マウス出力（ボタン割り当てのキー・マウスクリック、トグル、ホイール、ホイールの押しっぱなしリピート）が変更前と同じ挙動であること、(2) ジャイロをスティック（Controls）出力に割り当てた場合の感度・デッドゾーン・出力カーブが変更前と同じであること、(3) スティックのドリフト補正が設定どおりに効くこと。
 
-#### 3.4.1 Step3-6 の事前整理: 非同期マクロ経路の扱い（決定は Step3-6 着手時。方向性のみ記録）
+#### 3.4.1 Step3-6 の事前整理: `ctrl` を持たない連鎖（非同期マクロ経路・判定補助メソッド群）の扱い（2026-09-24 決定: P2）
 
 Step3-6 の `PlayMacroCodeValue`（14件）・`AltTabSwapping`／`AltTabSwappingRelease`（計5件）は、マクロを別スレッドで再生する経路にあり、`ctrl` を持たない。実コード（HEAD `b0e70b8`）で連鎖の規模を確認した: `PlayMacro`（内部呼び出し7箇所、`PlayMacroDirect`、リフレクションで呼ぶ `MappingPlayMacroDispatchGuardTests`）→ `PlayMacroTask`（2箇所）→ `PlayMacroCodeValue`（6箇所）・`EndMacro` 3オーバーロード（約10箇所）・`AltTabSwapping`（1箇所）・`AltTabSwappingRelease`（3箇所）。合計は約9メソッド・約35呼び出し箇所。入口は2つあり、`MapCustomAction`／`ProcessControlSettingAction` は `ctrl` を持つが、`DefaultMacroPlayer`（DI 登録の `IMacroPlayer`）経由の `PlayMacroDirect`／`EndMacroDirect` は持たない。`DefaultMacroPlayer` は `MacroAction` のフォールバックとテスト2件が `new DefaultMacroPlayer()` で生成している。
 
@@ -253,6 +257,47 @@ Step3-6 の `PlayMacroCodeValue`（14件）・`AltTabSwapping`／`AltTabSwapping
 | M2 | 非同期経路だけ、既存の static `profileSettings` を暫定利用し Phase7 へ引き継ぐ | 変更は最小だが、束縛ハザードが実害になり得る。S3 の決定と矛盾 |
 | M3 | マクロ再生を instance クラス（`MacroRunner` 等）へ切り出す | Phase7 規模。モデル図 02・03 の変更も必要。Step3 の範囲外 |
 
+**決定（2026-09-24）: P2 を採用し、M1 は採用しない**（ユーザー承認。Step3-6 の再集計で連鎖がさらに大きいと判明したため、前回の推奨 M1 から変更した）。
+- 再集計で、非同期マクロ経路（グループ C、19件）に加え、`ctrl` を持たない判定補助メソッド群（グループ B、12件。呼び出し元は `getBoolSpecialActionMapping` 17・`GetBoolActionMapping` 11 など約50箇所）にも同じ連鎖があると分かった。引数渡し（P1）では約85箇所の変更が必要になり、`DefaultMacroPlayer` への依存追加（モデル図 04 の変更）も要る。しかもこれらは Phase7 で `Mapping` を instance 化すれば不要になる作業である。
+- P2 は、`Mapping` に元からある静的フィールド `profileSettings`（`AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance`）から読む。`Global` 参照は完全に消え、Step3 の目的（`Global` 直接参照の根絶）を達成できる。`AppHost.GetService` は、ホスト未構築なら構築してから返す実装のため、通常は他の箇所と同じ Singleton に束縛される（Ledger §3.1 の懸念は理論上のもの。ただし静的結合が Phase7 まで残ることは変わらない）。
+- 適用範囲: グループ B（Step3-6b）とグループ C（Step3-6c）のみ。`ctrl` を持つ経路（グループ A）は従来どおり S3（`ctrl.ProfileSettingsService` 等）で置換する。
+- 実施時の約束: 置換箇所ごとに、Phase7 の instance 化で解消する旨の TODO/技術的負債コメント（`copilot-instructions.md` §3.3 原則4）を付ける。モデル図の変更は不要（`IMacroPlayer` の依存は変えない）。
+- 注意点（テスト）: 静的 `profileSettings` は型初期化時に1回だけ束縛されるため、テストで `Global.ProfileSettingsServiceInstance` を差し替えても追随しない（Phase6-Status.md §6.4 の教訓1）。この経路の検証はソース走査ガードと実機確認で担保する。
+
+
+### 3.5 Step3-6a 実施記録（2026-09-24）
+
+**着手前の確認と決定（2026-09-24）**: Step3-6 の再集計（HEAD `236e76f`）で、残る `Global` 参照は58件（従来記載の73件は Step3-2 の12件の引き算漏れによる過大）、3グループに分かれると判明した。ユーザーの決定: **確認1＝R1 採用**（§2.4.2）、**確認2＝P2 採用**（§3.4.1）、**確認3＝Step3-6 を 3-6a／3-6b／3-6c の3バッチに分割**。
+
+| グループ | 内容 | 件数 | バッチ |
+|---|---|---:|---|
+| A | `ControlService ctrl` を持つ経路（`MapCustom`／`ProcessControlSettingAction`／`MapCustomAction`／`getMouseMapping`／`Scale360degreeGyroAxis`）と、その呼び出し先の `ReleaseActionKeys`／`IfAxisIsNotModified` | 24 | **3-6a（本節）** |
+| B | 判定補助メソッド群（`GetBoolMapping` 系、`GetMouseWheelMapping`） | 12 | 3-6b（P2） |
+| C | 非同期マクロ経路（`PlayMacroCodeValue`／`AltTabSwapping`／`AltTabSwappingRelease`） | 19 | 3-6c（P2） |
+| （Step3-7） | 温存: `Global.ApplyProfile` フォールバック、`ProfileSettingsServiceInstance`／`outputKBMHandler` の `??` フォールバック | 3 | Step3-7 |
+
+**変更内容（グループ A、24件）**:
+
+| 対象 | 変更 |
+|---|---|
+| `MapCustom` | `getProfileActionCount(device)` → `ctrl.ProfileActionProvider.GetProfileActionCount(device)`、`GetSASteeringWheelEmulationAxis(device)` → `ctrl.ProfileSettingsService.GetSASteeringWheelEmulationAxis(device)`（2件） |
+| `ProcessControlSettingAction` | `ButtonMouseInfos[device]` 2件、`outputKBMMapping.GetRealEventKey` 1件、`reverseX360ButtonMapping[...]` 1件 → いずれも `ctrl.ProfileSettingsService` 経由（4件） |
+| `MapCustomAction` | `GetDS4CSetting` 3件、`outputKBMMapping`（`Global.` 修飾の1件を含む）3件 → `ctrl.ProfileSettingsService` 経由。`ReleaseActionKeys` の呼び出し2件に `ctrl.ProfileSettingsService` を渡す（6件。`Global.ApplyProfile` は Step3-7 まで温存） |
+| `ReleaseActionKeys` | シグネチャに `IProfileSettingsService settings` を追加（呼び出し元は `MapCustomAction` の2件のみ）。`GetDS4CSetting`・`outputKBMMapping` 3件を `settings` 経由に置換（3件） |
+| `IfAxisIsNotModified` | 同様に `settings` 引数を追加し `GetDS4CSetting` を置換（1件）。**呼び出し元のない private メソッド**（確認済み）のため、注記コメントを付けて温存（削除は Phase7 の整理で判断） |
+| `getMouseMapping` | `getLSDeadzone`／`getRSDeadzone` → `ctrl.ProfileSettingsService.LSModInfo[device].deadZone`／`RSModInfo[device].deadZone`、`ButtonMouseInfos[device]` → `ctrl.ProfileSettingsService.ButtonMouseInfos[device]`（3件） |
+| `Scale360degreeGyroAxis` | `SAWheelFuzzValues`／`getSXDeadzone`／`WheelSmoothInfo`／`getSXAntiDeadzone` → `ctrl.ProfileSettingsService` 経由（4件。既にあった `profileSettings.OutContType[device]` は静的フィールド経由のまま変更なし） |
+| 契約（R1） | `IProfileSettingsService` に `ReverseX360ButtonMapping { get; }` を追加。`ProfileSettingsService` は `Global.reverseX360ButtonMapping` の参照をそのまま返す（コピー版 `GetReverseX360ButtonMapping()` は残す） |
+| `ServiceRegistration.cs`・`ControlService` | 変更なし（`ControlService` の `ProfileActionProvider`／`ProfileSettingsService` の internal プロパティは Step3-2・3-3 で追加済み） |
+
+**挙動の同一性（実装前に確認）**: 置換前の `Global` 側の getter は `ProfileSettingsServiceInstance` または `m_Config`（`Global.store`）経由、置換後の `IProfileSettingsService`／`IProfileActionProvider` 側は `SafeConfig`（`_config ?? Global.store`）または同じ BackingStore 経由で、同じ配列・同じインスタンスを返す（`GetDS4CSetting` は `Global` が `ProfileSettingsServiceInstance` へ委譲済み）。`reverseX360ButtonMapping` は、元の `Global` の素の配列と同じ参照を返すため、割り当て・挙動とも変わらない。ホットパスで `Clone()`・ログ・キャッシュは追加していない。
+
+**テスト**:
+- `ProfileSettingsServiceReverseX360ButtonMappingTests.cs`（新規）: `ReverseX360ButtonMapping` が `Global.reverseX360ButtonMapping` と同一参照であること、コピー版が独立したコピーを返し続けること、読み取りの割り当てが0バイトであること。
+- `MappingControlPathGlobalReferenceGuardTests.cs`（新規）: グループ A の7メソッドのソース走査ガード（移行済み `Global` メンバー12種の非修飾・`Global.` 修飾の参照が残っていないこと、`ReleaseActionKeys`／`IfAxisIsNotModified` が `settings` 引数を持つこと）。走査の方式（コメント除去＋波括弧の対応）は、実ファイルに対して事前に検証済み。
+- これらのメソッド自体（`MapCustom`／`MapCustomAction` 等）を直接駆動するテストは、既存 `MappingSpecialActionSuppressionTests.cs` 冒頭コメントのとおり困難なため追加していない。挙動保持はビルドと実機確認で担保する。
+
+**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) ボタンを別のゲームパッドボタン（Xbox→DS4 の対応表を引く経路）へ割り当てた場合の動作、(2) ボタン→キー／マクロ割り当て（`GetRealEventKey`）の動作と、押した状態で離したときのキー解放、(3) スペシャルアクション（トリガーの押し離し、トリガーに割り当てたキー／マクロの解放、タップ判定）、(4) ボタンによるマウス移動と、Extras の「Change Mouse Sensitivity」（`ButtonMouseInfos`）、(5) スティックのデッドゾーンが 0 のときのマウス移動の補正（`getMouseMapping`）。ステアリングホイールエミュレーション（`Scale360degreeGyroAxis`、`GetSASteeringWheelEmulationAxis`）は、対象の vJoy 環境がなければ `Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録する。
 
 ---
 

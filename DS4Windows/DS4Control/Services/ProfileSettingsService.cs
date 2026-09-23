@@ -609,6 +609,10 @@ namespace DS4Windows
             return (DS4Controls[])Global.reverseX360ButtonMapping.Clone();
         }
 
+        // コピーしない版（Phase6-Step3-6a、決定 R1）。Global.reverseX360ButtonMapping は起動時に作られて以後変化しない定数表。
+        // 元の Global.reverseX360ButtonMapping（素の public static 配列）と同じく、参照をそのまま返す。
+        public DS4Controls[] ReverseX360ButtonMapping => Global.reverseX360ButtonMapping;
+
         public void ResetToDefaults(int deviceIndex)
         {
             if (deviceIndex >= 0 && deviceIndex < TEST_PROFILE_ITEM_COUNT)

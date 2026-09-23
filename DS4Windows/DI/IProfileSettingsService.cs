@@ -54,6 +54,13 @@ namespace DS4Windows.DI
 
         X360Controls[] GetDefaultButtonMapping();
         DS4Controls[] GetReverseX360ButtonMapping();
+        /// <summary>
+        /// Xbox360 ボタン → DS4 ボタンの逆引き表そのもの（<c>Global.reverseX360ButtonMapping</c>）を、コピーせずに返す。
+        /// 起動時に1回作られて以後変化しない定数表で、毎入力レポートの経路（<c>Mapping.ProcessControlSettingAction</c>）から引かれるため、
+        /// 呼び出しごとに <c>Clone()</c> する <see cref="GetReverseX360ButtonMapping"/> ではなく本プロパティを使う（ゼロアロケーション方針、Phase6-Step3-6a の決定 R1）。
+        /// 返された配列は呼び出し側で書き換えないこと。書き換える可能性がある呼び出し元は <see cref="GetReverseX360ButtonMapping"/>（コピー版）を使う。
+        /// </summary>
+        DS4Controls[] ReverseX360ButtonMapping { get; }
 
         // ---- Step10-2-A-1: スティック関連 (m_Config委譲) ----
         StickDeadZoneInfo[] LSModInfo { get; }

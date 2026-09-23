@@ -2822,7 +2822,7 @@ namespace DS4Windows
             //DS4StateFieldMapping outputfieldMapping = new DS4StateFieldMapping(cState, eState, tp);
 
             SyntheticState deviceState = Mapping.deviceState[device];
-            if (getProfileActionCount(device) > 0 || profileSettings.GetUseTempProfile(device))
+            if (ctrl.ProfileActionProvider.GetProfileActionCount(device) > 0 || profileSettings.GetUseTempProfile(device))
                 MapCustomAction(device, cState, MappedState, eState, tp, ctrl, fieldMapping, outputfieldMapping);
             //if (ctrl.DS4Controllers[device] == null) return;
 
@@ -3385,7 +3385,7 @@ namespace DS4Windows
                 if (macroControl[25]) MappedState.OutputTouchButton = true;
             }
 
-            if (GetSASteeringWheelEmulationAxis(device) != SASteeringWheelEmulationAxisType.None)
+            if (ctrl.ProfileSettingsService.GetSASteeringWheelEmulationAxis(device) != SASteeringWheelEmulationAxisType.None)
             {
                 MappedState.SASteeringWheelEmulationUnit = Mapping.Scale360degreeGyroAxis(device, eState, ctrl);
             }
@@ -4329,7 +4329,7 @@ namespace DS4Windows
 
                         if (extras[7] == 1)
                         {
-                            ButtonMouseInfo tempMouseInfo = ButtonMouseInfos[device];
+                            ButtonMouseInfo tempMouseInfo = ctrl.ProfileSettingsService.ButtonMouseInfos[device];
                             if (tempMouseInfo.tempButtonSensitivity == -1)
                             {
                                 tempMouseInfo.tempButtonSensitivity = extras[8];
@@ -4343,7 +4343,7 @@ namespace DS4Windows
                 {
                     DS4LightBar.forcelight[device] = false;
                     DS4LightBar.forcedFlash[device] = 0;
-                    ButtonMouseInfo tempMouseInfo = ButtonMouseInfos[device];
+                    ButtonMouseInfo tempMouseInfo = ctrl.ProfileSettingsService.ButtonMouseInfos[device];
                     if (tempMouseInfo.tempButtonSensitivity != -1)
                     {
                         tempMouseInfo.SetActiveButtonSensitivity(tempMouseInfo.buttonSensitivity);
@@ -4433,7 +4433,7 @@ namespace DS4Windows
                 else if (actionType == DS4ControlSettings.ActionType.Key)
                 {
                     ushort key = Convert.ToUInt16(action.actionKey);
-                    uint nativeKey = outputKBMMapping.GetRealEventKey(actionAlias != 0 ? actionAlias : (uint)key);
+                    uint nativeKey = ctrl.ProfileSettingsService.OutputKBMMapping.GetRealEventKey(actionAlias != 0 ? actionAlias : (uint)key);
                     bool isPressed = GetBoolActionMapping(device, dcs.control, cState, eState, tp, fieldMapping);
                     bool useScan = keyType.HasFlag(DS4KeyType.ScanCode);
                     bool isToggle = keyType.HasFlag(DS4KeyType.Toggle);
@@ -4469,7 +4469,7 @@ namespace DS4Windows
                     xboxControl = (X360Controls)action.actionBtn;
                     if (xboxControl >= X360Controls.LXNeg && xboxControl <= X360Controls.Start)
                     {
-                        DS4Controls tempDS4Control = reverseX360ButtonMapping[(int)xboxControl];
+                        DS4Controls tempDS4Control = ctrl.ProfileSettingsService.ReverseX360ButtonMapping[(int)xboxControl];
                         customMapQueue[device].Enqueue(new ControlToXInput(dcs.control, tempDS4Control));
                         //tempControlDict.Add(dcs.control, tempDS4Control);
                     }
@@ -4695,9 +4695,10 @@ namespace DS4Windows
                 }
         }
 
-        private static bool IfAxisIsNotModified(int device, bool shift, DS4Controls dc)
+        // 注: 呼び出し元のない private メソッド（Phase6-Step3-6a 時点で確認）。Global 参照だけ外し、削除は Phase7 の整理で判断する。
+        private static bool IfAxisIsNotModified(int device, bool shift, DS4Controls dc, DS4Windows.DI.IProfileSettingsService settings)
         {
-            return shift ? false : GetDS4CSetting(device, dc).actionType == DS4ControlSettings.ActionType.Default;
+            return shift ? false : settings.GetDS4CSetting(device, dc).actionType == DS4ControlSettings.ActionType.Default;
         }
 
         // InitializeActionDoneList removed — ActionManager owns per-action state initialization.
@@ -4818,7 +4819,7 @@ namespace DS4Windows
                     //If a key or button is assigned to the trigger, a key special action is used like
                     //a quick tap to use and hold to use the regular custom button/key
                     bool triggerToBeTapped = action.typeID == SpecialAction.ActionTypeId.None && action.trigger.Count == 1 &&
-                            (GetDS4CSetting(device, action.trigger[0])?.IsDefault ?? false);
+                            (ctrl.ProfileSettingsService.GetDS4CSetting(device, action.trigger[0])?.IsDefault ?? false);
                     if (!(action.typeID == SpecialAction.ActionTypeId.None || index < 0))
                     {
                         bool triggeractivated = true;
@@ -5083,12 +5084,12 @@ namespace DS4Windows
                                         for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                                         {
                                             DS4Controls dc = action.trigger[i];
-                                            DS4ControlSettings dcs = GetDS4CSetting(device, dc);
+                                            DS4ControlSettings dcs = ctrl.ProfileSettingsService.GetDS4CSetting(device, dc);
                                             if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                                             {
                                                 if (dcs.actionType == DS4ControlSettings.ActionType.Key)
                                                 {
-                                                    uint tempKey = outputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
+                                                    uint tempKey = ctrl.ProfileSettingsService.OutputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
                                                     VirtualKBM.PerformKeyRelease(tempKey);
                                                 }
                                                 else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
@@ -5096,7 +5097,7 @@ namespace DS4Windows
                                                     int[] keys = (int[])dcs.action.actionMacro;
                                                     for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
                                                     {
-                                                        uint tempKey = outputKBMMapping.GetRealEventKey((uint)keys[j]);
+                                                        uint tempKey = ctrl.ProfileSettingsService.OutputKBMMapping.GetRealEventKey((uint)keys[j]);
                                                         VirtualKBM.PerformKeyRelease(tempKey);
                                                     }
                                                 }
@@ -5359,7 +5360,7 @@ namespace DS4Windows
                                         if (!deviceState[device].keyPresses.TryGetValue(key, out kp))
                                         {
                                             deviceState[device].keyPresses[key] = kp = new SyntheticState.KeyPresses();
-                                            deviceState[device].nativeKeyAlias[key] = (ushort)Global.outputKBMMapping.GetRealEventKey(key);
+                                            deviceState[device].nativeKeyAlias[key] = (ushort)ctrl.ProfileSettingsService.OutputKBMMapping.GetRealEventKey(key);
                                         }
 
 
@@ -5417,7 +5418,7 @@ namespace DS4Windows
                                         try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
 
                                         d.DisconnectBT();
-                                        ReleaseActionKeys(action, device);
+                                        ReleaseActionKeys(action, device, ctrl.ProfileSettingsService);
                                         return;
                                     }
                                     else if (deviceConn == ConnectionType.SONYWA)
@@ -5603,7 +5604,7 @@ namespace DS4Windows
                                     if (d.isDS4Idle())
                                     {
                                         d.DisconnectDongle();
-                                        ReleaseActionKeys(action, device);
+                                        ReleaseActionKeys(action, device, ctrl.ProfileSettingsService);
                                         DispatchOrSetBeingTriggered(action, device, false);
                                         action.pressRelease = false;
                                     }
@@ -5909,7 +5910,7 @@ namespace DS4Windows
                                 DS4Controls dc = action.uTrigger[i];
                                 LogActionDoneCountOnTrigger(index, action, device, ctrl, "UntriggerProfile");
                                 DispatchOrSetBeingTriggered(action, device, true);
-                                DS4ControlSettings dcs = GetDS4CSetting(device, dc);
+                                DS4ControlSettings dcs = ctrl.ProfileSettingsService.GetDS4CSetting(device, dc);
                                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                                 {
                                     if (dcs.actionType == DS4ControlSettings.ActionType.Key)
@@ -5936,18 +5937,18 @@ namespace DS4Windows
             }
         }
 
-        private static void ReleaseActionKeys(SpecialAction action, int device)
+        private static void ReleaseActionKeys(SpecialAction action, int device, DS4Windows.DI.IProfileSettingsService settings)
         {
             //foreach (DS4Controls dc in action.trigger)
             for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
             {
                 DS4Controls dc = action.trigger[i];
-                DS4ControlSettings dcs = GetDS4CSetting(device, dc);
+                DS4ControlSettings dcs = settings.GetDS4CSetting(device, dc);
                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                 {
                     if (dcs.actionType == DS4ControlSettings.ActionType.Key)
                     {
-                        uint tempKey = outputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
+                        uint tempKey = settings.OutputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
                         VirtualKBM.PerformKeyRelease(tempKey);
                     }
                     else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
@@ -5955,7 +5956,7 @@ namespace DS4Windows
                         int[] keys = dcs.action.actionMacro;
                         for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
                         {
-                            uint tempKey = outputKBMMapping.GetRealEventKey((uint)keys[j]);
+                            uint tempKey = settings.OutputKBMMapping.GetRealEventKey((uint)keys[j]);
                             VirtualKBM.PerformKeyRelease(tempKey);
                         }
                     }
@@ -6606,13 +6607,13 @@ namespace DS4Windows
         {
             int deadzoneL = 0;
             int deadzoneR = 0;
-            if (getLSDeadzone(device) == 0)
+            if (ctrl.ProfileSettingsService.LSModInfo[device].deadZone == 0)
                 deadzoneL = 3;
-            if (getRSDeadzone(device) == 0)
+            if (ctrl.ProfileSettingsService.RSModInfo[device].deadZone == 0)
                 deadzoneR = 3;
 
             double value = 0.0;
-            ButtonMouseInfo buttonMouseInfo = ButtonMouseInfos[device];
+            ButtonMouseInfo buttonMouseInfo = ctrl.ProfileSettingsService.ButtonMouseInfos[device];
             DeltaSettingsProcessorGroup deltaAccelProcessorGroup = deltaAccelProcessors[device];
             int speed = buttonMouseInfo.activeButtonSensitivity;
             const double root = 1.002;
@@ -7970,7 +7971,7 @@ namespace DS4Windows
                 //gyroAccelX = (int)(wheel360FilterX.Filter(gyroAccelX, currentRate));
                 //gyroAccelZ = (int)(wheel360FilterZ.Filter(gyroAccelZ, currentRate));
 
-                int wheelFuzz = SAWheelFuzzValues[device];
+                int wheelFuzz = ctrl.ProfileSettingsService.SAWheelFuzzValues[device];
                 if (wheelFuzz != 0)
                 {
                     //int currentValueX = gyroAccelX;
@@ -7985,7 +7986,7 @@ namespace DS4Windows
 
                 // Apply deadzone (SA X-deadzone value). This code assumes that 20deg is the max deadzone anyone ever might wanna use (in practice effective deadzone
                 // is probably just few degrees by using SXDeadZone values 0.01...0.05)
-                double sxDead = getSXDeadzone(device);
+                double sxDead = ctrl.ProfileSettingsService.SXDeadzone[device];
                 if (sxDead > 0)
                 {
                     int sxDeadInt = Convert.ToInt32(20.0 * C_WHEEL_ANGLE_PRECISION * sxDead);
@@ -8044,7 +8045,7 @@ namespace DS4Windows
                 }
 
                 result = Mapping.ClampInt(maxRangeLeft, result, maxRangeRight);
-                if (WheelSmoothInfo[device].enabled)
+                if (ctrl.ProfileSettingsService.WheelSmoothInfo[device].enabled)
                 {
                     double currentRate = 1.0 / currentDeviceState.elapsedTime; // Need to express poll time in Hz
                     OneEuroFilter wheelFilter = wheelFilters[device];
@@ -8057,7 +8058,7 @@ namespace DS4Windows
                 //LogToGuiSACalibrationDebugMsg($"DBG gyro=({gyroAccelX}, {gyroAccelZ})  output=({exposedState.OutputAccelX}, {exposedState.OutputAccelZ})  PitRolYaw=({currentDeviceState.Motion.gyroPitch}, {currentDeviceState.Motion.gyroRoll}, {currentDeviceState.Motion.gyroYaw})  VelPitRolYaw=({currentDeviceState.Motion.angVelPitch}, {currentDeviceState.Motion.angVelRoll}, {currentDeviceState.Motion.angVelYaw})  angle={result / (1.0 * C_WHEEL_ANGLE_PRECISION)}  fullTurns={controller.wheelFullTurnCount}", false);
 
                 // Apply anti-deadzone (SA X-antideadzone value)
-                double sxAntiDead = getSXAntiDeadzone(device);
+                double sxAntiDead = ctrl.ProfileSettingsService.SXAntiDeadzone[device];
 
                 int outputAxisMax, outputAxisMin, outputAxisZero;
                 if (profileSettings.OutContType[device] == OutContType.DS4)
