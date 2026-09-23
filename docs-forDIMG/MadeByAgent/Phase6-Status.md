@@ -1,7 +1,7 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
 最終更新日: 2026-09-21  
-状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1（契約整備4件）実装済み・ビルド未検証（2026-09-21）** / Step10b（1ファイル1型の全数是正）新設 / Step3-2〜Step12 計画確定・承認待ち（**次は Step3-2。開発者側のビルド・テスト確認後にコミット→着手**）  
+状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1 完了確定（ビルド・テスト・実機確認済み、2026-09-22）** / **Step3-2 実装済み・ビルド未検証（2026-09-23）** / Step10b（1ファイル1型の全数是正）新設 / Step3-3〜Step12 計画確定・承認待ち（**次は Step3-3。開発者側のStep3-2ビルド・テスト確認後にコミット→着手**）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -62,9 +62,9 @@
 
 ---
 
-### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1 完了・実装済み（ビルド未検証）】
-- **進捗率**: **Step3-1 完了（0/7バッチのうち契約整備1件完了）、Step3-2〜3-7 未着手**
-- **Step3-1 実装内容（2026-09-21実装、ビルド・テスト実行は開発者側で確認予定）**:
+### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1・Step3-2 実装済み（Step3-1はビルド・テスト・実機確認済み。Step3-2はビルド未検証）】
+- **進捗率**: **Step3-1 完了（ビルド・テスト・実機確認済み）、Step3-2 実装済み（ビルド未検証）、Step3-3〜3-7 未着手**
+- **Step3-1 実装内容（2026-09-21実装、2026-09-22 ビルド・テスト・実機確認完了）**:
   - 新設 `IDisplayCoordinateService`／`DisplayCoordinateService`（`UseAllMonitors`、`PrepareAbsMonitorBounds`、`TranslateCoorToAbsDisplay`）。`ServiceRegistration.cs` に登録済み。
   - **決定D1を確認済みの単一呼び出し元（`ControlService.cs`のみ）で実現**: `IEnvironmentService.PrepareAbsMonitorBounds` を削除し（実装1件・モック0件を確認済みのため、委譲シムを残さず完全移設）、`ControlService` のコンストラクタに `IDisplayCoordinateService` を追加（必須引数、Pure DI）。`SystemEvents_DisplaySettingsChanged` の呼び出し元を新サービス経由に変更。
   - `IProfileXmlStore.SaveControllerConfigsForDevice` を追加（`Global.SaveControllerConfigs` へ委譲。対の `LoadControllerConfigsForDevice` と同型）。
@@ -82,6 +82,12 @@
   - 論点3（未定義メンバの移行先）: モニター座標系→新設 `IDisplayCoordinateService`（モデル図03・04に反映済み）、`SaveControllerConfigsForDevice`→`IProfileXmlStore`、`GetProfileActionIndexOf`→`IProfileActionProvider`、`GetControlSettingsGroup`→`IProfileSettingsService`。
   - 論点4（機械置換できない4項目）: 3項目（`getProfileActions`/`GetProfileAction`/`GetActions`系）はStep3-2で早期解消。残り2項目（`reverseX360ButtonMapping`のClone、`Global.ApplyProfile`フォールバック）は選択肢を提示し実装Step直前に個別確認（既定案は計画書§2.4に明記）。
 - **対象**: 実参照150件（置換可135、契約追加要8、要判断4、温存3）。バッチ構成はStep3-1（契約整備）〜Step3-7（温存・要判断の最終処理）。
+- **Step3-2 実装内容（2026-09-23実装、ビルド未検証）**: 対象12件（`ProfilePath`、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`、`getProfileActions`/`GetProfileAction`/`GetActions`系）を全て解消。
+  - **重要な発見**: `MapCustom`/`MapCustomAction`/`Scale360degreeGyroAxis`/`SAWheelEmulationCalibration` はいずれも既に `ControlService ctrl` を引数として受け取っていたため、想定していたコンテキスト構造体（Phase6-Step3-Plan.md §2.1）は不要だった。`ControlService` に読み取り専用の `internal` プロパティ5件（`ProfileActionProvider`/`ProfileXmlStore`/`DisplayCoordinateService`/`ProfileRepository`/`SpecialActionRepository`）を追加し、`ctrl.XxxService.Method(...)` の形でアクセスする方式で解消（S3方針に合致、新規 static Service Locator は追加していない）。
+  - `ControlService` に新規必須コンストラクタ引数 `ISpecialActionRepository` を追加（`GetActions()`置換に必要。`ServiceRegistration.cs` も追随）。
+  - `Mapping.cs` 内の診断ログ専用ヘルパー `LogActionDoneCountOnTrigger` にのみ `ControlService ctrl` パラメータを新規追加（呼び出し元11箇所を更新）。これが本バッチで唯一のメソッドシグネチャ変更。
+  - テスト: `ControlServiceStep3Step2DiWiringTests.cs`（新規DI配線・5プロパティの実体一致検証）、`MappingLogActionDoneCountOnTriggerTests.cs`（シグネチャ変更・null安全性の回帰防止）を新設。`MapCustom`/`MapCustomAction` 自体を直接駆動するテストは、既存 `MappingSpecialActionSuppressionTests.cs` 冒頭コメントの通り本プロジェクトでも困難なため見送り、挙動保持の確認はビルド・実機確認に委ねる。
+  - **未検証事項**: この環境には dotnet がなく、`dotnet build`/`dotnet test` を実行できていない。開発者側でのビルド・テスト実行を経てからコミットすること。
 
 ---
 
@@ -251,7 +257,7 @@
 
 ### 6.1 現在地
 - 完了: Step1（詳細監査）、Step2（`ControlService.cs`、66 ID）、Step13（配置整理 44件）。
-- 次: Step3-2（非ホット・条件付き経路の引数渡し化。`Phase6-Step3-Plan.md` §3参照）。Step3-1（契約整備）は実装済みだがビルド・テスト未検証のため、開発者側の確認・コミット後に着手する。その後 Step3-3〜3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。
+- 次: Step3-3（画面座標変換の引数渡し化。`Phase6-Step3-Plan.md` §3参照）。Step3-2は実装済みだがビルド・テスト未検証のため、開発者側の確認・コミット後に着手する。その後 Step3-4〜3-7、Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。
 
 ### 6.2 確定済みの決定事項（要約）
 - **Step2**: D1（`Func<IOutputSlotService>` の遅延解決）、D2（新規コンストラクタ引数はすべて必須の Pure DI）、D3（`IVirtualKBMLifecycle`）、O1=B／O4=B-2（`IProfileSlotApplier`）、O2=C／O3=A（スロット上限のサービス化と段階移行）。詳細は `Phase6-Step2-Plan.md` §0.3.2。

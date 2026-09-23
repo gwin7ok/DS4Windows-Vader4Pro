@@ -137,8 +137,19 @@ namespace DS4Windows
         // いずれも呼び出し1回あたりの新規オブジェクト割り当て・ログ・キャッシュを行わない（ゼロアロケーション方針）。
         private readonly DI.IAppearanceSettingsService _appearanceSettings;
         private readonly DI.IProfileActionProvider _profileActionProvider;
+        // Phase6-Step3-2: Mapping.cs からの引数渡し（S3方針）用。ControlService 自体はこの値を使わない。
+        private readonly DI.ISpecialActionRepository _specialActionRepository;
         // コントローラースロット上限（現在接続台数ではない）。プロセス内で不変のためコンストラクタで1回だけ取得する。
         private readonly int _controllerSlotLimit;
+
+        // ---- Phase6-Step3-2: Mapping.cs への引数渡し（S3方針）用の読み取り専用アクセサ ----
+        // Mapping.cs の各メソッドは既に ControlService（ctrl）を引数として受け取っているため、
+        // 新たな static Service Locator を追加せず、この既存の受け渡し経路を通じてサービスを渡す。
+        internal DI.IProfileActionProvider ProfileActionProvider => _profileActionProvider;
+        internal DI.IProfileXmlStore ProfileXmlStore => _profileXmlStore;
+        internal DI.IDisplayCoordinateService DisplayCoordinateService => _displayCoordinateService;
+        internal DI.IProfileRepository ProfileRepository => _profileRepository;
+        internal DI.ISpecialActionRepository SpecialActionRepository => _specialActionRepository;
 
         private HashSet<string> hidDeviceHidingAffectedDevs = new HashSet<string>();
         private HashSet<string> hidDeviceHidingExemptedDevs = new HashSet<string>();
@@ -251,7 +262,8 @@ namespace DS4Windows
             Services.IVirtualKBMLifecycle kbmLifecycle,
             DI.IAppearanceSettingsService appearanceSettings,
             DI.IProfileActionProvider profileActionProvider,
-            DI.IDisplayCoordinateService displayCoordinateService)
+            DI.IDisplayCoordinateService displayCoordinateService,
+            DI.ISpecialActionRepository specialActionRepository)
         {
             this.cmdParser = cmdParser;
             this._deviceRegistry = deviceRegistry;
@@ -272,6 +284,7 @@ namespace DS4Windows
             this._appearanceSettings = appearanceSettings ?? throw new ArgumentNullException(nameof(appearanceSettings));
             this._profileActionProvider = profileActionProvider ?? throw new ArgumentNullException(nameof(profileActionProvider));
             this._displayCoordinateService = displayCoordinateService ?? throw new ArgumentNullException(nameof(displayCoordinateService));
+            this._specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
 

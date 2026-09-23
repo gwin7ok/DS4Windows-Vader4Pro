@@ -125,7 +125,7 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | バッチ | 内容 | 対象（Ledger 上の名称） | 件数 | 備考 |
 |---|---|---|---:|---|
 | **Step3-1** | 契約整備（新設・拡張のみ、`Mapping.cs` 不変更） | `IDisplayCoordinateService` 新設＋登録、`IProfileXmlStore.SaveControllerConfigsForDevice` 追加、`IProfileActionProvider.GetProfileActionIndexOf` 追加、`IProfileSettingsService.GetControlSettingsGroup` 追加、各モックテスト追加 | - | §2.3 の D1/D2 をここで確定 |
-| **Step3-2** | 非ホット・条件付き経路の引数渡し化 | `ProfilePath`（5257）、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`（8249/8423/8546、`Scale360degreeGyroAxis`＝SA操舵輪エミュレーション有効時のみ到達）、`getProfileActions`/`GetProfileAction`/`GetActions` 系（3274/3285/4887/4938/4946/4978/5320/5324、§2.4.1 の方針で解消） | 約12 | `MapCustomAction` 等の条件付き経路。§2.4.1 の3項目もここに含む（正確な件数は着手時に再 grep で確定する） |
+| **Step3-2** | 非ホット・条件付き経路の引数渡し化 | `ProfilePath`（5257）、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`（8249/8423/8546、`Scale360degreeGyroAxis`＝SA操舵輪エミュレーション有効時のみ到達）、`getProfileActions`/`GetProfileAction`/`GetActions` 系（3274/3285/4887/4938/4946/4978/5320/5324、§2.4.1 の方針で解消） | 12 | **実施済み（2026-09-23、ビルド未検証）。実施記録は §3.1 参照** |
 | **Step3-3** | 画面座標変換の引数渡し化 | `absUseAllMonitors`/`TranslateCoorToAbsDisplay`/`ButtonAbsMouseInfos`（3640, 3658, 3668, 3674, 3676、絶対マウス出力使用時のみ到達） | 5 | `IDisplayCoordinateService` を実際に消費する最初のバッチ |
 | **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | ローテーション・アンチスナップバック・デッドゾーン・感度・ベジェ曲線（1595〜2227 台の約20件） | 約20 | 純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
 | **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | スクエアスティック・ジャイロ・カーブモード・ドリフト補正・`outputKBMMapping`（`Commit` 24件） | 約44 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する |
@@ -133,6 +133,18 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する |
 
 バッチの粒度・順序は、Step3-1 完了後の実地確認（各バッチ着手前に該当範囲を再 grep する。`DI-App-Wide-Migration-Plan.md` §6.11）で必要に応じて見直す。
+
+### 3.1 Step3-2 実施記録（2026-09-23）
+
+**実地再確認の結果**: 着手前の再 grep で12件（`GetControlSettingsGroup`1、`getProfileActions`系3、`GetProfileAction`系3、`GetProfileActionIndexOf`系2、`GetActions()`系2、`ProfilePath`1）を確認し、Ledger記載の行番号からのズレ（Step3-1のコード追加により約+25行）を補正した。
+
+**§2.1で想定していたコンテキスト構造体は不要と判明**: `MapCustom`／`MapCustomAction`／`Scale360degreeGyroAxis`／`SAWheelEmulationCalibration` の4メソッドは、いずれも**既に `ControlService ctrl` を引数として受け取っていた**（Step2以前からの既存シグネチャ）。そのため、新しいサービスを渡すための追加パラメータやコンテキスト構造体は不要で、`ControlService` に読み取り専用の `internal` プロパティ（`ProfileActionProvider`／`ProfileXmlStore`／`DisplayCoordinateService`／`ProfileRepository`／`SpecialActionRepository`）を追加し、`ctrl.ProfileActionProvider.GetProfileAction(...)` のように既存の `ctrl` 経由でアクセスする形で解消した。これはS3（引数渡し）の趣旨に合致しつつ、シグネチャ変更を最小化できる実装方法として、Step3-3以降でも同様に「対象メソッドが既に`ctrl`を持っているか」を最初に確認する運用とする。
+
+**新規DI依存の追加**: `ControlService` は `ISpecialActionRepository`（`GetActions()`／`GetActions().Count` の置換に必要）を保持していなかったため、新規のコンストラクタ必須引数として追加した（`ServiceRegistration.cs` も追随）。
+
+**シグネチャ変更が必要だった唯一の例**: `LogActionDoneCountOnTrigger`（`Mapping.cs` の診断ログ専用 private ヘルパー、`ctrl` 引数を持たない）には `ControlService ctrl` を新規パラメータとして追加し、11箇所の呼び出し元すべてを更新した。
+
+**テスト**: `ControlServiceStep3Step2DiWiringTests.cs`（新規DI配線・5プロパティの実体一致を検証）、`MappingLogActionDoneCountOnTriggerTests.cs`（新規）を追加。`Mapping.cs` の巨大メソッド自体（`MapCustom`/`MapCustomAction`等）を直接駆動するテストは、既存の `MappingSpecialActionSuppressionTests.cs` 冒頭コメントが指摘する通り本プロジェクトでも困難と判断し、今回は追加していない。挙動保持の確認はビルド・実機確認に委ねる。
 
 ---
 

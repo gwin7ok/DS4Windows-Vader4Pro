@@ -2932,7 +2932,7 @@ namespace DS4Windows
             //for (int settingIndex = 0, arlen = tempSettingsList.Count; settingIndex < arlen; settingIndex++)
 
             // Process LS
-            ControlSettingsGroup controlSetGroup = GetControlSettingsGroup(device);
+            ControlSettingsGroup controlSetGroup = profileSettings.GetControlSettingsGroup(device);
             StickOutputSetting stickSettings = profileSettings.LSOutputSettings[device];
             if (stickSettings.mode == StickMode.Controls)
             {
@@ -3296,7 +3296,7 @@ namespace DS4Windows
             // --- Stage3: Synchronous Button SpecialAction handling ---
             try
             {
-                var profileActions = getProfileActions(device);
+                var profileActions = ctrl.ProfileActionProvider.GetProfileActionsRaw(device);
                 if (profileActions != null)
                 {
                     // Maintain last-known trigger state to avoid logging the same "NOT active" repeatedly.
@@ -3307,7 +3307,7 @@ namespace DS4Windows
 
                     foreach (string actionname in profileActions)
                     {
-                        SpecialAction sa = GetProfileAction(device, actionname);
+                        SpecialAction sa = ctrl.ProfileActionProvider.GetProfileAction(device, actionname);
                         if (sa == null) continue;
                         if (sa.typeID != SpecialAction.ActionTypeId.Button) continue;
 
@@ -4905,11 +4905,11 @@ namespace DS4Windows
         // InitializeActionDoneList removed — ActionManager owns per-action state initialization.
 
         // ログ用ヘルパー: スペシャルアクションのトリガー成立時に現在の beingTriggered エントリ数を出力
-        private static void LogActionDoneCountOnTrigger(int index, SpecialAction action, int device, string context = "TRIGGER")
+        private static void LogActionDoneCountOnTrigger(int index, SpecialAction action, int device, ControlService ctrl, string context = "TRIGGER")
         {
             try
             {
-                int count = GetActions()?.Count ?? 0;
+                int count = ctrl?.SpecialActionRepository?.ActionList?.Count ?? 0;
                 DS4Windows.AppLogger.LogDebug($"SpecialAction {context}: device={device}, name={(action != null ? action.name : "(null)")}, index={index}, ActionEntries={count}");
             }
             catch
@@ -4960,7 +4960,7 @@ namespace DS4Windows
                 // (for example due to data races with profile editing) is logged and doesn't
                 // bring down the process. MapCustomAction is an async void method, so
                 // unhandled exceptions would otherwise be fatal.
-                int totalActionCount = GetActions().Count;
+                int totalActionCount = ctrl.SpecialActionRepository.ActionList.Count;
 
                 DS4StateFieldMapping previousFieldMapping = null;
 
@@ -4968,7 +4968,7 @@ namespace DS4Windows
                 // while iterating (UI thread may modify Global.ProfileActions). Using an array
                 // prevents ArgumentOutOfRangeException / InvalidOperationException from
                 // crashing the async void mapping task.
-                string[] profileActions = getProfileActions(device)?.ToArray() ?? Array.Empty<string>();
+                string[] profileActions = ctrl.ProfileActionProvider.GetProfileActionsRaw(device)?.ToArray() ?? Array.Empty<string>();
 
                 // Issue8-1(3)是正: 抑制中のボタンのうち、実際に離されたものを解除する（デバイスにつき1回）。
                 // トリガー全体の成立/解除（triggeractivated）とは独立に、ボタン単位で判定する。
@@ -5000,8 +5000,8 @@ namespace DS4Windows
                     //SpecialAction action = GetAction(actionname);
                     //int index = GetActionIndexOf(actionname);
                     string actionname = profileActions[actionIndex];
-                    SpecialAction action = GetProfileAction(device, actionname);
-                    int index = GetProfileActionIndexOf(device, actionname);
+                    SpecialAction action = ctrl.ProfileActionProvider.GetProfileAction(device, actionname);
+                    int index = ctrl.ProfileActionProvider.GetProfileActionIndexOf(device, actionname);
 
                     // ★削除: 動的拡張処理を除去（事前初期化により不要）
                     // 安全チェックのみ実行
@@ -5213,7 +5213,7 @@ namespace DS4Windows
                                     // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
                                     try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
 
-                                    LogActionDoneCountOnTrigger(index, action, device, "Program");
+                                    LogActionDoneCountOnTrigger(index, action, device, ctrl, "Program");
 
                                     if (programGateState != null) programGateState.IsExecuting = true;
                                     try
@@ -5268,7 +5268,7 @@ namespace DS4Windows
                                         DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
                                         DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={profileSettings.GetUseTempProfile(device)}");
 
-                                        LogActionDoneCountOnTrigger(index, action, device, "Profile");
+                                        LogActionDoneCountOnTrigger(index, action, device, ctrl, "Profile");
 
                                         // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
                                         if (action.uTrigger.Count > 0 || action.automaticUntrigger)
@@ -5279,7 +5279,7 @@ namespace DS4Windows
                                             deviceRuntime[device].UntriggerAction.prevProfileWasTemporary = profileSettings.GetUseTempProfile(device);
                                             deviceRuntime[device].UntriggerAction.prevProfileName = profileSettings.GetUseTempProfile(device)
                                                 ? profileSettings.GetTempProfileName(device)
-                                                : ProfilePath[device];
+                                                : ctrl.ProfileRepository.ProfilePath[device];
                                         }
 
                                         for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
@@ -5342,12 +5342,12 @@ namespace DS4Windows
 
                                                     if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
                                                     {
-                                                        List<string> profileActionsNext = getProfileActions(device);
+                                                        IReadOnlyList<string> profileActionsNext = ctrl.ProfileActionProvider.GetProfileActionsRaw(device);
                                                         for (int actionIndexNext = 0, profileListLenNext = profileActionsNext.Count; actionIndexNext < profileListLenNext; actionIndexNext++)
                                                         {
                                                             string actionnameNext = profileActionsNext[actionIndexNext];
-                                                            SpecialAction actionNext = GetProfileAction(device, actionnameNext);
-                                                            int indexNext = GetProfileActionIndexOf(device, actionnameNext);
+                                                            SpecialAction actionNext = ctrl.ProfileActionProvider.GetProfileAction(device, actionnameNext);
+                                                            int indexNext = ctrl.ProfileActionProvider.GetProfileActionIndexOf(device, actionnameNext);
 
                                                             if (actionNext != null && actionNext.controls == action.controls)
                                                                 DispatchOrSetBeingTriggered(actionNext, device, true);
@@ -5376,7 +5376,7 @@ namespace DS4Windows
                                         // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
                                         try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
 
-                                        LogActionDoneCountOnTrigger(index, action, device, "Macro");
+                                        LogActionDoneCountOnTrigger(index, action, device, ctrl, "Macro");
 
                                         // C3-5: ActionManager 経由（MacroAction / IMacroPlayer）へのディスパッチを試行
                                         // handled が true の場合は下の直接 PlayMacro（フォールバック）をスキップし二重実行を防止
@@ -5422,7 +5422,7 @@ namespace DS4Windows
                                             // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
                                             try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
 
-                                            LogActionDoneCountOnTrigger(index, action, device, "MacroRelease");
+                                            LogActionDoneCountOnTrigger(index, action, device, ctrl, "MacroRelease");
 
                                             // C3-5: リリース時トリガーの DI ディスパッチ試行
                                             bool handled = false;
@@ -5534,7 +5534,7 @@ namespace DS4Windows
                                         // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
                                         try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
 
-                                        LogActionDoneCountOnTrigger(index, action, device, "KeyTriggered");
+                                        LogActionDoneCountOnTrigger(index, action, device, ctrl, "KeyTriggered");
                                         try
                                         {
                                             string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
@@ -5660,8 +5660,8 @@ namespace DS4Windows
                                     try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
                                 }
 
-                                LogActionDoneCountOnTrigger(index, action, device, "BatteryCheck");
-                                LogActionDoneCountOnTrigger(index, action, device, "WheelRecalibrate");
+                                LogActionDoneCountOnTrigger(index, action, device, ctrl, "BatteryCheck");
+                                LogActionDoneCountOnTrigger(index, action, device, ctrl, "WheelRecalibrate");
                                 DispatchOrSetBeingTriggered(action, device, true);
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.SASteeringWheelEmulationCalibrate)
@@ -5713,7 +5713,7 @@ namespace DS4Windows
                                         tempDev?.SixAxis.ResetContinuousCalibration();
                                     }
 
-                                    LogActionDoneCountOnTrigger(index, action, device, "GyroCalibrate");
+                                    LogActionDoneCountOnTrigger(index, action, device, ctrl, "GyroCalibrate");
                                     DispatchOrSetBeingTriggered(action, device, true);
                                 }
                             }
@@ -5730,7 +5730,7 @@ namespace DS4Windows
                                     actionFound = true;
                                     DispatchOrSetBeingTriggered(action, device, false);
                                     deviceRuntime[device].UntriggerIndex = -1;
-                                    LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
+                                    LogActionDoneCountOnTrigger(index, action, device, ctrl, "KeyReleased");
                                     try
                                     {
                                         string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
@@ -5836,7 +5836,7 @@ namespace DS4Windows
                                 {
                                     DispatchOrSetBeingTriggered(action, device, false);
                                     deviceRuntime[device].UntriggerIndex = -1;
-                                    LogActionDoneCountOnTrigger(index, action, device, "KeyReleased");
+                                    LogActionDoneCountOnTrigger(index, action, device, ctrl, "KeyReleased");
                                     if (action.typeID == SpecialAction.ActionTypeId.Key)
                                     {
                                         ushort key;
@@ -6109,7 +6109,7 @@ namespace DS4Windows
                             for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
                             {
                                 DS4Controls dc = action.uTrigger[i];
-                                LogActionDoneCountOnTrigger(index, action, device, "UntriggerProfile");
+                                LogActionDoneCountOnTrigger(index, action, device, ctrl, "UntriggerProfile");
                                 DispatchOrSetBeingTriggered(action, device, true);
                                 DS4ControlSettings dcs = GetDS4CSetting(device, dc);
                                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
@@ -8308,7 +8308,7 @@ namespace DS4Windows
 
                 // If any of the calibration points (center, left 90deg, right 90deg) are missing then reset back to default calibration values
                 if (((controller.wheelCalibratedAxisBitmask & DS4Device.WheelCalibrationPoint.All) == DS4Device.WheelCalibrationPoint.All))
-                    Global.SaveControllerConfigs(controller);
+                    ctrl.ProfileXmlStore.SaveControllerConfigsForDevice(controller);
                 else
                     controller.wheelCenterPoint.X = controller.wheelCenterPoint.Y = 0;
 
@@ -8482,7 +8482,7 @@ namespace DS4Windows
                 if (controller.wheelCenterPoint.IsEmpty)
                 {
                     // Run if no controller config exists or if an empty wheelCenterPoint is still being used
-                    if (!Global.LoadControllerConfigs(controller) || controller.wheelCenterPoint.IsEmpty)
+                    if (!ctrl.ProfileXmlStore.LoadControllerConfigsForDevice(controller) || controller.wheelCenterPoint.IsEmpty)
                     {
                         AppLogger.LogToGui($"Controller {1 + device} sixaxis steering wheel calibration data missing. It is recommended to run steering wheel calibration process by pressing SASteeringWheelEmulationCalibration special action key. Using estimated values until the controller is calibrated at least once.", false);
 
@@ -8605,7 +8605,7 @@ namespace DS4Windows
                 double sxAntiDead = getSXAntiDeadzone(device);
 
                 int outputAxisMax, outputAxisMin, outputAxisZero;
-                if (Global.OutContType[device] == OutContType.DS4)
+                if (profileSettings.OutContType[device] == OutContType.DS4)
                 {
                     // DS4 analog stick axis supports only 0...255 output value range (not the best one for steering wheel usage)
                     outputAxisMax = 255;

@@ -104,7 +104,8 @@ namespace DS4Windows.DI
                     sp.GetRequiredService<IVirtualKBMLifecycle>(),
                     sp.GetRequiredService<IAppearanceSettingsService>(),
                     sp.GetRequiredService<IProfileActionProvider>(),
-                    sp.GetRequiredService<IDisplayCoordinateService>()
+                    sp.GetRequiredService<IDisplayCoordinateService>(),
+                    sp.GetRequiredService<ISpecialActionRepository>()
                 );
             });
             services.AddSingleton<IDeviceStateAccessor>(sp => sp.GetRequiredService<ControlService>());
