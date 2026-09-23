@@ -2881,7 +2881,7 @@ namespace DS4Windows
 
                 cState = device.Debouncer.ProcessInput(cState);
 
-                cState = Mapping.SetCurveAndDeadzone(ind, cState, TempState[ind]);
+                cState = Mapping.SetCurveAndDeadzone(ind, cState, TempState[ind], _profileSettings);
 
                 if (!recordingMacro && (_profileSettings.GetUseTempProfile(ind) ||
                     _profileSettings.ContainsCustomAction(ind) || _profileSettings.ContainsCustomExtras(ind) ||

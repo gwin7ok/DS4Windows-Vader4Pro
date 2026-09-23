@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。次はStep3-4。残実参照数は150→145に更新。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は実装済み（2026-09-23、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認待ち。§3.3）**。次はStep3-5。残実参照数は150→145（Abs Mouse削除）→118（Step3-4）に更新。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -127,8 +127,8 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | **Step3-1** | 契約整備（新設・拡張のみ、`Mapping.cs` 不変更） | `IDisplayCoordinateService` 新設＋登録、`IProfileXmlStore.SaveControllerConfigsForDevice` 追加、`IProfileActionProvider.GetProfileActionIndexOf` 追加、`IProfileSettingsService.GetControlSettingsGroup` 追加、各モックテスト追加 | - | §2.3 の D1/D2 をここで確定 |
 | **Step3-2** | 非ホット・条件付き経路の引数渡し化 | `ProfilePath`（5257）、`SaveControllerConfigs`/`LoadControllerConfigs`/`OutContType`（8249/8423/8546、`Scale360degreeGyroAxis`＝SA操舵輪エミュレーション有効時のみ到達）、`getProfileActions`/`GetProfileAction`/`GetActions` 系（3274/3285/4887/4938/4946/4978/5320/5324、§2.4.1 の方針で解消） | 12 | **完了（2026-09-23、ビルド・テスト・実機確認済み）。実施記録は §3.1 参照** |
 | **Step3-3** | ~~画面座標変換の引数渡し化~~ | ~~`absUseAllMonitors`/`TranslateCoorToAbsDisplay`/`ButtonAbsMouseInfos`（3640, 3658, 3668, 3674, 3676、絶対マウス出力使用時のみ到達）~~ | ~~5~~ | **対象消滅（2026-09-23）。Abs Mouse機能削除によりMapCustomの該当ブロック自体を撤去。詳細は §3.2、`Phase6-Status.md` §6.8参照** |
-| **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | ローテーション・アンチスナップバック・デッドゾーン・感度・ベジェ曲線（1595〜2227 台の約20件） | 約20 | 純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
-| **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | スクエアスティック・ジャイロ・カーブモード・ドリフト補正・`outputKBMMapping`（`Commit` 24件） | 約44 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する |
+| **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | LS/RS/L2/R2 のローテーション・アンチスナップバック・デッドゾーン・感度・スクエアスティック・カーブモード・ベジェ曲線 | 27（計画時の概算「約20」を実地確認で確定） | **実装済み（2026-09-23、ビルド・テスト・実機確認待ち）。実施記録は §3.3 参照**。純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
+| **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する |
 | **Step3-6** | 残りのホットパス（ボタン・マウス・アクション設定・6軸） | `reverseX360ButtonMapping`（§2.4.2 の選択後）、`GetControlSettingsGroup`、`ButtonMouseInfos`、`SXSens`/`SZSens` 等、`PlayMacroCodeValue` 内の `outputKBMMapping` | 約35 | 着手前に §2.4.2 を確認 |
 | **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する |
 
@@ -163,6 +163,45 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 **その後の展開（2026-09-23、同日中）**: ビルド・テスト・実機確認・コミットが完了した直後、ユーザーより「Abs Mouse機能自体の使用頻度が極めて低いため削除したい」との提案があり、調査・承認を経て、ボタン割当のAbs Mouse機能・タッチパッドのAbsoluteMouseモード・共有基盤`IDisplayCoordinateService`が丸ごと削除された（`copilot-instructions.md` §2.2 例外規定に基づく機能廃止、詳細は`Phase6-Status.md` §6.8）。これに伴い、上記5箇所を含む`MapCustom`の該当ブロックと`GetAbsMouseMapping`メソッド自体が削除され、**Step3-3は対象が消滅**した。新設した`ProfileSettingsService`プロパティのみ、Step3-6（`GetControlSettingsGroup`等）での再利用を見込んで存置している。`ControlServiceStep3Step3DiWiringTests.cs`はこのプロパティのDI配線検証として引き続き有効。
 
 **ビルド確認（確定・2026-09-23）**: ビルド・テストビルド・テスト実行とも成功。実機確認も完了（既存プロファイルのフォールバック動作、タッチパッド他モードの正常動作、UI上のAbs Mouse関連項目の非表示を確認）。コミットしてリモートリポジトリに反映済み。詳細は`Phase6-Status.md` §6.8参照。
+
+### 3.3 Step3-4 実施記録（2026-09-23）
+
+**実地再確認の結果**: 着手前の再 grep で、`SetCurveAndDeadzone` 内の対象は Ledger と同じ40件（`Mapping.cs` 1524〜2715 行。Step3-3 の Abs Mouse 削除で Ledger 記載の行番号から約70行前へずれている）。うち LS/RS/L2/R2・スクエアスティックの系統（カーブモード・ベジェ曲線を含む）が27件、ジャイロ系（SX/SZ）が13件だった。§3 の表の「約20件」は概算で、ローテーション〜ベジェ曲線までを一体で扱うと27件になる。ジャイロ系13件は Step3-5 へ回す（Step3-5 は 13＋`ApplyStickCalibration` 8＋`Commit` 24 ＝ 45件で、計画の約44件と整合する）。**Step3 の残実参照数は 145 → 118**。
+
+**方針**: `SetCurveAndDeadzone` は `ControlService ctrl` を引数に持たず、必要なサービスは `IProfileSettingsService` の1個だけである。§2.1 に従い、このインターフェースを引数（`settings`）として追加した（コンテキスト構造体・`ctrl` 渡しは不要）。引数名を `profileSettings` にしなかったのは、`Mapping` の静的フィールド `profileSettings` を隠さず、どちらを参照しているか読み取れるようにするため。
+
+**変更内容**:
+
+| 対象 | 変更 |
+|---|---|
+| `Mapping.SetCurveAndDeadzone` | シグネチャに `DS4Windows.DI.IProfileSettingsService settings` を追加（唯一のシグネチャ変更）。27件を `settings.XXX` に置換（下表） |
+| `ControlService.cs`（呼び出し元・入力ループ） | `Mapping.SetCurveAndDeadzone(ind, cState, TempState[ind], _profileSettings)`。既存のコンストラクタ注入済みフィールドを渡すのみで、コンストラクタ引数は変更なし |
+| `ControllerReadingsControl.xaml.cs`（呼び出し元・UI プレビュー） | `controlService.ProfileSettingsService` を渡す（Step3-3 で新設し存置していた `internal` プロパティを再利用。新規プロパティなし） |
+| 契約（`DS4Windows/DI/`）・`ServiceRegistration.cs` | 変更なし（対応メンバーはすべて既存） |
+| `ApplyStickCalibration`、ジャイロ系（SX/SZ） | 変更なし（Step3-5 の対象。`using static DS4Windows.Global;` 経由のまま） |
+
+置換の対応（すべて `[device]` は元のまま）:
+
+| 置換前（Global） | 置換後 | 件数 |
+|---|---|---:|
+| `getLSRotation`／`getRSRotation` | `settings.LSRotation`／`settings.RSRotation` | 2 |
+| `GetLSAntiSnapbackInfo`／`GetRSAntiSnapbackInfo` | `settings.LSAntiSnapbackInfo`／`settings.RSAntiSnapbackInfo` | 2 |
+| `GetLSDeadInfo`／`GetRSDeadInfo` | `settings.LSModInfo`／`settings.RSModInfo` | 2 |
+| `GetL2ModInfo`／`GetR2ModInfo` | `settings.L2ModInfo`／`settings.R2ModInfo` | 2 |
+| `getLSSens`／`getRSSens`／`getL2Sens`／`getR2Sens` | `settings.LSSens`／`RSSens`／`L2Sens`／`R2Sens` | 4 |
+| `GetSquareStickInfo` | `settings.SquStickInfo` | 1 |
+| `getLsOutCurveMode`／`getRsOutCurveMode`／`getL2OutCurveMode`／`getR2OutCurveMode` | `settings.GetLsOutCurveMode(device)` 等 | 4 |
+| `lsOutBezierCurveObj`／`rsOutBezierCurveObj`（各4）、`l2OutBezierCurveObj`／`r2OutBezierCurveObj`（各1） | `settings.LsOutBezierCurveObj` 等 | 10 |
+| 合計 | | **27** |
+
+**挙動の同一性（実装前に確認）**: 置換前の `Global.getXxx(index)` は `m_Config.xxx[index]`（`Global.store` の配列）を返し、置換後の `IProfileSettingsService.Xxx`（`ProfileSettingsService`）は `SafeConfig?.xxx`（`_config ?? Global.store`、Composition Root の実体は `Global.store`）を返す。同じ `BackingStore` の同じ配列インスタンスを指すため値・参照とも一致する。カーブモード4種も、`Global.getXxxOutCurveMode` は `ProfileSettingsServiceInstance.GetXxxOutCurveMode` へ委譲済みで、サービス側は `SafeConfig.getXxxOutCurveMode` を呼ぶ。同じ経路である。ベジェ曲線オブジェクト4種も、`Global` 側が `ProfileSettingsServiceInstance` の同名プロパティへ委譲済みである。いずれも配列の参照を返すだけで、割り当て（`Clone()`）・ログ・キャッシュはない（ホットパスの制約を満たす。§2.4.2 の `GetReverseX360ButtonMapping` のような例外メンバーは本バッチに含まれない）。
+
+**テスト**（新規3ファイル。§4.1 で予定していた `MappingArgumentPassThroughTests.cs`／`MappingHotPathAllocationTests.cs` を作成し、Step3-5・3-6 でも同じファイルへ追加していく）:
+- `MappingArgumentPassThroughTests.cs`: 互いに独立した `BackingStore` を持つ2つの `ProfileSettingsService` を用意し、片方だけ設定を変えて同じ入力を与え、出力が変わることを確認する（LS/RS 回転、LS デッドゾーン、LS/L2/R2 感度の6件）。メソッドが `Global` の設定を読んでいれば2つの出力が一致するため、引数の値が使われていることを検出できる。ゴールデン値は固定せず相対比較のみ。
+- `MappingHotPathAllocationTests.cs`: `SetCurveAndDeadzone` を2万回呼び、ウォームアップ後の割り当てが0バイトであることを確認する（新設した引数の取得経路がヒープ割り当てを追加していないことの固定）。
+- `MappingSetCurveAndDeadzoneGlobalReferenceGuardTests.cs`: `Mapping.cs` は Step3-7 まで `using static DS4Windows.Global;` を残すため、非修飾の Global メンバ呼び出しが再導入されてもコンパイルは通る。このため、`SetCurveAndDeadzone` 本体のソースを走査し、置換済み21種のメンバー名（`Global.` 修飾・非修飾の両方）が残っていないこと、および `IProfileSettingsService settings` の引数があることを確認する回帰ガード（`ControlServiceGlobalReferenceGuardTests` と同じ方式）。
+
+**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は、コントローラー接続時に LS/RS/L2/R2 の入力（デッドゾーン・感度・出力カーブ・スクエアスティック・ローテーション）が変更前と同じ挙動であること、および ControllerReadings（入力値のプレビュー画面）の表示が引き続き正常であること（UI 側の呼び出し元の確認）。
 
 ---
 
