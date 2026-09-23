@@ -213,11 +213,11 @@ namespace DS4Windows
             private set => touchEnded = value;
         }
 
-        #pragma warning disable CS0414 // toggle flags may be assigned/used in runtime branches
+#pragma warning disable CS0414 // toggle flags may be assigned/used in runtime branches
         bool currentToggleGyroControls = false;
         bool currentToggleGyroMouse = false;
         bool currentToggleGyroStick = false;
-        #pragma warning restore CS0414
+#pragma warning restore CS0414
 
         bool previousUnchangedTouchJoyFrame = false;
         int previousTouchDX = 0;
@@ -1157,13 +1157,6 @@ namespace DS4Windows
                 swipeLeftB = (byte)Math.Min(255, Math.Max(0, firstTouch.HwX - arg.Touches[0].HwX));
                 swipeRightB = (byte)Math.Min(255, Math.Max(0, arg.Touches[0].HwX - firstTouch.HwX));
             }
-            else if (tempMode == TouchpadOutMode.AbsoluteMouse)
-            {
-                if (Global.GetTouchActive(deviceNum))
-                {
-                    cursor.TouchesMovedAbsolute(arg);
-                }
-            }
             else if (tempMode == TouchpadOutMode.MouseJoystick)
             {
                 previousUnchangedTouchJoyFrame = false;
@@ -1476,14 +1469,6 @@ namespace DS4Windows
                                 TouchpadMouseStick(dx, dy);
                             }
                         }
-                    }
-                }
-                else if (tempMode == TouchpadOutMode.AbsoluteMouse)
-                {
-                    TouchpadAbsMouseSettings absMouseSettings = Global.TouchAbsMouse[deviceNum];
-                    if (Global.GetTouchActive(deviceNum) && absMouseSettings.snapToCenter)
-                    {
-                        cursor.TouchCenterAbsolute();
                     }
                 }
             }

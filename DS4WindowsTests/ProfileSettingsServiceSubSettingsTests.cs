@@ -60,31 +60,6 @@ namespace DS4WindowsTests
         }
 
         [Fact]
-        public void SubSettingChange_TouchpadAbsMouse_ShouldFireProfileSettingChanged()
-        {
-            var service = new ProfileSettingsService();
-            if (service.TouchAbsMouse == null || service.TouchAbsMouse[0] == null)
-                return;
-
-            service.WireSubSettingsEvents(0);
-
-            string reportedSetting = null;
-            int reportedDevice = -1;
-
-            service.ProfileSettingChanged += (s, e) =>
-            {
-                reportedDevice = e.DeviceIndex;
-                reportedSetting = e.SettingName;
-            };
-
-            // デバイス 0 のタッチパッド SnapToCenter を変更
-            service.TouchAbsMouse[0].SnapToCenter = true;
-
-            Assert.Equal(0, reportedDevice);
-            Assert.Equal("TouchAbs_SnapToCenter", reportedSetting);
-        }
-
-        [Fact]
         public void WireSubSettingsEvents_MultipleCalls_ShouldNotAccumulateHandlers()
         {
             var service = new ProfileSettingsService();

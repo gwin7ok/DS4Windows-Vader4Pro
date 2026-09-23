@@ -621,78 +621,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set => profileSettings.ButtonMouseInfos[device].mouseAccel = value;
         }
 
-        public double AbsWidth
-        {
-            get => profileSettings.ButtonAbsMouseInfos[device].width;
-            set
-            {
-                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
-                if (value == tempAbsInfo.width) return;
-
-                tempAbsInfo.width = value;
-            }
-        }
-
-        public double AbsHeight
-        {
-            get => profileSettings.ButtonAbsMouseInfos[device].height;
-            set
-            {
-                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
-                if (value == tempAbsInfo.height) return;
-
-                tempAbsInfo.height = value;
-            }
-        }
-
-        public double AbsXCenter
-        {
-            get => profileSettings.ButtonAbsMouseInfos[device].xcenter;
-            set
-            {
-                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
-                if (value == tempAbsInfo.xcenter) return;
-
-                tempAbsInfo.xcenter = value;
-            }
-        }
-
-        public double AbsYCenter
-        {
-            get => profileSettings.ButtonAbsMouseInfos[device].ycenter;
-            set
-            {
-                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
-                if (value == tempAbsInfo.ycenter) return;
-
-                tempAbsInfo.ycenter = value;
-            }
-        }
-
-        public bool AbsSnapCenter
-        {
-            get => profileSettings.ButtonAbsMouseInfos[device].snapToCenter;
-            set
-            {
-                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
-                if (value == tempAbsInfo.snapToCenter) return;
-
-                tempAbsInfo.snapToCenter = value;
-            }
-        }
-
-        public double AbsAntiRadius
-        {
-            get => profileSettings.ButtonAbsMouseInfos[device].antiRadius;
-            set
-            {
-                ButtonAbsMouseInfo tempAbsInfo = profileSettings.ButtonAbsMouseInfos[device];
-                if (tempAbsInfo.antiRadius == value) return;
-
-                tempAbsInfo.antiRadius = value;
-            }
-        }
-
         public bool EnableTouchpadToggle
         {
             get => profileSettings.EnableTouchToggle[device];
@@ -1951,10 +1879,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                         index = 1; break;
                     case TouchpadOutMode.MouseJoystick:
                         index = 2; break;
-                    case TouchpadOutMode.AbsoluteMouse:
-                        index = 3; break;
                     case TouchpadOutMode.Passthru:
-                        index = 4; break;
+                        index = 3; break;
                     default: break;
                 }
                 return index;
@@ -1970,8 +1896,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     case 2:
                         temp = TouchpadOutMode.MouseJoystick; break;
                     case 3:
-                        temp = TouchpadOutMode.AbsoluteMouse; break;
-                    case 4:
                         temp = TouchpadOutMode.Passthru; break;
                     default: break;
                 }
@@ -2152,40 +2076,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get => profileSettings.TrackballFriction[device];
             set => profileSettings.TrackballFriction[device] = value;
         }
-
-        public int TouchAbsMouseMaxZoneX
-        {
-            get => profileSettings.TouchAbsMouse[device].maxZoneX;
-            set
-            {
-                int temp = profileSettings.TouchAbsMouse[device].maxZoneX;
-                if (temp == value) return;
-                profileSettings.TouchAbsMouse[device].maxZoneX = value;
-            }
-        }
-
-        public int TouchAbsMouseMaxZoneY
-        {
-            get => profileSettings.TouchAbsMouse[device].maxZoneY;
-            set
-            {
-                int temp = profileSettings.TouchAbsMouse[device].maxZoneY;
-                if (temp == value) return;
-                profileSettings.TouchAbsMouse[device].maxZoneY = value;
-            }
-        }
-
-        public bool TouchAbsMouseSnapCenter
-        {
-            get => profileSettings.TouchAbsMouse[device].snapToCenter;
-            set
-            {
-                bool temp = profileSettings.TouchAbsMouse[device].snapToCenter;
-                if (temp == value) return;
-                profileSettings.TouchAbsMouse[device].snapToCenter = value;
-            }
-        }
-
 
         public int TouchMouseStickDeadZone
         {

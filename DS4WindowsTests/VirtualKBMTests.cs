@@ -22,7 +22,6 @@ namespace DS4WindowsTests
 
             // 各操作が例外なく安全に実行できることを検証
             adapter.MoveRelativeMouse(10, 20);
-            adapter.MoveAbsoluteMouse(0.5, 0.5);
             adapter.PerformMouseButtonPress(1);
             adapter.PerformMouseButtonRelease(1);
             adapter.PerformKeyPress(0x41);

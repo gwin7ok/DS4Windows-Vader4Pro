@@ -243,15 +243,6 @@ classDiagram
         +LoadControllerConfigsForDevice(DS4Device device) bool
         +SaveControllerConfigsForDevice(DS4Device device) bool
     }
-    class IDisplayCoordinateService {
-        <<interface>>
-        +UseAllMonitors bool
-        +TranslateCoorToAbsDisplay(double inX, double inY, out double outX, out double outY)
-        +PrepareAbsMonitorBounds(string edid)
-    }
-    class DisplayCoordinateService {
-    }
-    IDisplayCoordinateService <|.. DisplayCoordinateService : implements
     class IDeviceOptionRepository {
         <<interface>>
         +GetDeviceOptions~T~(string mac) T
@@ -304,3 +295,7 @@ classDiagram
 %% 注釈補強（2026-09-21 Phase6-Step3 実地突き合わせ・論点3決定反映）
 %% - `IProfileXmlStore` のメンバ一覧を実装済みの現行シグネチャに合わせて更新（`LoadProfileXml`/`SaveProfileXml` は `(path, ProfileDTO)` ではなく `deviceIndex` 主体、`LoadAppSettingsXml`/`SaveAppSettingsXml`/`LoadControllerConfigsForDevice` を追加）。あわせて `SaveControllerConfigsForDevice`（Step3 で新設予定）を追加。
 %% - `IDisplayCoordinateService`（`DisplayCoordinateService` が実装）を新設。`Mapping.cs` の `absUseAllMonitors`／`TranslateCoorToAbsDisplay`（Step1エビデンス §2 分類c）の移行先。既存 `IEnvironmentService.PrepareAbsMonitorBounds` は同じ画面座標状態（`absDisplayBounds`/`fullDesktopBounds`/`absUseAllMonitors`）を更新する処理のため本サービスへ集約し、`IEnvironmentService` 側は薄い委譲として残す（Step3-1 で実装時に確定）。
+
+%% 注釈補強（2026-09-23 Abs Mouse機能削除・ユーザー承認済み、copilot-instructions.md §2.2 例外規定）
+%% - 上記の `IDisplayCoordinateService`／`DisplayCoordinateService` は、その唯一の利用者であったボタン割当のAbs Mouse機能（`Mapping.cs` の `MapCustom`／`GetAbsMouseMapping`）およびタッチパッドのAbsolute Mouseモード（`TouchpadAbsMouseSettings`）が、使用頻度が極めて低いとの判断により削除されたことに伴い、丸ごと撤去した。`IEnvironmentService` 側への影響はない（もともと薄い委譲のみ）。
+%% - あわせて `IProfileSettingsService.ButtonAbsMouseInfos`／`TouchAbsMouse`、`IVirtualKBM.MoveAbsoluteMouse`（本図には個別メンバーとして未記載だったため図の変更なし）も削除済み。

@@ -44,8 +44,6 @@ namespace DS4Windows.DS4Control
 
         public abstract void MoveRelativeMouse(int x, int y);
 
-        public abstract void MoveAbsoluteMouse(double x, double y);
-
         public abstract void PerformMouseWheelEvent(int vertical, int horizontal);
         public abstract void PerformMouseButtonEvent(uint mouseButton);
         public virtual void PerformMouseButtonEventAlt(uint mouseButton, int type)

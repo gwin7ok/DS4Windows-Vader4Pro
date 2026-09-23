@@ -626,14 +626,6 @@
                         </Grid>
                     </DockPanel>
                 </TabItem>
-                <TabItem Header="{lex:Loc BindingWin.AbsMouse}">
-                    <StackPanel Orientation="Vertical" Margin="8" HorizontalAlignment="Left" MinWidth="200">
-                        <Button x:Name="absMouseUpBindBtn" Content="{lex:Loc BindingWin.AbsMouseUp}" />
-                        <Button x:Name="absMouseDownBindBtn" Content="{lex:Loc BindingWin.AbsMouseDown}" Margin="0,8,0,0" />
-                        <Button x:Name="absMouseLeftBindBtn" Content="{lex:Loc BindingWin.AbsMouseLeft}" Margin="0,8,0,0" />
-                        <Button x:Name="absMouseRightBindBtn" Content="{lex:Loc BindingWin.AbsMouseRight}" Margin="0,8,0,0" />
-                    </StackPanel>
-                </TabItem>
             </TabControl>
 
         </DockPanel>

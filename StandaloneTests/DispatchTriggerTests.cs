@@ -16,7 +16,6 @@ namespace StandaloneTests
             public override bool Connect() => true;
             public override bool Disconnect() => true;
             public override void MoveRelativeMouse(int x, int y) { }
-            public override void MoveAbsoluteMouse(double x, double y) { }
             public override void PerformMouseWheelEvent(int vertical, int horizontal) { }
             public override void PerformMouseButtonEvent(uint mouseButton) { }
             public override void PerformMouseButtonEventAlt(uint mouseButton, int type) { }

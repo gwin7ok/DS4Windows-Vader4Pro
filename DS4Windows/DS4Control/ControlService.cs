@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using DS4Windows.DS4Control;
 using DS4Windows.Services;
 using DS4WinWPF.DS4Control;
-using Microsoft.Win32;
 using Nefarius.ViGEm.Client;
 using Sensorit.Base;
 using SharpOSC;
@@ -112,7 +111,6 @@ namespace DS4Windows
         // 薄い委譲サービス経由で参照する（Pure DI: コンストラクタ注入のみ。AppHost.Services は使用しない）。
         private readonly DI.IAppSettingsService _appSettings;
         private readonly DI.IEnvironmentService _environmentService;
-        private readonly DI.IDisplayCoordinateService _displayCoordinateService;
         private readonly DI.IPathService _pathService;
 
         // Phase6-Step2-2 (PR-2)
@@ -147,12 +145,13 @@ namespace DS4Windows
         // 新たな static Service Locator を追加せず、この既存の受け渡し経路を通じてサービスを渡す。
         internal DI.IProfileActionProvider ProfileActionProvider => _profileActionProvider;
         internal DI.IProfileXmlStore ProfileXmlStore => _profileXmlStore;
-        internal DI.IDisplayCoordinateService DisplayCoordinateService => _displayCoordinateService;
         internal DI.IProfileRepository ProfileRepository => _profileRepository;
         internal DI.ISpecialActionRepository SpecialActionRepository => _specialActionRepository;
         // Phase6-Step3-3: MapCustom の ButtonAbsMouseInfos（絶対マウス出力の座標系設定）参照を
         // ctrl 経由の引数渡しへ切り替えるために追加。既存の _profileSettings フィールドをそのまま公開するのみで、
-        // 新規サービス・新規フィールドは追加していない。
+        // 新規サービス・新規フィールドは追加していない。ButtonAbsMouseInfos 自体はその後の機能廃止
+        // （Abs Mouse機能削除、copilot-instructions.md §2.2 例外規定）で無くなったが、本プロパティは
+        // Step3-6（GetControlSettingsGroup 等）で再利用する汎用アクセサとして存置している。
         internal DI.IProfileSettingsService ProfileSettingsService => _profileSettings;
 
         private HashSet<string> hidDeviceHidingAffectedDevs = new HashSet<string>();
@@ -266,7 +265,6 @@ namespace DS4Windows
             Services.IVirtualKBMLifecycle kbmLifecycle,
             DI.IAppearanceSettingsService appearanceSettings,
             DI.IProfileActionProvider profileActionProvider,
-            DI.IDisplayCoordinateService displayCoordinateService,
             DI.ISpecialActionRepository specialActionRepository)
         {
             this.cmdParser = cmdParser;
@@ -287,7 +285,6 @@ namespace DS4Windows
             this._kbmLifecycle = kbmLifecycle ?? throw new ArgumentNullException(nameof(kbmLifecycle));
             this._appearanceSettings = appearanceSettings ?? throw new ArgumentNullException(nameof(appearanceSettings));
             this._profileActionProvider = profileActionProvider ?? throw new ArgumentNullException(nameof(profileActionProvider));
-            this._displayCoordinateService = displayCoordinateService ?? throw new ArgumentNullException(nameof(displayCoordinateService));
             this._specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
 
             Crc32Algorithm.InitializeTable(DS4Device.DefaultPolynomial);
@@ -339,15 +336,8 @@ namespace DS4Windows
 
             CreateOSCCallback();
 
-            SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
             //oscListener = new UDPListener(Global.getOSCServerPortNum(), callback: oscCallback);
             //AppLogger.LogToGui("OSC LISTENER STARTED", false);
-        }
-
-        private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
-        {
-            // Phase6-Step3-1: IEnvironmentService から IDisplayCoordinateService へ移設（決定D1）。
-            _displayCoordinateService.PrepareAbsMonitorBounds(string.Empty);
         }
 
         //private void OutputslotMan_SlotAssigned(OutputSlotManager sender, int slotNum, OutSlotDevice outSlotDev)
@@ -2555,9 +2545,6 @@ namespace DS4Windows
             // Reset delta accel processors for sticks
             Mapping.deltaAccelProcessors[ind].LSProcessor.Reset();
             Mapping.deltaAccelProcessors[ind].RSProcessor.Reset();
-
-            // Reset absolute mouse state data
-            Mapping.absMouseOutputState[ind].Reset();
 
             // Reset some elements of current Mouse instance
             touchPad[ind]?.Reset();

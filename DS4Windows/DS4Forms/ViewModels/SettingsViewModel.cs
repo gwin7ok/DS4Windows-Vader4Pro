@@ -32,7 +32,6 @@ using System.Runtime.InteropServices;
 using DS4Windows;
 using DS4Windows.DI;
 using static DS4Windows.Util;
-using Microsoft.Win32;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
@@ -387,17 +386,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
         public event EventHandler HidHideClientFoundChanged;
 
-        private List<MonitorChoiceListing> absMonitorChoices = new List<MonitorChoiceListing>();
-        public List<MonitorChoiceListing> AbsMonitorChoices => absMonitorChoices;
-        public event EventHandler AbsMonitorChoicesChanged;
-
-        //private string absMonitorSettingEDID = string.Empty;
-        public string AbsMonitorSettingEDID
-        {
-            get => Global.AbsoluteDisplayEDID;
-            set => Global.AbsoluteDisplayEDID = value;
-        }
-
         public int ProcessPriorityIndex
         {
             get => Global.ProcessPriority;
@@ -497,8 +485,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 showRunStartPanel = Visibility.Visible;
             }
 
-            RefreshMonitorChoices();
-
             RunAtStartupChanged += SettingsViewModel_RunAtStartupChanged;
             RunStartProgChanged += SettingsViewModel_RunStartProgChanged;
             RunStartTaskChanged += SettingsViewModel_RunStartTaskChanged;
@@ -506,24 +492,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             FakeExeNameChangeCompare += SettingsViewModel_FakeExeNameChangeCompare;
             UseUdpSmoothingChanged += SettingsViewModel_UseUdpSmoothingChanged;
             UseUDPServerChanged += SettingsViewModel_UseUDPServerChanged;
-            SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
 
             //CheckForUpdatesChanged += SettingsViewModel_CheckForUpdatesChanged;
         }
 
-        // Phase5-Watchpoints-Investigation-Report Watchpoint 2対応:
-        // SystemEvents(Microsoft.Win32)はアプリ生存期間の静的イベントであり、
-        // 本ViewModelがTransientとして再生成されるたびに購読解除しないと、
-        // 古いインスタンスがGCされずメモリリークする。他の自己所有イベント
-        // (RunAtStartupChanged等)は本クラス自身が購読側かつ発行側のため対象外。
         public void Dispose()
         {
-            SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
-        }
-
-        private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
-        {
-            RefreshMonitorChoices();
         }
 
         private void SettingsViewModel_UseUDPServerChanged(object sender, EventArgs e)
@@ -667,32 +641,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             HidHideClientFoundChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private void RefreshMonitorChoices()
-        {
-            absMonitorChoices.Clear();
-            absMonitorChoices.Add(new MonitorChoiceListing()
-            {
-                DisplayName = "All Monitors",
-                EDID = string.Empty,
-                Index = 0,
-            });
-
-            int idx = 1;
-            foreach (DISPLAY_DEVICE tempDis in Global.GrabCurrentMonitors())
-            {
-                absMonitorChoices.Add(new MonitorChoiceListing()
-                {
-                    DisplayName = tempDis.DeviceString,
-                    EDID = tempDis.DeviceID,
-                    Index = idx,
-                });
-
-                idx++;
-            }
-
-            AbsMonitorChoicesChanged?.Invoke(this, EventArgs.Empty);
-        }
-
         public int LogMaxArchiveFiles
         {
             get => DS4Windows.Global.LogMaxArchiveFiles;
@@ -728,34 +676,5 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public event EventHandler LogMaxArchiveFilesChanged;
         public event EventHandler LogMinLevelChanged;
-    }
-
-    public struct MonitorChoiceListing
-    {
-        private int idx;
-        public int Index
-        {
-            get => idx;
-            set => idx = value;
-        }
-
-        private string edid;
-        public string EDID
-        {
-            get => edid;
-            set => edid = value;
-        }
-
-        private string displayName;
-        public string DisplayName
-        {
-            get => displayName;
-            set => displayName = value;
-        }
-
-        public string DisplayItemString
-        {
-            get => $"{idx}: {displayName}";
-        }
     }
 }

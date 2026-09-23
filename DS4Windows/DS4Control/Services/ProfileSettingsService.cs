@@ -339,7 +339,6 @@ namespace DS4Windows
         public TouchpadOutMode[] TouchOutMode => SafeConfig?.touchOutMode;
         public int[][] TouchDisInvertTriggers => SafeConfig?.touchDisInvertTriggers;
         public TouchMouseStickInfo[] TouchMouseStickInf => SafeConfig?.touchMStickInfo;
-        public TouchpadAbsMouseSettings[] TouchAbsMouse => SafeConfig?.touchpadAbsMouse;
         public TouchpadRelMouseSettings[] TouchRelMouse => SafeConfig?.touchpadRelMouse;
 
         // ---- Step10-2-A-4: ジャイロ関連 (m_Config委譲) ----
@@ -482,7 +481,6 @@ namespace DS4Windows
 
         // ---- Step10-2-A-6: ボタン/マウス出力関連 (m_Config委譲) ----
         public ButtonMouseInfo[] ButtonMouseInfos => SafeConfig?.buttonMouseInfos;
-        public ButtonAbsMouseInfo[] ButtonAbsMouseInfos => SafeConfig?.buttonAbsMouseInfos;
         public bool[] EnableTouchToggle => SafeConfig?.enableTouchToggle;
         public SteeringWheelSmoothingInfo[] WheelSmoothInfo => SafeConfig?.wheelSmoothInfo;
         public bool[] DoubleTap => SafeConfig?.doubleTap;
@@ -679,7 +677,6 @@ namespace DS4Windows
             new SubSettingDescriptor("L2", (s, dev) => s.L2ModInfo != null && s.L2ModInfo.Length > dev ? s.L2ModInfo[dev] : null),
             new SubSettingDescriptor("R2", (s, dev) => s.R2ModInfo != null && s.R2ModInfo.Length > dev ? s.R2ModInfo[dev] : null),
             new SubSettingDescriptor("GyroControls", (s, dev) => s.GyroControlsInf != null && s.GyroControlsInf.Length > dev ? s.GyroControlsInf[dev] : null),
-            new SubSettingDescriptor("TouchAbs", (s, dev) => s.TouchAbsMouse != null && s.TouchAbsMouse.Length > dev ? s.TouchAbsMouse[dev] : null),
             new SubSettingDescriptor("GyroMouse", (s, dev) => s.GyroMouseInfo != null && s.GyroMouseInfo.Length > dev ? s.GyroMouseInfo[dev] : null),
             new SubSettingDescriptor("GyroMouseStick", (s, dev) => s.GyroMouseStickInf != null && s.GyroMouseStickInf.Length > dev ? s.GyroMouseStickInf[dev] : null),
             new SubSettingDescriptor("TouchMouseStick", (s, dev) => s.TouchMouseStickInf != null && s.TouchMouseStickInf.Length > dev ? s.TouchMouseStickInf[dev] : null),

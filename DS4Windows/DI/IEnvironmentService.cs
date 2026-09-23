@@ -13,9 +13,10 @@
     /// 同一パターンの重複）、実害はなかったものの将来の誤接続を誘発する地雷であったため撤去した。
     /// 永続設定は必ず <see cref="IAppSettingsService"/> 経由でアクセスすること。
     ///
-    /// 【Phase6-Step3-1】<c>PrepareAbsMonitorBounds</c> は、同じ画面座標状態
-    /// （absDisplayBounds/fullDesktopBounds/absUseAllMonitors）を扱う
-    /// <see cref="IDisplayCoordinateService"/> へ移設した（決定D1）。
+    /// 【Phase6-Step3-1】<c>PrepareAbsMonitorBounds</c> は、当時同じ画面座標状態
+    /// （absDisplayBounds/fullDesktopBounds/absUseAllMonitors）を扱っていた IDisplayCoordinateService へ
+    /// 一旦移設した（決定D1）が、その後の機能廃止（Abs Mouse機能削除、copilot-instructions.md §2.2 例外規定）
+    /// により、この画面座標系一式（IDisplayCoordinateServiceを含む）自体が丸ごと撤去された。
     /// </summary>
     public interface IEnvironmentService
     {

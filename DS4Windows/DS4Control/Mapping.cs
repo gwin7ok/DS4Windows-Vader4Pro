@@ -500,93 +500,6 @@ namespace DS4Windows
             }
         }
 
-        public struct AbsMouseOutput
-        {
-            public double x;
-            public double y;
-            public double previousX;
-            public double previousY;
-            public bool dirtyX;
-            public bool dirtyY;
-            public bool previousDirty;
-            public double angleRad;
-
-            public bool Centered
-            {
-                get => x != 0.5 || y != 0.5;
-            }
-
-            public bool Dirty
-            {
-                get => dirtyX || dirtyY;
-                set
-                {
-                    dirtyX = dirtyY = value;
-                }
-            }
-
-            public AbsMouseOutput()
-            {
-                x = y = 0.5;
-                previousX = previousY = 0.5;
-                dirtyX = dirtyY = false;
-                previousDirty = false;
-                angleRad = 0.0;
-            }
-
-            public AbsMouseOutput(double x, double y)
-            {
-                this.x = previousX = x;
-                this.y = previousY = y;
-                this.dirtyX = this.dirtyY = false;
-                previousDirty = false;
-                angleRad = 0.0;
-            }
-
-            public void Reset()
-            {
-                x = y = 0.5;
-                previousX = previousY = 0.5;
-                dirtyX = dirtyY = false;
-                previousDirty = false;
-                angleRad = 0.0;
-            }
-
-            public void CalculateAngle()
-            {
-                angleRad = Math.Atan2(-(y - 0.5), (x - 0.5));
-            }
-
-            public void CalculateDeadCoords(ButtonAbsMouseInfo absMouseInfo,
-                out double releaseX, out double releaseY)
-            {
-                double lxUnit = Math.Cos(angleRad);
-                double lyUnit = Math.Sin(angleRad);
-                double deadRadius = absMouseInfo.antiRadius;
-
-                //double midX = ((absMouseInfo.maxX - absMouseInfo.minX) / 2.0) + absMouseInfo.minX;
-                //double midY = ((absMouseInfo.maxY - absMouseInfo.minY) / 2.0) + absMouseInfo.minY;
-                ////Trace.WriteLine($"MIDY: {midY}");
-                //double tempx = lxUnit >= 0.0 ? ((absMouseInfo.maxX - midX) * (Math.Abs(lxUnit) * deadRadius) + midX) :
-                //    ((absMouseInfo.minX - midX) * (Math.Abs(lxUnit) * deadRadius) + midX);
-                //double tempy = lyUnit >= 0.0 ? ((absMouseInfo.minY - midY) * (Math.Abs(lyUnit) * deadRadius) + midY) :
-                //    ((absMouseInfo.maxY - midY) * (Math.Abs(lyUnit) * deadRadius) + midY);
-
-                double xdiff = lxUnit * deadRadius;
-                double ydiff = -lyUnit * deadRadius; // Make down past ycenter be positive
-                double tempx = (absMouseInfo.width / 2.0) * xdiff + absMouseInfo.xcenter;
-                double tempy = (absMouseInfo.height / 2.0) * ydiff + absMouseInfo.ycenter;
-
-                tempx = Math.Clamp(tempx, 0.0, 1.0);
-                tempy = Math.Clamp(tempy, 0.0, 1.0);
-
-                releaseX = tempx;
-                releaseY = tempy;
-
-                //Trace.WriteLine($"TEMPX: {tempx}");
-            }
-        }
-
         public static Queue<DS4TimedStickAxisValue>[][] stickValueHistory = new Queue<DS4TimedStickAxisValue>[Global.TEST_PROFILE_ITEM_COUNT][]
         {
             new Queue<DS4TimedStickAxisValue>[2] { new Queue<DS4TimedStickAxisValue>(), new Queue<DS4TimedStickAxisValue>() },
@@ -958,13 +871,6 @@ namespace DS4Windows
             new DeltaSettingsProcessorGroup(), new DeltaSettingsProcessorGroup(), new DeltaSettingsProcessorGroup(),
             new DeltaSettingsProcessorGroup(), new DeltaSettingsProcessorGroup(), new DeltaSettingsProcessorGroup(),
             new DeltaSettingsProcessorGroup(), new DeltaSettingsProcessorGroup(),
-        };
-
-        public static AbsMouseOutput[] absMouseOutputState = new AbsMouseOutput[Global.MAX_DS4_CONTROLLER_COUNT]
-        {
-            new AbsMouseOutput(), new AbsMouseOutput(), new AbsMouseOutput(),
-            new AbsMouseOutput(), new AbsMouseOutput(), new AbsMouseOutput(),
-            new AbsMouseOutput(), new AbsMouseOutput(),
         };
 
         static ReaderWriterLockSlim syncStateLock = new ReaderWriterLockSlim();
@@ -2903,9 +2809,6 @@ namespace DS4Windows
             catch { }
             double tempMouseDeltaX = 0.0;
             double tempMouseDeltaY = 0.0;
-            //AbsMouseOutput absMouseOut = new AbsMouseOutput(0.5, 0.5);
-            ref AbsMouseOutput absMouseOut = ref absMouseOutputState[device];
-            absMouseOut.Dirty = false;
             int mouseDeltaX = 0;
             int mouseDeltaY = 0;
 
@@ -2941,7 +2844,7 @@ namespace DS4Windows
                     DS4ControlSettings dcs = settingEnum.Current;
                     ProcessControlSettingAction(dcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
             }
             else
@@ -2998,7 +2901,7 @@ namespace DS4Windows
                     DS4ControlSettings dcs = settingEnum.Current;
                     ProcessControlSettingAction(dcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
             }
             else
@@ -3032,7 +2935,7 @@ namespace DS4Windows
             {
                 ProcessControlSettingAction(dcsTemp, device, cState, MappedState, eState,
                     tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                    ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                    ref tempMouseDeltaY, ctrl);
             }
             else
             {
@@ -3060,7 +2963,7 @@ namespace DS4Windows
 
                     ProcessControlSettingAction(dcsTemp, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
                 else
                 {
@@ -3085,7 +2988,7 @@ namespace DS4Windows
 
                     ProcessControlSettingAction(l2FullPull, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 // Store active buttons state
@@ -3099,7 +3002,7 @@ namespace DS4Windows
             {
                 ProcessControlSettingAction(dcsTemp, device, cState, MappedState, eState,
                     tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                    ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                    ref tempMouseDeltaY, ctrl);
             }
             else
             {
@@ -3127,7 +3030,7 @@ namespace DS4Windows
 
                     ProcessControlSettingAction(dcsTemp, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
                 else
                 {
@@ -3152,7 +3055,7 @@ namespace DS4Windows
 
                     ProcessControlSettingAction(r2FullPull, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 // Store active buttons state
@@ -3165,7 +3068,7 @@ namespace DS4Windows
                 DS4ControlSettings dcs = settingEnum.Current;
                 ProcessControlSettingAction(dcs, device, cState, MappedState, eState,
                     tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                    ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                    ref tempMouseDeltaY, ctrl);
             }
 
             // Process Extra Device specific buttons
@@ -3174,7 +3077,7 @@ namespace DS4Windows
                 DS4ControlSettings dcs = settingEnum.Current;
                 ProcessControlSettingAction(dcs, device, cState, MappedState, eState,
                     tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                    ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                    ref tempMouseDeltaY, ctrl);
             }
 
             GyroOutMode imuOutMode = profileSettings.GetGyroOutMode(device);
@@ -3226,14 +3129,14 @@ namespace DS4Windows
                 {
                     ProcessControlSettingAction(previousGyroSwipeXDcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 if (gyroSwipeXDcs != null)
                 {
                     ProcessControlSettingAction(gyroSwipeXDcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 // Disable previous button before possibly activating current button
@@ -3241,14 +3144,14 @@ namespace DS4Windows
                 {
                     ProcessControlSettingAction(previousGyroSwipeYDcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 if (gyroSwipeYDcs != null)
                 {
                     ProcessControlSettingAction(gyroSwipeYDcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
             }
 
@@ -3652,64 +3555,6 @@ namespace DS4Windows
             if (mouseDeltaX != 0 || mouseDeltaY != 0)
             {
                 VirtualKBM.MoveRelativeMouse(mouseDeltaX, mouseDeltaY);
-            }
-
-            if (absMouseOut.Dirty ||
-                absMouseOut.previousDirty)
-            {
-                if (absMouseOut.Dirty)
-                {
-                    double outX = 0.0, outY = 0.0;
-                    //outX = absMouseOut.x;
-                    //outY = absMouseOut.y;
-                    if (ctrl.DisplayCoordinateService.UseAllMonitors)
-                    {
-                        outX = absMouseOut.x;
-                        outY = absMouseOut.y;
-
-                        //double tempX = 0.0, tempY = 0.0;
-                        //Global.TranslateCoorToAbsDisplay(outX, outY,
-                        //    out tempX, out tempY);
-                        //Trace.WriteLine($"INX: {outX} | INY: {outY} | OUTX: {tempX} | OUTY: {tempY}");
-                    }
-                    else
-                    {
-                        outX = absMouseOut.x;
-                        outY = absMouseOut.y;
-
-                        double tempX = 0.0, tempY = 0.0;
-                        //Global.TranslateCoorToAbsDisplay(absMouseOut.x, absMouseOut.y,
-                        //    out outX, out outY);
-                        ctrl.DisplayCoordinateService.TranslateCoorToAbsDisplay(absMouseOut.x, absMouseOut.y,
-                            out tempX, out tempY);
-                    }
-
-                    outX = Math.Clamp(outX, 0.0, 1.0);
-                    outY = Math.Clamp(outY, 0.0, 1.0);
-                    VirtualKBM.MoveAbsoluteMouse(outX, outY);
-                }
-                else if (absMouseOut.previousDirty)
-                {
-                    ButtonAbsMouseInfo buttonAbsMouseInfo = ctrl.ProfileSettingsService.ButtonAbsMouseInfos[device];
-                    if (buttonAbsMouseInfo.snapToCenter)
-                    {
-                        absMouseOut.CalculateDeadCoords(buttonAbsMouseInfo, out double releaseX,
-                            out double releaseY);
-
-                        if (!ctrl.DisplayCoordinateService.UseAllMonitors)
-                        {
-                            ctrl.DisplayCoordinateService.TranslateCoorToAbsDisplay(releaseX, releaseY,
-                                out releaseX, out releaseY);
-                        }
-
-                        VirtualKBM.MoveAbsoluteMouse(releaseX, releaseY);
-                    }
-                }
-
-                absMouseOut.previousDirty = absMouseOut.Dirty;
-                absMouseOut.Dirty = false;
-
-                absMouseOut.CalculateAngle();
             }
         }
 
@@ -4405,7 +4250,7 @@ namespace DS4Windows
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ProcessControlSettingAction(DS4ControlSettings dcs, int device, DS4State cState, DS4State MappedState, DS4StateExposed eState,
             Mouse tp, DS4StateFieldMapping fieldMapping, DS4StateFieldMapping outputfieldMapping, SyntheticState deviceState, ref double tempMouseDeltaX, ref double tempMouseDeltaY,
-            ref AbsMouseOutput absMouseOut, ControlService ctrl)
+            ControlService ctrl)
         {
             // Check if this control press would trigger a Special Action
             // If so, suppress the normal mapping to prevent conflict
@@ -4725,7 +4570,7 @@ namespace DS4Windows
                             default: break;
                         }
                     }
-                    else if (xboxControl >= X360Controls.MouseUp && xboxControl <= X360Controls.AbsMouseRight)
+                    else if (xboxControl >= X360Controls.MouseUp && xboxControl <= X360Controls.MouseRight)
                     {
                         switch (xboxControl)
                         {
@@ -4769,54 +4614,6 @@ namespace DS4Windows
 
                                     break;
                                 }
-                            case X360Controls.AbsMouseUp:
-                                {
-                                    double tempY = GetAbsMouseMapping(device, dcs.control, cState, eState,
-                                        fieldMapping, xboxControl, absMouseOut, ctrl, out bool transformed);
-                                    if (transformed && !absMouseOut.dirtyY)
-                                    {
-                                        absMouseOut.y = tempY;
-                                        absMouseOut.dirtyY = true;
-                                    }
-                                }
-
-                                break;
-                            case X360Controls.AbsMouseDown:
-                                {
-                                    double tempY = GetAbsMouseMapping(device, dcs.control, cState, eState,
-                                        fieldMapping, xboxControl, absMouseOut, ctrl, out bool transformed);
-                                    if (transformed && !absMouseOut.dirtyY)
-                                    {
-                                        absMouseOut.y = tempY;
-                                        absMouseOut.dirtyY = true;
-                                    }
-                                }
-
-                                break;
-                            case X360Controls.AbsMouseLeft:
-                                {
-                                    double tempX = GetAbsMouseMapping(device, dcs.control, cState, eState,
-                                        fieldMapping, xboxControl, absMouseOut, ctrl, out bool transformed);
-                                    if (transformed && !absMouseOut.dirtyX)
-                                    {
-                                        absMouseOut.x = tempX;
-                                        absMouseOut.dirtyX = true;
-                                    }
-                                }
-
-                                break;
-                            case X360Controls.AbsMouseRight:
-                                {
-                                    double tempX = GetAbsMouseMapping(device, dcs.control, cState, eState,
-                                        fieldMapping, xboxControl, absMouseOut, ctrl, out bool transformed);
-                                    if (transformed && !absMouseOut.dirtyX)
-                                    {
-                                        absMouseOut.x = tempX;
-                                        absMouseOut.dirtyX = true;
-                                    }
-                                }
-
-                                break;
 
                             default: break;
                         }
@@ -6801,349 +6598,6 @@ namespace DS4Windows
 
                 stickWheel = 0;
             }
-        }
-
-        private static double GetAbsMouseMapping(int device, DS4Controls control, DS4State cState, DS4StateExposed eState,
-            DS4StateFieldMapping fieldMapping, X360Controls outputControl, AbsMouseOutput absMouseOut, ControlService ctrl, out bool transformed)
-        {
-            double result = 0.5;
-            transformed = false;
-            int controlNum = (int)control;
-            bool positive = outputControl == X360Controls.AbsMouseDown || outputControl == X360Controls.AbsMouseRight;
-            bool vertical = outputControl == X360Controls.AbsMouseUp || outputControl == X360Controls.AbsMouseDown;
-            ButtonAbsMouseInfo buttonAbsMouseInfo = ButtonAbsMouseInfos[device];
-            bool calculateRadiusAnti = buttonAbsMouseInfo.antiRadius != 0.0;
-            double minOut = 0.5;
-            double midOut = 0.5;
-            double maxFullOut = 0.5;
-            double widthMid = 0.0;
-            double heightMid = 0.0;
-            double outputMid = 0.0;
-            double dirCenter = 0.0;
-            if (!vertical)
-            {
-                widthMid = buttonAbsMouseInfo.width / 2.0;
-                outputMid = widthMid;
-                dirCenter = buttonAbsMouseInfo.xcenter;
-
-                maxFullOut = positive ? dirCenter + widthMid : dirCenter - widthMid;
-                minOut = positive ? dirCenter - widthMid : dirCenter + widthMid;
-                midOut = dirCenter;
-                //maxFullOut = positive ? buttonAbsMouseInfo.maxX : buttonAbsMouseInfo.minX;
-                //minOut = buttonAbsMouseInfo.minX;
-                //midOut = ((buttonAbsMouseInfo.maxX - minOut) / 2.0) + minOut;
-            }
-            else
-            {
-                heightMid = buttonAbsMouseInfo.height / 2.0;
-                outputMid = heightMid;
-                dirCenter = buttonAbsMouseInfo.ycenter;
-
-                maxFullOut = positive ? dirCenter + heightMid : dirCenter - heightMid;
-                minOut = positive ? dirCenter - heightMid : dirCenter + heightMid;
-                midOut = dirCenter;
-
-                //maxFullOut = positive ? buttonAbsMouseInfo.maxY : buttonAbsMouseInfo.minY;
-                //minOut = buttonAbsMouseInfo.minY;
-                //midOut = ((buttonAbsMouseInfo.maxY - minOut) / 2.0) + minOut;
-            }
-
-            result = midOut;
-
-            DS4StateFieldMapping.ControlType controlType = DS4StateFieldMapping.mappedType[controlNum];
-            if (controlType == DS4StateFieldMapping.ControlType.AxisDir)
-            {
-                switch (control)
-                {
-                    case DS4Controls.LXNeg:
-                        {
-                            if (cState.LX < 128)
-                            {
-                                double diff = -(cState.LX - 128.0) / 127.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.LXUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                //Trace.WriteLine($"LXUNIT: {cState.LXUnit}");
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * (diff * -1.0) + buttonAbsMouseInfo.xcenter;
-                                transformed = true;
-                            }
-                            //else if (cState.LX == 128)
-                            //{
-                            //    double anti = 0.2 * cState.LXUnit;
-                            //    double diff = 0.0;
-                            //    diff = (1.0 - anti) * diff + anti;
-                            //    result = (maxFullOut - midOut) * diff + midOut;
-                            //}
-                        }
-
-                        break;
-                    case DS4Controls.LXPos:
-                        {
-                            if (cState.LX > 128)
-                            {
-                                double diff = (cState.LX - 128.0) / 128.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.LXUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                    //Trace.WriteLine($"ANTI: {anti} | DIFF : {diff}");
-                                }
-
-                                //Trace.WriteLine($"LXUNIT: {cState.LXUnit}");
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * diff + buttonAbsMouseInfo.xcenter;
-                                transformed = true;
-                            }
-                            //else if (cState.LX == 128)
-                            //{
-                            //    double anti = 0.2 * cState.LXUnit;
-                            //    double diff = 0.0;
-                            //    diff = (1.0 - anti) * diff + anti;
-                            //    result = (maxFullOut - midOut) * diff + midOut;
-                            //}
-                        }
-
-                        break;
-                    case DS4Controls.LYNeg:
-                        {
-                            if (cState.LY < 128)
-                            {
-                                double diff = -(cState.LY - 128.0) / 127.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.LYUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * (diff * -1.0) + buttonAbsMouseInfo.ycenter;
-                                //Trace.WriteLine($"RES: {result} | MAXFULL: {maxFullOut} | DIFF: {diff}");
-                                transformed = true;
-                            }
-                            //else
-                            //{
-                            //    double anti = 0.2 * cState.LYUnit;
-                            //    double diff = 0.0;
-                            //    diff = (1.0 - anti) * diff + anti;
-                            //    result = (maxFullOut - midOut) * diff + midOut;
-                            //}
-                        }
-
-                        break;
-                    case DS4Controls.LYPos:
-                        {
-                            if (cState.LY > 128)
-                            {
-                                double diff = (cState.LY - 128.0) / 128.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.LYUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * diff + buttonAbsMouseInfo.ycenter;
-                                transformed = true;
-                            }
-                            //else
-                            //{
-                            //    double anti = 0.2 * cState.LYUnit;
-                            //    double diff = 0.0;
-                            //    diff = (1.0 - anti) * diff + anti;
-                            //    result = (maxFullOut - midOut) * diff + midOut;
-                            //}
-                        }
-
-                        break;
-
-
-                    case DS4Controls.RXNeg:
-                        {
-                            if (cState.RX < 128)
-                            {
-                                double diff = -(cState.RX - 128.0) / 127.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.RXUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * (diff * -1.0) + buttonAbsMouseInfo.xcenter;
-                                transformed = true;
-                            }
-                        }
-
-                        break;
-                    case DS4Controls.RXPos:
-                        {
-                            if (cState.RX > 128)
-                            {
-                                double diff = (cState.RX - 128.0) / 128.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.RXUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * diff + buttonAbsMouseInfo.xcenter;
-                                transformed = true;
-                            }
-                        }
-
-                        break;
-                    case DS4Controls.RYNeg:
-                        {
-                            if (cState.RY < 128)
-                            {
-                                double diff = -(cState.RY - 128.0) / 127.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.RYUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * (diff * -1.0) + buttonAbsMouseInfo.ycenter;
-                                transformed = true;
-                            }
-                        }
-
-                        break;
-                    case DS4Controls.RYPos:
-                        {
-                            if (cState.RY > 128)
-                            {
-                                double diff = (cState.RY - 128.0) / 128.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.RYUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * diff + buttonAbsMouseInfo.ycenter;
-                                transformed = true;
-                            }
-                        }
-
-                        break;
-
-                    default: break;
-                }
-            }
-            else if (controlType == DS4StateFieldMapping.ControlType.Button)
-            {
-                bool active = fieldMapping.buttons[controlNum];
-                double lowOut = 0.0;
-                if (calculateRadiusAnti)
-                {
-                    lowOut = (maxFullOut - midOut) * buttonAbsMouseInfo.antiRadius + midOut;
-                    //lowOut = outputMid * buttonAbsMouseInfo.antiRadius + dirCenter;
-                    //lowOut = buttonAbsMouseInfo.antiRadius;
-                }
-
-                result = active ? maxFullOut : lowOut;
-                //double diff = active ? (positive ? 1.0 : -1.0) :
-                //    (positive ? lowOut : -lowOut);
-
-                //result = outputMid * diff + dirCenter;
-                transformed = active;
-            }
-            else if (controlType == DS4StateFieldMapping.ControlType.Trigger)
-            {
-                byte trigger = fieldMapping.triggers[controlNum];
-                double diff = trigger / 255.0;
-                //double fullOutput = maxFullOut;
-                if (calculateRadiusAnti)
-                {
-                    double anti = buttonAbsMouseInfo.antiRadius;
-                    diff = (1.0 - anti) * diff + anti;
-                }
-
-                result = outputMid * (positive ? diff : -diff) + dirCenter;
-                transformed = trigger > 0;
-            }
-            else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
-            {
-                double fullOutput = maxFullOut;
-
-                switch (control)
-                {
-                    case DS4Controls.GyroXPos:
-                        {
-                            int gyroX = fieldMapping.gryodirs[controlNum];
-                            double diff = gyroX / 128.0;
-                            if (calculateRadiusAnti)
-                            {
-                                double anti = buttonAbsMouseInfo.antiRadius;
-                                diff = (1.0 - anti) * diff + anti;
-                            }
-
-                            result = (fullOutput - midOut) * diff + midOut;
-                            //result = outputMid * diff + buttonAbsMouseInfo.xcenter;
-                            transformed = gyroX > 0;
-                        }
-
-                        break;
-                    case DS4Controls.GyroXNeg:
-                        {
-                            int gyroX = fieldMapping.gryodirs[controlNum];
-                            double diff = -gyroX / 128.0;
-                            if (calculateRadiusAnti)
-                            {
-                                double anti = buttonAbsMouseInfo.antiRadius;
-                                diff = (1.0 - anti) * diff + anti;
-                            }
-
-                            result = (fullOutput - midOut) * diff + midOut;
-                            //result = outputMid * -diff + buttonAbsMouseInfo.xcenter;
-                            transformed = -gyroX > 0;
-                        }
-
-                        break;
-                    case DS4Controls.GyroZPos:
-                        {
-                            int gyroZ = fieldMapping.gryodirs[controlNum];
-                            double diff = gyroZ / 128.0;
-                            if (calculateRadiusAnti)
-                            {
-                                double anti = buttonAbsMouseInfo.antiRadius;
-                                diff = (1.0 - anti) * diff + anti;
-                            }
-                            result = (fullOutput - midOut) * diff + midOut;
-                            //result = outputMid * diff + buttonAbsMouseInfo.ycenter;
-                            transformed = gyroZ > 0;
-                        }
-
-                        break;
-                    case DS4Controls.GyroZNeg:
-                        {
-                            int gyroZ = fieldMapping.gryodirs[controlNum];
-                            double diff = -gyroZ / 128.0;
-                            if (calculateRadiusAnti)
-                            {
-                                double anti = buttonAbsMouseInfo.antiRadius;
-                                diff = (1.0 - anti) * diff + anti;
-                            }
-
-                            result = (fullOutput - midOut) * diff + midOut;
-                            //result = outputMid * -diff + buttonAbsMouseInfo.ycenter;
-                            transformed = -gyroZ > 0;
-                        }
-
-                        break;
-
-                    default: break;
-                }
-            }
-
-            return result;
         }
 
         private static double getMouseMapping(int device, DS4Controls control, DS4State cState, DS4StateExposed eState,

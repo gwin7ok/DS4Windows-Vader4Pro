@@ -61,33 +61,5 @@ namespace DS4WindowsTests
             Assert.True(eventFired);
             Assert.Equal("GyroControls_TriggerToggle", changedProperty);
         }
-
-        [Fact]
-        public void SubSettings_TouchpadAbsMouse_ShouldBubbleToServiceAndMarkDirty()
-        {
-            var service = new ProfileSettingsService();
-            if (service.TouchAbsMouse == null || service.TouchAbsMouse[0] == null)
-                return;
-
-            service.WireSubSettingsEvents(0);
-
-            bool eventFired = false;
-            string changedProperty = null;
-
-            service.ProfileSettingChanged += (s, e) =>
-            {
-                if (e.DeviceIndex == 0)
-                {
-                    eventFired = true;
-                    changedProperty = e.SettingName;
-                }
-            };
-
-            // タッチパッド絶対座標マウスの MaxZoneX を変更
-            service.TouchAbsMouse[0].MaxZoneX = 85;
-
-            Assert.True(eventFired);
-            Assert.Equal("TouchAbs_MaxZoneX", changedProperty);
-        }
     }
 }

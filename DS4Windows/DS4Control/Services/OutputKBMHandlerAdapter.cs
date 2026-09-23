@@ -20,7 +20,6 @@ namespace DS4Windows.Services
         public bool Disconnect() => Global.outputKBMHandler?.Disconnect() ?? false;
 
         public void MoveRelativeMouse(int x, int y) => Global.outputKBMHandler?.MoveRelativeMouse(x, y);
-        public void MoveAbsoluteMouse(double x, double y) => Global.outputKBMHandler?.MoveAbsoluteMouse(x, y);
 
         public void PerformMouseWheelEvent(int vertical, int horizontal) => Global.outputKBMHandler?.PerformMouseWheelEvent(vertical, horizontal);
         public void PerformMouseButtonEvent(uint mouseButton) => Global.outputKBMHandler?.PerformMouseButtonEvent(mouseButton);

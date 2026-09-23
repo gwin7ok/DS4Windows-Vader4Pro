@@ -32,7 +32,8 @@ using static DS4Windows.Mouse;
 namespace DS4WinWPF.DS4Control.DTOXml
 {
     [XmlRoot("DS4Windows")]
-    public class ProfileDTO : IDTO<BackingStore> {
+    public class ProfileDTO : IDTO<BackingStore>
+    {
         [XmlIgnore]
         public DateTime LastChecked { get; private set; }
 
@@ -1391,12 +1392,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
             }
         }
 
-        [XmlElement("TouchpadAbsMouseSettings")]
-        public TouchpadAbsMouseSettingsSerialize TouchpadAbsMouseSettings
-        {
-            get; set;
-        }
-
         [XmlElement("TouchpadMouseStick")]
         public TouchpadMouseStickSerializer TouchpadMouseStickSettings
         {
@@ -1405,12 +1400,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
 
         [XmlElement("TouchpadButtonMode")]
         public TouchButtonActivationMode TouchpadButtonMode
-        {
-            get; set;
-        }
-
-        [XmlElement("AbsMouseRegionSettings")]
-        public AbsMouseRegionSettingsSerializer AbsMouseRegionSettings
         {
             get; set;
         }
@@ -1473,8 +1462,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
             LSOutputSettings = new StickModeOutputSettings();
             RSOutputSettings = new StickModeOutputSettings();
             DualSenseControllerSettings = new DualSenseControllerSettings();
-            TouchpadAbsMouseSettings = new TouchpadAbsMouseSettingsSerialize();
-            AbsMouseRegionSettings = new AbsMouseRegionSettingsSerializer();
             Control = new DS4ControlAssignementSerializer();
             ShiftControl = new DS4ControlAssignementSerializer();
         }
@@ -1765,12 +1752,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
             TrackballFriction = source.trackballFriction[deviceIndex];
             TouchRelMouseRotation = source.touchpadRelMouse[deviceIndex].rotation;
             TouchRelMouseMinThreshold = source.touchpadRelMouse[deviceIndex].minThreshold;
-            TouchpadAbsMouseSettings = new TouchpadAbsMouseSettingsSerialize()
-            {
-                MaxZoneX = source.touchpadAbsMouse[deviceIndex].maxZoneX,
-                MaxZoneY = source.touchpadAbsMouse[deviceIndex].maxZoneY,
-                SnapToCenter = source.touchpadAbsMouse[deviceIndex].snapToCenter,
-            };
 
             TouchpadMouseStickSettings = new TouchpadMouseStickSerializer()
             {
@@ -1795,16 +1776,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
             };
 
             TouchpadButtonMode = source.touchpadButtonMode[deviceIndex];
-
-            AbsMouseRegionSettings = new AbsMouseRegionSettingsSerializer()
-            {
-                AbsWidth = source.buttonAbsMouseInfos[deviceIndex].width,
-                AbsHeight = source.buttonAbsMouseInfos[deviceIndex].height,
-                AbsXCenter = source.buttonAbsMouseInfos[deviceIndex].xcenter,
-                AbsYCenter = source.buttonAbsMouseInfos[deviceIndex].ycenter,
-                AntiRadius = source.buttonAbsMouseInfos[deviceIndex].antiRadius,
-                SnapToCenter = source.buttonAbsMouseInfos[deviceIndex].snapToCenter,
-            };
 
             OutputContDevice = source.outputDevType[deviceIndex];
             OutputDS4TriggerMode = source.outputDS4TriggerMode[deviceIndex];
@@ -1861,7 +1832,7 @@ namespace DS4WinWPF.DS4Control.DTOXml
                     }
                     else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
                     {
-                        macroSerializer.CustomMapMacros[dcs.control] = 
+                        macroSerializer.CustomMapMacros[dcs.control] =
                             string.Join("/", dcs.action.actionMacro);
                     }
                 }
@@ -1924,7 +1895,7 @@ namespace DS4WinWPF.DS4Control.DTOXml
                     }
                     else if (dcs.shiftActionType == DS4ControlSettings.ActionType.Macro)
                     {
-                        shiftMacroSerializer.CustomMapMacros[dcs.control] = 
+                        shiftMacroSerializer.CustomMapMacros[dcs.control] =
                             string.Join("/", dcs.shiftAction.actionMacro);
                         shiftMacroSerializer.ShiftTriggers.TryAdd(dcs.control, dcs.shiftTrigger);
                     }
@@ -2376,13 +2347,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
             destination.touchpadRelMouse[deviceIndex].rotation = TouchRelMouseRotation;
             destination.touchpadRelMouse[deviceIndex].minThreshold = TouchRelMouseMinThreshold;
 
-            if (TouchpadAbsMouseSettings != null)
-            {
-                destination.touchpadAbsMouse[deviceIndex].maxZoneX = TouchpadAbsMouseSettings.MaxZoneX;
-                destination.touchpadAbsMouse[deviceIndex].maxZoneY = TouchpadAbsMouseSettings.MaxZoneY;
-                destination.touchpadAbsMouse[deviceIndex].snapToCenter = TouchpadAbsMouseSettings.SnapToCenter;
-            }
-
             if (TouchpadMouseStickSettings != null)
             {
                 destination.touchMStickInfo[deviceIndex].deadZone = TouchpadMouseStickSettings.DeadZone;
@@ -2410,16 +2374,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
 
             destination.touchpadButtonMode[deviceIndex] = TouchpadButtonMode;
 
-            if (AbsMouseRegionSettings != null)
-            {
-                destination.buttonAbsMouseInfos[deviceIndex].width = AbsMouseRegionSettings.AbsWidth;
-                destination.buttonAbsMouseInfos[deviceIndex].height = AbsMouseRegionSettings.AbsHeight;
-                destination.buttonAbsMouseInfos[deviceIndex].xcenter = AbsMouseRegionSettings.AbsXCenter;
-                destination.buttonAbsMouseInfos[deviceIndex].ycenter = AbsMouseRegionSettings.AbsYCenter;
-                destination.buttonAbsMouseInfos[deviceIndex].antiRadius = AbsMouseRegionSettings.AntiRadius;
-                destination.buttonAbsMouseInfos[deviceIndex].snapToCenter = AbsMouseRegionSettings.SnapToCenter;
-            };
-
             destination.outputDevType[deviceIndex] = OutputContDevice;
             destination.outputDS4TriggerMode[deviceIndex] = OutputDS4TriggerMode;
 
@@ -2440,7 +2394,7 @@ namespace DS4WinWPF.DS4Control.DTOXml
             {
                 if (Control.Button != null && Control.Button.CustomMapButtons.Count > 0)
                 {
-                    foreach(KeyValuePair<DS4Controls, X360Controls> pair in Control.Button.CustomMapButtons)
+                    foreach (KeyValuePair<DS4Controls, X360Controls> pair in Control.Button.CustomMapButtons)
                     {
                         destination.UpdateDS4CSetting(deviceIndex,
                             pair.Key.ToString(), false, pair.Value, "", DS4KeyType.None, 0);
@@ -2449,7 +2403,7 @@ namespace DS4WinWPF.DS4Control.DTOXml
 
                 if (Control.Key != null && Control.Key.CustomMapKeys.Count > 0)
                 {
-                    foreach(KeyValuePair<DS4Controls, ushort> pair in Control.Key.CustomMapKeys)
+                    foreach (KeyValuePair<DS4Controls, ushort> pair in Control.Key.CustomMapKeys)
                     {
                         destination.UpdateDS4CSetting(deviceIndex,
                             pair.Key.ToString(), false, pair.Value, "", DS4KeyType.None, 0);
@@ -3132,40 +3086,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
         }
     }
 
-    public class TouchpadAbsMouseSettingsSerialize
-    {
-        private int _maxZoneX = TouchpadAbsMouseSettings.DEFAULT_MAXZONE_X;
-        [XmlElement("MaxZoneX")]
-        public int MaxZoneX
-        {
-            get => _maxZoneX;
-            set => _maxZoneX = value;
-        }
-
-        private int _maxZoneY = TouchpadAbsMouseSettings.DEFAULT_MAXZONE_Y;
-        [XmlElement("MaxZoneY")]
-        public int MaxZoneY
-        {
-            get => _maxZoneY;
-            set => _maxZoneY = value;
-        }
-
-        private bool _snapToCenter = TouchpadAbsMouseSettings.DEFAULT_SNAP_CENTER;
-        [XmlIgnore]
-        public bool SnapToCenter
-        {
-            get => _snapToCenter;
-            set => _snapToCenter = value;
-        }
-
-        [XmlElement("SnapToCenter")]
-        public string SnapToCenterString
-        {
-            get => _snapToCenter.ToString();
-            set => _snapToCenter = XmlDataUtilities.StrToBool(value);
-        }
-    }
-
     public class TouchpadMouseStickSerializer
     {
         public class SmoothingGroupSerializer
@@ -3321,64 +3241,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
         }
     }
 
-    public class AbsMouseRegionSettingsSerializer
-    {
-        private double _absWidth = ButtonAbsMouseInfo.WIDTH_DEFAULT;
-        [XmlElement("AbsWidth")]
-        public double AbsWidth
-        {
-            get => _absWidth;
-            set => _absWidth = Math.Clamp(value, 0.0, 1.0);
-        }
-
-        private double _absHeight = ButtonAbsMouseInfo.HEIGHT_DEFAULT;
-        [XmlElement("AbsHeight")]
-        public double AbsHeight
-        {
-            get => _absHeight;
-            set => _absHeight = Math.Clamp(value, 0.0, 1.0);
-        }
-
-        private double _absXCenter = ButtonAbsMouseInfo.XCENTER_DEFAULT;
-        [XmlElement("AbsXCenter")]
-        public double AbsXCenter
-        {
-            get => _absXCenter;
-            set => _absXCenter = Math.Clamp(value, 0.0, 1.0);
-        }
-
-        private double _absYCenter = ButtonAbsMouseInfo.YCENTER_DEFAULT;
-        [XmlElement("AbsYCenter")]
-        public double AbsYCenter
-        {
-            get => _absYCenter;
-            set => _absYCenter = Math.Clamp(value, 0.0, 1.0);
-        }
-
-        private double _antiRadius = ButtonAbsMouseInfo.ANTI_RADIUS_DEFAULT;
-        [XmlElement("AntiRadius")]
-        public double AntiRadius
-        {
-            get => _antiRadius;
-            set => _antiRadius = Math.Clamp(value, 0.0, 1.0);
-        }
-
-        private bool _snapToCenter = ButtonAbsMouseInfo.SNAP_CENTER_DEFAULT;
-        [XmlIgnore]
-        public bool SnapToCenter
-        {
-            get => _snapToCenter;
-            set => _snapToCenter = value;
-        }
-
-        [XmlElement("SnapToCenter")]
-        public string SnapToCenterString
-        {
-            get => _snapToCenter.ToString();
-            set => _snapToCenter = XmlDataUtilities.StrToBool(value);
-        }
-    }
-
     public class DS4ControlAssignementSerializer
     {
         [XmlElement("Button")]
@@ -3506,7 +3368,7 @@ namespace DS4WinWPF.DS4Control.DTOXml
 
         public void WriteXml(XmlWriter writer)
         {
-            foreach(KeyValuePair<DS4Controls, X360Controls> pair in customMapButtons)
+            foreach (KeyValuePair<DS4Controls, X360Controls> pair in customMapButtons)
             {
                 writer.WriteStartElement(pair.Key.ToString());
                 if (shiftTriggers.TryGetValue(pair.Key, out int shiftTrigger) &&
@@ -3679,7 +3541,7 @@ namespace DS4WinWPF.DS4Control.DTOXml
                     {
                         DS4KeyType keyType = DS4KeyType.None;
                         string[] ds4KeyNames = Enum.GetNames(typeof(DS4KeyType));
-                        foreach(string keyName in ds4KeyNames)
+                        foreach (string keyName in ds4KeyNames)
                         {
                             if (item.InnerText.Contains(keyName) &&
                                 Enum.TryParse(keyName, out DS4KeyType tempKey))

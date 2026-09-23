@@ -21,7 +21,6 @@ namespace DS4WindowsTests
         public int SyncCallCount { get; private set; }
 
         public List<(int x, int y)> MoveRelativeCalls { get; } = new List<(int, int)>();
-        public List<(double x, double y)> MoveAbsoluteCalls { get; } = new List<(double, double)>();
         public List<(int v, int h)> MouseWheelCalls { get; } = new List<(int, int)>();
         public List<uint> MouseButtonPressCalls { get; } = new List<uint>();
         public List<uint> MouseButtonReleaseCalls { get; } = new List<uint>();
@@ -41,7 +40,6 @@ namespace DS4WindowsTests
         }
 
         public void MoveRelativeMouse(int x, int y) => MoveRelativeCalls.Add((x, y));
-        public void MoveAbsoluteMouse(double x, double y) => MoveAbsoluteCalls.Add((x, y));
 
         public void PerformMouseWheelEvent(int vertical, int horizontal) => MouseWheelCalls.Add((vertical, horizontal));
         public void PerformMouseButtonEvent(uint mouseButton) => MouseButtonPressCalls.Add(mouseButton);

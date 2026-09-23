@@ -322,59 +322,6 @@ namespace DS4Windows
             TouchMoveCursor(deltaX, deltaY, disableInvert);
         }
 
-        public void TouchesMovedAbsolute(TouchpadEventArgs arg)
-        {
-            int touchesLen = arg.Touches.Length;
-            if (touchesLen != 1)
-                return;
-
-            int currentX = 0, currentY = 0;
-            if (touchesLen > 1)
-            {
-                currentX = arg.Touches[1].HwX;
-                currentY = arg.Touches[1].HwY;
-            }
-            else
-            {
-                currentX = arg.Touches[0].HwX;
-                currentY = arg.Touches[0].HwY;
-            }
-
-            TouchpadAbsMouseSettings absSettings = Global.TouchAbsMouse[deviceNumber];
-
-            int minX = (int)(DS4Touchpad.RES_HALFED_X - (absSettings.maxZoneX * 0.01 * DS4Touchpad.RES_HALFED_X));
-            int minY = (int)(DS4Touchpad.RES_HALFED_Y - (absSettings.maxZoneY * 0.01 * DS4Touchpad.RES_HALFED_Y));
-            int maxX = (int)(DS4Touchpad.RES_HALFED_X + (absSettings.maxZoneX * 0.01 * DS4Touchpad.RES_HALFED_X));
-            int maxY = (int)(DS4Touchpad.RES_HALFED_Y + (absSettings.maxZoneY * 0.01 * DS4Touchpad.RES_HALFED_Y));
-
-            double mX = (DS4Touchpad.RESOLUTION_X_MAX - 0) / (double)(maxX - minX);
-            double bX = minX * mX;
-            double mY = (DS4Touchpad.RESOLUTION_Y_MAX - 0) / (double)(maxY - minY);
-            double bY = minY * mY;
-
-            currentX = currentX > maxX ? maxX : (currentX < minX ? minX : currentX);
-            currentY = currentY > maxY ? maxY : (currentX < minY ? minY : currentY);
-
-            double absX = (currentX * mX - bX) / (double)DS4Touchpad.RESOLUTION_X_MAX;
-            double absY = (currentY * mY - bY) / (double)DS4Touchpad.RESOLUTION_Y_MAX;
-            //InputMethods.MoveAbsoluteMouse(absX, absY);
-
-            if (!Global.absUseAllMonitors)
-            {
-                Global.TranslateCoorToAbsDisplay(absX, absY, out absX, out absY);
-            }
-
-            absX = Math.Clamp(absX, 0.0, 1.0);
-            absY = Math.Clamp(absY, 0.0, 1.0);
-            Global.outputKBMHandler.MoveAbsoluteMouse(absX, absY);
-        }
-
-        public void TouchCenterAbsolute()
-        {
-            //InputMethods.MoveAbsoluteMouse(0.5, 0.5);
-            Global.outputKBMHandler.MoveAbsoluteMouse(0.5, 0.5);
-        }
-
         public void TouchMoveCursor(int dx, int dy, bool disableInvert = false)
         {
             TouchpadRelMouseSettings relMouseSettings = Global.TouchRelMouse[deviceNumber];

@@ -6,12 +6,14 @@ using DS4Windows.DI;
 namespace DS4WindowsTests
 {
     /// <summary>
-    /// Phase6-Step3-3: `Mapping.cs` の `MapCustom`（画面座標変換・絶対マウス出力）で使用していた
-    /// `Global.absUseAllMonitors` / `Global.TranslateCoorToAbsDisplay` / `ButtonAbsMouseInfos` への
-    /// 直接参照を、`ctrl.DisplayCoordinateService` / `ctrl.ProfileSettingsService`（ともに ControlService の
-    /// 既存フィールドを公開する読み取り専用 internal プロパティ）経由の引数渡しへ切り替えたことに伴い、
-    /// 新設した `ProfileSettingsService` プロパティが Composition Root から受け取った実体をそのまま返すことを検証する。
-    /// `DisplayCoordinateService` は Step3-1 で既に追加済みのため対象外（<see cref="ControlServiceStep3Step2DiWiringTests"/> で検証済み）。
+    /// Phase6-Step3-3: 当初は `Mapping.cs` の `MapCustom`（画面座標変換・絶対マウス出力）が使用していた
+    /// `ButtonAbsMouseInfos` への直接参照を、`ctrl.ProfileSettingsService`（ControlService の既存フィールドを
+    /// 公開する読み取り専用 internal プロパティ）経由の引数渡しへ切り替えるために新設したプロパティである。
+    /// その後、ボタン割当のAbs Mouse機能自体（`ButtonAbsMouseInfos` を含む）とタッチパッドのAbsolute Mouse
+    /// モード、共有基盤の `IDisplayCoordinateService` は使用頻度が極めて低いと判断され、ユーザー承認のもと
+    /// 別途削除された（`copilot-instructions.md` §2.2 例外規定）。`ProfileSettingsService` プロパティ自体は
+    /// Step3-6（`GetControlSettingsGroup` 等）で再利用する汎用アクセサとして存置している。
+    /// ここでは、このプロパティが Composition Root から受け取った実体をそのまま返すことを検証する。
     /// パターンは <see cref="ControlServiceStep3Step2DiWiringTests"/> に倣う。
     /// </summary>
     public class ControlServiceStep3Step3DiWiringTests

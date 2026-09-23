@@ -525,10 +525,6 @@ namespace DS4WinWPF.DS4Forms
                     activeTouchButtonDisplayControl = touchContentControl4;
                     break;
                 case 3:
-                    touchContentControl3.Content = touchButtonUC;
-                    activeTouchButtonDisplayControl = touchContentControl3;
-                    break;
-                case 4:
                     break;
 
                 case 0:

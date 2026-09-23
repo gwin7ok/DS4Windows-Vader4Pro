@@ -846,35 +846,6 @@ namespace DS4Windows
         }
     }
 
-    public class ButtonAbsMouseInfo
-    {
-        public const double WIDTH_DEFAULT = 1.0;
-        public const double HEIGHT_DEFAULT = 1.0;
-        public const double XCENTER_DEFAULT = 0.5;
-        public const double YCENTER_DEFAULT = 0.5;
-
-        public const bool SNAP_CENTER_DEFAULT = true;
-        public const double ANTI_RADIUS_DEFAULT = 0.0;
-
-        public double width = WIDTH_DEFAULT;
-        public double height = HEIGHT_DEFAULT;
-        public double xcenter = XCENTER_DEFAULT;
-        public double ycenter = YCENTER_DEFAULT;
-
-        public bool snapToCenter = SNAP_CENTER_DEFAULT;
-        public double antiRadius = ANTI_RADIUS_DEFAULT;
-
-        public void Reset()
-        {
-            width = WIDTH_DEFAULT;
-            height = HEIGHT_DEFAULT;
-            xcenter = XCENTER_DEFAULT;
-            ycenter = YCENTER_DEFAULT;
-            snapToCenter = SNAP_CENTER_DEFAULT;
-            antiRadius = ANTI_RADIUS_DEFAULT;
-        }
-    }
-
     public enum LightbarMode : uint
     {
         None,
@@ -991,72 +962,6 @@ namespace DS4Windows
         {
             rotation = DEFAULT_ANG_RAD;
             minThreshold = DEFAULT_MIN_THRESHOLD;
-        }
-    }
-
-    public class TouchpadAbsMouseSettings : ProfileSubSettingBase
-    {
-        public const int DEFAULT_MAXZONE_X = 100;
-        public const int DEFAULT_MAXZONE_Y = 100;
-        public const bool DEFAULT_SNAP_CENTER = false;
-
-        private int _maxZoneX = DEFAULT_MAXZONE_X;
-        private int _maxZoneY = DEFAULT_MAXZONE_Y;
-        private bool _snapToCenter = DEFAULT_SNAP_CENTER;
-
-        public int maxZoneX
-        {
-            get => _maxZoneX;
-            set
-            {
-                if (_maxZoneX != value)
-                {
-                    _maxZoneX = value;
-                    RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(MaxZoneX));
-                }
-            }
-        }
-
-        public int maxZoneY
-        {
-            get => _maxZoneY;
-            set
-            {
-                if (_maxZoneY != value)
-                {
-                    _maxZoneY = value;
-                    RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(MaxZoneY));
-                }
-            }
-        }
-
-        public bool snapToCenter
-        {
-            get => _snapToCenter;
-            set
-            {
-                if (_snapToCenter != value)
-                {
-                    _snapToCenter = value;
-                    RaisePropertyChanged();
-                    RaisePropertyChanged(nameof(SnapToCenter));
-                }
-            }
-        }
-
-        // PascalCase 互換プロパティ
-        public int MaxZoneX { get => maxZoneX; set => maxZoneX = value; }
-        public int MaxZoneY { get => maxZoneY; set => maxZoneY = value; }
-        public bool SnapToCenter { get => snapToCenter; set => snapToCenter = value; }
-
-        public void Reset()
-        {
-            _maxZoneX = DEFAULT_MAXZONE_X;
-            _maxZoneY = DEFAULT_MAXZONE_Y;
-            _snapToCenter = DEFAULT_SNAP_CENTER;
-            RaiseAllPropertiesChanged();
         }
     }
 

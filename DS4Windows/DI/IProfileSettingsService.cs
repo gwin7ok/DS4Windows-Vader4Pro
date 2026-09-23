@@ -101,7 +101,6 @@ namespace DS4Windows.DI
         TouchpadOutMode[] TouchOutMode { get; }
         int[][] TouchDisInvertTriggers { get; }
         TouchMouseStickInfo[] TouchMouseStickInf { get; }
-        TouchpadAbsMouseSettings[] TouchAbsMouse { get; }
         TouchpadRelMouseSettings[] TouchRelMouse { get; }
 
         // ---- Step10-2-A-4: ジャイロ関連 (m_Config委譲) ----
@@ -158,7 +157,6 @@ namespace DS4Windows.DI
 
         // ---- Step10-2-A-6: ボタン/マウス出力関連 (m_Config委譲) ----
         ButtonMouseInfo[] ButtonMouseInfos { get; }
-        ButtonAbsMouseInfo[] ButtonAbsMouseInfos { get; }
         bool[] EnableTouchToggle { get; }
         SteeringWheelSmoothingInfo[] WheelSmoothInfo { get; }
         bool[] DoubleTap { get; }

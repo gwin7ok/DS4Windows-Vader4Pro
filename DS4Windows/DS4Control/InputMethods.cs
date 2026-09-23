@@ -42,27 +42,6 @@ namespace DS4Windows
             }
         }
 
-        private const double ABSOLUTE_MOUSE_COOR_MAX = 65535.0;
-
-        /// <summary>
-        /// Move the mouse cursor to an absolute position on the virtual desktop
-        /// </summary>
-        /// <param name="x">X coordinate in range of [0.0, 1.0]. 0.0 for left. 1.0 for far right</param>
-        /// <param name="y">Y coordinate in range of [0.0, 1.0]. 0.0 for top. 1.0 for bottom</param>
-        public static void MoveAbsoluteMouse(double x, double y)
-        {
-            INPUT[] tempInput = new INPUT[1];
-            ref INPUT temp = ref tempInput[0];
-            temp.Type = INPUT_MOUSE;
-            temp.Data.Mouse.ExtraInfo = IntPtr.Zero;
-            temp.Data.Mouse.Flags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK | MOUSEEVENTF_ABSOLUTE;
-            temp.Data.Mouse.MouseData = 0;
-            temp.Data.Mouse.Time = 0;
-            temp.Data.Mouse.X = (int)(x * ABSOLUTE_MOUSE_COOR_MAX);
-            temp.Data.Mouse.Y = (int)(y * ABSOLUTE_MOUSE_COOR_MAX);
-            uint result = SendInput(1, tempInput, Marshal.SizeOf(tempInput[0]));
-        }
-
         public static void MouseWheel(int vertical, int horizontal)
         {
             INPUT[] tempInput = new INPUT[2];
@@ -236,10 +215,10 @@ namespace DS4Windows
                 case VK_LAUNCH_APP1:
                 case VK_LAUNCH_APP2:
                 case VK_APPS:
-                {
-                    scancode |= (ushort)EXTENDED_FLAG; // set extended bit
-                    break;
-                }
+                    {
+                        scancode |= (ushort)EXTENDED_FLAG; // set extended bit
+                        break;
+                    }
             }
 
             return scancode;
@@ -331,4 +310,3 @@ namespace DS4Windows
         private static extern ushort MapVirtualKey(uint uCode, uint uMapType);
     }
 }
-

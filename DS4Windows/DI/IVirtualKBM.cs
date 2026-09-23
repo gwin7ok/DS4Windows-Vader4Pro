@@ -14,7 +14,6 @@ namespace DS4Windows.Services
         bool Disconnect();
 
         void MoveRelativeMouse(int x, int y);
-        void MoveAbsoluteMouse(double x, double y);
 
         void PerformMouseWheelEvent(int vertical, int horizontal);
         void PerformMouseButtonEvent(uint mouseButton);

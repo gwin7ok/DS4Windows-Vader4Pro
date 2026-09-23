@@ -10,7 +10,7 @@ namespace DS4WindowsTests
     /// Phase6-Step3-2: ControlService のコンストラクタ注入拡張（ISpecialActionRepository）が
     /// Composition Root から正しく配線されていることと、必須引数が null で受け付けられないことを検証する。
     /// あわせて、Mapping.cs への引数渡し（S3方針）用に新設した読み取り専用プロパティ（ProfileActionProvider、
-    /// ProfileXmlStore、DisplayCoordinateService、ProfileRepository、SpecialActionRepository、
+    /// ProfileXmlStore、ProfileRepository、SpecialActionRepository、
     /// いずれも internal）が、コンストラクタで受け取った実体をそのまま返すことを検証する。
     /// internal メンバーのため、本プロジェクトの既存の慣例（<see cref="MappingSpecialActionSuppressionTests"/> 等）
     /// と同様にリフレクション経由でアクセスする。
@@ -59,7 +59,6 @@ namespace DS4WindowsTests
         [Theory]
         [InlineData("ProfileActionProvider", typeof(IProfileActionProvider))]
         [InlineData("ProfileXmlStore", typeof(IProfileXmlStore))]
-        [InlineData("DisplayCoordinateService", typeof(IDisplayCoordinateService))]
         [InlineData("ProfileRepository", typeof(IProfileRepository))]
         [InlineData("SpecialActionRepository", typeof(ISpecialActionRepository))]
         public void InternalAccessor_ReturnsSameInstanceAsAppHost(string propertyName, Type serviceType)

@@ -960,29 +960,8 @@ Disabled:
   <data name="ViGEm117MinNeeded" xml:space="preserve">
     <value>Only works with ViGEmBus 1.17.333.0 and newer</value>
   </data>
-  <data name="AbsoluteMouse" xml:space="preserve">
-    <value>Absolute Mouse</value>
-  </data>
-  <data name="AbsoluteMouseOptions" xml:space="preserve">
-    <value>Absolute Mouse Options</value>
-  </data>
   <data name="AntiRadius" xml:space="preserve">
     <value>Anti Radius</value>
-  </data>
-  <data name="BindingWin.AbsMouse" xml:space="preserve">
-    <value>Abs Mouse</value>
-  </data>
-  <data name="BindingWin.AbsMouseDown" xml:space="preserve">
-    <value>Abs Mouse Down</value>
-  </data>
-  <data name="BindingWin.AbsMouseLeft" xml:space="preserve">
-    <value>Abs Mouse Left</value>
-  </data>
-  <data name="BindingWin.AbsMouseRight" xml:space="preserve">
-    <value>Abs Mouse Right</value>
-  </data>
-  <data name="BindingWin.AbsMouseUp" xml:space="preserve">
-    <value>Abs Mouse Up</value>
   </data>
   <data name="BindingWin.ChangeLight" xml:space="preserve">
     <value>Change Light</value>
@@ -1088,9 +1067,6 @@ Disabled:
   </data>
   <data name="LinkProfileId" xml:space="preserve">
     <value>Link Profile/ID</value>
-  </data>
-  <data name="MainWin.AbsDisplayMonitor" xml:space="preserve">
-    <value>Abs Display Monitor</value>
   </data>
   <data name="MainWin.EnableServer" xml:space="preserve">
     <value>Enable Server</value>
