@@ -13,6 +13,19 @@ namespace DS4WindowsTests
     /// </summary>
     public class EnvironmentServiceInjectionTests
     {
+        // Phase6-Step3-2: AppHost.GetService<IAutoProfileService>() の解決経路が AutoProfileHolder を
+        // 構築し、Global.appdatapath（未設定時は null）を参照するため、他のテストファイル
+        // （AutoProfileServiceTests 等）と同じ idempotent なガードで事前に設定する。
+        // テスト実行順・並列実行に依存せず本テストが単独でも成立するようにするための対応
+        // （Step2 の教訓 B.11: Global の static 状態に依存するテストは明示的に配線する）。
+        public EnvironmentServiceInjectionTests()
+        {
+            if (string.IsNullOrEmpty(Global.appdatapath))
+            {
+                Global.appdatapath = new PathService().AppDataPath;
+            }
+        }
+
         [Fact]
         public void ProfileSettingsService_AcceptsInjectedEnvironmentService()
         {
