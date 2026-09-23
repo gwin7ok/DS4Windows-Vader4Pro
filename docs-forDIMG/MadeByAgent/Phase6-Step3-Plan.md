@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は実装済み（グループ A の24件＋契約追加 R1。ビルド・テスト・実機確認待ち。§3.5）**。次は Step3-6a の実機確認後に Step3-6b。残実参照数は、Step3-5 完了後の再集計（2026-09-24）で **58件**と判明した（従来の記載「118」「73」は、Step3-2 で解消した12件の引き算漏れによる過大）。Step3-6a 完了後は34件（3-6b 12＋3-6c 19＋Step3-7 の温存3）。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は完了確定（2026-09-24、グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ先送り］。§3.5）。Step3-6b は実装済み（グループ B の12件。ビルド・テスト・実機確認待ち。§3.6）**。次は Step3-6b の実機確認後に Step3-6c。残実参照数は、Step3-5 完了後の再集計（2026-09-24）で **58件**と判明した（従来の記載「118」「73」は、Step3-2 で解消した12件の引き算漏れによる過大）。Step3-6a 完了後は34件、Step3-6b 完了後は22件（3-6c 19＋Step3-7 の温存3）。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -131,8 +131,8 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | **Step3-3** | ~~画面座標変換の引数渡し化~~ | ~~`absUseAllMonitors`/`TranslateCoorToAbsDisplay`/`ButtonAbsMouseInfos`（3640, 3658, 3668, 3674, 3676、絶対マウス出力使用時のみ到達）~~ | ~~5~~ | **対象消滅（2026-09-23）。Abs Mouse機能削除によりMapCustomの該当ブロック自体を撤去。詳細は §3.2、`Phase6-Status.md` §6.8参照** |
 | **Step3-4** | `SetCurveAndDeadzone` のスティック・トリガー系（前半） | LS/RS/L2/R2 のローテーション・アンチスナップバック・デッドゾーン・感度・スクエアスティック・カーブモード・ベジェ曲線 | 27（計画時の概算「約20」を実地確認で確定） | **完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録は §3.3 参照**。純粋な配列引き当てが中心。`IProfileSettingsService` 1個の引数追加で足りる |
 | **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する。**完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録・`Commit` の扱いの決定（C1）は §3.4 参照** |
-| **Step3-6a** | 残りのホットパス: `ctrl` から読める経路（グループ A） | `MapCustom`／`ProcessControlSettingAction`／`MapCustomAction`／`getMouseMapping`／`Scale360degreeGyroAxis`（いずれも `ControlService ctrl` を持つ）の `getProfileActionCount`／`GetSASteeringWheelEmulationAxis`／`ButtonMouseInfos`／`outputKBMMapping`／`GetDS4CSetting`／`getLSDeadzone`／`getRSDeadzone`／`SAWheelFuzzValues`／`getSXDeadzone`／`WheelSmoothInfo`／`getSXAntiDeadzone`、`reverseX360ButtonMapping`（決定 R1）、および `ctrl` を持たない `ReleaseActionKeys`／`IfAxisIsNotModified`（`settings` 引数を追加） | 24 | **実装済み（2026-09-24、ビルド・テスト・実機確認待ち）。実施記録は §3.5 参照** |
-| **Step3-6b** | 判定補助メソッド群（グループ B） | `GetByteMapping`／`GetBoolMappingExternal`／`GetBoolMapping`／`getBoolSpecialActionMapping`／`GetBoolActionMapping`／`GetXYAxisMapping` の `IsUsingSAForControls`（6）・`SXSens`／`SZSens`（4）、`GetMouseWheelMapping` の `Global.outputKBMMapping`（2）。**方針 P2（`Mapping` の静的 `profileSettings` を利用。決定 2026-09-24、§3.4.1）** | 12 | 呼び出し元が多く（約50箇所）`ctrl` を持たないため引数渡しは行わない。TODO コメント（Phase7 の instance 化で解消）を付ける |
+| **Step3-6a** | 残りのホットパス: `ctrl` から読める経路（グループ A） | `MapCustom`／`ProcessControlSettingAction`／`MapCustomAction`／`getMouseMapping`／`Scale360degreeGyroAxis`（いずれも `ControlService ctrl` を持つ）の `getProfileActionCount`／`GetSASteeringWheelEmulationAxis`／`ButtonMouseInfos`／`outputKBMMapping`／`GetDS4CSetting`／`getLSDeadzone`／`getRSDeadzone`／`SAWheelFuzzValues`／`getSXDeadzone`／`WheelSmoothInfo`／`getSXAntiDeadzone`、`reverseX360ButtonMapping`（決定 R1）、および `ctrl` を持たない `ReleaseActionKeys`／`IfAxisIsNotModified`（`settings` 引数を追加） | 24 | **完了確定（2026-09-24、ビルド・テスト・実機確認済み。ステアリングホイールエミュレーションのみ Step11 へ先送り）。実施記録は §3.5 参照** |
+| **Step3-6b** | 判定補助メソッド群（グループ B） | `GetByteMapping`／`GetBoolMappingExternal`／`GetBoolMapping`／`getBoolSpecialActionMapping`／`GetBoolActionMapping`／`GetXYAxisMapping` の `IsUsingSAForControls`（6）・`SXSens`／`SZSens`（4）、`GetMouseWheelMapping` の `Global.outputKBMMapping`（2）。**方針 P2（`Mapping` の静的 `profileSettings` を利用。決定 2026-09-24、§3.4.1）** | 12 | 呼び出し元が多く（約50箇所）`ctrl` を持たないため引数渡しは行わない。TODO コメント（Phase7 の instance 化で解消）を付ける。**実装済み（2026-09-24、ビルド・テスト・実機確認待ち）。実施記録は §3.6 参照** |
 | **Step3-6c** | 非同期マクロ経路（グループ C） | `PlayMacroCodeValue`（14）・`AltTabSwapping`（3）・`AltTabSwappingRelease`（2）の `outputKBMMapping`。**方針 P2（決定 2026-09-24、§3.4.1）** | 19 | モデル図 04 の変更は不要。K3（マクロ二重ガード）は Phase7 で再設計するため触れない |
 | **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する |
 
@@ -297,7 +297,31 @@ Step3-6 の `PlayMacroCodeValue`（14件）・`AltTabSwapping`／`AltTabSwapping
 - `MappingControlPathGlobalReferenceGuardTests.cs`（新規）: グループ A の7メソッドのソース走査ガード（移行済み `Global` メンバー12種の非修飾・`Global.` 修飾の参照が残っていないこと、`ReleaseActionKeys`／`IfAxisIsNotModified` が `settings` 引数を持つこと）。走査の方式（コメント除去＋波括弧の対応）は、実ファイルに対して事前に検証済み。
 - これらのメソッド自体（`MapCustom`／`MapCustomAction` 等）を直接駆動するテストは、既存 `MappingSpecialActionSuppressionTests.cs` 冒頭コメントのとおり困難なため追加していない。挙動保持はビルドと実機確認で担保する。
 
-**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) ボタンを別のゲームパッドボタン（Xbox→DS4 の対応表を引く経路）へ割り当てた場合の動作、(2) ボタン→キー／マクロ割り当て（`GetRealEventKey`）の動作と、押した状態で離したときのキー解放、(3) スペシャルアクション（トリガーの押し離し、トリガーに割り当てたキー／マクロの解放、タップ判定）、(4) ボタンによるマウス移動と、Extras の「Change Mouse Sensitivity」（`ButtonMouseInfos`）、(5) スティックのデッドゾーンが 0 のときのマウス移動の補正（`getMouseMapping`）。ステアリングホイールエミュレーション（`Scale360degreeGyroAxis`、`GetSASteeringWheelEmulationAxis`）は、対象の vJoy 環境がなければ `Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録する。
+**検証結果（確定・2026-09-24）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。実機確認は下記の項目1〜5がすべて問題なし（ボタン→別のゲームパッドボタン、ボタン→キー／マクロとキー解放、スペシャルアクション、ボタンによるマウス移動と Change Mouse Sensitivity、デッドゾーン0のときのマウス移動）。項目6（ステアリングホイールエミュレーション）は vJoy 環境がなく実施できないため、`Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録した。
+
+**（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) ボタンを別のゲームパッドボタン（Xbox→DS4 の対応表を引く経路）へ割り当てた場合の動作、(2) ボタン→キー／マクロ割り当て（`GetRealEventKey`）の動作と、押した状態で離したときのキー解放、(3) スペシャルアクション（トリガーの押し離し、トリガーに割り当てたキー／マクロの解放、タップ判定）、(4) ボタンによるマウス移動と、Extras の「Change Mouse Sensitivity」（`ButtonMouseInfos`）、(5) スティックのデッドゾーンが 0 のときのマウス移動の補正（`getMouseMapping`）。ステアリングホイールエミュレーション（`Scale360degreeGyroAxis`、`GetSASteeringWheelEmulationAxis`）は、対象の vJoy 環境がなければ `Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録する。
+
+### 3.6 Step3-6b 実施記録（2026-09-24）
+
+**対象（グループ B、12件）**: `ctrl` を持たない判定補助メソッド群。方針は決定 P2（§3.4.1）で、引数渡しは行わず、`Mapping` の既存の静的フィールド `profileSettings` から読む。着手前に再確認した結果は、Step3-6 の再集計（§3.5）と一致した。
+
+| 対象 | 変更 |
+|---|---|
+| `IsUsingSAForControls(device)`（6件: `GetByteMapping`／`GetBoolMappingExternal`／`GetBoolMapping`／`getBoolSpecialActionMapping`／`GetBoolActionMapping`／`GetXYAxisMapping`） | `Mapping` に private ヘルパー `IsUsingGyroForControls(int device)`（`profileSettings.GyroOutputMode[device] == GyroOutMode.Controls`）を新設し、6箇所の呼び出しを置換。`Global.IsUsingSAForControls`（`m_Config.gyroOutMode[i] == Controls`）と同じ BackingStore の同じ配列を見る。ヘルパー名を `IsUsingSAForControls` にしなかったのは、`using static DS4Windows.Global;` 経由の `Global` メソッドと取り違えないため |
+| `SXSens`／`SZSens`（4件: `GetBoolMappingExternal`） | `profileSettings.SXSens[device]`／`profileSettings.SZSens[device]` に置換（`GetBoolMappingExternal` は `public` で外部呼び出し2箇所あり。シグネチャは変更なし） |
+| `Global.outputKBMMapping`（2件: `GetMouseWheelMapping`） | `profileSettings.OutputKBMMapping.WHEEL_TICK_DOWN`／`WHEEL_TICK_UP` に置換 |
+| TODO コメント | ヘルパー、`GetMouseWheelMapping`、`GetBoolMappingExternal` の `SXSens`／`SZSens` ブロックに、Phase7 の instance 化（コンストラクタ注入）で解消する旨の TODO を付与（`copilot-instructions.md` §3.3 原則4） |
+
+契約（`DS4Windows/DI/`）・`ServiceRegistration.cs`・`ControlService`・モデル図の変更はなし。
+
+**挙動の同一性（実装前に確認）**: `profileSettings` は `AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance` で束縛され、DI の Singleton（`ProfileSettingsService`。コンストラクタで `Global.store` を使う）を指す。`Global.IsUsingSAForControls`／`Global.SXSens`／`Global.outputKBMMapping` はいずれも `Global.store`（`m_Config`）または `ProfileSettingsServiceInstance`（同じ Singleton）へ到達するため、同じ配列・同じインスタンスを返す。`Clone()`・ログ・キャッシュは追加していない。
+
+**テスト**:
+- `MappingHelperMethodsGlobalReferenceGuardTests.cs`（新規）: グループ B の7メソッドのソース走査ガード（移行済み `Global` メンバー4種の非修飾・`Global.` 修飾の参照が残っていないこと、ヘルパーが `profileSettings.GyroOutputMode[device] == GyroOutMode.Controls` を読むこと）。走査の方式は実ファイルに対して事前に検証済み。
+- `MappingGyroControlsHelperTests.cs`（新規）: リフレクションで `IsUsingGyroForControls` を呼び、出力モード（Controls／None／Mouse）を切り替えたときに `Global.IsUsingSAForControls` と同じ結果を返すことを検証（検証後は元の値へ戻す）。
+- 静的 `profileSettings` を読む経路は、テストでサービスを差し替えても追随しない（型初期化時に1回だけ束縛。`Phase6-Status.md` §6.4 の教訓1）ため、引数渡しの検証（`MappingArgumentPassThroughTests`）と同じ方式のテストは追加していない。
+
+**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) ジャイロをコントロール（スティック・ボタン）に割り当てた場合の、ジャイロによるボタン判定（`GyroXPos`／`GyroXNeg`／`GyroZPos`／`GyroZNeg` を割り当てたボタンの反応）、(2) ジャイロ出力モードをコントロール以外（マウス等）にしたとき、ジャイロがボタン判定に影響しないこと、(3) スティックやトリガーをマウスホイールの上下に割り当てた場合のホイール回転（`GetMouseWheelMapping`）。(1)(2) はジャイロを使えるコントローラー（DS4／DualSense／Vader 4 Pro のジャイロ）が必要。
 
 ---
 

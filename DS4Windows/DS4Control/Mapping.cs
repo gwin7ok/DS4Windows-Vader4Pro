@@ -6574,13 +6574,14 @@ namespace DS4Windows
         private static void GetMouseWheelMapping(int device, DS4Controls control, DS4State cState,
             DS4StateExposed eState, Mouse tp, DS4StateFieldMapping fieldMap, bool down)
         {
+            // TODO(Phase6-Step3-6b, 決定P2): ctrl を持たない経路のため、Mapping の静的 profileSettings から読む。Phase7 の instance 化（コンストラクタ注入）で解消する。
             DateTime now = DateTime.UtcNow;
             if (now >= oldnow + TimeSpan.FromMilliseconds(10) && !pressagain)
             {
                 oldnow = now;
                 byte value = GetByteMapping(device, control, cState, eState, tp, fieldMap);
-                int wheelDir = down ? Global.outputKBMMapping.WHEEL_TICK_DOWN :
-                    Global.outputKBMMapping.WHEEL_TICK_UP;
+                int wheelDir = down ? profileSettings.OutputKBMMapping.WHEEL_TICK_DOWN :
+                    profileSettings.OutputKBMMapping.WHEEL_TICK_UP;
                 //double ratio = value / 255.0;
                 double ratio = (1.0 - 0.05) * (value / 255.0) + 0.05;
 
@@ -6983,6 +6984,15 @@ namespace DS4Windows
         /// <param name="tp">Mouse object</param>
         /// <param name="fieldMap">DS4StateFieldMapping instance for current MapCustom run</param>
         /// <returns></returns>
+        // Phase6-Step3-6b（決定P2）: `Global.IsUsingSAForControls`（m_Config.gyroOutMode[i] == Controls）の置き換え。
+        // GetBoolMapping 系（呼び出し元が約50箇所で ctrl を持たない）から呼ばれるため、引数渡しは行わず、
+        // Mapping の静的 profileSettings（IProfileSettingsService.GyroOutputMode。同じ BackingStore の同じ配列）から読む。
+        // TODO(Phase7): Mapping の instance 化（コンストラクタ注入）で、この静的束縛ごと解消する（Phase6-Step3-Plan.md §3.4.1）。
+        private static bool IsUsingGyroForControls(int device)
+        {
+            return profileSettings.GyroOutputMode[device] == GyroOutMode.Controls;
+        }
+
         private static byte GetByteMapping(int device, DS4Controls control, DS4State cState, DS4StateExposed eState, Mouse tp,
             DS4StateFieldMapping fieldMap)
         {
@@ -7021,7 +7031,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
 
                 switch (control)
                 {
@@ -7146,14 +7156,15 @@ namespace DS4Windows
             }
             else if (control >= DS4Controls.GyroXPos && control <= DS4Controls.GyroZNeg)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
 
                 switch (control)
                 {
-                    case DS4Controls.GyroXPos: result = saControls ? SXSens[device] * -eState.AccelX > 67 : false; break;
-                    case DS4Controls.GyroXNeg: result = saControls ? SXSens[device] * -eState.AccelX < -67 : false; break;
-                    case DS4Controls.GyroZPos: result = saControls ? SZSens[device] * eState.AccelZ > 67 : false; break;
-                    case DS4Controls.GyroZNeg: result = saControls ? SZSens[device] * eState.AccelZ < -67 : false; break;
+                    // TODO(Phase6-Step3-6b, 決定P2): 呼び出し元が ctrl を持たないため静的 profileSettings から読む。Phase7 の instance 化で解消する。
+                    case DS4Controls.GyroXPos: result = saControls ? profileSettings.SXSens[device] * -eState.AccelX > 67 : false; break;
+                    case DS4Controls.GyroXNeg: result = saControls ? profileSettings.SXSens[device] * -eState.AccelX < -67 : false; break;
+                    case DS4Controls.GyroZPos: result = saControls ? profileSettings.SZSens[device] * eState.AccelZ > 67 : false; break;
+                    case DS4Controls.GyroZNeg: result = saControls ? profileSettings.SZSens[device] * eState.AccelZ < -67 : false; break;
                     default: break;
                 }
             }
@@ -7209,7 +7220,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
                 bool safeTest = false;
 
                 switch (control)
@@ -7353,7 +7364,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
                 bool safeTest = false;
 
                 switch (control)
@@ -7451,7 +7462,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
                 bool safeTest = false;
 
                 switch (control)
@@ -7558,7 +7569,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
 
                 switch (control)
                 {
