@@ -298,7 +298,7 @@
 - `Mapping.cs` は `Global` 以外の静的結合（`Program.rootHub` 直接参照1件、Service Locator 6件）を含む。いずれも Step3 の対象外（`Phase6-Step3-Reality-Check-Ledger.md` §3.3）。
 - **2026-09-21 実地突き合わせ完了**: `Phase6-Step3-Reality-Check-Ledger.md` を作成・コミット済み。実参照は150件（旧計画の「12件」「115件」から確定値に更新）。`Phase6-Step3-Plan.md` を全面改訂し、論点1〜4の決定（C／S3／新設`IDisplayCoordinateService`ほか／機械置換不可2項目の選択肢）を反映済み。
 - **2026-09-23 Step3-1・Step3-2 完了**: いずれもビルド・テスト・実機確認済み（コミット済み）。
-- **2026-09-23 Step3-3 実装済み（ビルド未検証）**: 開発者側のビルド・テスト・実機確認・コミット後、Step3-4 から着手する。
+- **2026-09-23 Step3-3 → 対象消滅、Abs Mouse機能削除（確定）**: Step3-3実装・ビルド・テスト・実機確認・コミット完了直後、Abs Mouse機能（ボタン割当・タッチパッドAbsoluteMouseモード・共有基盤`IDisplayCoordinateService`）をユーザー承認のもと削除。削除後のビルド・テスト・実機確認・コミットも完了済み（詳細は §6.8）。次はStep3-4。
 - ファイルの配置は Step13 で変わっている（`ActionManager` など、Action 系は `Actions/` へ移動済み）。パスは現行の HEAD で確認する。
 
 ### 6.7 Phase8の新設（Controls/SpecialActions統合ディスパッチ）
@@ -338,4 +338,6 @@
 
 **モデル図への反映**: `03-Class-Interface-Diagram.md`（`IDisplayCoordinateService`クラス定義・実装関係を削除、注釈追記）、`04-Service-Lifecycle-Spec.md`（登録サービス一覧表から該当行を削除、注釈追記）を更新済み。`01`/`02`図には元々記載がなく変更なし。
 
-**ビルド確認**: この環境にはdotnetがなく、`dotnet build`/`dotnet test`を実行できていない。開発者側でのビルド・テスト・実機確認（タッチパッドのMouse/AbsoluteMouse以外の出力モード、Abs Mouse機能を使用していたプロファイルの読込・保存等）を経てからコミットすること。
+**ビルド確認（確定・2026-09-23）**: ビルド・テストビルド・テスト実行とも成功。実機確認も完了（コントローラー接続確認済み）：(1) Abs Mouse機能を使用していたプロファイルの読込・保存で該当設定が無警告でUnbound/初期値にフォールバックすることを確認、(2) タッチパッドの他の出力モード（Mouse／Controls／MouseJoystick／Passthru、インデックス詰め後）が引き続き正常動作することを確認、(3) Controlsタブのバインディングウィンドウから「Abs Mouse」タブが消えていること、Otherタブから「Absolute Mouse Options」「Abs Display Monitor」設定が消えていることを確認。コミットしてリモートリポジトリに反映済み。
+
+**削除漏れの修正（2026-09-23、ユーザーのビルドエラー報告により発覚）**: `ControlService.PreLoadReset(int ind)` 内に `Mapping.absMouseOutputState[ind].Reset();` の呼び出しが1箇所残存しており、`absMouseOutputState`フィールド削除に伴いビルドエラー（CS0117）となっていた。該当呼び出しを削除して解消。この修正を反映した上で上記のビルド・テスト・実機確認が完了している。

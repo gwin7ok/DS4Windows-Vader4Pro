@@ -162,7 +162,7 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 
 **その後の展開（2026-09-23、同日中）**: ビルド・テスト・実機確認・コミットが完了した直後、ユーザーより「Abs Mouse機能自体の使用頻度が極めて低いため削除したい」との提案があり、調査・承認を経て、ボタン割当のAbs Mouse機能・タッチパッドのAbsoluteMouseモード・共有基盤`IDisplayCoordinateService`が丸ごと削除された（`copilot-instructions.md` §2.2 例外規定に基づく機能廃止、詳細は`Phase6-Status.md` §6.8）。これに伴い、上記5箇所を含む`MapCustom`の該当ブロックと`GetAbsMouseMapping`メソッド自体が削除され、**Step3-3は対象が消滅**した。新設した`ProfileSettingsService`プロパティのみ、Step3-6（`GetControlSettingsGroup`等）での再利用を見込んで存置している。`ControlServiceStep3Step3DiWiringTests.cs`はこのプロパティのDI配線検証として引き続き有効。
 
-**ビルド確認**: この環境には dotnet がなく、`dotnet build`/`dotnet test` を実行できていない。今回のAbs Mouse機能削除を含め、開発者側でのビルド・テスト・実機確認を経てからコミットすること。
+**ビルド確認（確定・2026-09-23）**: ビルド・テストビルド・テスト実行とも成功。実機確認も完了（既存プロファイルのフォールバック動作、タッチパッド他モードの正常動作、UI上のAbs Mouse関連項目の非表示を確認）。コミットしてリモートリポジトリに反映済み。詳細は`Phase6-Status.md` §6.8参照。
 
 ---
 
