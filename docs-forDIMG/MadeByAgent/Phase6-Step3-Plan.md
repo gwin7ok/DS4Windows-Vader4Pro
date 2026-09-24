@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は完了確定（2026-09-24、グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ先送り］。§3.5）。Step3-6b は完了確定（2026-09-24、グループ B の12件。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.6）。Step3-6c は実装済み（グループ C の19件。ビルド・テスト・実機確認待ち。§3.7）**。次は Step3-6c の実機確認後に Step3-7。残実参照数は、Step3-5 完了後の再集計（2026-09-24）で **58件**と判明した（従来の記載「118」「73」は、Step3-2 で解消した12件の引き算漏れによる過大）。Step3-6a 完了後は34件、Step3-6b 完了後は22件、Step3-6c 完了後は3件（Step3-7 の温存3のみ）。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は完了確定（2026-09-24、グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ先送り］。§3.5）。Step3-6b は完了確定（2026-09-24、グループ B の12件。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.6）。Step3-6c は完了確定（2026-09-24、グループ C の19件。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.7）**。**Step3-7 は実装済み（2026-09-24、温存3件へのTODOコメント付与、§2.4.3 の選択は既定K-1を採用、`using static DS4Windows.Global;` の削除可否判定は見送りで確定。ビルド・テスト確認待ち。§3.8）**。残実参照数は、Step3-6c 完了後の集計で **3件（Step3-7 の温存3件のみ）**、Step3-7 完了後は全件が解消・温存判断済み（温存3件はTODO付きで意図的に残置）。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -344,6 +344,39 @@ Step3-6 の `PlayMacroCodeValue`（14件）・`AltTabSwapping`／`AltTabSwapping
 
 **未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) Controls タブでボタンにキー入力のマクロ（「Record A Macro」で記録）を割り当てて動作すること、(2) マウスクリック（左・右・中・X ボタン）を含むマクロが動作すること、(3) Alt+Tab のウィンドウ切り替えマクロ（押している間 Tab で切り替え、離すと確定）が動作すること、(4) スペシャルアクションのマクロ（`DefaultMacroPlayer` 経由の入口を含む）が動作すること。あわせて、押し続けの繰り返しマクロ（Repeat while held）が二重に走らないこと（K3 のガードの回帰確認）も見る。
 
+**Step3-6c 完了確定（2026-09-24、ユーザーのビルド・テスト・実機確認完了）**: 上記4項目および繰り返しマクロの二重実行がないことを含め、すべて問題なしと確認された。Step3 の残実参照数は3（Step3-7 の温存3件のみ）で確定。
+
+### 3.8 Step3-7 実施内容（2026-09-24実装）
+
+**対象（温存3件の最終処理、§1・§2.4.3）**: `Global.ProfileSettingsServiceInstance`（`profileSettings` フィールドのフォールバック）、`Global.outputKBMHandler`（`VirtualKBM` プロパティのフォールバック）、`Global.ApplyProfile`（`MapCustomAction` 内、`ActionManager` 未処理時のフォールバック）。加えて `using static DS4Windows.Global;`（31行目付近）の削除可否判定。
+
+**§2.4.3 の選択（着手前確認）**: **既定の K-1 を採用**（K-2 は不採用）。`IProfileApplicationService.ApplyProfile` の既知の不具合 K1（`Phase6-Status.md` §6.5: `deviceIndex >= 4` のスロットを拒否・戻り値を捨てて成功扱い・`Halt` を自身で行わない）が是正されるまで、K1 是正という Step3 の対象外の作業を持ち込まないため、`Global.ApplyProfile` フォールバックはそのまま温存する。K-2（Step3 内で K1 を先に是正）は、`Mapping.cs` 以外のファイル（`ProfileApplicationService` の実装）への変更が必要になり、Step3 の対象ファイル原則を超えるため不採用。
+
+**変更内容**:
+
+| 対象 | 変更 |
+|---|---|
+| `profileSettings`（`Mapping.cs` 79〜81行） | TODOコメントを追加。`Global.ProfileSettingsServiceInstance` へのフォールバックはコード上変更なし（温存） |
+| `VirtualKBM`（`Mapping.cs` 84〜86行） | TODOコメントを追加。`Global.outputKBMHandler` へのフォールバックはコード上変更なし（温存） |
+| `MapCustomAction` 内 `Global.ApplyProfile` フォールバック（K-1採用） | TODOコメントを追加（K1 是正後は本ファイル冒頭で解決済みの静的フィールド `profileApplication`（`IProfileApplicationService`）の `ApplyProfile` へ置換予定、と明記）。呼び出し自体はコード上変更なし（温存） |
+| `using static DS4Windows.Global;`（31行目） | **削除は見送り**（理由は下記）。ディレクティブの直前に、見送り理由と残存参照を記録するコメントを追加 |
+
+**`using static DS4Windows.Global;` の削除可否判定（完了判定チェックリスト最終項目）**:
+
+- 判定方法: `Global` クラス（`ScpUtil.cs`）が宣言する `public`/`internal static` メンバー（フィールド・プロパティ・メソッド・イベント・定数、計456件を抽出）それぞれについて、`Mapping.cs` 内で「`.` を伴わない裸の参照」が実際のコード（コメント除去後）に残っているかを機械的に走査した。
+- **結果**: `getTransitionedColor`（`Mapping.cs` 5465・5467行付近、`BatteryCheck` スペシャルアクションのライトバー色遷移計算）の2箇所が、非修飾のまま `Global.getTransitionedColor` を呼び出していることを確認した。この関数は §1 の対象件数表における「除外（純粋計算 `Clamp`/`getTransitionedColor`、真の定数）51件」の1つであり、そもそも Step3 の解消対象（実参照150件）に含まれていない。既存の `Global.Clamp` 呼び出し（複数箇所、いずれも `Global.` 修飾済み）も同じ除外区分に属し、コード上は既に明示修飾されているため `using static` には依存していない。
+- それ以外の456候補について、`OutContType`（enum型名。`Global` の同名メンバーではない）、`getL2AntiDeadzone`/`getL2Maxzone`/`getR2AntiDeadzone`/`getR2Maxzone`（`SetCurveAndDeadzone` 内のブロックコメント `/* ... */` 内の死んだコードのみで、実行されるコードでは Step3-4 で `settings.L2ModInfo`/`R2ModInfo` に置換済み）、`useTempProfile`（ログの文字列補間のラベル文字列であり実際のメンバー参照ではない）を検出したが、いずれも偽陽性（実際の `Global` 参照ではない）と確認した。
+- **判定**: **見送り**。`getTransitionedColor` が非修飾で呼ばれている限り `using static DS4Windows.Global;` を削除するとビルドが通らなくなるため、本 Step では削除しない。`getTransitionedColor` はそもそも Step3 の対象外（除外51件）であり、これを置換すること自体が Step3 の範囲を超える（`Clamp` 同様、単純な値変換のみで状態を持たないため、Global 直接参照根絶の実害は小さいと判断されている）。除外51件の要否判断は、Step3 の範囲外として記録する。
+- **残存参照の記録**: `Mapping.cs` に残る `Global.` 実利用箇所は、温存3件（`ProfileSettingsServiceInstance`／`outputKBMHandler`／`ApplyProfile`、各1箇所、TODOコメント付き）と、除外区分の `Global.Clamp`（複数箇所、明示修飾）のみ。`getTransitionedColor` は非修飾（`using static` 経由）で2箇所。これ以外の `Global` 実利用（150件のうち145件相当。Step3-3の5件は対象消滅済み）はすべて Step3-1〜3-6c で解消済み。
+
+**挙動の同一性**: いずれもコメント追加のみで、実行コード（フォールバックの条件・`ApplyProfile` の呼び出し引数）は一切変更していない。
+
+**テスト**: `MappingStep3FinalGlobalReferenceGuardTests.cs`（新規）: (1) `using static DS4Windows.Global;` が引き続き存在し、`getTransitionedColor` の非修飾呼び出しが存在すること（using static 存置の前提を固定）、(2) 温存3件（`Global.ProfileSettingsServiceInstance`／`Global.outputKBMHandler`／`Global.ApplyProfile(`）がそれぞれ厳密に1箇所ずつ存在すること（再増加の検出）、(3) 温存3件それぞれに Step3-7 の TODO コメントが付与されていること。
+
+**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。今回はコメント追加のみで実行コードの変更がないため、実機での挙動確認は不要と判断するが、念のため通常のプロファイル切替（Controls タブの Load Profile スペシャルアクション）が従来どおり動作することを確認することが望ましい。
+
+**完了判定チェックリスト（§6）との対応**: §1 の実参照150件（Step3-3消滅分5件を除く145件）はすべて解消済み。温存3件は TODO コメント付きで温存、JUDGE 2件（`reverseX360ButtonMapping`→Step3-6a で R1 採用済み、`Global.ApplyProfile`→本節で K-1 採用済み）はいずれも解消・温存判断済み。`using static DS4Windows.Global;` の削除可否は本節で判定・記録済み（見送り）。Step3 は本節をもって完了確定候補とする（ユーザーのビルド・テスト確認待ち）。
+
 ---
 
 ## 4. テスト・回帰検証計画
@@ -372,11 +405,11 @@ Step3-6 の `PlayMacroCodeValue`（14件）・`AltTabSwapping`／`AltTabSwapping
 
 ## 6. 完了判定チェックリスト
 
-- [ ] §1 の実参照150件が、§3 の各バッチにより解消されていること（KEEP 3件は TODO コメント付き温存、JUDGE 2件は §2.4 の選択後に解消または温存判断済みであること）。
-- [ ] 新設・拡張した契約（`IDisplayCoordinateService` 等4件）にモックベースの単体テストがあること。
-- [ ] `SetCurveAndDeadzone` 等のホットパスで新たなヒープ割り当てが発生していないこと（§2.4.2 の選択結果を反映）。
-- [ ] `ControlService`（またはその他の呼び出し元）から `Mapping` への引数渡しが Pure DI の原則に準拠していること（新たな Service Locator を `Mapping` に持ち込んでいないこと）。
-- [ ] モデル図 03・04 の `IDisplayCoordinateService` / `IProfileXmlStore` の記載が、実装後のコードと一致していること。
-- [ ] `dotnet build -c Release` でエラー・警告0件。
-- [ ] `DS4WindowsTests` および `StandaloneTests` の全自動テストが100%成功。
-- [ ] `using static DS4Windows.Global;`（31行目）の削除可否が判定され、記録されていること（削除する場合は本 Step 内で実施、見送る場合は理由と残存参照を記録）。
+- [x] §1 の実参照150件が、§3 の各バッチにより解消されていること（KEEP 3件は TODO コメント付き温存、JUDGE 2件は §2.4 の選択後に解消または温存判断済みであること）。**2026-09-24、Step3-7 §3.8 で確定。Step3-3消滅分5件を除く145件を解消。KEEP3件はTODO付き温存、JUDGE2件はR1・K-1採用で決着。**
+- [x] 新設・拡張した契約（`IDisplayCoordinateService` 等4件）にモックベースの単体テストがあること。**Step3-1で対応（`IDisplayCoordinateService`自体はAbs Mouse機能削除［§6.8］に伴い撤去済み）。**
+- [x] `SetCurveAndDeadzone` 等のホットパスで新たなヒープ割り当てが発生していないこと（§2.4.2 の選択結果を反映）。**`MappingHotPathAllocationTests.cs`で固定済み。**
+- [x] `ControlService`（またはその他の呼び出し元）から `Mapping` への引数渡しが Pure DI の原則に準拠していること（新たな Service Locator を `Mapping` に持ち込んでいないこと）。
+- [x] モデル図 03・04 の `IDisplayCoordinateService` / `IProfileXmlStore` の記載が、実装後のコードと一致していること。**`IDisplayCoordinateService`は§6.8の削除に伴い撤去反映済み。**
+- [ ] `dotnet build -c Release` でエラー・警告0件。**この環境にdotnetがないため未実行。ユーザー側での確認待ち。**
+- [ ] `DS4WindowsTests` および `StandaloneTests` の全自動テストが100%成功。**同上、ユーザー側での確認待ち。**
+- [x] `using static DS4Windows.Global;`（31行目）の削除可否が判定され、記録されていること（削除する場合は本 Step 内で実施、見送る場合は理由と残存参照を記録）。**2026-09-24、Step3-7 §3.8 で判定・記録済み。見送り。理由: `getTransitionedColor`［除外51件の1つ、Step3対象外］が非修飾で残存するため。**
