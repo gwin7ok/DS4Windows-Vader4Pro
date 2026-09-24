@@ -31,7 +31,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 | **Step 4** | `Mouse.cs`, `MouseCursor.cs`, `MouseWheel.cs` | 81行（2026-09-24 に現行コードから再集計。**完了**） | **採用**: Pure DIコンストラクタ引数注入（フォールバックなしの必須引数）＋ `MouseWheel.cs`（6行）正式統合、1000Hzホットパス保護。契約の追加なし |
 | **Step 5** | `OutputSlotService.cs` / `MainWindow.xaml.cs` | 孤立配列系＋UDP診断1行（**完了**、2026-09-24） | **選択肢B採用**: 孤立配列 `_deviceTypes[]` と Get/SetOutputDeviceType を削除、出力デバイス三態SSOT台帳確立、UDP診断是正 |
 | **Step 6** | `ProfileEditor.xaml.cs` / `IOutputSlotService` | 2行追加＋TODO書き換え（2026-09-24 実装完了） | **案1採用（2026-09-24 改訂）**: マッピング一覧機種表示追従バグ是正 ＋ 呼出元0件の未接続APIを温存し Step10 で接続 ＋ 実働ホットスワップ温存 |
-| **Step 7** | `App.xaml.cs` | 32箇所 | **選択肢1採用**: Pre-Host領域（11件）厳格保護 ＋ Post-Host Composition Root解決 ＋ 既存サービス集約 |
+| **Step 7** | `App.xaml.cs` | 39件（温存15、2026-09-24 再集計） | **選択肢1採用**: Pre-Host領域（12件）厳格保護 ＋ Post-Host Composition Root解決 ＋ 既存サービス集約 |
 | **Step 8** | `ProfileEditor.xaml.cs` | 60箇所 | **案3-A採用**: 段階的MVVM移設（ロジックを `ProfileSettingsViewModel` へ集約）＋ `MainWindow` 解体推進 ＋ 契約差B8, B9, B10吸収 |
 | **Step 9** | 主要4大ViewModel (`Settings`, `MainWindow`, `TrayIcon`, `ProfileSettings`) | 79箇所 | **選択肢1採用**: 中枢4大ViewModel集中 ＋ 機能カテゴリ別段階的移行 ＋ Pure DI徹底（残存小型VMはStep10へ引き継ぎ） |
 | **Step 10** | 残存小型View (11) & 小型ViewModel (12) & `PresetOption` | 72箇所 | **選択肢A採用**: 機能ドメイン別3グループ分割 ＋ View/ViewModelペアPure DI化 ＋ 全域直参照ゼロ化 |
@@ -40,7 +40,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 ### 0.3 スコープに含まないもの（明示的除外・保護対象）
 1. **仮想コントローラー出力バックエンド（ViGEm）の直接操作**: `ControlService.cs` や `ScpUtil.cs` 内の `Nefarius.ViGEm.Client` 直接依存、およびダウンキャスト配線は、仮想バス刷新イニシアチブ（`IVirtualControllerBackend` 構想）のスコープとし、Phase6 では動作安定性を最優先して温存する。
 2. **`Mapping.cs` の完全インスタンス化（101箇所）**: 全体計画書 §5.5 および Step3 合意（案A）に基づき、8,500行に及ぶクラス全体のドメイン分割・インスタンス化は Phase7 として独立させる（Step3にて完全台帳化済み）。
-3. **Pre-Host ブートストラップ処理（11箇所）**: `AppHost.CreateHost()` 以前に実行される初期ログローテーション（`appdatapath`, `LogMaxArchiveFiles`, `LogMinLevel`）、多重起動判定、および `--driverinstall` 分岐は、DIコンテナが存在しない前提のブートストラップコードとして静的のまま温存する。
+3. **Pre-Host ブートストラップ処理（12箇所。2026-09-24 に Step7-0 で再集計）**: 明示的な `AppHost.CreateHost()`（`App.xaml.cs:298`）より前に実行される初期ログローテーション（`appdatapath`, `LogMaxArchiveFiles`, `LogMinLevel`）、多重起動判定、および `--driverinstall` 分岐は、ブートストラップコードとして静的のまま温存する。なお `--driverinstall` 分岐の `Global.Load()` は、`AppHost.GetService` の暗黙構築によりホストを作るため、「DIコンテナが存在しない」という旧記載は正確ではない（`Phase6-Step7-Plan.md` §0.4）。
 4. **`BackingStore` の正本データ構造**: DI サービスが SSOT として参照しているため、Phase7 のドメインエンティティ化まで物理削除を禁止し完全保護する。
 5. **真の定数（`const`）および純粋計算ユーティリティ**: `MAX_DS4_CONTROLLER_COUNT`, `TEST_PROFILE_INDEX`, `ASSEMBLY_RESOURCE_PREFIX` などの定数、および `Clamp`, `getTransitionedColor` などの状態非保持ユーティリティは共通インフラとして温存する。
 6. **テストファイル内の比較用 `Global.*` 参照**: 新旧値の同一性検証用テストコードは移行対象外とする。
@@ -63,7 +63,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 └─ Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 未接続API整理（2026-09-24 実装完了）
 
 ── [ドメイン3: 起動・UI層] ──
-├─ Phase6-Step7: App.xaml.cs Post-Host領域のPure DI化（32箇所、Pre-Host11箇所保護）
+├─ Phase6-Step7: App.xaml.cs Post-Host領域のPure DI化（39件、温存15件［Pre-Host12件を含む］。2026-09-24 再集計）
 ├─ Phase6-Step8: ProfileEditor.xaml.cs の段階的MVVM移設 ＆ MainWindow解体推進（60箇所）
 ├─ Phase6-Step9: 主要4大ViewModelのPure DI徹底 ＆ カテゴリ別移行（79箇所）
 ├─ Phase6-Step10: 残存小型UI・小型ViewModel・補助クラスのドメイン別ペアPure DI化（72箇所）
@@ -134,8 +134,11 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 ### 【ドメイン3: 起動・UI層】
 
 #### Phase6-Step7: `App.xaml.cs` Post-Host領域のPure DI化
-- **対象**: 実参照式32箇所（Pre-Host除外11箇所、const除外1箇所）。
-- **確定方針（選択肢1）**:
+- **状態**: Step7-0（調査・台帳再作成・計画改訂）完了、決定1〜6 確定（2026-09-24）。詳細は `Phase6-Step7-Plan.md`。
+- **対象（2026-09-24 再集計）**: 参照式54件 ＝ Post-Host の置き換え対象39件 ＋ 温存15件（Pre-Host 12、共用ヘルパー `ApplyLanguageSetting` 2、const 1）。旧記載の「32箇所（Pre-Host除外11、const除外1）」は陳腐化。
+- **決定（2026-09-24）**: 決定1＝A（`InitializePostHostServices()` でフィールドに1回だけ解決）、決定2＝L2（`SpecialActionRepository.LoadActions()` を `Global` と同じ動作に是正して使用）、決定3＝P1（`Global.appdatapath = null` は温存、`PathService.AppDataPath` のセッターは Step12 の削除候補）、決定4＝K（`ApplyLanguageSetting` の2件は温存）、決定5＝A（起動引数 `-virtualkbm` が 2026-09-02 以降無視されている回帰を Step7-4 で是正）、決定6＝N（`Program.rootHub` 等は本 Step の対象外とし、後の Step／Phase で Pure DI 化）。
+- **マイクロステップ**: Step7-1（契約追加・LoadActions 是正）→ 7-2（起動前半・初回起動補助）→ 7-3（起動後半・終了処理・TODO）→ 7-4（`-virtualkbm`）→ 7-5（文書・完了報告）。
+- **確定方針（選択肢1、2026-09-18。改訂後も維持）**:
   - Pre-Host 領域（ログ初期化、多重起動判定、driverinstall等）を厳格に保護し、静的のまま温存。
   - `AppHost.CreateHost()` 直後に `InitializePostHostServices()` を実行し、WPF Composition Root パターンに則って安全にサービス解決。
   - 分類(c)の項目（保存場所選択、標準アクション等）を既存サービスへ薄いシムとして集約。
@@ -149,7 +152,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 
 #### Phase6-Step9: 主要4大ViewModelのPure DI徹底 ＆ カテゴリ別移行
 - **対象**: 実参照式79箇所（`Settings`: 55, `MainWindow`: 8, `TrayIcon`: 6, `ProfileSettings`: 10、const除外14）。
-- **確定方針（選択肢1）**:
+- **確定方針（選択肢1、2026-09-18。改訂後も維持）**:
   - アプリの中枢4大ViewModelにスコープを限定。コンストラクタ引数注入（Pure DI）を徹底。
   - `SettingsViewModel`（55箇所）を「①基本/テーマ/ログ」「②OSC/UDP/平滑化」「③環境/パス/外部」の3サブPRに分割。
   - `BatteryChanged`（B12シム）を `IDeviceStateService` に実装。残存小型ViewModel（12ファイル）は Step10 へ引き継ぎ。

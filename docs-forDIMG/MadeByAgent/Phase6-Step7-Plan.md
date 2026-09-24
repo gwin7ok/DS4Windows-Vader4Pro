@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了（調査・台帳再作成・計画改訂）。§4 の決定1〜6 はユーザー確認待ち。Step7-1 以降は未着手**  
+状態: **Step7-0 完了（調査・台帳再作成・計画改訂）。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 以降は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -217,7 +217,7 @@
   - 経緯: `PathService` の初期実装からある。テスト用のコンストラクタ引数 `appDataPath` と同じ private フィールドに書き込む作りで、`Global.appdatapath` とは連動しない。
   - 判断: **使うべきでないもの**（Phase5-Step13 で是正した「`Global` と連動しない孤立した状態」と同じ型の実装）。App の 585 行の置き換え先にもならない。→ 決定3
 
-### 3.4 `-virtualkbm` の回帰の是正（決定5 で案 A を選んだ場合）
+### 3.4 `-virtualkbm` の回帰の是正（決定5＝案 A）
 - `ServiceRegistration.cs:89〜90` の `new ArgumentParser()` を、`sp.GetService<ArgumentParser>() ?? new ArgumentParser()` に変える。
   - 通常起動: `AppHost.CreateHost(config, parser)` が登録した実際の `parser` が渡る（2026-09-01 以前の動作に戻る）。
   - `CreateHost()`（引数なし）やテストで作ったホスト: パーサーが登録されていないので、従来どおり空のパーサー。
@@ -226,6 +226,19 @@
 ---
 
 ## 4. 決定が必要な事項
+
+### 4.0 ユーザー決定の記録（2026-09-24）
+- **決定1: 案 A**（フィールドに保持し、`InitializePostHostServices()` で 1 回だけ解決する）
+- **決定2: 案 L2**（`SpecialActionRepository.LoadActions()` の `File.Exists` による早期 `return false` を削除して `Global` と同じ動作にし、App から使う）
+- **決定3: 案 P1**（585 行は温存して TODO。`PathService.AppDataPath` のセッターは Step12 の削除候補に登録）
+- **決定4: 案 K**（`ApplyLanguageSetting` の 2 件は温存して TODO）
+- **決定5: 案 A**（`-virtualkbm` の回帰を、本 Step の独立したマイクロステップ Step7-4 で是正する。§3.4 の 1 行の変更）
+  - 当初は保留とし、起動オプションの役割と影響範囲の説明を受けたうえで決定した。
+  - 起動オプションの役割: キーボード・マウス出力の方式（`sendinput`＝Windows 標準の SendInput、`fakerinput`＝FakerInput ドライバーの仮想デバイス）を起動時に指定する。指定しない場合は、FakerInput が導入済みなら `fakerinput`、なければ `sendinput` を自動で選ぶ。不正な値は無視され、`fakerinput` の接続に失敗した場合は `sendinput` に切り替わる。画面上の設定項目はなく、起動オプションだけで指定する。
+  - 現状の影響: 指定が常に「自動選択」に置き換わる。実際に困るのは、FakerInput を導入した環境で `sendinput` を強制したい場合（ゲームとの相性の回避など）。
+- **決定6: 案 N ＋ 後の Step／Phase で Pure DI 化**
+  - 本 Step では `Program.rootHub` などの `Global` 以外の静的結合（§2.7）を変更せず、台帳に記録するだけにする。
+  - ただし放置はせず、後の Step または Phase で、Pure DI の方針に沿う形（`App` がコンテナから `ControlService` を受け取り、`Program.rootHub` という静的な入口に頼らない構成）へ変更する。引き継ぎ先の計画書は Step7-5 で決めて登録する（候補: `Phase6-Step12-Plan.md` の Phase7 引き継ぎ、または `DI-App-Wide-Migration-Plan.md` の Phase7 項目）。
 
 ### 前提（全決定に共通）
 - `App.xaml.cs` は アプリの起点（Composition Root）で、`ServiceRegistration` に登録された各サービスを組み立てて使う場所である。
@@ -311,7 +324,7 @@
 ├─ Step7-1: 既存サービスへの契約追加（§3.1）と LoadActions の是正（決定2）
 ├─ Step7-2: Composition Root のサービス保持と、起動前半・初回起動補助の置き換え（P7-01〜P7-11、P7-26〜P7-38）
 ├─ Step7-3: 起動後半・終了処理の置き換えと、温存箇所への TODO（P7-12〜P7-25、P7-39、E7-13〜E7-14）
-├─ Step7-4: -virtualkbm の回帰の是正（決定5 で案 A の場合）
+├─ Step7-4: -virtualkbm の回帰の是正（決定5＝案 A）
 └─ Step7-5: 文書の更新・完了報告
 ```
 
@@ -321,27 +334,27 @@
 
 ### Step7-1: 契約追加と LoadActions の是正
 - §3.1 の 7 メンバーを、5 つのインターフェースと実装に追加する。
-- 決定2 が L2／L3 の場合、`SpecialActionRepository.LoadActions()` を是正し、§3.3 の経緯を TODO／説明コメントとして付ける。
+- 決定2＝L2 に従い、`SpecialActionRepository.LoadActions()` の早期 `return false`（`File.Exists` の判定）を削除し、§3.3 の経緯を説明コメントとして付ける。
 - テスト（新規）: `Phase6Step7ContractExtensionTests`
   - `RoamingAppDataPath`・`HasMultipleSaveLocations`・`UseLang` が `Global` と同じ値を返し、書き込みが `Global` に反映されること（テストの最後に元の値へ戻す。`Phase6-Status.md` §6.4-1）。
   - `ResetConnectionFlags` の後、全スロットが `IsFirstConnection == true` になること（`MarkConnected` 後に呼んで確認し、終了時に元へ戻す）。
-  - `LoadActions`（L2／L3）: `Actions.xml` がない場所を指す `BackingStore` を渡したとき、既定のアクションが作られて `true` が返ること（一時フォルダを使う）。
+  - `LoadActions`（決定2＝L2）: `Actions.xml` がない場所を指す `BackingStore` を渡したとき、既定のアクションが作られて `true` が返ること（一時フォルダを使う）。
   - `SaveAsProfile`・`LoadLinkedProfiles`・`CreateStandardActions`: 実ファイルを書き換えるため、契約の存在と委譲先のソース走査で確認する（Step3-1 の `SaveControllerConfigsForDevice` と同じ扱い）。
 
 ### Step7-2: サービス保持と、起動前半・初回起動補助の置き換え
 - §3.2 のフィールドと `InitializePostHostServices()` を追加する。
 - P7-01〜P7-11（起動前半）と P7-26〜P7-37（`CreateConfDirSkeleton`／`AttemptSave`）を置き換える。
-- P7-38 は決定3 に従う（P1 なら TODO を付けて温存）。
+- P7-38 は決定3＝P1 に従い、`Global.appdatapath = null` のまま温存して TODO を付ける。
 - テスト（新規）: `AppPostHostGlobalReferenceGuardTests`（ソース走査ガード）
   - `App.xaml.cs` の `Global.` 参照が、§2.5 の温存箇所（と、この時点で未置換の P7-12〜P7-25、P7-39）以外にないこと。行番号ではなく、メソッド名と、`CreateControlService(parser);` より前か後かで判定する。
   - `InitializePostHostServices();` が `CreateControlService(parser);` の直後にあること。
 
 ### Step7-3: 起動後半・終了処理の置き換えと TODO
-- P7-12〜P7-25、P7-39 を置き換える（P7-16 は決定2 に従う）。
-- 温存する箇所（決定3 の P7-38、決定4 の E7-13〜E7-14、決定2 が L1 の場合の P7-16）に、`copilot-instructions.md` §3.3 原則4 の TODO コメント（理由、経緯、解消予定の Phase）を付ける。Pre-Host の 12 件には、境界の説明コメントを 1 箇所（298 行付近）に付ける。
+- P7-12〜P7-25、P7-39 を置き換える（P7-16 は決定2＝L2 により `_specialActionRepository.LoadActions()` へ置き換える）。
+- 温存する箇所（決定3 の P7-38、決定4 の E7-13〜E7-14）に、`copilot-instructions.md` §3.3 原則4 の TODO コメント（理由、経緯、解消予定の Phase）を付ける。Pre-Host の 12 件には、境界の説明コメントを 1 箇所（298 行付近）に付ける。
 - `AppPostHostGlobalReferenceGuardTests` を最終形（Post-Host の `Global.` 参照は温存を決めた箇所だけ）に更新する。
 
-### Step7-4: `-virtualkbm` の回帰の是正（決定5 で案 A の場合）
+### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A）
 - §3.4 の 1 行を変更する。
 - テスト（新規）: `ServiceRegistrationArgumentParserTests`
   - `ArgumentParser` を登録したサービスコレクションから `ControlService` を解決したとき、登録したパーサーが使われること。
@@ -350,7 +363,8 @@
 
 ### Step7-5: 文書の更新・完了報告
 - `Phase6-Status.md`、`Phase6-Plan.md` を更新する。
-- 決定3 が P1 の場合、`Phase6-Step12-Plan.md` にセッターの削除候補を登録する。
+- 決定3＝P1 に従い、`Phase6-Step12-Plan.md` に `PathService.AppDataPath` のセッターの削除候補を登録する。
+- 決定6 に従い、`Program.rootHub` 等（§2.7）の Pure DI 化を後続の計画書（Phase6 の後続 Step または Phase7）に登録する。
 - 実機確認できなかった項目を `Phase6-Step11-Plan.md` §3.3 の先送り台帳に登録する。
 - 完了報告書 `Phase6-Step7-Completion-Report.md` を作成する。
 
@@ -377,7 +391,7 @@
 12. `Actions.xml` が作られ、スペシャルアクション「Disconnect Controller」が 1 件ある。**既存プロファイルの XML に「Disconnect Controller」が追記されていない**（決定2 の確認）。
 13. プログラムフォルダと AppData の両方に設定がある状態で起動すると、保存場所の選択画面に「両方にある」旨の選択肢が出る（`HasMultipleSaveLocations`）。
 
-### 6.4 `-virtualkbm`（決定5 で案 A の場合）
+### 6.4 `-virtualkbm`（決定5＝案 A）
 14. `-virtualkbm sendinput`（または環境にある別の方式）を付けて起動し、ログに出る仮想 KBM の方式が指定どおりになる。引数なしでは従来の既定の方式になる。
 
 ### 6.5 実機確認が難しい項目（Step11 へ先送りする見込み）
@@ -406,7 +420,9 @@
 
 ## 10. 完了判定チェックリスト
 - [x] Step7-0: 台帳の再作成と計画改訂（2026-09-24）
-- [ ] 決定1〜6 がユーザーに確認され、本書に記録されている
+- [x] 決定1〜6 がユーザーに確認され、本書 §4.0 に記録されている（2026-09-24）
+- [x] 決定5 が確定している（2026-09-24、案 A）
+- [ ] 決定6 の引き継ぎ（`Program.rootHub` 等の Pure DI 化）が、後続の計画書に登録されている
 - [ ] P7-01〜P7-39 が、決定どおり DI サービス経由に置き換えられている（温存を決めた箇所には TODO がある）
 - [ ] E7-01〜E7-15（Pre-Host 12、共用ヘルパー 2、const 1）が、決定どおり温存されている
 - [ ] Pre-Host 領域（143〜304 行、`CheckOptions`）のコードが変更されていない

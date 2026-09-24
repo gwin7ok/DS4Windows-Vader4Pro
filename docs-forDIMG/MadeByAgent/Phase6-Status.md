@@ -18,7 +18,7 @@
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | **完了（2026-09-24）** | `Phase6-Step4-Plan.md`、`Phase6-Step4-Completion-Report.md` | Step4-0〜4-5 完了（実機確認の残りは Step11 へ先送り） |
 | **Step 5** | OutputSlotService 孤立配列撤廃・UDP診断是正 | `OutputSlotService.cs` 等 | UDP診断1行＋孤立配列系 | **完了（2026-09-24）** | `Phase6-Step5-Plan.md`、`Phase6-Step5-Completion-Report.md` | Step5-0〜5-3 完了（実機確認は Step11 へ先送り） |
 | **Step 6** | 出力切替UI表示追従・未接続API整理 | `ProfileEditor.xaml.cs`, `OutputSlotService.cs` 等 | 台帳再作成（2026-09-24、方針確定） | **完了（2026-09-24）** | `Phase6-Step6-Plan.md`、`Phase6-Step6-Completion-Report.md` | Step6-0〜6-3 完了 |
-| **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 39件（温存15。2026-09-24 再集計） | **Step7-0 完了・決定1〜6 確認待ち** | `Phase6-Step7-Plan.md` | Step7-1〜7-5 未着手 |
+| **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 39件（温存15。2026-09-24 再集計） | **Step7-0 完了・決定1〜6 確定** | `Phase6-Step7-Plan.md` | Step7-1〜7-5 未着手 |
 | **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 計画書作成・承認待ち（2026-09-24新設） | `Phase6-Step7b-Plan.md` | 未着手（Step7 の後・Step8 の前） |
 | **Step 8** | `ProfileEditor` 段階的MVVM移設 | `ProfileEditor.xaml.cs` 等 | 60箇所 | 計画確定・承認待ち | `Phase6-Step8-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 9** | 主要4大ViewModel Pure DI化 | `SettingsVM`, `MainWindowVM` 等 | 79箇所 | 計画確定・承認待ち | `Phase6-Step9-Plan.md` | 未着手 (PR-1〜6) |
@@ -169,8 +169,8 @@
 
 ---
 
-### Phase6-Step7: `App.xaml.cs` Post-Host領域のPure DI化【Step7-0 完了・決定確認待ち】
-- **進捗率**: **Step7-0（調査・台帳再作成・計画改訂）完了（2026-09-24、HEAD `56f6e8bc`）。決定1〜6 はユーザー確認待ち**
+### Phase6-Step7: `App.xaml.cs` Post-Host領域のPure DI化【Step7-0 完了・決定確定、Step7-1 待ち】
+- **進捗率**: **Step7-0（調査・台帳再作成・計画改訂）完了（2026-09-24、HEAD `56f6e8bc`）。決定1＝A、決定2＝L2、決定3＝P1、決定4＝K、決定5＝A（`-virtualkbm` の回帰を Step7-4 で是正）、決定6＝N（`Program.rootHub` 等は後の Step／Phase で Pure DI 化）で確定（2026-09-24）。次は Step7-1**
 - **Step7-0 の主な発見**（詳細は `Phase6-Step7-Plan.md` §0）:
   - 旧 C7-30〜C7-32（終了処理の `outputKBMHandler.Disconnect`、2 回目の `Save`、`ResetConnectionFlags`）は存在しない。旧「`Application_Exit`」は `CleanShutdown`、旧「`SaveWhere` 処理」は `CreateConfDirSkeleton`／`AttemptSave`。
   - 旧 Pre-Host 扱いの 110〜111 行は、Pre-Host・Post-Host・App 外の 3 経路から呼ばれる共用ヘルパー `ApplyLanguageSetting` の中にある。
@@ -311,6 +311,7 @@
 
 ## 5. 直近の次アクション
 
+0. **（2026-09-24 時点の最新）** Step3〜Step6 は完了確定。Step7 は Step7-0（台帳再作成・計画改訂）が完了し、決定1〜6 が確定した。次は **Step7-1**（既存サービスへの契約追加7メンバーと、`SpecialActionRepository.LoadActions()` の是正）。その後 Step7-2〜7-5 → Step7b → Step8 の順。以下の 1. は Step3 当時の記録。
 1. **Step3-6c**（非同期マクロ経路19件、方針 P2）は完了確定（2026-09-24、ユーザーのビルド・テスト・実機確認完了、`Phase6-Step3-Plan.md` §3.7）。**Step3-7**（温存3件の最終処理、§2.4.3の選択［既定K-1採用］と `using static DS4Windows.Global;` の削除可否判定［見送りで確定］）は実装済み。ユーザーのビルド・テスト確認を経てコミットする（`Phase6-Step3-Plan.md` §3.8）。確認後、Step3 完了確定 → Step4 へ進む。
 2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12 → Phase7 → Phase8）で進める。Phase8（Controls/SpecialActions統合ディスパッチ）は Phase7 完了後の独立フェーズとして新設済み（詳細は §6.7）。
 
