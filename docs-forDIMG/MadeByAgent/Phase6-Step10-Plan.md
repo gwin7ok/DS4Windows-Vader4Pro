@@ -283,3 +283,25 @@ public partial class SaveWhere : Window
 - [ ] `dotnet build -c Release` でエラー・警告が0件であること。
 - [ ] `DS4WindowsTests` および `StandaloneTests` の全自動テストが100%成功を維持していること。
 - [ ] 全画面（Welcome、SaveWhere、BindingWindow、AutoProfiles、SpecialActionEditor等）の手動動作確認が正常であること。
+- [ ] §8 の追加作業（出力スロット管理の `IOutputSlotService` 経由化）が完了していること。
+
+---
+
+## 8. 追加作業: 出力スロット管理の `IOutputSlotService` 経由化（2026-09-24 追加、Phase6-Step6 の決定1＝案R による）
+
+### 8.1 背景
+- `IOutputSlotService.PluginSlot`／`UnplugSlot` は、Phase5-Step12 で「UI からの仮想スロット操作の正式な入口」として追加されたが、UI 側の切り替え（Phase5-Step12 タスク Step12-5 の当初の意図）が行われず、呼出元 0 件のまま残っている。
+- 実際の呼び出し側は、`ControlService.AttachUnboundOutDev`／`DetachUnboundOutDev` を直接呼んでいる:
+  - 出力スロット管理画面: `DS4Forms/ViewModels/CurrentOutDeviceViewModel.cs`（`OutSlot_PluginRequest`／`OutSlot_UnplugRequest`）と、それに生の `ControlService`／`OutputSlotManager` を渡す `OutputSlotManagerControl.xaml.cs`（`SetupDataContext`）。
+  - UDP コマンド: `DS4Forms/MainWindow.xaml.cs` の `outputslot.<n>.unplug／plugds4／plugx360`（1403〜1407 行付近）。
+- 詳細な差分（スレッド、事前条件と種別、依存の取り方、イベント）は `Phase6-Step6-Plan.md` §3.1 を参照。
+
+### 8.2 作業内容（着手時に現行コードと突き合わせて詳細化する）
+1. `OutputSlotService.PluginSlot`／`UnplugSlot` を、画面側の現行の挙動と同等にする: `ControlService.EventDispatcher` へのディスパッチ、事前条件（接続状態・入力割り当て）の確認、プラグイン時の種別の決め方。
+2. `OutputSlotService` の `ControlService` 取得を、`Program.rootHub` フォールバックから Pure DI へ移す。循環依存（`ControlService` → `Func<IOutputSlotService>`）を避けるため、`Func<ControlService>` による遅延解決、または仮想スロット操作用の出力ポートを導入する（Step2 決定D1 と同じ考え方）。
+3. `CurrentOutDeviceViewModel`／`OutputSlotManagerControl` を、`IOutputSlotService` 経由の操作へ切り替える（View/ViewModel ペアの Pure DI 化。画面更新のイベントを `OutputSlotManager.SlotAssigned`／`SlotUnassigned` のままにするか、`OutputSlotChanged` にするかを決める）。
+4. `MainWindow.xaml.cs` の UDP コマンドの plug／unplug を、`IOutputSlotService` 経由へ切り替える（`MainWindow` は Step8／Step9 でも扱うため、実施順は着手時に調整する）。
+5. テスト: `PluginSlot`／`UnplugSlot` の事前条件とディスパッチ、画面 ViewModel がサービスを呼ぶこと。実機確認: 出力スロット管理画面での手動の抜き差し、恒久スロット（Permanent）の保存、UDP コマンド（環境があれば）。
+
+### 8.3 ガードレール
+- ViGEm ネイティブドライバ保護（Phase5-Plan §5.5）: `OutputSlotManager` の非同期キュー（`DeferredPlugin`／`DeferredRemoval`）と破棄順序には手を触れず、`ControlService` の正規 API への中継に留める。

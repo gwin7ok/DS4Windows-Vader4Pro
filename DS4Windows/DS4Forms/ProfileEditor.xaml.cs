@@ -1149,6 +1149,9 @@ namespace DS4WinWPF.DS4Forms
 
             mappingListVM.UpdateMappings();
             profileSettingsVM.UpdateLateProperties();
+            // Phase6-Step6-1: mappingListVM はプロファイル読み込み前の出力種別で生成されるため、読み込み後の
+            // 出力種別（Xbox 360／DS4）でボタン名表記を明示的に揃える（outConTypeCombo の SelectionChanged の発生有無に依存しない）
+            mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);
             profileSettingsVM.PopulateTouchDisInver(touchDisInvertBtn.ContextMenu);
             profileSettingsVM.PopulateGyroMouseTrig(gyroMouseTrigBtn.ContextMenu);
             profileSettingsVM.PopulateGyroMouseStickTrig(gyroMouseStickTrigBtn.ContextMenu);
@@ -1231,6 +1234,8 @@ namespace DS4WinWPF.DS4Forms
             specialActionsVM.LoadActions(currentProfile == null);
             mappingListVM.UpdateMappings();
             profileSettingsVM.UpdateLateProperties();
+            // Phase6-Step6-1: プリセット適用後の出力種別でボタン名表記を明示的に揃える（Reload と同じ理由）
+            mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);
             profileSettingsVM.PopulateTouchDisInver(touchDisInvertBtn.ContextMenu);
             profileSettingsVM.PopulateGyroMouseTrig(gyroMouseTrigBtn.ContextMenu);
             profileSettingsVM.PopulateGyroMouseStickTrig(gyroMouseStickTrigBtn.ContextMenu);

@@ -17,7 +17,7 @@
 | **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 0箇所（2026-09-24 再集計。Step3-1〜3-6完了、Step3-3は対象消滅、Step3-7実装済み。残るのはTODO付き温存3件のみ） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-7実装済み（温存3件へのTODO付与、K-1採用、using static見送りを確定。ビルド・テスト確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-6完了、Step3-7実装済み（ユーザーのビルド・テスト確認後にStep3完了確定） |
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | **完了（2026-09-24）** | `Phase6-Step4-Plan.md`、`Phase6-Step4-Completion-Report.md` | Step4-0〜4-5 完了（実機確認の残りは Step11 へ先送り） |
 | **Step 5** | OutputSlotService 孤立配列撤廃・UDP診断是正 | `OutputSlotService.cs` 等 | UDP診断1行＋孤立配列系 | **完了（2026-09-24）** | `Phase6-Step5-Plan.md`、`Phase6-Step5-Completion-Report.md` | Step5-0〜5-3 完了（実機確認は Step11 へ先送り） |
-| **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
+| **Step 6** | 出力切替UI表示追従・未接続API整理 | `ProfileEditor.xaml.cs`, `OutputSlotService.cs` 等 | 台帳再作成（2026-09-24、方針確定） | Step6-0 完了・実装中 | `Phase6-Step6-Plan.md` | Step6-1〜6-3 実装中 |
 | **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 32箇所 (11保護) | 計画確定・承認待ち | `Phase6-Step7-Plan.md` | 未着手 (PR-1〜4) |
 | **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 計画書作成・承認待ち（2026-09-24新設） | `Phase6-Step7b-Plan.md` | 未着手（Step7 の後・Step8 の前） |
 | **Step 8** | `ProfileEditor` 段階的MVVM移設 | `ProfileEditor.xaml.cs` 等 | 60箇所 | 計画確定・承認待ち | `Phase6-Step8-Plan.md` | 未着手 (PR-1〜5) |
@@ -157,14 +157,13 @@
 
 ---
 
-### Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 負債API安全整理【計画確定・承認待ち】
-- **進捗率**: **0%（未着手・計画確定済み）**
-- **確定方針**: **案1（保守的・安定性最優先アプローチ）の採用**。
-- **対象**: 実参照式4箇所。
-- **計画ハイライト**:
-  - `ProfileEditor.xaml.cs` の `Reload()` に `mappingListVM.UpdateMappingDevType` を追加し、プロファイル再読込時のボタン名表記不整合バグを解消。
-  - `IOutputSlotService` の呼出元0件API（`PluginSlot`, `UnplugSlot`）を安全に非推奨化。
-  - `ScpUtil.cs:PostLoadSnippet` の実働ホットスワップ機構は安定性最優先で温存。
+### Phase6-Step6: ProfileEditor のマッピング一覧の機種表示追従 ＆ 未接続API整理【Step6-0・6-1 完了・実装中】
+- **進捗率**: **Step6-0（台帳再作成・計画書改訂）完了（2026-09-24）**
+- **確定方針（2026-09-24 改訂）**:
+  - 旧計画の「開いたまま別プロファイルを Reload」という操作は存在しないことが判明。実在する問題は、`mappingListVM` がプロファイル読み込み前の出力種別で作られ、以後の追従をコンボボックスの `SelectionChanged` の発生に頼っていること。`Reload` と `RefreshEditorBindings`（プリセット適用）で `UpdateMappingDevType` を明示的に呼ぶ。
+  - `PluginSlot`／`UnplugSlot`（呼出元 0 件）は、Phase5-Step12 で DI 化のために作られたが UI 接続が未実施だったことが判明したため、**削除せず温存**し、TODO を書き換える（決定1＝案R。当初の案Q＝削除から変更）。UI（`CurrentOutDeviceViewModel`／`OutputSlotManagerControl`）と UDP コマンドの `IOutputSlotService` 経由への接続は、`Phase6-Step10-Plan.md` §8 に追加した。
+  - Step6-1（`Reload`／`RefreshEditorBindings` への `UpdateMappingDevType` 追加）は実装済み、ビルド・テストビルド・テスト実行成功（2026-09-24）。
+  - `ScpUtil.cs` の `PostLoadSnippet` のホットスワップ機構は温存。
 
 ---
 
