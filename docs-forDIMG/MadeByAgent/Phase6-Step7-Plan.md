@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 は実装したが実機で効果なし（2026-09-25、§0.4 の訂正と決定7 を参照。決定7 はユーザー確認待ち）。Step7-5 は未着手**  
+状態: **Step7-0 完了。決定1〜7 はすべてユーザー決定済み（2026-09-24〜25、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 は最初の是正が実機で効果なしと判明し、決定7＝案 H で再実装（2026-09-25、ユーザーのビルド・テスト・実機確認待ち）。Step7-5 は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -245,8 +245,10 @@
 - **決定6: 案 N ＋ 後の Step／Phase で Pure DI 化**
   - 本 Step では `Program.rootHub` などの `Global` 以外の静的結合（§2.7）を変更せず、台帳に記録するだけにする。
   - ただし放置はせず、後の Step または Phase で、Pure DI の方針に沿う形（`App` がコンテナから `ControlService` を受け取り、`Program.rootHub` という静的な入口に頼らない構成）へ変更する。引き継ぎ先の計画書は Step7-5 で決めて登録する（候補: `Phase6-Step12-Plan.md` の Phase7 引き継ぎ、または `DI-App-Wide-Migration-Plan.md` の Phase7 項目）。
+- **決定7: 案 H（2026-09-25 ユーザー決定）**（起動引数の保持役 `IStartupArguments` をコンテナに登録し、`AppHost.CreateHost(config, parser)` が値を設定する）
+  - 案 R（ホストが `Global` の静的初期化で暗黙に作られる根本原因の是正）は、持ち越し事項 K7-1 として `Phase6-Status.md` §6.5 と `Phase6-Step12-Plan.md` §4（Phase7 への引き継ぎ台帳）に記録した。
 
-### 決定7（2026-09-25 追加、ユーザー確認待ち）: 起動引数を `ControlService` へ届ける方法
+### 決定7（2026-09-25 追加、2026-09-25 に案 H で確定）: 起動引数を `ControlService` へ届ける方法
 - **前提**: 決定5＝A の 1 行の修正は、「298 行の `CreateHost(config, parser)` で起動引数がコンテナに登録される」ことを前提にしていた。実際には、ホストは `Global` の静的初期化の中で先に（起動引数なしで）作られており、この前提が成り立たない（§0.4 の訂正）。
   - DI コンテナは、一度作ると登録を追加できない。したがって、298 行の時点で起動引数を「登録」することはできない。
   - 一方、`ControlService` が作られるのは 306 行の `CreateControlService` で、298 行より後である。また、起動引数を実際に使う `InitOutputKBMHandler` は、サービス開始時の `ControlService.Start()`（さらに後）で呼ばれる。
@@ -411,7 +413,7 @@
   - テスト（更新）: `AppPostHostGlobalReferenceGuardTests.cs` の期待値を最終形に更新（`Application_Startup` の Post-Host は 0 件、`CleanShutdown` は const の 1 件だけ）。温存箇所の TODO の存在を確認するテスト `RetainedGlobalReferences_HaveTodoComments` を追加（計 4 件）。
   - 実機確認: §6 の項目（Step7-2 の分と合わせて、ユーザーがまとめて実施）。
 
-### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A）【実装済みだが実機で効果なし（2026-09-25）。決定7 の確認待ち】
+### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A、決定7＝案 H）【再実装済み・ビルド・テスト・実機確認待ち（2026-09-25）】
 - §3.4 の 1 行を変更する。
 - テスト（新規）: `ServiceRegistrationArgumentParserTests`
   - `ArgumentParser` を登録したサービスコレクションから `ControlService` を解決したとき、登録したパーサーが使われること。
@@ -430,6 +432,19 @@
     - 原因: §0.4 の訂正のとおり、ホストが Pre-Host 領域で起動引数なしに暗黙に構築されるため、起動引数が DI コンテナに登録されていない。`sp.GetService<ArgumentParser>()` は常に null になり、空のパーサーが使われる。
     - テストが成功したのは、テストでは起動引数を登録したコンテナを直接作っていて、実際の起動順序を再現していないため。
     - 変更した 1 行は害はないが、実際の起動では効かない。対応は決定7 で決める。
+- **再実装（2026-09-25、決定7＝案 H。ユーザーのビルド・テスト・実機確認待ち）**:
+  - [新規] `DS4Windows/DI/IStartupArguments.cs`（`ArgumentParser Parser { get; }`、`void SetParser(ArgumentParser)`）と、[新規] `DS4Windows/DS4Control/Services/StartupArguments.cs`（名前空間 `DS4Windows.Services`。値を保持するだけ）。配置は `copilot-instructions.md` §3.4 の R1・R2・R6 に従う。
+  - `ServiceRegistration.cs`: `services.AddSingleton<IStartupArguments, StartupArguments>()` を追加。`ControlService` の生成の第 1 引数を `sp.GetRequiredService<IStartupArguments>().Parser ?? new ArgumentParser()` に変更（最初の是正の `sp.GetService<ArgumentParser>()` は削除）。`ControlService` はこの時点の値を保持するため、`CreateHost(config, parser)` より前に解決してはならない旨をコメントに記載（現在は `CreateControlService` で、その後に解決している）。
+  - `AppHost.cs`: `CreateHost(IConfiguration, ArgumentParser)` が、ホストが構築済みの場合（現在の起動順序では常にこちら）も新規に構築した場合も、private メソッド `ApplyStartupArguments` で `IStartupArguments` に起動引数を設定する（`[DI]` Trace ログ `startup arguments applied to IStartupArguments (host already created／newly created)`）。新規構築時の `services.AddSingleton(parser)` は残した（害はない）。
+  - `App.xaml.cs` は変更なし（Pre-Host 領域の 298 行の呼び出しがそのまま効くようになる）。`ControlService` のコンストラクタも変更なし。
+  - モデル図: `04-Service-Lifecycle-Spec.md` の登録サービス一覧に `IStartupArguments` を追加し、注釈を追記。`03-Class-Interface-Diagram.md` には注釈のみ追記（`ControlService` の依存は変わらないため図本体は変更なし）。
+  - テスト（更新）: `ServiceRegistrationArgumentParserTests.cs`（4 件）。
+    - `StartupArguments` が設定した値を保持すること。
+    - **実際の起動順序の再現**: 起動引数なしでコンテナを先に作り、その後で `IStartupArguments` に起動引数を設定してから `ControlService` を解決すると、その起動引数（`sendinput`）が渡ること。
+    - 起動引数を設定しない場合は空のパーサー（既定値 `default`）で生成できること。
+    - 構築済みの `AppHost` に対して `CreateHost(config, parser)` を呼ぶと、既存のホストが返り、`IStartupArguments` に起動引数が設定されること（終了時に元の値へ戻す）。
+  - 持ち越し: 案 R（ホストの暗黙構築の是正）は K7-1（`Phase6-Status.md` §6.5、`Phase6-Step12-Plan.md` §4）。
+  - 実機確認: `DS4Windows.exe -virtualkbm fakerinput` で起動し、DEBUG ログが `Output KBM handler fakeKeyRepeat=… for fakerinput` になること（FakerInput 未導入のため、続く INFO ログは従来どおり `Using output KB+M handler: SendInput`）。引数なしでは `for sendinput` のまま。あわせて、Trace ログに `startup arguments applied to IStartupArguments (host already created)` が出ること。
 
 ### Step7-5: 文書の更新・完了報告
 - `Phase6-Status.md`、`Phase6-Plan.md` を更新する。

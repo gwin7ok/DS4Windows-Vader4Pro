@@ -43,7 +43,13 @@ namespace DS4WinWPF
             lock (_syncLock)
             {
                 if (_host != null)
+                {
+                    // Phase6-Step7-4（決定7＝案H）: 現在の起動順序では、ホストは Global の静的初期化の中で
+                    // 起動引数なしの CreateHost() により先に作られている（Phase6-Step7-Plan.md §0.4 の訂正）。
+                    // 構築済みのコンテナには登録を追加できないため、登録済みの IStartupArguments へ起動引数を設定する。
+                    ApplyStartupArguments(parser, hostAlreadyCreated: true);
                     return _host;
+                }
 
                 var builder = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
                     .ConfigureServices((context, services) =>
@@ -55,10 +61,29 @@ namespace DS4WinWPF
                 _host = builder.Build();
                 DS4Windows.DI.ServiceProviderHolder.SetProvider(_host.Services);
                 PreallocateActionEntries();
+                ApplyStartupArguments(parser, hostAlreadyCreated: false);
                 if (AppLogger.IsTraceEnabled)
                     AppLogger.LogTrace("[DI] AppHost.CreateHost: Host initialized with runtime parser");
                 return _host;
             }
+        }
+
+        /// <summary>
+        /// Phase6-Step7-4（決定7＝案H）: 起動引数を、登録済みの <see cref="DS4Windows.DI.IStartupArguments"/> へ設定する。
+        /// ControlService の生成（ServiceRegistration）はここで設定された値を使う。
+        /// </summary>
+        private static void ApplyStartupArguments(DS4WinWPF.ArgumentParser parser, bool hostAlreadyCreated)
+        {
+            if (parser == null)
+                return;
+
+            var startupArguments = _host?.Services.GetService<DS4Windows.DI.IStartupArguments>();
+            if (startupArguments == null)
+                return;
+
+            startupArguments.SetParser(parser);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace($"[DI] AppHost.CreateHost: startup arguments applied to IStartupArguments (host {(hostAlreadyCreated ? "already created" : "newly created")})");
         }
 
         public static IHost CreateHost(string[] args)

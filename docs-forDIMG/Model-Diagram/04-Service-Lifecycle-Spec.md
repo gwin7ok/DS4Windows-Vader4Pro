@@ -26,6 +26,7 @@
 | **基盤** | `IPathService` | `PathService` | **Singleton** | プロファイル・アプリデータ保存先パスの動的解決 | なし |
 | **基盤** | `IEnvironmentService` | `EnvironmentService` | **Singleton** | OS種別、管理者権限、ディスプレイ解像度情報、HidHide／FakerInput の導入状態、デバイスインスタンスID解決、コントローラースロット上限（同時に扱えるスロット数の上限。接続台数ではない）の提供 | なし |
 | **基盤** | `INotificationService` | `AppNotificationService` | **Singleton** | OSトースト通知、ステータス通知の統一発行 | なし |
+| **基盤** | `IStartupArguments` | `StartupArguments` | **Singleton** | アプリの起動引数（`ArgumentParser`）の保持役。`AppHost.CreateHost(config, parser)` が値を設定し、`ControlService` の生成時に渡す（Phase6-Step7-4） | なし |
 | **基盤** | `XmlIoLock` | `XmlIoLock` | **Singleton** | プロセス内・スレッド間のファイル排他制御ロック | なし |
 | **基盤** | `IAppSettingsService` | `AppSettingsService` | **Singleton** | `AppSettings.xml` の永続化・設定値管理 | `IPathService`, `XmlIoLock` |
 | **基盤** | `IAppearanceSettingsService`| `AppearanceSettingsService` | **Singleton** | UIテーマ（Dark/Default）、フォントスケール、トレイアイコン選択・バッテリー変化通知 | `IAppSettingsService` |
@@ -128,3 +129,8 @@
 
 %% 注釈補強（2026-09-23 Abs Mouse機能削除・ユーザー承認済み、copilot-instructions.md §2.2 例外規定）
 %% - 上記の `IDisplayCoordinateService`／`DisplayCoordinateService`（Singleton登録）は、その唯一の利用者であったボタン割当のAbs Mouse機能およびタッチパッドのAbsolute Mouseモードが使用頻度の低さから削除されたことに伴い、DI登録ごと撤去した（§2 登録サービス完全一覧表から行を削除済み）。
+%% 注釈補強（2026-09-25 Phase6-Step7-4 決定7＝案H 反映）
+%% - `IStartupArguments`（`StartupArguments` が実装）を新設し、§2 の登録サービス一覧に追加した。アプリの起動引数（`ArgumentParser`）を `ControlService` の生成へ受け渡すだけの保持役。
+%% - 背景: 現在の起動順序では、ホストは `Global` の静的初期化（`ScpUtil.cs` の `fallbackProfileRepository`）の中で起動引数なしに先に暗黙構築され、`App.xaml.cs` の `AppHost.CreateHost(config, parser)` は既存のホストを返すだけになっている。構築済みのコンテナには登録を追加できないため、`CreateHost(config, parser)` は登録済みの本サービスへ起動引数を設定する（`Phase6-Step7-Plan.md` §0.4 の訂正・決定7）。
+%% - `ControlService` 自体の依存（コンストラクタ引数）は変わらない。`ServiceRegistration` の生成処理が本サービスから起動引数を取り出して渡す。
+%% - ホストが Pre-Host 領域で暗黙構築される問題そのもの（案R）は持ち越し事項（`Phase6-Status.md` §6.5 K7-1）。

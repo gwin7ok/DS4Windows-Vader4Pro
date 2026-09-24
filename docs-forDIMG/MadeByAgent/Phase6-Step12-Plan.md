@@ -150,6 +150,7 @@ Step2〜Step10 の DI 化によって「呼び出し元が完全に 0 件」と�
 | **`Mapping.cs` 参照分（101箇所）** | スティック・ボタン・KBM のホットパス | Phase7 で `Mapping.cs` をドメインサービス群へ分割・インスタンス化する際に一括消去 |
 | **Pre-Host 領域（11箇所）** | DI コンテナ構築前の初期ブートストラップ | Phase7 で `Program.cs` / `App.xaml.cs` の初期起動シーケンスを近代化する際に整理 |
 | **`Global.outDevTypeTemp`／`Global.activeOutDevType`**（実行時状態の静的配列） | `OutputSlotService.OutDevTypeTemp`／`ActiveOutDevType` が裏づけとして返している。`ScpUtil.cs` 8 箇所・UI 3 箇所・`ControlService`（参照キャッシュ）が直接読み書きしている（Step5 の決定2＝案X で温存を確定） | Phase7 で配列の所有を `OutputSlotService` へ移し、`Global` 側を転送プロパティ（または削除）にする（Step5 の案Y）。前提条件は `Phase6-Step5-Plan.md` §9 を参照 |
+| **DI ホストの暗黙構築（持ち越し K7-1、2026-09-25 登録）** | `Global` の静的初期化子（`ScpUtil.cs:779` の `fallbackProfileRepository = new ProfileRepository(ProfileSettingsServiceInstance)`）が `AppHost.GetService` を呼ぶため、`App.xaml.cs` の明示的な `CreateHost(config, parser)` より前に、起動引数なしでホストが作られる。起動引数は Step7-4（決定7＝案H）で `IStartupArguments` 経由にして回避済み | Phase7 で `Global` の静的初期化を整理する際に、静的初期化がホストを作らないようにし、明示的な構築を本当の最初の構築にする（`Phase6-Step7-Plan.md` 決定7 の案R、`Phase6-Status.md` §6.5 K7-1） |
 | **真の定数（`const`）** | 共通定数値 | ドメインごとの定数クラス（`ControllerConstants` 等）へ再配置 |
 
 ---
