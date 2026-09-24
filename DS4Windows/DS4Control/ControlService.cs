@@ -2184,7 +2184,7 @@ namespace DS4Windows
             device.SerialChange += this.On_SerialChange;
             device.ChargingChanged += CheckQuickCharge;
 
-            touchPad[index] = new Mouse(index, device);
+            touchPad[index] = new Mouse(index, device, _profileSettings, _virtualKBM);
             bool profileLoaded = false;
             bool useAutoProfile = _profileSettings.GetUseTempProfile(index);
 
