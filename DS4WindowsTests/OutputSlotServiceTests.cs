@@ -27,43 +27,49 @@ namespace DS4WindowsTests
             }
         }
 
+        // Phase6-Step5-2: GetOutputDeviceType／SetOutputDeviceType（孤立配列 _deviceTypes）を削除したため、
+        // それらを対象としたテスト（初期値・更新・グローバルシム経由の更新）は削除し、
+        // イベント発行・範囲外の安全性のテストを SetOutputDevice／PluginSlot／UnplugSlot ベースへ置き換えた。
+
         [Fact]
-        public void InitialState_ShouldHaveDefaultTypes()
+        public void InitialState_ShouldHaveNoOutputDevices()
         {
             var service = new OutputSlotService();
 
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < OutputSlotService.MAX_SLOTS; i++)
             {
-                Assert.Equal(OutContType.None, service.GetOutputDeviceType(i));
+                Assert.Null(service.GetOutputDevice(i));
+                Assert.False(service.IsSlotPlugin(i));
             }
         }
 
         [Fact]
-        public void SetOutputDeviceType_ShouldUpdateSlot()
-        {
-            var service = new OutputSlotService();
-
-            service.SetOutputDeviceType(0, OutContType.X360);
-            service.SetOutputDeviceType(1, OutContType.DS4);
-
-            Assert.Equal(OutContType.X360, service.GetOutputDeviceType(0));
-            Assert.Equal(OutContType.DS4, service.GetOutputDeviceType(1));
-            Assert.Equal(OutContType.None, service.GetOutputDeviceType(2));
-        }
-
-        [Fact]
-        public void OutputSlotChangedEvent_ShouldFire()
+        public void OutputSlotChangedEvent_ShouldFireOnSetOutputDevice()
         {
             var service = new OutputSlotService();
             OutputSlotChangedEventArgs receivedArgs = null;
 
             service.OutputSlotChanged += (s, e) => receivedArgs = e;
 
-            service.SetOutputDeviceType(2, OutContType.X360);
+            service.SetOutputDevice(2, null);
 
             Assert.NotNull(receivedArgs);
             Assert.Equal(2, receivedArgs.Slot);
-            Assert.Equal(OutContType.X360, receivedArgs.DeviceType);
+            Assert.Equal(OutContType.None, receivedArgs.DeviceType);
+            Assert.Null(receivedArgs.OutputDevice);
+        }
+
+        [Fact]
+        public void SetOutputDevice_OutOfBounds_DoesNotFireEvent()
+        {
+            var service = new OutputSlotService();
+            int fired = 0;
+            service.OutputSlotChanged += (s, e) => fired++;
+
+            service.SetOutputDevice(-1, null);
+            service.SetOutputDevice(OutputSlotService.MAX_SLOTS, null);
+
+            Assert.Equal(0, fired);
         }
 
         [Fact]
@@ -71,28 +77,31 @@ namespace DS4WindowsTests
         {
             var service = new OutputSlotService();
 
-            Assert.Equal(OutContType.None, service.GetOutputDeviceType(-1));
-            Assert.Equal(OutContType.None, service.GetOutputDeviceType(8));
-
-            service.SetOutputDeviceType(-1, OutContType.X360);
-            service.SetOutputDeviceType(8, OutContType.DS4);
-
+            Assert.Null(service.GetOutputDevice(-1));
+            Assert.Null(service.GetOutputDevice(8));
             Assert.Null(service.GetOutSlotDevice(-1));
             Assert.Null(service.GetOutSlotDevice(8));
             Assert.False(service.PluginSlot(-1, OutContType.X360));
+            Assert.False(service.PluginSlot(8, OutContType.DS4));
             Assert.False(service.UnplugSlot(-1));
+            Assert.False(service.UnplugSlot(8));
         }
 
         [Fact]
-        public void GlobalShim_ShouldSynchronizeWithService()
+        public void GlobalShim_ShouldReferenceSameService()
         {
-            var service = new OutputSlotService();
-            Global.OutputSlotServiceInstance = service;
+            var original = Global.OutputSlotServiceInstance;
+            try
+            {
+                var service = new OutputSlotService();
+                Global.OutputSlotServiceInstance = service;
 
-            Assert.NotNull(Global.OutputSlotServiceInstance);
-
-            Global.OutputSlotServiceInstance.SetOutputDeviceType(0, OutContType.DS4);
-            Assert.Equal(OutContType.DS4, service.GetOutputDeviceType(0));
+                Assert.Same(service, Global.OutputSlotServiceInstance);
+            }
+            finally
+            {
+                Global.OutputSlotServiceInstance = original;
+            }
         }
 
         [Fact]

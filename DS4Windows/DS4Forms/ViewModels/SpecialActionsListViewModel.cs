@@ -52,6 +52,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク3）:
         // ボタン名表示の参照先を outputSlotService.GetOutputDeviceType から
         // 正しい永続化実体である profileSettings.OutContType へ切り替えるために新規注入。
+        // （GetOutputDeviceType は Phase6-Step5-2 で削除済み）
         private readonly IProfileSettingsService profileSettings;
 
         private string _profileActions = string.Empty;

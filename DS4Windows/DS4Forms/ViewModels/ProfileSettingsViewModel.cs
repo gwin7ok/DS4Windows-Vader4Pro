@@ -867,6 +867,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             // Issue7是正（Phase5-Step14-Issue7-Fix-Plan.md タスク2）: 参照先を
             // outputSlotService.GetOutputDeviceType(device) から
             // profileSettings.OutContType（Global.OutContTypeと同一実体）へ修正。
+            // （GetOutputDeviceType は Phase6-Step5-2 で削除済み）
             get => profileSettings.OutContType[device];
         }
 

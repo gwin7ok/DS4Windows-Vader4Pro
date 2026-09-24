@@ -32,21 +32,16 @@ namespace DS4Windows.DI
         OutputDevice GetOutputDevice(int slotIndex);
         bool IsSlotPlugin(int slotIndex);
 
-        // TODO(技術的負債・Phase6-Step6で再評価予定、2026-09-11時点):
-        // 本メソッドが参照する内部配列 _deviceTypes は Global/BackingStore と非連動の
-        // 孤立実体であり、プロファイルの実際の設定値（永続化された OutputContDevice）を
-        // 反映しない「孤立バグ」の原因であった（Phase5-Step14-Issue7で判明・是正済み）。
-        // プロファイルに永続化された正しい値の参照には、必ず
-        // IProfileSettingsService.OutContType を使用すること（本メソッドを新規に
-        // 使用しないこと）。削除／実配線の要否はPhase6-Step6で再評価する。
-        // 参照: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md §5
-        OutContType GetOutputDeviceType(int slotIndex);
+        // Phase6-Step5-2（2026-09-24）: GetOutputDeviceType／SetOutputDeviceType を削除した。
+        // 両メソッドは Global/BackingStore と非連動の孤立配列 _deviceTypes を読み書きしており、
+        // GetOutputDeviceType は常に None を返していた（Phase5-Step14-Issue7 で判明）。
+        // 出力デバイス種別は、次の三態のいずれかを参照すること:
+        //   永続設定（プロファイルに保存される値）: IProfileSettingsService.OutContType
+        //   実行時接続状態（仮想バスに接続中の種別）: ActiveOutDevType（本インターフェース）
+        //   UI一時状態（プロファイル編集画面の未確定値）: OutDevTypeTemp（本インターフェース）
+        // 参照: docs-forDIMG/MadeByAgent/Phase6-Step5-Plan.md §2
 
-        // TODO(技術的負債・Phase6-Step6で再評価予定、2026-09-11時点): 上記 GetOutputDeviceType
-        // と同一の孤立配列 _deviceTypes への書き込みであり、Global/BackingStore（プロファイル
-        // 永続化層）へは反映されない。プロファイル設定値の変更・保存には
-        // IProfileSettingsService／IProfileRepository を使用すること。
-        void SetOutputDeviceType(int slotIndex, OutContType deviceType);
+        // DeviceType は、PluginSlot では指定された種別、SetOutputDevice／UnplugSlot では None。
         event EventHandler<OutputSlotChangedEventArgs> OutputSlotChanged;
 
         // === Step 12 拡充: 実体 OutputSlotManager 連動操作 ===
