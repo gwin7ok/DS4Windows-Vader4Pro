@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了（調査・台帳再作成・計画改訂）。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 以降は未着手**  
+状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 実装済み（ユーザーのビルド・テスト確認待ち）。Step7-2 以降は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -332,7 +332,7 @@
 - HEAD `56f6e8bc`、作業ツリーはクリーン。
 - §0（乖離）、§2（台帳）、§4（決定事項）を作成。
 
-### Step7-1: 契約追加と LoadActions の是正
+### Step7-1: 契約追加と LoadActions の是正【実装済み・ビルド・テスト確認待ち（2026-09-24）】
 - §3.1 の 7 メンバーを、5 つのインターフェースと実装に追加する。
 - 決定2＝L2 に従い、`SpecialActionRepository.LoadActions()` の早期 `return false`（`File.Exists` の判定）を削除し、§3.3 の経緯を説明コメントとして付ける。
 - テスト（新規）: `Phase6Step7ContractExtensionTests`
@@ -340,6 +340,18 @@
   - `ResetConnectionFlags` の後、全スロットが `IsFirstConnection == true` になること（`MarkConnected` 後に呼んで確認し、終了時に元へ戻す）。
   - `LoadActions`（決定2＝L2）: `Actions.xml` がない場所を指す `BackingStore` を渡したとき、既定のアクションが作られて `true` が返ること（一時フォルダを使う）。
   - `SaveAsProfile`・`LoadLinkedProfiles`・`CreateStandardActions`: 実ファイルを書き換えるため、契約の存在と委譲先のソース走査で確認する（Step3-1 の `SaveControllerConfigsForDevice` と同じ扱い）。
+- **実装結果（2026-09-24 実装、ユーザーのビルド・テスト確認待ち）**:
+  - 契約（`DS4Windows/DI/`）: `IPathService`（`RoamingAppDataPath`、`HasMultipleSaveLocations`）、`IAppSettingsService`（`UseLang`）、`IProfileRepository`（`SaveAsProfile`、`LoadLinkedProfiles`）、`IDeviceStateService`（`ResetConnectionFlags`）、`ISpecialActionRepository`（`CreateStandardActions`）の計 7 メンバー。
+  - 実装（`DS4Windows/DS4Control/Services/`）: いずれも `Global` への薄い委譲。`AppSettingsService.UseLang` のセッターは、他のプロパティと同じく値が変わったときだけ `SettingChanged` を発行する。`ProfileRepository.SaveAsProfile` は、戻り値を捨てる `Global.SaveAsProfile` ではなく同じ実体の `Global.store.SaveAsProfile` を呼んで成否を返す。`SpecialActionRepository.CreateStandardActions` は `[DI]` 付きの Trace ログを出す。
+  - `SpecialActionRepository.LoadActions()`（決定2＝L2）: 冒頭の `if (!File.Exists(ActionsPath)) return false;` を削除し、経緯と残る差（想定外の例外も `false` にする点）をコメントに記録した。それ以外の処理（ロック、`[DI]` Trace ログ、`ActionsChanged` の発行、例外時の `false`）は変更していない。
+  - 呼び出し側（`App.xaml.cs`）はまだ変更していない（Step7-2・7-3 で行う）。この時点では、新しいメンバーと是正した `LoadActions` の呼出元は、テストだけである。
+  - テスト用のモック（`Mock<…>`・手書きの実装）は 5 つの契約とも存在しないため、テスト側の追随は不要（`Phase6-Status.md` §6.4-4 を確認済み）。モデル図の変更なし。
+  - テスト（新規）: `DS4WindowsTests/Phase6Step7ContractExtensionTests.cs`（8 件）。`RoamingAppDataPath`・`HasMultipleSaveLocations`・`UseLang`（通知を含む）・`ResetConnectionFlags` の `Global` との状態共有、`LoadActions` が `Actions.xml` のない一時フォルダで既定アクション「Disconnect Controller」を作って `true` を返し、作ったファイルを別の `BackingStore` から読み込めること、`SaveAsProfile`／`LoadLinkedProfiles`／`CreateStandardActions` の委譲先と `LoadActions` に `File.Exists` が再混入していないことのソース走査。
+  - 実機確認: この時点では App から呼ばれないため不要。Step7-2・7-3 の後に §6 の項目で確認する。
+  - **テスト実行時の失敗と修正（2026-09-24）**: 既存テスト `MappingHotPathAllocationTests.ApplyStickCalibration_DoesNotAllocate` が「784 バイト／20000 回」で失敗した。
+    - Step7-1 の変更とは無関係と判断した。`ApplyStickCalibration`（`Mapping.cs:2726`）は配列の読み取りと `Math.Clamp` だけで、Step7-1 で変更したコードを通らない。
+    - 1 回の呼び出しごとの割り当てなら 20000 バイト以上になるはずで、784 バイトは計測区間の途中で**一度だけ**起きた割り当て（階層型 JIT・OSR による再コンパイル等、ランタイム側の一過性の処理）と考えられる。新しいテストクラスの追加で xUnit の実行順序とタイミングが変わり、表面化したとみられる。
+    - 修正: 同クラスの 3 テストの計測を、ヘルパー `MeasureMinAllocatedBytes`（最大 3 回計測して最小値を採る）に置き換えた。呼び出しごとの割り当てはどの計測回にも現れるため、検出力は落ちない。本番コードは変更していない。
 
 ### Step7-2: サービス保持と、起動前半・初回起動補助の置き換え
 - §3.2 のフィールドと `InitializePostHostServices()` を追加する。

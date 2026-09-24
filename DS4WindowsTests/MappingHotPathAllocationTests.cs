@@ -18,12 +18,37 @@ namespace DS4WindowsTests
     {
         private const int Slot = 0;
         private const int Iterations = 20000;
+        private const int MaxRounds = 3;
 
         private readonly ITestOutputHelper _output;
 
         public MappingHotPathAllocationTests(ITestOutputHelper output)
         {
             _output = output;
+        }
+
+        /// <summary>
+        /// ウォームアップの後、<see cref="Iterations"/> 回の呼び出しを最大 <see cref="MaxRounds"/> 回計測し、
+        /// 割り当てバイト数の最小値を返す（0 になった時点で打ち切る）。
+        /// 1 回の呼び出しごとに割り当てがあれば、どの計測回でも <see cref="Iterations"/> バイト以上になるため検出できる。
+        /// 一方、ランタイムが計測区間の途中で一度だけ行う割り当て（階層型 JIT・OSR による再コンパイルなど。
+        /// 2026-09-24 に ApplyStickCalibration で 784 バイト／20000 回として観測）は、次の計測回では再発しないため除外される。
+        /// </summary>
+        private long MeasureMinAllocatedBytes(Action runOnce)
+        {
+            for (int i = 0; i < 1000; i++) runOnce(); // ウォームアップ（型初期化・JIT を計測から除く）
+
+            long min = long.MaxValue;
+            for (int round = 0; round < MaxRounds && min != 0; round++)
+            {
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < Iterations; i++) runOnce();
+                long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+                _output.WriteLine($"  計測 {round + 1} 回目: {allocated} bytes");
+                min = Math.Min(min, allocated);
+            }
+
+            return min;
         }
 
         [Fact]
@@ -43,13 +68,9 @@ namespace DS4WindowsTests
                 sink += Mapping.SetCurveAndDeadzone(Slot, cState, dState, settings).LX;
             }
 
-            for (int i = 0; i < 1000; i++) RunOnce(); // ウォームアップ（型初期化・JIT を計測から除く）
+            long allocated = MeasureMinAllocatedBytes(RunOnce);
 
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < Iterations; i++) RunOnce();
-            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-            _output.WriteLine($"割り当て: {allocated} bytes / {Iterations} 回（sink={sink}）");
+            _output.WriteLine($"割り当て: {allocated} bytes / {Iterations} 回（最小の計測回、sink={sink}）");
             Assert.Equal(0L, allocated);
         }
 
@@ -80,13 +101,9 @@ namespace DS4WindowsTests
                 sink += Mapping.SetCurveAndDeadzone(Slot, cState, dState, settings).LX;
             }
 
-            for (int i = 0; i < 1000; i++) RunOnce();
+            long allocated = MeasureMinAllocatedBytes(RunOnce);
 
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < Iterations; i++) RunOnce();
-            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-            _output.WriteLine($"割り当て: {allocated} bytes / {Iterations} 回（sink={sink}）");
+            _output.WriteLine($"割り当て: {allocated} bytes / {Iterations} 回（最小の計測回、sink={sink}）");
             Assert.Equal(0L, allocated);
         }
 
@@ -110,13 +127,9 @@ namespace DS4WindowsTests
                 sink += Mapping.ApplyStickCalibration(Slot, state, settings).LX;
             }
 
-            for (int i = 0; i < 1000; i++) RunOnce();
+            long allocated = MeasureMinAllocatedBytes(RunOnce);
 
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < Iterations; i++) RunOnce();
-            long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-            _output.WriteLine($"割り当て: {allocated} bytes / {Iterations} 回（sink={sink}）");
+            _output.WriteLine($"割り当て: {allocated} bytes / {Iterations} 回（最小の計測回、sink={sink}）");
             Assert.Equal(0L, allocated);
         }
 

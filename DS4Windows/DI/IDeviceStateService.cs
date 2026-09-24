@@ -35,6 +35,9 @@ namespace DS4Windows.DI
         bool IsFirstConnection(int slotIndex);
         void MarkConnected(int slotIndex);
 
+        // ---- Phase6-Step7-1: 起動時に全スロットの「起動後の初回接続」フラグを立て直す（Global への薄い委譲）----
+        void ResetConnectionFlags();
+
         // ---- Phase6-Step2-4 (PR-4): デバイスのシリアル（MAC アドレス）変更通知（Global への薄い委譲）----
         void OnDeviceSerialChange(object sender, int slotIndex, string serial);
     }

@@ -51,15 +51,18 @@ namespace DS4Windows
             get => _config != null ? _config.actions : null;
         }
 
+        // Phase6-Step7-1（決定2＝L2）: Phase4-Step3（c06a1c9b）で作られたが App 側が未接続だった契約。
+        // 従来は冒頭に「Actions.xml がなければ何もせず false を返す」判定があり、Global.LoadActions() と動作が違った
+        // （BackingStore.LoadActions はファイルがなければ既定アクション「Disconnect Controller」を作って保存し true を返す）。
+        // そのまま App から使うと、初回起動で CreateStandardActions が走り、全プロファイルの XML が書き換わってしまうため、
+        // この判定を削除して Global と同じ動作にした（ファイルの有無の扱いは BackingStore.LoadActions に任せる）。
+        // 残る差は、想定外の例外（XML・データ不正以外）も false にする点のみ（Global 側は例外を外へ投げる）。
         public bool LoadActions()
         {
             lock (_actionLock)
             {
                 try
                 {
-                    if (!File.Exists(ActionsPath))
-                        return false;
-
                     bool result = _config != null ? _config.LoadActions() : Global.LoadActions();
                     if (AppLogger.IsTraceEnabled)
                         AppLogger.LogTrace($"[DI] SpecialActionRepository.LoadActions: Actions.xml loaded via DI (result={result})");
@@ -190,6 +193,15 @@ namespace DS4Windows
                 }
                 return false;
             }
+        }
+
+        // ---- Phase6-Step7-1: App.xaml.cs（Post-Host）の Global 直接参照解消 ----
+        // Global.CreateStdActions への薄い委譲。プロファイル XML の書き換えと読み込み直しは Global 側が行う。
+        public void CreateStandardActions()
+        {
+            Global.CreateStdActions();
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[DI] SpecialActionRepository.CreateStandardActions: standard actions created via DI");
         }
 
         protected virtual void OnActionsChanged()

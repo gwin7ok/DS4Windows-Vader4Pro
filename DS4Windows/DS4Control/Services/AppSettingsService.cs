@@ -321,6 +321,14 @@ namespace DS4Windows.Services
             set { if (Global.firstRun != value) { Global.firstRun = value; NotifyChanged(nameof(FirstRun)); } }
         }
 
+        // ---- Phase6-Step7-1: App.xaml.cs（Post-Host）の Global 直接参照解消 ----
+        // 他のプロパティと同じく Global(m_Config/BackingStore) への正規シム（独立フィールドを持たない）。
+        public string UseLang
+        {
+            get => Global.UseLang;
+            set { if (Global.UseLang != value) { Global.UseLang = value; NotifyChanged(nameof(UseLang)); } }
+        }
+
         public bool RunHotPlug
         {
             get => Global.runHotPlug;

@@ -32,6 +32,10 @@ namespace DS4Windows.DI
         bool FirstRun { get; set; }
         bool RunHotPlug { get; set; }
 
+        // ---- Phase6-Step7-1: App.xaml.cs（Post-Host）の Global 直接参照解消 ----
+        /// <summary>UI の言語（カルチャ名。<c>Global.UseLang</c>）。</summary>
+        string UseLang { get; set; }
+
         // ---- Phase5-Step13-7: ウィンドウ位置・サイズ、コントローラー一覧列幅の永続化 ----
         int FormWidth { get; set; }
         int FormHeight { get; set; }

@@ -299,6 +299,14 @@ namespace DS4Windows
         public void EmitMissingActionLogsForDevice(int deviceIndex, bool forceEmit = false, string overrideProfileName = null)
             => Global.store.EmitMissingActionLogsForDevice(deviceIndex, forceEmit, overrideProfileName);
 
+        // ---- Phase6-Step7-1: App.xaml.cs（Post-Host）の Global 直接参照解消 ----
+        // Global.SaveAsProfile は戻り値を捨てる void のため、同じ実体（BackingStore.SaveAsProfile）を直接呼んで成否を返す。
+        public bool SaveAsProfile(int deviceIndex, string profileName)
+            => Global.store.SaveAsProfile(deviceIndex, profileName);
+
+        public bool LoadLinkedProfiles()
+            => Global.LoadLinkedProfiles();
+
 
         // ---- Phase6-Step2-2 (PR-2): リンクプロファイル解決 ----
         public bool ContainsLinkedProfile(string serial) => Global.containsLinkedProfile(serial);

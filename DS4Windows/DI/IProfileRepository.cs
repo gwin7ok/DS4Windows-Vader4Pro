@@ -56,5 +56,15 @@ namespace DS4Windows.DI
         // ---- Phase6-Step2-2 (PR-2): リンクプロファイル解決（Global への薄い委譲）----
         bool ContainsLinkedProfile(string serial);
         string GetLinkedProfile(string serial);
+
+        // ---- Phase6-Step7-1: App.xaml.cs（Post-Host）の Global 直接参照解消（Global への薄い委譲）----
+        /// <summary>
+        /// スロットの設定を初期値に戻したうえで、プロファイル名 <paramref name="profileName"/> として保存する
+        /// （初回起動時の既定プロファイル作成に使う）。保存の成否を返す。
+        /// </summary>
+        bool SaveAsProfile(int deviceIndex, string profileName);
+
+        /// <summary>LinkedProfiles.xml（コントローラーとプロファイルの紐付け）を読み込む。</summary>
+        bool LoadLinkedProfiles();
     }
 }

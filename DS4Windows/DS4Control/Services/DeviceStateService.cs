@@ -95,6 +95,9 @@ namespace DS4Windows
 
         public void MarkConnected(int slotIndex) => Global.MarkConnected(slotIndex);
 
+        // ---- Phase6-Step7-1: 起動時の初回接続フラグの一括リセット（App.xaml.cs から使用）----
+        public void ResetConnectionFlags() => Global.ResetConnectionFlags();
+
         // ---- Phase6-Step2-4 (PR-4): デバイスのシリアル変更通知 ----
         // Global.DeviceSerialChange（static イベント）の購読者へ、従来と同一の引数で通知する。
         public void OnDeviceSerialChange(object sender, int slotIndex, string serial)
