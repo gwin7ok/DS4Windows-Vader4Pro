@@ -18,7 +18,7 @@
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | **完了（2026-09-24）** | `Phase6-Step4-Plan.md`、`Phase6-Step4-Completion-Report.md` | Step4-0〜4-5 完了（実機確認の残りは Step11 へ先送り） |
 | **Step 5** | OutputSlotService 孤立配列撤廃・UDP診断是正 | `OutputSlotService.cs` 等 | UDP診断1行＋孤立配列系 | **完了（2026-09-24）** | `Phase6-Step5-Plan.md`、`Phase6-Step5-Completion-Report.md` | Step5-0〜5-3 完了（実機確認は Step11 へ先送り） |
 | **Step 6** | 出力切替UI表示追従・未接続API整理 | `ProfileEditor.xaml.cs`, `OutputSlotService.cs` 等 | 台帳再作成（2026-09-24、方針確定） | **完了（2026-09-24）** | `Phase6-Step6-Plan.md`、`Phase6-Step6-Completion-Report.md` | Step6-0〜6-3 完了 |
-| **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 32箇所 (11保護) | 計画確定・承認待ち | `Phase6-Step7-Plan.md` | 未着手 (PR-1〜4) |
+| **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 39件（温存15。2026-09-24 再集計） | **Step7-0 完了・決定1〜6 確認待ち** | `Phase6-Step7-Plan.md` | Step7-1〜7-5 未着手 |
 | **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 計画書作成・承認待ち（2026-09-24新設） | `Phase6-Step7b-Plan.md` | 未着手（Step7 の後・Step8 の前） |
 | **Step 8** | `ProfileEditor` 段階的MVVM移設 | `ProfileEditor.xaml.cs` 等 | 60箇所 | 計画確定・承認待ち | `Phase6-Step8-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 9** | 主要4大ViewModel Pure DI化 | `SettingsVM`, `MainWindowVM` 等 | 79箇所 | 計画確定・承認待ち | `Phase6-Step9-Plan.md` | 未着手 (PR-1〜6) |
@@ -169,10 +169,16 @@
 
 ---
 
-### Phase6-Step7: `App.xaml.cs` Post-Host領域のPure DI化【計画確定・承認待ち】
-- **進捗率**: **0%（未着手・計画確定済み）**
-- **確定方針**: **選択肢1（Pre-Host保護 ＋ Post-Host Composition Root解決）の採用**。
-- **対象**: 実参照式32箇所（Pre-Host除外11箇所、const除外1箇所）。
+### Phase6-Step7: `App.xaml.cs` Post-Host領域のPure DI化【Step7-0 完了・決定確認待ち】
+- **進捗率**: **Step7-0（調査・台帳再作成・計画改訂）完了（2026-09-24、HEAD `56f6e8bc`）。決定1〜6 はユーザー確認待ち**
+- **Step7-0 の主な発見**（詳細は `Phase6-Step7-Plan.md` §0）:
+  - 旧 C7-30〜C7-32（終了処理の `outputKBMHandler.Disconnect`、2 回目の `Save`、`ResetConnectionFlags`）は存在しない。旧「`Application_Exit`」は `CleanShutdown`、旧「`SaveWhere` 処理」は `CreateConfDirSkeleton`／`AttemptSave`。
+  - 旧 Pre-Host 扱いの 110〜111 行は、Pre-Host・Post-Host・App 外の 3 経路から呼ばれる共用ヘルパー `ApplyLanguageSetting` の中にある。
+  - `AppHost.GetService` はホスト未構築時に暗黙に構築するため、`--driverinstall` 分岐の `Global.Load()` でホストが作られている（温存方針は変えない）。
+  - 移行先の挙動差: `SpecialActionRepository.LoadActions()` は `Actions.xml` がないと `false` を返す（`Global` は既定アクションを作って `true`）。`PathService.AppDataPath` のセッターは `Global.appdatapath` を変えない。どちらも呼出元 0 件（§2.4 で判断）。
+  - **既存の回帰**: 起動引数 `-virtualkbm` が 2026-09-02（`cc7a556b`／`4c89cd91`）以降無視されている（`ServiceRegistration` が空の `ArgumentParser` で `ControlService` を生成）。
+- **対象（2026-09-24 に参照式単位で再集計）**: 54 件 ＝ Post-Host の置き換え対象 39 件 ＋ 温存 15 件（Pre-Host 12、共用ヘルパー 2、const 1）。旧記載の「32箇所（11保護）」は陳腐化。
+- **旧確定方針**: 選択肢1（Pre-Host保護 ＋ Post-Host Composition Root解決）。改訂後もこの方針を維持し、詳細は決定1〜6 で確定する。
 - **計画ハイライト**:
   - 初期ログローテーションや driverinstall などの Pre-Host 領域（11箇所）を厳格に保護。
   - `InitializePostHostServices()` により、Host 構築直後に必要なサービスを一度だけ解決してキャッシュする正統な Composition Root パターンを適用。
