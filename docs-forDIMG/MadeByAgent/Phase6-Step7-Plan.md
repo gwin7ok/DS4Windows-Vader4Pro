@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了。決定1〜7 はすべてユーザー決定済み（2026-09-24〜25、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 は最初の是正が実機で効果なしと判明し、決定7＝案 H で再実装（2026-09-25、ユーザーのビルド・テスト・実機確認待ち）。Step7-5 は未着手**  
+状態: **Step7-0 完了。決定1〜7 はすべてユーザー決定済み（2026-09-24〜25、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 完了（2026-09-25、決定7＝案 H で再実装。ビルド・テストビルド・テスト実行成功、実機で `-virtualkbm` の是正を確認）。Step7-5 は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -413,7 +413,7 @@
   - テスト（更新）: `AppPostHostGlobalReferenceGuardTests.cs` の期待値を最終形に更新（`Application_Startup` の Post-Host は 0 件、`CleanShutdown` は const の 1 件だけ）。温存箇所の TODO の存在を確認するテスト `RetainedGlobalReferences_HaveTodoComments` を追加（計 4 件）。
   - 実機確認: §6 の項目（Step7-2 の分と合わせて、ユーザーがまとめて実施）。
 
-### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A、決定7＝案 H）【再実装済み・ビルド・テスト・実機確認待ち（2026-09-25）】
+### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A、決定7＝案 H）【完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み）】
 - §3.4 の 1 行を変更する。
 - テスト（新規）: `ServiceRegistrationArgumentParserTests`
   - `ArgumentParser` を登録したサービスコレクションから `ControlService` を解決したとき、登録したパーサーが使われること。
@@ -445,6 +445,14 @@
     - 構築済みの `AppHost` に対して `CreateHost(config, parser)` を呼ぶと、既存のホストが返り、`IStartupArguments` に起動引数が設定されること（終了時に元の値へ戻す）。
   - 持ち越し: 案 R（ホストの暗黙構築の是正）は K7-1（`Phase6-Status.md` §6.5、`Phase6-Step12-Plan.md` §4）。
   - 実機確認: `DS4Windows.exe -virtualkbm fakerinput` で起動し、DEBUG ログが `Output KBM handler fakeKeyRepeat=… for fakerinput` になること（FakerInput 未導入のため、続く INFO ログは従来どおり `Using output KB+M handler: SendInput`）。引数なしでは `for sendinput` のまま。あわせて、Trace ログに `startup arguments applied to IStartupArguments (host already created)` が出ること。
+  - **実機確認の結果（2026-09-25）**: ビルド・テストビルド・テスト実行は成功（途中、`obj` の途中生成物の不整合による BG1002 と、テストの `AppHost` の名前の衝突 CS0104 が出たが、前者は `obj\x64\Debug` の削除、後者は `DS4WinWPF.AppHost` への修飾で解消）。
+    - `-virtualkbm fakerinput`: DEBUG ログが `for fakerinput` になった。**起動引数が `ControlService` に届くことを確認（回帰の是正を確認）**。
+    - 引数なし: 従来どおり `for sendinput`、INFO は `Using output KB+M handler: SendInput`。
+    - Trace ログ `startup arguments applied …` は見つからなかった。298 行の時点では、`LoggerHolder.ApplyBootstrapMinLogLevel`（162 行）で設定したログレベル（ユーザー設定。Trace より上）が適用済みのため、Trace が記録されないことによる（同じ理由で `[DI] App.InitializePostHostServices` の Trace も初回起動のログに出ていない）。起動引数が届いたことは上の DEBUG ログで確認できているため、追加の確認は不要と判断した。
+    - **観察（Step7 とは無関係、記録のみ）**: `-virtualkbm fakerinput` で起動すると、FakerInput が未導入（`root\FakerInput` のデバイスもドライバーもない。2026-09-25 に確認）にもかかわらず、INFO が `Using output KB+M handler: FakerInput 0.0.0.0` になり、SendInput への切り替え（フォールバック）が起きなかった。
+      - `FakerInputHandler.Connect()` は外部ライブラリ（`FakerInputWrapper.dll`）の `fakerInput.Connect()` の戻り値をそのまま返しており、このライブラリがドライバーなしでも接続成功を返していると考えられる。バージョン `0.0.0.0` は、DS4Windows の導入判定（`Global.fakerInputVersion`）が未導入と判定していることを示す。
+      - この経路（`InitOutputKBMHandler` と `FakerInputHandler`）は Step7 で変更していない。2026-09-01 以前（起動引数が効いていた頃）も同じ動作だったと考えられる。引数なしの通常起動では、導入判定が未導入なので最初から SendInput が選ばれ、影響はない。
+      - 影響があるのは、FakerInput を導入していない環境で `-virtualkbm fakerinput` を明示した場合だけで、キーボード・マウス出力が効かない可能性がある。対応の要否は持ち越し事項 K7-2（`Phase6-Status.md` §6.5）としてユーザー判断に委ねる。
 
 ### Step7-5: 文書の更新・完了報告
 - `Phase6-Status.md`、`Phase6-Plan.md` を更新する。
