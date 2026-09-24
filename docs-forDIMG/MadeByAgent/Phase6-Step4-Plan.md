@@ -3,7 +3,7 @@
 作成日: 2026-09-09  
 改訂日: 2026-09-24（Step3 完了後の実地突き合わせにより、参照台帳を現行コードから全面再作成。Abs Mouse 削除の反映、契約追加ゼロの確認、フォールバックなしの必須引数への方針変更）  
 旧改訂: 2026-09-18（Pure DI コンストラクタ引数注入 ＋ `MouseWheel.cs` 統合の採用）  
-状態: **Step4-0（台帳再作成）完了・承認待ち（実装未着手）**  
+状態: **Step4-0〜4-5 実装完了（2026-09-24）。ビルド・テストビルド・テスト実行成功（ユーザー確認）。実機確認は未実施（§6.3、完了確定前に実施するか Step11 の先送り台帳へ登録するかを決定する）**  
 対象ブランチ: `For-DI-migration-work`  
 台帳作成時の HEAD: `c6eb492f`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -171,6 +171,15 @@ public Mouse(int deviceID, DS4Device d, IProfileSettingsService profileSettings,
 
 ---
 
+### 実装結果（2026-09-24）
+- Step4-1: `MouseWheel.cs` 6行を置換。テスト `MouseWheelShimTests`。
+- Step4-2: `MouseCursor.cs` 19行を置換。テスト `MouseCursorMovementTests`（共有スタブ `RecordingVirtualKbm` を新設）。
+- Step4-3: `Mouse.cs` 56行を置換（コメント内の `Global.` 参照5行は温存）。475行の `GetGyroMouseStickHorizontalAxis(0)` は挙動維持のため 0 固定のまま（K4-1）。
+- Step4-4: `ControlService.cs` の生成箇所を `new Mouse(index, device, _profileSettings, _virtualKBM)` に変更。
+- Step4-5: テスト `MouseDiWiringTests`（`cursor`／`wheel` への同一インスタンス伝搬）、`MouseGlobalReferenceGuardTests`（`Global.Clamp` 以外の参照と `using static` の再混入を検出、`Global.Clamp` が4行であることを固定）、`MouseCursorHotPathAllocationTests`（`TouchMoveCursor` の割り当て0バイト）を新設。
+- 契約の追加・`ServiceRegistration.cs`・`ControlService` のコンストラクタの変更はなし。
+- `sixaxisMoved`／`touchesMoved`（`Mouse`）は `DS4SixAxis`／デバイス状態の組み立てが大きく直接駆動していない。ガードテストと実機確認で担保する。
+
 ## 6. テスト・性能・実機検証計画
 
 ### 6.1 自動テスト
@@ -179,7 +188,12 @@ public Mouse(int deviceID, DS4Device d, IProfileSettingsService profileSettings,
 ### 6.2 ホットパス性能
 - 判定基準: 置換前後で、読み取り経路の割り当てが0バイトのままであること。マイクロベンチマーク（処理時間 ±5%）は、テストで直接駆動できる範囲でのみ実施し、困難な場合は実機での体感確認に代える（Mapping の直接駆動が困難だった Step3 の前例と同様）。
 
-### 6.3 実機動作検証項目（Vader 4 Pro／DS4／DualSense）
+### 6.3 実機動作検証の結果（2026-09-24）
+- **実施済み・問題なし**: タッチパッドでのマウス移動とタップ・クリック、ジャイロマウス、2 本指のスクロール。
+- **先送り（Step11 の先送り台帳へ登録）**: 下記の他の項目（タッチパッドのスティック・ホイール等のモード、タッチボタン、ジャイロ→スティック、トリガー条件、接続・切断の繰り返し）。
+- **副次的に判明した既存仕様の問題（Step4 の変更が原因ではない）**: 接続中のコントローラーに適用されているプロファイルを、コントローラー横の Edit ボタンで編集すると、編集内容が即座にそのコントローラーへ反映される（例: ジャイロタブの Output Mode を Mouse にした瞬間にポインタが動き出す）。仕様変更の対象として別途検討する（`Phase6-Status.md` の持ち越し K4-3）。
+
+### 6.3.1 実機動作検証項目（Vader 4 Pro／DS4／DualSense）
 1. **タッチパッド（マウスモード）**: 指の移動によるカーソル移動、タップ、左右クリック、ダブルタップ。
 2. **タッチパッド（スティック・ホイール等のモード）**: タッチによるスティック出力、上下・左右のスクロールホイール。
 3. **タッチボタン**: 左・右・上・マルチの各割り当てとクリックパススルー。
@@ -205,10 +219,10 @@ public Mouse(int deviceID, DS4Device d, IProfileSettingsService profileSettings,
 ## 9. 完了判定チェックリスト
 
 - [x] Step4-0: 台帳再作成（本書 §2）完了、ベースラインのビルド・テスト成功を記録（2026-09-24）
-- [ ] `MouseWheel`／`MouseCursor`／`Mouse` の全コンストラクタが必須引数の Pure DI 注入になっている（フォールバックなし）
-- [ ] 3ファイルの `Global.` 参照が、コメントと `Global.Clamp`（4行）を除いて0件
-- [ ] `ControlService.cs:2187` から `_profileSettings`／`_virtualKBM` が配線されている
-- [ ] ホットパスの割り当て0バイトがテストで固定されている
-- [ ] `dotnet build -c Release` の警告・エラー0件、`dotnet test` 全件成功
+- [x] `MouseWheel`／`MouseCursor`／`Mouse` の全コンストラクタが必須引数の Pure DI 注入になっている（フォールバックなし）
+- [x] 3ファイルの `Global.` 参照が、コメントと `Global.Clamp`（4行）を除いて0件
+- [x] `ControlService.cs:2187` から `_profileSettings`／`_virtualKBM` が配線されている
+- [x] ホットパスの割り当て0バイトがテストで固定されている（`MouseCursor.TouchMoveCursor`。`Mouse.sixaxisMoved`／`touchesMoved` は直接駆動せず）
+- [ ] `dotnet build -c Release` の警告・エラー0件、`dotnet test` 全件成功（Step4-5 追加分の再確認待ち。Debug のビルド・テストは Step4-4 時点で成功）
 - [ ] 実機確認（§6.3）が完了、または Step11 の先送り台帳に登録済み
 - [ ] `Phase6-Status.md`／`Phase6-Plan.md` を更新、完了報告書を作成

@@ -11,13 +11,16 @@ namespace DS4WindowsTests
         public readonly List<(int X, int Y)> MoveEvents = new List<(int, int)>();
         public readonly List<(int Vertical, int Horizontal)> WheelEvents = new List<(int, int)>();
 
+        /// <summary>false にすると記録しない（割り当て0バイトの計測で、記録用リストの拡張を除外するため）。</summary>
+        public bool Recording = true;
+
         public string ErrorMessage => string.Empty;
         public string Version => "0.0.0.0";
         public bool fakeKeyRepeat { get; set; }
         public bool Connect() => true;
         public bool Disconnect() => true;
-        public void MoveRelativeMouse(int x, int y) => MoveEvents.Add((x, y));
-        public void PerformMouseWheelEvent(int vertical, int horizontal) => WheelEvents.Add((vertical, horizontal));
+        public void MoveRelativeMouse(int x, int y) { if (Recording) MoveEvents.Add((x, y)); }
+        public void PerformMouseWheelEvent(int vertical, int horizontal) { if (Recording) WheelEvents.Add((vertical, horizontal)); }
         public void PerformMouseButtonEvent(uint mouseButton) { }
         public void PerformMouseButtonEventAlt(uint mouseButton, int type) { }
         public void PerformMouseButtonPress(uint mouseButton) { }

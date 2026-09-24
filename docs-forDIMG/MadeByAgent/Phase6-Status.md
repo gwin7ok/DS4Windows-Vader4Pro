@@ -15,10 +15,11 @@
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
 | **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 0箇所（2026-09-24 再集計。Step3-1〜3-6完了、Step3-3は対象消滅、Step3-7実装済み。残るのはTODO付き温存3件のみ） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-7実装済み（温存3件へのTODO付与、K-1採用、using static見送りを確定。ビルド・テスト確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-6完了、Step3-7実装済み（ユーザーのビルド・テスト確認後にStep3完了確定） |
-| **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | Step4-0 完了・実装承認待ち | `Phase6-Step4-Plan.md` | Step4-1〜4-5 未着手 |
+| **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | Step4 実装完了・実機確認待ち | `Phase6-Step4-Plan.md` | Step4-0〜4-5 実装済み（2026-09-24） |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 32箇所 (11保護) | 計画確定・承認待ち | `Phase6-Step7-Plan.md` | 未着手 (PR-1〜4) |
+| **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 計画書作成・承認待ち（2026-09-24新設） | `Phase6-Step7b-Plan.md` | 未着手（Step7 の後・Step8 の前） |
 | **Step 8** | `ProfileEditor` 段階的MVVM移設 | `ProfileEditor.xaml.cs` 等 | 60箇所 | 計画確定・承認待ち | `Phase6-Step8-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 9** | 主要4大ViewModel Pure DI化 | `SettingsVM`, `MainWindowVM` 等 | 79箇所 | 計画確定・承認待ち | `Phase6-Step9-Plan.md` | 未着手 (PR-1〜6) |
 | **Step 10**| 小型UI/ViewModel ドメイン別DI化| 小型View 11, 小型VM 12 等 | 72箇所 | 計画確定・承認待ち | `Phase6-Step10-Plan.md` | 未着手 (PR-1〜4) |
@@ -127,8 +128,12 @@
   - **未検証事項**: この環境にはdotnetがなく、`dotnet build`／`dotnet test`は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。コメント追加のみで実行コードの変更はないため実機確認は必須ではないが、念のため通常のプロファイル切替動作の確認が望ましい。
 ---
 
-### Phase6-Step4: マウスエミュレーション系のPure DI化【Step4-0 完了・実装承認待ち】
-- **進捗率**: **Step4-0（台帳再作成・計画書改訂）完了（2026-09-24）。Step4-1〜4-5 は未着手**
+### Phase6-Step4: マウスエミュレーション系のPure DI化【実装完了・実機確認待ち】
+- **進捗率**: **Step4-0〜4-5 実装完了（2026-09-24）。Step4-4 時点でビルド・テストビルド・テスト実行成功（ユーザー確認）。Step4-5 追加テストの再確認と実機確認が未了**
+- **実装結果**: `MouseWheel`（6行）・`MouseCursor`（19行）・`Mouse`（56行）を Pure DI 化（フォールバックなし）。`ControlService.cs` の生成箇所を配線。残る `Global.` は `Global.Clamp` の4行（除外）のみ。契約の追加なし。詳細は `Phase6-Step4-Plan.md` の「実装結果」。
+- **実機確認（2026-09-24）**: タッチパッドのマウス移動・タップ・クリック、ジャイロマウス、2 本指スクロールは問題なし。その他の項目は Step11 へ先送り。
+- **持ち越し K4-3（新規・既存仕様の問題）**: コントローラー横の Edit ボタンでプロファイルを開くと、編集内容が保存前に接続中のコントローラーへ即時反映される（Output Mode を Mouse にした瞬間にポインタが動く等）。編集画面を「編集用の作業スロット（`TEST_PROFILE_INDEX`）で編集し、保存・適用時にコントローラーへ反映する」仕様へ変更する（ユーザー承認済み。編集中のリアルタイム確認は廃止し、ライトバー色プレビューとランブルテストは残す）。新設の **Step7b**（`Phase6-Step7b-Plan.md`）で対応する。
+- **持ち越し K4-1**: `Mouse.cs` の `GetGyroMouseStickHorizontalAxis(0)` は引数 0 固定（既存挙動を維持）。修正要否はユーザー判断。
 - **確定方針**: Pure DI コンストラクタ引数注入（**フォールバックなしの必須引数**）＋ `MouseWheel.cs` 正式統合。
 - **対象（2026-09-24 に現行コードから再集計）**: 実参照81行（`Mouse`: 56, `MouseCursor`: 19, `MouseWheel`: 6）、除外は `Global.Clamp` の4行。旧記載の73件は陳腐化。
 - **計画ハイライト**:
@@ -168,6 +173,15 @@
 - **計画ハイライト**:
   - 初期ログローテーションや driverinstall などの Pre-Host 領域（11箇所）を厳格に保護。
   - `InitializePostHostServices()` により、Host 構築直後に必要なサービスを一度だけ解決してキャッシュする正統な Composition Root パターンを適用。
+
+---
+
+### Phase6-Step7b: プロファイル編集画面の即時反映廃止（保存・適用時に一括反映）【計画書作成・承認待ち】
+- **進捗率**: **0%（未着手・計画書作成済み）**
+- **新設の経緯**: Step4 の実機確認で、Edit ボタン経由の編集が接続中のコントローラーへ即時反映される既存仕様の問題（K4-3）が判明。ユーザー決定（2026-09-24）: 編集中のリアルタイム確認は廃止（機能削除の承認）、ライトバー色プレビューとランブルテストは `targetDevice` に対して残す、独立 Step として Step8 の前に実施。
+- **方針**: 編集画面は常に作業スロット（`TEST_PROFILE_INDEX`）へ読み書きし、接続中のコントローラーは別引数 `targetDevice` として渡す。適用・保存時の一括反映は既存の `ApplyProfileToSlot`／`SyncProfileListAndControllers` を使う。
+- **見積り**: 約 1.5〜2 日（7b-0 調査 → 7b-1 編集スロット固定 → 7b-2 コントローラー機能の付け替え → 7b-3 保存・適用・キャンセル → 7b-4 テスト・文書・実機確認）。
+- **注意**: `ProfileEditor.xaml.cs` を大きく触るため、Step8 の行番号台帳は本ステップの完了後に更新する。
 
 ---
 
