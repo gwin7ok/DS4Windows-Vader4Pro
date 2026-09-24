@@ -87,7 +87,11 @@ namespace DS4Windows.DI
             services.AddSingleton<ControlService>(sp =>
             {
                 return Program.rootHub ?? new ControlService(
-                    new ArgumentParser(),
+                    // Phase6-Step7-4（決定5＝A）: AppHost.CreateHost(config, parser) が登録した実際の起動引数を渡す。
+                    // 2026-09-04（4c89cd91）以降は常に空の new ArgumentParser() を渡していたため、起動引数 -virtualkbm
+                    // （キーボード・マウス出力方式の指定）が無視されていた。パーサーが登録されていないホスト
+                    // （引数なしの CreateHost()、テスト）では、従来どおり空のパーサーを使う。
+                    sp.GetService<ArgumentParser>() ?? new ArgumentParser(),
                     sp.GetRequiredService<IDs4DeviceRegistry>(),
                     sp.GetRequiredService<IProfileSettingsService>(),
                     sp.GetRequiredService<IAppSettingsService>(),

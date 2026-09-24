@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 以降は未着手**  
+状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 実装済み（ユーザーのビルド・テスト・実機確認待ち）。Step7-5 は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -384,12 +384,21 @@
   - テスト（更新）: `AppPostHostGlobalReferenceGuardTests.cs` の期待値を最終形に更新（`Application_Startup` の Post-Host は 0 件、`CleanShutdown` は const の 1 件だけ）。温存箇所の TODO の存在を確認するテスト `RetainedGlobalReferences_HaveTodoComments` を追加（計 4 件）。
   - 実機確認: §6 の項目（Step7-2 の分と合わせて、ユーザーがまとめて実施）。
 
-### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A）
+### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A）【実装済み・ビルド・テスト確認待ち（2026-09-25）】
 - §3.4 の 1 行を変更する。
 - テスト（新規）: `ServiceRegistrationArgumentParserTests`
   - `ArgumentParser` を登録したサービスコレクションから `ControlService` を解決したとき、登録したパーサーが使われること。
   - 登録していない場合は、従来どおり空のパーサーで生成できること。
   - `ControlService` を実際に生成するテストが重い場合は、`ServiceRegistration.cs` のソース走査ガードに切り替える（実装時に判断して報告する）。
+- **実装結果（2026-09-25 実装、ユーザーのビルド・テスト確認待ち）**:
+  - `DS4Windows/DI/ServiceRegistration.cs` の `ControlService` の登録で、第 1 引数を `new ArgumentParser()` から `sp.GetService<ArgumentParser>() ?? new ArgumentParser()` に変更（経緯をコメントに記載）。`App.xaml.cs` は変更なし。
+    - 通常起動: `AppHost.CreateHost(config, parser)` が `services.AddSingleton(parser)` で登録した実際の起動引数が渡る（2026-09-01 以前の動作に戻る）。`ControlService` の解決は `CreateControlService`（明示的なホスト構築の後）で行われ、それより前にホストが暗黙に構築される経路は通常起動にはない（§0.4）。
+    - パーサーを登録しないホスト（引数なしの `CreateHost()`、`-driverinstall` 分岐で暗黙に作られるホスト、テスト）: 従来どおり空のパーサー。
+  - テスト（新規）: `DS4WindowsTests/ServiceRegistrationArgumentParserTests.cs`（2 件）。ソース走査ではなく、実際に `ControlService` を生成して確認する方式にした（既存の `ControlServiceDiWiringTests` も実体を生成しているため）。
+    - `-virtualkbm sendinput` を解析したパーサーを登録したサービスコレクションから `ControlService` を解決し、private フィールド `cmdParser` が登録したパーサーそのもので、`VirtualkbmHandler` が `sendinput` であること。
+    - パーサーを登録しない場合も生成でき、`VirtualkbmHandler` が既定値（`default`）であること。
+    - 登録は `Program.rootHub` が設定済みならそれを返すため、各テストで一時的に null にし、終了時に元へ戻す（`Phase6-Status.md` §6.4-1）。
+  - 実機確認: §6.4 の 14（`-virtualkbm sendinput` でログが `Using output KB+M handler: SendInput` になること。FakerInput を導入している環境なら、引数なしでは `FakerInput`、`-virtualkbm sendinput` では `SendInput` になることで違いを確認できる）。
 
 ### Step7-5: 文書の更新・完了報告
 - `Phase6-Status.md`、`Phase6-Plan.md` を更新する。
