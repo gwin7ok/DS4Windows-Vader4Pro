@@ -37,7 +37,7 @@ Phase7 において `Mapping.cs`（約8,500行）の完全インスタンス化�
    - Phase4〜Phase6 で構築された各 DI サービス（`ProfileSettingsService`, `AppSettingsService` 等）は、データの二重管理・乖離を防ぐため、内部で `BackingStore` のメモリ領域を直接参照・操作している（SSOT の原則）。これを消すと DI サービスごとアプリが崩壊するため、**Phase7 まで完全温存**する。
 2. **防壁2: Phase7 引き継ぎメンバ（`Mapping.cs` が参照している101箇所）**:  
    - Step3 で台帳化された `SetCurveAndDeadzone`（34件）、`outputKBMMapping`（29件）、スティック・ボタン・ジャイロ補正（38件）は、Phase7 のインスタンス化まで `Global` を参照し続けるため、**一切削除しない**。
-3. **防壁3: Pre-Host ブートストラップ領域（`App.xaml.cs` 起動前の11箇所）**:  
+3. **防壁3: Pre-Host ブートストラップ領域（`App.xaml.cs` 起動前の12箇所。2026-09-25 に Step7 で再集計、`Phase6-Step7-Plan.md` §2.5。あわせて共用ヘルパー `ApplyLanguageSetting` の2件［`UseLang`・`SetCulture`］と `AttemptSave` の `appdatapath = null` を TODO 付きで温存）**:  
    - DI コンテナ構築前に実行される初期ログローテーション（`appdatapath`, `LogMaxArchiveFiles`, `LogMinLevel`）、多重起動判定、設定位置検索（`FindConfigLocation`）、および `-driverinstall` 分岐は、**静的呼び出しのまま完全温存**する。
 4. **防壁4: 真の定数（`const`）および純粋計算ユーティリティ**:  
    - `MAX_DS4_CONTROLLER_COUNT`, `OLD_XINPUT_CONTROLLER_COUNT`, `TEST_PROFILE_INDEX`, `ASSEMBLY_RESOURCE_PREFIX`, `RESOURCES_PREFIX` 等の定数、および `Clamp`, `getTransitionedColor` などの状態非保持ユーティリティは、4層共通インフラとして**完全温存**する。
@@ -75,6 +75,13 @@ Step2〜Step10 の DI 化によって「呼び出し元が完全に 0 件」と�
   - `Global.LoadActions()`, `Global.CreateStdActions()`（旧静的シム）
 - **不要となった旧イベントシム・フォールバックプロパティ**:
   - その他、Roslyn / grep 静的走査によって呼出元が真に 0 件と証明されたプライベート/パブリック旧ラッパー群。
+
+### Step7 からの登録（2026-09-25）
+- **削除候補（`copilot-instructions.md` §2.4 で「使うべきでないもの」と判断、`Phase6-Step7-Plan.md` 決定3＝P1）**:
+  - `IPathService.AppDataPath` のセッター（`DI/IPathService.cs` の `{ get; set; }` を `{ get; }` にする）と、`PathService.AppDataPath` のセッター（`DS4Control/Services/PathService.cs`）。
+  - 理由: セッターは private フィールド `_customAppDataPath` に保存するだけで、`Global.appdatapath` を変えない（`Global` と連動しない孤立した実装）。アプリ本体・テストとも呼出元 0 件（2026-09-24 確認）。`App.xaml.cs` の `AttemptSave` の `Global.appdatapath = null` の置き換え先にもならず、そちらは TODO 付きで温存した。
+  - 注意: `_customAppDataPath` 自体は、テスト用のコンストラクタ引数 `PathService(string appDataPath)` でも使うため残す。削除の前に、呼出元が 0 件のままであることを再確認する。
+- **削除候補から外れるもの（注記）**: 上の一覧の `Global.ResetConnectionFlags()`、`Global.LoadActions()`、`Global.CreateStdActions()` は、Step7 で `App.xaml.cs` からの直接呼び出しがなくなったが、DI サービスの委譲先として使われ続ける（`DeviceStateService.ResetConnectionFlags`、`SpecialActionRepository.CreateStandardActions`、`SpecialActionRepository.LoadActions` の `_config` が null の場合）。呼出元 0 件にはならないため、Step12-1 の走査で削除対象にならないことを確認する。
 
 ---
 
@@ -151,6 +158,7 @@ Step2〜Step10 の DI 化によって「呼び出し元が完全に 0 件」と�
 | **Pre-Host 領域（11箇所）** | DI コンテナ構築前の初期ブートストラップ | Phase7 で `Program.cs` / `App.xaml.cs` の初期起動シーケンスを近代化する際に整理 |
 | **`Global.outDevTypeTemp`／`Global.activeOutDevType`**（実行時状態の静的配列） | `OutputSlotService.OutDevTypeTemp`／`ActiveOutDevType` が裏づけとして返している。`ScpUtil.cs` 8 箇所・UI 3 箇所・`ControlService`（参照キャッシュ）が直接読み書きしている（Step5 の決定2＝案X で温存を確定） | Phase7 で配列の所有を `OutputSlotService` へ移し、`Global` 側を転送プロパティ（または削除）にする（Step5 の案Y）。前提条件は `Phase6-Step5-Plan.md` §9 を参照 |
 | **DI ホストの暗黙構築（持ち越し K7-1、2026-09-25 登録）** | `Global` の静的初期化子（`ScpUtil.cs:779` の `fallbackProfileRepository = new ProfileRepository(ProfileSettingsServiceInstance)`）が `AppHost.GetService` を呼ぶため、`App.xaml.cs` の明示的な `CreateHost(config, parser)` より前に、起動引数なしでホストが作られる。起動引数は Step7-4（決定7＝案H）で `IStartupArguments` 経由にして回避済み | Phase7 で `Global` の静的初期化を整理する際に、静的初期化がホストを作らないようにし、明示的な構築を本当の最初の構築にする（`Phase6-Step7-Plan.md` 決定7 の案R、`Phase6-Status.md` §6.5 K7-1） |
+| **`Program.rootHub`（静的な入口）と `App.xaml.cs` の Service Locator（Step7 決定6、2026-09-25 登録）** | `App.xaml.cs` が `Program.rootHub` の所有者（`CreateControlService` で代入）で、App 内の参照は代入を含めて 12 行（2026-09-25 時点）。`CleanShutdown` は `ServiceProviderHolder.Provider` から `IControllerRegistry` を都度解決する。`Program.rootHub` は App を含めて 19 ファイル（2026-09-25 時点）が参照する共有の入口のため、Step7 では変更しなかった（`Phase6-Step7-Plan.md` §2.7・決定6） | Pure DI の方針に沿う形へ変更する。`App` は Composition Root としてコンテナから `ControlService`・`IControllerRegistry` を受け取り（`InitializePostHostServices` に追加）、各利用側は Step8〜10 で View／ViewModel を Pure DI 化する際にコンストラクタ注入へ切り替える。すべての参照がなくなった時点で `Program.rootHub` を削除する（Phase7。K7-1 の起動シーケンス整理と合わせて行う） |
 | **真の定数（`const`）** | 共通定数値 | ドメインごとの定数クラス（`ControllerConstants` 等）へ再配置 |
 
 ---

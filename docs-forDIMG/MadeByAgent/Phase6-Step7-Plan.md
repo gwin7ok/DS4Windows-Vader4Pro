@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了。決定1〜7 はすべてユーザー決定済み（2026-09-24〜25、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 完了（2026-09-25、決定7＝案 H で再実装。ビルド・テストビルド・テスト実行成功、実機で `-virtualkbm` の是正を確認）。Step7-5 は未着手**  
+状態: **完了（2026-09-25）。Step7-0〜7-5。決定1〜7 はすべてユーザー決定済み（§4.0）。実機確認済み（3 項目は Step11 へ先送り、§6.6）。完了報告書: `Phase6-Step7-Completion-Report.md`**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -334,7 +334,7 @@
 
 ### 決定6: `Program.rootHub` などの `Global` 以外の静的結合（§2.7）
 - **案 N（推奨）: 本 Step の対象外とし、台帳に記録するだけにする**
-  - メリット: 本 Step の範囲が旧計画（`Global` 直参照の解消）どおりになる。`Program.rootHub` は約 15 ファイルが参照する共有の入口で、App の中だけ置き換えても結合は減らない。
+  - メリット: 本 Step の範囲が旧計画（`Global` 直参照の解消）どおりになる。`Program.rootHub` は App を含めて 19 ファイル（2026-09-25 時点）が参照する共有の入口で、App の中だけ置き換えても結合は減らない。
   - デメリット: App の中に静的結合が残る。
 - 案 Y: `ControlService` もフィールドに保持し、App 内の `Program.rootHub` の読み取り（代入の 724 行以外）を置き換える
   - メリット: App の中の見通しがよくなる。
@@ -454,12 +454,19 @@
       - この経路（`InitOutputKBMHandler` と `FakerInputHandler`）は Step7 で変更していない。2026-09-01 以前（起動引数が効いていた頃）も同じ動作だったと考えられる。引数なしの通常起動では、導入判定が未導入なので最初から SendInput が選ばれ、影響はない。
       - 影響があるのは、FakerInput を導入していない環境で `-virtualkbm fakerinput` を明示した場合だけで、キーボード・マウス出力が効かない可能性がある。対応の要否は持ち越し事項 K7-2（`Phase6-Status.md` §6.5）としてユーザー判断に委ねる。
 
-### Step7-5: 文書の更新・完了報告
+### Step7-5: 文書の更新・完了報告【完了（2026-09-25）】
 - `Phase6-Status.md`、`Phase6-Plan.md` を更新する。
 - 決定3＝P1 に従い、`Phase6-Step12-Plan.md` に `PathService.AppDataPath` のセッターの削除候補を登録する。
 - 決定6 に従い、`Program.rootHub` 等（§2.7）の Pure DI 化を後続の計画書（Phase6 の後続 Step または Phase7）に登録する。
 - 実機確認できなかった項目を `Phase6-Step11-Plan.md` §3.3 の先送り台帳に登録する。
 - 完了報告書 `Phase6-Step7-Completion-Report.md` を作成する。
+- **実施結果（2026-09-25）**:
+  - `Phase6-Step12-Plan.md`: §2 に「Step7 からの登録」を追加（`IPathService`／`PathService` の `AppDataPath` セッターの削除候補と、`Global.ResetConnectionFlags`／`LoadActions`／`CreateStdActions` が DI サービスの委譲先として残るため削除対象にならない旨の注記）。§1 の防壁3 の件数を 11 → 12 に更新。§4（Phase7 への引き継ぎ台帳）に `Program.rootHub` と App 内の Service Locator の Pure DI 化（決定6）の行を追加（K7-1 の行は Step7-4 で追加済み）。
+  - 決定6 の引き継ぎ先: `Phase6-Step12-Plan.md` §4。各利用側は Step8〜10 で View／ViewModel を Pure DI 化する際にコンストラクタ注入へ切り替え、`App` は Composition Root としてコンテナから受け取る。最終的な `Program.rootHub` の削除は Phase7（K7-1 の起動シーケンス整理と合わせる）。
+  - `Phase6-Step11-Plan.md` §3.3: Step7 の先送り 3 項目は 2026-09-25 に登録済み。
+  - `Phase6-Step8-Plan.md`: 冒頭に Step7 からの申し送り（`IAppSettingsService.UseLang` の利用、`App.logHolder` 等の非変更、`new MainWindow(parser)` の扱い、K7-1）を追記。
+  - `Phase6-Plan.md`、`Phase6-Status.md` を完了の状態に更新。完了報告書を作成。
+  - Pre-Host 領域の非変更の確認: Step7 着手前（`56f6e8bc`）との差分で、`Application_Startup` の 143〜304 行と `CheckOptions` への変更は、コメントの追加 2 箇所（`ApplyLanguageSetting` の TODO、ホスト構築直前の境界の説明）だけであることを確認した。
 
 ---
 
@@ -530,13 +537,13 @@
 
 ## 10. 完了判定チェックリスト
 - [x] Step7-0: 台帳の再作成と計画改訂（2026-09-24）
-- [x] 決定1〜6 がユーザーに確認され、本書 §4.0 に記録されている（2026-09-24）
+- [x] 決定1〜7 がユーザーに確認され、本書 §4.0 に記録されている（2026-09-24〜25）
 - [x] 決定5 が確定している（2026-09-24、案 A）
-- [ ] 決定6 の引き継ぎ（`Program.rootHub` 等の Pure DI 化）が、後続の計画書に登録されている
-- [ ] P7-01〜P7-39 が、決定どおり DI サービス経由に置き換えられている（温存を決めた箇所には TODO がある）
-- [ ] E7-01〜E7-15（Pre-Host 12、共用ヘルパー 2、const 1）が、決定どおり温存されている
-- [ ] Pre-Host 領域（143〜304 行、`CheckOptions`）のコードが変更されていない
-- [ ] 決定5 の対応が完了している（案 A: 是正済み、案 B: 持ち越し事項に記録済み）
-- [ ] `dotnet build`・テストビルド・`dotnet test` がすべて成功している
-- [ ] 実機確認（§6）が完了している、または `Phase6-Step11-Plan.md` §3.3 に登録されている
-- [ ] `Phase6-Status.md`／`Phase6-Plan.md` を更新し、`Phase6-Step7-Completion-Report.md` を作成している
+- [x] 決定6 の引き継ぎ（`Program.rootHub` 等の Pure DI 化）が、後続の計画書に登録されている（`Phase6-Step12-Plan.md` §4）
+- [x] P7-01〜P7-39 が、決定どおり DI サービス経由に置き換えられている（38 件を置き換え、P7-38 は TODO 付きで温存）
+- [x] E7-01〜E7-15（Pre-Host 12、共用ヘルパー 2、const 1）が、決定どおり温存されている（ガードテスト `AppPostHostGlobalReferenceGuardTests` で固定）
+- [x] Pre-Host 領域（143〜304 行、`CheckOptions`）のコードが変更されていない（コメントの追加 2 箇所のみ）
+- [x] 決定5 の対応が完了している（決定7＝案 H で是正、実機確認済み）
+- [x] `dotnet build`・テストビルド・`dotnet test` がすべて成功している（Step7-1〜7-4 の各段階でユーザー確認）
+- [x] 実機確認（§6）が完了している、または `Phase6-Step11-Plan.md` §3.3 に登録されている（3 項目を先送り）
+- [x] `Phase6-Status.md`／`Phase6-Plan.md` を更新し、`Phase6-Step7-Completion-Report.md` を作成している

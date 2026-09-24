@@ -13,6 +13,13 @@
 
 ---
 
+> **Step7 からの申し送り（2026-09-25 追記。Step8-0 の台帳再作成で確認すること）**
+> - `ProfileEditor.xaml.cs:280` の `Global.UseLang` は、Step7-1 で新設した `IAppSettingsService.UseLang`（`Global.UseLang` への委譲）へ置き換えられる。
+> - `ProfileEditor.xaml.cs` の `App.logHolder`（静的フィールド、約 24 箇所）と、`MainWindow.xaml.cs` が呼ぶ App の公開メンバー（`ChangeTheme`、`ThemeChanged`、`WriteIPCResultDataMMF`）は、Step7 では変更していない。
+> - `MainWindow` のコンストラクタを変える場合は、`App.xaml.cs` の `new DS4Forms.MainWindow(parser)` と `window.LateChecks(parser)` も合わせて直す（Composition Root 側。`App` は `InitializePostHostServices` で解決済みのサービスをフィールドに持っている）。
+> - 起動時の DI ホストは、`Global` の静的初期化で起動引数なしに先に作られている（持ち越し K7-1）。`AppHost.GetService` はいつでも同じシングルトンを返すため Step8 の作業への影響はないが、「ホストは `App.xaml.cs` の明示的な構築で作られる」という前提で設計しないこと。
+> - 詳細は `Phase6-Step7-Plan.md` §2.8、`Phase6-Step7-Completion-Report.md`。
+
 ## 0. 背景と改訂の経緯
 
 ### 0.1 暫定18件から全98箇所への精査と課題の所在

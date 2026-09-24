@@ -1,6 +1,6 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
-最終更新日: 2026-09-24  
+最終更新日: 2026-09-25  
 状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）、Step3-6a 完了確定（グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ Step11 へ先送り］）、Step3-6b 完了確定（グループ B の12件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）、Step3-6c 完了確定（グループ C の19件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-7 実装済み（2026-09-24、温存3件にTODOコメント付与、§2.4.3の選択は既定K-1採用、`using static DS4Windows.Global;`の削除可否判定は見送りで確定。ビルド・テスト確認待ち。詳細は §3.8）** / Step4〜Step12 計画確定・承認待ち（**次は Step3-7 のビルド・テスト確認後にStep3完了確定、その後Step4**） / BindingWindow のテンキー右端欠けを修正・完了確定（2026-09-24、UI 微修正。詳細は §6.9）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
@@ -18,7 +18,7 @@
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | **完了（2026-09-24）** | `Phase6-Step4-Plan.md`、`Phase6-Step4-Completion-Report.md` | Step4-0〜4-5 完了（実機確認の残りは Step11 へ先送り） |
 | **Step 5** | OutputSlotService 孤立配列撤廃・UDP診断是正 | `OutputSlotService.cs` 等 | UDP診断1行＋孤立配列系 | **完了（2026-09-24）** | `Phase6-Step5-Plan.md`、`Phase6-Step5-Completion-Report.md` | Step5-0〜5-3 完了（実機確認は Step11 へ先送り） |
 | **Step 6** | 出力切替UI表示追従・未接続API整理 | `ProfileEditor.xaml.cs`, `OutputSlotService.cs` 等 | 台帳再作成（2026-09-24、方針確定） | **完了（2026-09-24）** | `Phase6-Step6-Plan.md`、`Phase6-Step6-Completion-Report.md` | Step6-0〜6-3 完了 |
-| **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 39件（温存15。2026-09-24 再集計） | **Step7-0 完了・決定1〜6 確定、Step7-1〜7-4 完了** | `Phase6-Step7-Plan.md` | Step7-5（文書・完了報告）未着手 |
+| **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 39件（温存15。2026-09-24 再集計） | **完了（2026-09-25）** | `Phase6-Step7-Plan.md`、`Phase6-Step7-Completion-Report.md` | Step7-0〜7-5 完了（実機確認の3項目は Step11 へ先送り） |
 | **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 計画書作成・承認待ち（2026-09-24新設） | `Phase6-Step7b-Plan.md` | 未着手（Step7 の後・Step8 の前） |
 | **Step 8** | `ProfileEditor` 段階的MVVM移設 | `ProfileEditor.xaml.cs` 等 | 60箇所 | 計画確定・承認待ち | `Phase6-Step8-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 9** | 主要4大ViewModel Pure DI化 | `SettingsVM`, `MainWindowVM` 等 | 79箇所 | 計画確定・承認待ち | `Phase6-Step9-Plan.md` | 未着手 (PR-1〜6) |
@@ -169,7 +169,8 @@
 
 ---
 
-### Phase6-Step7: `App.xaml.cs` Post-Host領域のPure DI化【Step7-0〜7-4 完了、次は Step7-5】
+### Phase6-Step7: `App.xaml.cs` Post-Host領域のPure DI化【完了】
+- **完了（2026-09-25）**: Step7-0〜7-5。完了報告書 `Phase6-Step7-Completion-Report.md`。`App.xaml.cs` の `Global.` 参照は54→16件（温存15件＝Pre-Host 12・共用ヘルパー2・const 1、TODO 付き温存1件＝P7-38）。持ち越し K7-1（DI ホストの暗黙構築）・K7-2（FakerInput 未導入時の `fakerinput` 指定）を §6.5 に記録。Step12 へ `PathService.AppDataPath` のセッターの削除候補（決定3）、Phase7 へ `Program.rootHub` 等の Pure DI 化（決定6）と K7-1 を登録。
 - **進捗率**: **Step7-0（調査・台帳再作成・計画改訂）完了（2026-09-24、HEAD `56f6e8bc`）。決定1＝A、決定2＝L2、決定3＝P1、決定4＝K、決定5＝A（`-virtualkbm` の回帰を Step7-4 で是正）、決定6＝N（`Program.rootHub` 等は後の Step／Phase で Pure DI 化）で確定（2026-09-24）**
 - **Step7-1 実装内容（2026-09-24 完了。ビルド・テストビルド・テスト実行成功、コミット `c2cebab2`。テスト実行時に既存の `MappingHotPathAllocationTests` が一過性の割り当てで失敗したため、計測を最大3回の最小値に改めた）**: 既存サービスへ契約7メンバーを追加（`IPathService.RoamingAppDataPath`／`HasMultipleSaveLocations`、`IAppSettingsService.UseLang`、`IProfileRepository.SaveAsProfile`／`LoadLinkedProfiles`、`IDeviceStateService.ResetConnectionFlags`、`ISpecialActionRepository.CreateStandardActions`。いずれも `Global` への薄い委譲）。決定2＝L2 により `SpecialActionRepository.LoadActions()` の `File.Exists` による早期 `return false` を削除し、`Global.LoadActions()` と同じく `Actions.xml` がなければ既定アクションを作るようにした（呼出元0件のため既存動作への影響なし）。`App.xaml.cs` は未変更。テスト `Phase6Step7ContractExtensionTests.cs`（8件）を新設。テスト用モックは存在せず追随不要。モデル図の変更なし。
 - **Step7-2 実装内容（2026-09-24 完了。ビルド・テストビルド・テスト実行成功、コミット `81f57801`。テストの xUnit2013 警告は `2df5d661` で解消。実機確認は Step7-3 の後にまとめて実施）**: `App.xaml.cs` に DI サービスのフィールド7個と `InitializePostHostServices()`（`CreateControlService(parser);` の直後で1回だけ解決、null なら例外）を追加（決定1＝A）。起動前半（P7-01〜P7-11）と初回起動補助 `CreateConfDirSkeleton`／`AttemptSave`（P7-26〜P7-37）の23件をサービス経由に置き換え。P7-38（`Global.appdatapath = null`）は決定3＝P1 の TODO を付けて温存。Pre-Host 領域・`CheckOptions`・`ApplyLanguageSetting` は未変更。`Global.` 参照は54→31件（残りは温存15＋P7-38＋Step7-3 の対象15）。ソース走査ガード `AppPostHostGlobalReferenceGuardTests.cs`（3件、領域ごとの件数照合）を新設。
@@ -315,7 +316,7 @@
 
 ## 5. 直近の次アクション
 
-0. **（2026-09-25 時点の最新）** Step3〜Step6 は完了確定。Step7 は Step7-0〜7-3 が完了（`App.xaml.cs` の Post-Host の置き換えは全件完了、実機確認済み［3 項目は Step11 へ先送り］）。次は **Step7-4**（起動引数 `-virtualkbm` が無視される回帰の是正、決定5＝A）、その後 Step7-5（文書・完了報告）→ Step7b → Step8 の順。以下の 1. は Step3 当時の記録。
+0. **（2026-09-25 時点の最新）** Step3〜Step7 は完了確定（Step7 は 2026-09-25、`Phase6-Step7-Completion-Report.md`）。次は **Step7b**（プロファイル編集画面の即時反映廃止。Step7b-0 の事前調査は完了済みのため、着手時に現行コードとの再確認から始める）→ Step8 → Step9 → Step10 → Step10b → Step11 → Step12 の順。以下の 1. は Step3 当時の記録。
 1. **Step3-6c**（非同期マクロ経路19件、方針 P2）は完了確定（2026-09-24、ユーザーのビルド・テスト・実機確認完了、`Phase6-Step3-Plan.md` §3.7）。**Step3-7**（温存3件の最終処理、§2.4.3の選択［既定K-1採用］と `using static DS4Windows.Global;` の削除可否判定［見送りで確定］）は実装済み。ユーザーのビルド・テスト確認を経てコミットする（`Phase6-Step3-Plan.md` §3.8）。確認後、Step3 完了確定 → Step4 へ進む。
 2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12 → Phase7 → Phase8）で進める。Phase8（Controls/SpecialActions統合ディスパッチ）は Phase7 完了後の独立フェーズとして新設済み（詳細は §6.7）。
 
