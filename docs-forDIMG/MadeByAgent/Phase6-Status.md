@@ -15,7 +15,7 @@
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
 | **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 0箇所（2026-09-24 再集計。Step3-1〜3-6完了、Step3-3は対象消滅、Step3-7実装済み。残るのはTODO付き温存3件のみ） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-7実装済み（温存3件へのTODO付与、K-1採用、using static見送りを確定。ビルド・テスト確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-6完了、Step3-7実装済み（ユーザーのビルド・テスト確認後にStep3完了確定） |
-| **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 73箇所 | 計画確定・承認待ち | `Phase6-Step4-Plan.md` | 未着手 (PR-1〜5) |
+| **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | Step4-0 完了・実装承認待ち | `Phase6-Step4-Plan.md` | Step4-1〜4-5 未着手 |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 32箇所 (11保護) | 計画確定・承認待ち | `Phase6-Step7-Plan.md` | 未着手 (PR-1〜4) |
@@ -127,13 +127,16 @@
   - **未検証事項**: この環境にはdotnetがなく、`dotnet build`／`dotnet test`は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。コメント追加のみで実行コードの変更はないため実機確認は必須ではないが、念のため通常のプロファイル切替動作の確認が望ましい。
 ---
 
-### Phase6-Step4: マウスエミュレーション系のPure DI化【計画確定・承認待ち】
-- **進捗率**: **0%（未着手・計画確定済み）**
-- **確定方針**: **推奨案（Pure DI引数注入 ＋ `MouseWheel.cs` 正式統合）の採用**。
-- **対象**: 実参照式73箇所（`Mouse`: 47, `MouseCursor`: 20, `MouseWheel`: 6、除外2）。
+### Phase6-Step4: マウスエミュレーション系のPure DI化【Step4-0 完了・実装承認待ち】
+- **進捗率**: **Step4-0（台帳再作成・計画書改訂）完了（2026-09-24）。Step4-1〜4-5 は未着手**
+- **確定方針**: Pure DI コンストラクタ引数注入（**フォールバックなしの必須引数**）＋ `MouseWheel.cs` 正式統合。
+- **対象（2026-09-24 に現行コードから再集計）**: 実参照81行（`Mouse`: 56, `MouseCursor`: 19, `MouseWheel`: 6）、除外は `Global.Clamp` の4行。旧記載の73件は陳腐化。
 - **計画ハイライト**:
-  - `MouseWheel.cs`（6件）を統合し、マウスサブシステムの Global 参照を一挙に完全根絶。
-  - `DS4Device.cs` からサービスインスタンスを直接伝搬し、1000Hz 入力ループでの実行時オーバーヘッドを極小化。
+  - Abs Mouse 関連（旧 C4-C17〜C19）は Step3-3 の機能削除で消滅。関連シム追加は不要。
+  - 契約の追加は不要（`GetTouchActive` は `GetTouchpadActive`、`GetTouchMouseStickInfo` は `TouchMouseStickInf[..]` で代替）。
+  - 生成元は `ControlService.cs:2187` の1箇所のみ（旧記載の `DS4Device.cs` は誤り）。
+  - ベースライン（HEAD `c6eb492f`）のビルド・テストビルド・テスト実行は成功を確認済み。
+  - 詳細は `Phase6-Step4-Plan.md` §2 を正本とする。
 
 ---
 

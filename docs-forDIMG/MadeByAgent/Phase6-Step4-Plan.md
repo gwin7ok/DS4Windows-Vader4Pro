@@ -141,7 +141,7 @@ public Mouse(int deviceID, DS4Device d, IProfileSettingsService profileSettings,
 
 ### Step4-0: 台帳の再作成・ベースライン記録（実装なし）【完了】
 - 現行コードから §2 の台帳を再作成し、契約の充足（§2.4）を確認した。
-- **ユーザー側の作業（未実施）**: 着手前のベースライン（`dotnet build -c Release`、`dotnet test` 全件成功）を記録する。HEAD は `c6eb492f`、Step3-7 の確認結果は `Phase6-Status.md` §3.8 に従う。
+- **ベースライン記録（2026-09-24、ユーザー確認）**: HEAD `c6eb492f` の時点で、ビルド・テストビルド・テスト実行がすべて成功。Step3-7 の確認結果は `Phase6-Status.md` §3.8 を参照。
 
 ### Step4-1: `MouseWheel.cs`
 - `MouseWheel` のコンストラクタに `IProfileSettingsService`／`IVirtualKBM` を追加。§2.1 の6行を置換。
@@ -204,7 +204,7 @@ public Mouse(int deviceID, DS4Device d, IProfileSettingsService profileSettings,
 
 ## 9. 完了判定チェックリスト
 
-- [ ] Step4-0: 台帳再作成（本書 §2）完了、ベースラインのビルド・テスト成功を記録
+- [x] Step4-0: 台帳再作成（本書 §2）完了、ベースラインのビルド・テスト成功を記録（2026-09-24）
 - [ ] `MouseWheel`／`MouseCursor`／`Mouse` の全コンストラクタが必須引数の Pure DI 注入になっている（フォールバックなし）
 - [ ] 3ファイルの `Global.` 参照が、コメントと `Global.Clamp`（4行）を除いて0件
 - [ ] `ControlService.cs:2187` から `_profileSettings`／`_virtualKBM` が配線されている
