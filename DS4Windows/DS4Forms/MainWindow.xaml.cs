@@ -1429,7 +1429,9 @@ Suspend support not enabled.", true);
                                                     propValue = profileRepo.ProfilePath[tdevice];
                                             }
                                             else if (propName == "outconttype")
-                                                propValue = outputSlotService.GetOutputDeviceType(tdevice).ToString();
+                                                // Phase6-Step5-1: 常に None を返していた孤立配列（OutputSlotService.GetOutputDeviceType）ではなく、
+                                                // 正本であるプロファイル設定（永続設定の OutContType）を返す
+                                                propValue = profileSettingsService.OutContType[tdevice].ToString();
                                             else if (propName == "activeoutdevtype")
                                                 propValue = outputSlotService.ActiveOutDevType[tdevice].ToString();
                                             else if (propName == "usedinputonly")
