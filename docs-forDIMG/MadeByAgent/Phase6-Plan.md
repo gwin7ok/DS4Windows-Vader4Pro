@@ -29,7 +29,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 | **Step 2** | `ControlService.cs` | 66箇所 | Pure DIコンストラクタ拡張、ホットパスゼロアロケーション維持、KBMライフサイクル集約、循環依存回避 |
 | **Step 3** | `Mapping.cs` | 10箇所 | **案A採用**: 局所的引数渡し（10件）＋ 超高頻度ホットパス（101件）のPhase7完全引き継ぎ台帳化 |
 | **Step 4** | `Mouse.cs`, `MouseCursor.cs`, `MouseWheel.cs` | 81行（2026-09-24 に現行コードから再集計。**完了**） | **採用**: Pure DIコンストラクタ引数注入（フォールバックなしの必須引数）＋ `MouseWheel.cs`（6行）正式統合、1000Hzホットパス保護。契約の追加なし |
-| **Step 5** | `OutputSlotService.cs` / `MainWindow.xaml.cs` | 8箇所 | **選択肢B採用**: 孤立配列 `_deviceTypes[]` 完全撤廃、出力デバイス三態SSOT台帳確立、UDP診断是正 |
+| **Step 5** | `OutputSlotService.cs` / `MainWindow.xaml.cs` | 孤立配列系＋UDP診断1行（**完了**、2026-09-24） | **選択肢B採用**: 孤立配列 `_deviceTypes[]` と Get/SetOutputDeviceType を削除、出力デバイス三態SSOT台帳確立、UDP診断是正 |
 | **Step 6** | `ProfileEditor.xaml.cs` / `IOutputSlotService` | 4箇所 | **案1採用**: マッピング一覧機種表示追従バグ是正 ＋ 呼出元0件負債API非推奨化 ＋ 実働ホットスワップ温存 |
 | **Step 7** | `App.xaml.cs` | 32箇所 | **選択肢1採用**: Pre-Host領域（11件）厳格保護 ＋ Post-Host Composition Root解決 ＋ 既存サービス集約 |
 | **Step 8** | `ProfileEditor.xaml.cs` | 60箇所 | **案3-A採用**: 段階的MVVM移設（ロジックを `ProfileSettingsViewModel` へ集約）＋ `MainWindow` 解体推進 ＋ 契約差B8, B9, B10吸収 |
@@ -59,7 +59,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 
 ── [ドメイン2: 信号出力層] ──
 ├─ Phase6-Step4: Mouse系（Mouse / MouseCursor / MouseWheel）のPure DI化（81行、2026-09-24 完了）
-├─ Phase6-Step5: OutputSlotService の全面SSOT統合 ＆ 孤立配列完全撤廃（8箇所）
+├─ Phase6-Step5: OutputSlotService の孤立配列撤廃 ＆ UDP診断是正（2026-09-24 完了）
 └─ Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 負債API安全整理（4箇所）
 
 ── [ドメイン3: 起動・UI層] ──
@@ -115,11 +115,12 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
   - `DS4Device.cs` からサービスインスタンスを直接伝搬。
 
 #### Phase6-Step5: `OutputSlotService` 全面SSOT統合 ＆ 孤立配列完全撤廃
-- **対象**: 実参照式8箇所（`MainWindow.xaml.cs:1412` のUDP診断コマンド含む）。
-- **確定方針（選択肢B）**:
+- **状態**: **完了（2026-09-24）**。詳細は `Phase6-Step5-Completion-Report.md`。
+- **対象**: `MainWindow.xaml.cs:1432` のUDP診断コマンド、`OutputSlotService.cs`／`IOutputSlotService.cs` の孤立配列系。
+- **確定方針（2026-09-24 改訂）**:
   - バグの温床であった孤立配列 `_deviceTypes[]` を物理的に完全削除。
-  - `GetOutputDeviceType` / `SetOutputDeviceType` を `IProfileSettingsService.OutContType` への委譲に改修し `[Obsolete]` 化。
-  - 出力デバイス設定の「三態（永続設定 `OutContType` / 実行時接続 `ActiveOutDevType` / UI一時 `OutDevTypeTemp`）」のSSOT台帳を確立。
+  - `GetOutputDeviceType` / `SetOutputDeviceType` は**削除**（旧方針の「委譲＋`[Obsolete]`」は、`UnplugSlot` 経由で永続設定へ `None` を書き込む危険があるため不採用）。
+  - 出力デバイス設定の「三態（永続設定 `OutContType` / 実行時接続 `ActiveOutDevType` / UI一時 `OutDevTypeTemp`）」のSSOT台帳を確立。`OutDevTypeTemp`／`ActiveOutDevType` の裏づけの `Global` 静的配列は温存し、所有権の移動は Phase7 へ引き継ぐ。
 
 #### Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 負債API安全整理
 - **対象**: 実参照式4箇所。

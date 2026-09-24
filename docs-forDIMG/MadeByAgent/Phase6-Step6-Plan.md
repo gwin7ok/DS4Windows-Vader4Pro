@@ -11,6 +11,10 @@
   - `Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md`（Issue 7 タスク5・6 監査記録）  
   - `Phase5-Step14-Issue7-fix-implementation-report.md`（Issue 7 是正完了記録）  
 
+> **Step5 完了に伴う注記（2026-09-24、着手時に本書を現行コードと突き合わせること）**:
+> - Step5 で `IOutputSlotService.GetOutputDeviceType`／`SetOutputDeviceType` と孤立配列 `_deviceTypes` は**削除済み**。`PluginSlot`／`UnplugSlot` は残っているが、内部の `SetOutputDeviceType` 呼び出しは `OutputSlotChanged` イベントを発行する private ヘルパー（`RaiseOutputSlotChanged`）へ置き換わった。
+> - 本書 §0 の「`PluginSlot`／`UnplugSlot` は常に `false` を返すダミー」という記述は現行コードと一致しない。実装は `ControlService.AttachUnboundOutDev`／`DetachUnboundOutDev` を呼ぶ実体を持ち、呼出元が 0 件である（`IOutputSlotService.cs` の TODO コメントを参照）。Step6 着手時に、Step4・Step5 と同様に台帳を再作成する。
+
 ---
 
 ## 0. 背景と改訂の経緯

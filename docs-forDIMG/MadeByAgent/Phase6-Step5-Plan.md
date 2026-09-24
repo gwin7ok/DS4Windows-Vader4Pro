@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step4 完了後に現行コードと突き合わせ、台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step5-0（台帳再作成）完了、実装方針は確定（決定1＝案B、決定2＝案X。2026-09-24）。Step5-1 以降は実装未着手**  
+状態: **完了確定（2026-09-24）。Step5-1・5-2 はビルド・テストビルド・テスト実行成功（ユーザー確認）。Step5-3 の追加テストは確認待ち。詳細は `Phase6-Step5-Completion-Report.md`**  
 対象ブランチ: `For-DI-migration-work`  
 台帳作成時の HEAD: Step4 完了コミット直後  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -138,17 +138,21 @@
 2. `query.<device>.activeoutdevtype` が従来どおり動くこと。
 3. コントローラーの接続時に、出力種別（X360／DS4）がプロファイルどおりに切り替わること（ホットスワップ経路への影響なしの確認）。
 
+### 6.1 実機確認の扱い（2026-09-24）
+- 項目1（UDP 診断コマンド `outconttype`）・項目2（`activeoutdevtype`）: UDP クライアントの環境がないため、Step2-PR-1 の OSC／UDP と同様に Step11 の先送り台帳へ登録した。`MainWindowUdpOutContTypeGuardTests`（ソース走査ガード）で分岐の参照先を固定している。
+- 項目3（接続時の出力種別の切り替え）: Step5 の変更は、アプリ本体から呼ばれない API（`GetOutputDeviceType`／`SetOutputDeviceType`、呼出元 0 件の `PluginSlot`／`UnplugSlot` の内部）と UDP 診断コマンドの 1 行のみで、接続時のホットスワップ経路（`ScpUtil.cs` の `PostLoadSnippet`、`ControlService.PluginOutDev`）には触れていない。Step11 の先送り台帳へ登録した（必要なら、次の実機確認時に合わせて確認する）。
+
 ## 7. ロールバック方針
 - ステップ単位で `git revert` する。Step5-1 は 1 行の変更なので、単独で戻せる。
 
 ## 8. 完了判定チェックリスト
-- [ ] `MainWindow.xaml.cs` の UDP 診断コマンド `outconttype` が `profileSettingsService.OutContType[tdevice]` を参照している
-- [ ] `_deviceTypes` と、`GetOutputDeviceType`／`SetOutputDeviceType` が削除され、`OutputSlotChanged` イベントが引き続き発行される（決定1＝案B の場合）
-- [ ] `OutDevTypeTemp`／`ActiveOutDevType` の裏づけと解消予定フェーズが TODO コメントで明記されている
-- [ ] 三態の SSOT 境界がコメントとテストで固定されている
-- [ ] `dotnet build`、`dotnet test` 全件成功
-- [ ] 実機確認（§6）が完了、または Step11 の先送り台帳に登録済み
-- [ ] `Phase6-Status.md`／`Phase6-Plan.md`／`Phase6-Step6-Plan.md` を更新、完了報告書を作成
+- [x] `MainWindow.xaml.cs` の UDP 診断コマンド `outconttype` が `profileSettingsService.OutContType[tdevice]` を参照している
+- [x] `_deviceTypes` と、`GetOutputDeviceType`／`SetOutputDeviceType` が削除され、`OutputSlotChanged` イベントが引き続き発行される（決定1＝案B の場合）
+- [x] `OutDevTypeTemp`／`ActiveOutDevType` の裏づけと解消予定フェーズが TODO コメントで明記されている
+- [x] 三態の SSOT 境界がコメントとテストで固定されている
+- [ ] `dotnet build`、`dotnet test` 全件成功（Step5-2 までは成功。Step5-3 の追加テストは確認待ち）
+- [x] 実機確認（§6）が完了、または Step11 の先送り台帳に登録済み（§6 の結果を参照）
+- [x] `Phase6-Status.md`／`Phase6-Plan.md`／`Phase6-Step6-Plan.md` を更新、完了報告書を作成
 
 ---
 
