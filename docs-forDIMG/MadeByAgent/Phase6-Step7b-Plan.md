@@ -73,6 +73,7 @@ Step4 の実機確認中に、次の問題が見つかった。
 ### 2.2 API の変更
 - `MainWindow.ShowProfileEditor(int device, ProfileEntity entity = null)` を、`ShowProfileEditor(int targetDevice, ProfileEntity entity)`（編集スロットは内部で常に `TEST_PROFILE_INDEX`）に変更する。呼び出し元 4 箇所（1534、1544、1845、1889、2079 行付近）を更新する。
 - `new ProfileEditor(device)`、`ProfileEditor.Reload(int device, ProfileEntity)` に `targetDevice` を追加する。
+- **Step6 との関係（2026-09-24 追記）**: Step6-1 で `Reload` と `RefreshEditorBindings` に追加した `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType)`（`UpdateLateProperties()` の直後）を、書き換え後も維持すること。ソース走査ガード `ProfileEditorMappingDevTypeGuardTests` が、この呼び出しと順序を検査する。
 - 適用（`ExecuteSaveOrApply(isApply: true)`）の `Global.ApplyProfileToSlot(deviceNum, …)` は `targetDevice >= 0` のときのみ `ApplyProfileToSlot(targetDevice, …)` を実行する（一覧から開いた場合は保存のみ。現行も `slotIndex >= LIMIT` で `false` を返すだけで、実質保存のみ）。
 
 ### 2.3 挙動の変更点（ユーザー向け）

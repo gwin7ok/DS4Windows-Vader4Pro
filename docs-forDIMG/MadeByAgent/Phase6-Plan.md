@@ -30,7 +30,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 | **Step 3** | `Mapping.cs` | 10箇所 | **案A採用**: 局所的引数渡し（10件）＋ 超高頻度ホットパス（101件）のPhase7完全引き継ぎ台帳化 |
 | **Step 4** | `Mouse.cs`, `MouseCursor.cs`, `MouseWheel.cs` | 81行（2026-09-24 に現行コードから再集計。**完了**） | **採用**: Pure DIコンストラクタ引数注入（フォールバックなしの必須引数）＋ `MouseWheel.cs`（6行）正式統合、1000Hzホットパス保護。契約の追加なし |
 | **Step 5** | `OutputSlotService.cs` / `MainWindow.xaml.cs` | 孤立配列系＋UDP診断1行（**完了**、2026-09-24） | **選択肢B採用**: 孤立配列 `_deviceTypes[]` と Get/SetOutputDeviceType を削除、出力デバイス三態SSOT台帳確立、UDP診断是正 |
-| **Step 6** | `ProfileEditor.xaml.cs` / `IOutputSlotService` | 4箇所 | **案1採用**: マッピング一覧機種表示追従バグ是正 ＋ 呼出元0件負債API非推奨化 ＋ 実働ホットスワップ温存 |
+| **Step 6** | `ProfileEditor.xaml.cs` / `IOutputSlotService` | 2行追加＋TODO書き換え（2026-09-24 実装完了） | **案1採用（2026-09-24 改訂）**: マッピング一覧機種表示追従バグ是正 ＋ 呼出元0件の未接続APIを温存し Step10 で接続 ＋ 実働ホットスワップ温存 |
 | **Step 7** | `App.xaml.cs` | 32箇所 | **選択肢1採用**: Pre-Host領域（11件）厳格保護 ＋ Post-Host Composition Root解決 ＋ 既存サービス集約 |
 | **Step 8** | `ProfileEditor.xaml.cs` | 60箇所 | **案3-A採用**: 段階的MVVM移設（ロジックを `ProfileSettingsViewModel` へ集約）＋ `MainWindow` 解体推進 ＋ 契約差B8, B9, B10吸収 |
 | **Step 9** | 主要4大ViewModel (`Settings`, `MainWindow`, `TrayIcon`, `ProfileSettings`) | 79箇所 | **選択肢1採用**: 中枢4大ViewModel集中 ＋ 機能カテゴリ別段階的移行 ＋ Pure DI徹底（残存小型VMはStep10へ引き継ぎ） |
@@ -60,7 +60,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 ── [ドメイン2: 信号出力層] ──
 ├─ Phase6-Step4: Mouse系（Mouse / MouseCursor / MouseWheel）のPure DI化（81行、2026-09-24 完了）
 ├─ Phase6-Step5: OutputSlotService の孤立配列撤廃 ＆ UDP診断是正（2026-09-24 完了）
-└─ Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 負債API安全整理（4箇所）
+└─ Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 未接続API整理（2026-09-24 実装完了）
 
 ── [ドメイン3: 起動・UI層] ──
 ├─ Phase6-Step7: App.xaml.cs Post-Host領域のPure DI化（32箇所、Pre-Host11箇所保護）
@@ -122,11 +122,11 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
   - `GetOutputDeviceType` / `SetOutputDeviceType` は**削除**（旧方針の「委譲＋`[Obsolete]`」は、`UnplugSlot` 経由で永続設定へ `None` を書き込む危険があるため不採用）。
   - 出力デバイス設定の「三態（永続設定 `OutContType` / 実行時接続 `ActiveOutDevType` / UI一時 `OutDevTypeTemp`）」のSSOT台帳を確立。`OutDevTypeTemp`／`ActiveOutDevType` の裏づけの `Global` 静的配列は温存し、所有権の移動は Phase7 へ引き継ぐ。
 
-#### Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 負債API安全整理
-- **対象**: 実参照式4箇所。
-- **確定方針（案1）**:
-  - `ProfileEditor.xaml.cs` の `Reload()` 内に `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を追加し、プロファイル再読み込み時のマッピングボタン表記（A/B/X/Y ⇄ Cross/Circle）追従バグを解消。
-  - `IOutputSlotService` の呼出元0件API（`PluginSlot`, `UnplugSlot`）を安全に非推奨化。
+#### Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 未接続API整理
+- **状態**: 実装完了（2026-09-24）・実機確認待ち。詳細は `Phase6-Step6-Completion-Report.md`。
+- **確定方針（2026-09-24 改訂）**:
+  - `ProfileEditor.xaml.cs` の `Reload()` と `RefreshEditorBindings()`（プリセット適用後）で `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を明示的に呼び、編集画面を開いたとき・プリセット適用後のマッピングボタン表記（A/B/X/Y ⇄ Cross/Circle）の食い違いを解消。
+  - `IOutputSlotService` の呼出元0件API（`PluginSlot`, `UnplugSlot`）は、Phase5-Step12 で UI 接続のために作られたが未接続と判明したため、非推奨化せず温存し TODO を書き換え（決定1＝案R）。UI・UDP コマンドからの接続は `Phase6-Step10-Plan.md` §8 で実施。
   - `ScpUtil.cs:PostLoadSnippet` による実働ホットスワップ機構は安定性最優先で温存。
 
 ---
