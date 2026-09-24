@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 実装済み（ユーザーのビルド・テスト確認待ち）。Step7-2 以降は未着手**  
+状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 実装済み（ユーザーのビルド・テスト確認待ち）。Step7-3 以降は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -332,7 +332,7 @@
 - HEAD `56f6e8bc`、作業ツリーはクリーン。
 - §0（乖離）、§2（台帳）、§4（決定事項）を作成。
 
-### Step7-1: 契約追加と LoadActions の是正【実装済み・ビルド・テスト確認待ち（2026-09-24）】
+### Step7-1: 契約追加と LoadActions の是正【完了（2026-09-24、ビルド・テストビルド・テスト実行成功、コミット `c2cebab2`）】
 - §3.1 の 7 メンバーを、5 つのインターフェースと実装に追加する。
 - 決定2＝L2 に従い、`SpecialActionRepository.LoadActions()` の早期 `return false`（`File.Exists` の判定）を削除し、§3.3 の経緯を説明コメントとして付ける。
 - テスト（新規）: `Phase6Step7ContractExtensionTests`
@@ -353,13 +353,22 @@
     - 1 回の呼び出しごとの割り当てなら 20000 バイト以上になるはずで、784 バイトは計測区間の途中で**一度だけ**起きた割り当て（階層型 JIT・OSR による再コンパイル等、ランタイム側の一過性の処理）と考えられる。新しいテストクラスの追加で xUnit の実行順序とタイミングが変わり、表面化したとみられる。
     - 修正: 同クラスの 3 テストの計測を、ヘルパー `MeasureMinAllocatedBytes`（最大 3 回計測して最小値を採る）に置き換えた。呼び出しごとの割り当てはどの計測回にも現れるため、検出力は落ちない。本番コードは変更していない。
 
-### Step7-2: サービス保持と、起動前半・初回起動補助の置き換え
+### Step7-2: サービス保持と、起動前半・初回起動補助の置き換え【実装済み・ビルド・テスト確認待ち（2026-09-24）】
 - §3.2 のフィールドと `InitializePostHostServices()` を追加する。
 - P7-01〜P7-11（起動前半）と P7-26〜P7-37（`CreateConfDirSkeleton`／`AttemptSave`）を置き換える。
 - P7-38 は決定3＝P1 に従い、`Global.appdatapath = null` のまま温存して TODO を付ける。
 - テスト（新規）: `AppPostHostGlobalReferenceGuardTests`（ソース走査ガード）
   - `App.xaml.cs` の `Global.` 参照が、§2.5 の温存箇所（と、この時点で未置換の P7-12〜P7-25、P7-39）以外にないこと。行番号ではなく、メソッド名と、`CreateControlService(parser);` より前か後かで判定する。
   - `InitializePostHostServices();` が `CreateControlService(parser);` の直後にあること。
+- **実装結果（2026-09-24 実装、ユーザーのビルド・テスト確認待ち）**:
+  - `App.xaml.cs` に private フィールド 7 個と `InitializePostHostServices()`、解決用ヘルパー `ResolvePostHostService<T>()`（`AppHost.GetService<T>()` が null なら型名入りの `InvalidOperationException`）を追加。`CreateControlService(parser);` の直後で 1 回呼ぶ。解決後に `[DI] App.InitializePostHostServices` の Trace ログを出す。
+  - 置き換え 23 件: P7-01〜P7-11（起動前半 11 件）、P7-26〜P7-28（`CreateConfDirSkeleton`。ローカル変数 `appDataPath` に 1 回読んで 3 箇所で使う）、P7-29〜P7-37（`AttemptSave`。ローカル変数 `roamingAppDataPath`・`exeDirPath` に 1 回ずつ読んで使う。`exeDirPath` は `Path.GetDirectoryName(_pathService.ExecutablePath)` で、`ExecutableDirectory` を使わない理由をコメントに記載）。
+  - P7-38 は `Global.appdatapath = null` のまま、決定3＝P1 の TODO コメントを付けて温存。
+  - Pre-Host 領域・`CheckOptions`・`ApplyLanguageSetting` は変更していない。
+  - この時点の `Global.` 参照は 31 件（温存 15 件＋P7-38＋Step7-3 で置き換える 15 件）。
+  - テスト（新規）: `DS4WindowsTests/AppPostHostGlobalReferenceGuardTests.cs`（3 件）。領域（`Application_Startup` の Pre-Host／Post-Host、`CheckOptions`、`ApplyLanguageSetting`、`CreateConfDirSkeleton`、`AttemptSave`、`CleanShutdown`）ごとの `Global` メンバー参照の件数を期待値と照合し、ファイル全体の件数が合計と一致すること（他の場所に増えていないこと）、`InitializePostHostServices();` が `CreateControlService(parser);` の直後に 1 回だけあること、7 サービスが `AppHost` から解決できることを検証する。Step7-3 で Post-Host と `CleanShutdown` の期待値を最終形に更新する。
+  - 実機確認: §6.1 の 1・2・6、§6.2 の 8〜10（起動・ログ・終了時の保存と、Pre-Host の非変更の確認）。初回起動（§6.3）は Step7-3 の後にまとめて行う。
+  - 挙動の同一性: `Global.Save()`／`Load()` は元から `IAppSettingsService` への委譲、`exeversion`／`DeviceOptions`／`firstRun`／`UseLang`／`appDataPpath`／`multisavespots` は同じ `Global` の値を返す委譲、`exeFileName` は定義式と同じ `Path.GetFileName(Global.exelocation)`。`AppDataPath` のゲッターは `Global.appdatapath` が空のとき `AppContext.BaseDirectory` を返すが、置き換えた箇所では必ず設定済み（§0.5）。
 
 ### Step7-3: 起動後半・終了処理の置き換えと TODO
 - P7-12〜P7-25、P7-39 を置き換える（P7-16 は決定2＝L2 により `_specialActionRepository.LoadActions()` へ置き換える）。

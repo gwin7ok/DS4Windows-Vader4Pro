@@ -75,6 +75,17 @@ namespace DS4WinWPF
         private Timer collectTimer;
         public static LoggerHolder logHolder;
 
+        // Phase6-Step7（決定1＝A）: Post-Host（明示的なホスト構築と CreateControlService の後）で使う DI サービス。
+        // App は WPF の Application でコンストラクタ注入できないため、Composition Root として
+        // InitializePostHostServices() で一度だけ解決して保持する。Pre-Host 領域（ホスト構築より前）では null。
+        private IAppSettingsService _appSettingsService;
+        private IPathService _pathService;
+        private IEnvironmentService _environmentService;
+        private IProfileRepository _profileRepository;
+        private ISpecialActionRepository _specialActionRepository;
+        private IAppearanceSettingsService _appearanceSettingsService;
+        private IDeviceStateService _deviceStateService;
+
         private MemoryMappedFile ipcClassNameMMF = null; // MemoryMappedFile for inter-process communication used to hold className of DS4Form window
         private MemoryMappedFile ipcResultDataMMF = null; // MemoryMappedFile for inter-process communication used to exchange string result data between cmdline client process and the background running DS4Windows app
 
@@ -304,10 +315,11 @@ namespace DS4WinWPF
             }
 
             CreateControlService(parser);
+            InitializePostHostServices();
             RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
             // FindConfigLocation was already called earlier to enable rotation as early as possible
-            bool firstRun = DS4Windows.Global.firstRun;
+            bool firstRun = _appSettingsService.FirstRun;
             string selectedLanguage = null;
 
             // On first run, show language selection dialog first
@@ -333,7 +345,7 @@ namespace DS4WinWPF
             if (firstRun)
             {
                 DS4Forms.SaveWhere savewh =
-                    new DS4Forms.SaveWhere(DS4Windows.Global.multisavespots);
+                    new DS4Forms.SaveWhere(_pathService.HasMultipleSaveLocations);
                 savewh.ShowDialog();
                 if (!savewh.ChoiceMade)
                 {
@@ -346,32 +358,32 @@ namespace DS4WinWPF
             // Exit if base configuration could not be generated
             if (firstRun && !CreateConfDirSkeleton())
             {
-                MessageBox.Show($"Cannot create config folder structure in {DS4Windows.Global.appdatapath}. Exiting",
+                MessageBox.Show($"Cannot create config folder structure in {_pathService.AppDataPath}. Exiting",
                     "DS4Windows", MessageBoxButton.OK, MessageBoxImage.Error);
                 Current.Shutdown(1);
                 return;
             }
 
             // Load Profiles.xml BEFORE creating LoggerHolder so log settings are available
-            bool readAppConfig = DS4Windows.Global.Load();
+            bool readAppConfig = _appSettingsService.Load();
 
             // Re-apply selected language after Load() and save to Profiles.xml
             if (firstRun && !string.IsNullOrEmpty(selectedLanguage))
             {
                 ApplyLanguageSetting(selectedLanguage);
-                DS4Windows.Global.Save();
+                _appSettingsService.Save();
             }
 
             logHolder = new LoggerHolder(DS4Windows.Program.rootHub);
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
-            string version = DS4Windows.Global.exeversion;
+            string version = _environmentService.ApplicationVersion;
             // Log process and path information at INFO level now that logger is configured
             try { AppLogger.LogInfo($"Process exe: {Process.GetCurrentProcess().MainModule?.FileName}"); } catch { }
             try { AppLogger.LogInfo($"AppDomain BaseDirectory: {AppContext.BaseDirectory}"); } catch { }
             try { AppLogger.LogInfo($"Current working directory: {Environment.CurrentDirectory}"); } catch { }
             AppLogger.LogInfo($"DS4Windows version {version}");
-            AppLogger.LogInfo($"DS4Windows exe file: {DS4Windows.Global.exeFileName}");
+            AppLogger.LogInfo($"DS4Windows exe file: {Path.GetFileName(_pathService.ExecutablePath)}");
             AppLogger.LogInfo($"DS4Windows Assembly Architecture: {(Environment.Is64BitProcess ? "x64" : "x86")}");
             AppLogger.LogInfo($"OS Version: {Environment.OSVersion}");
             AppLogger.LogInfo($"OS Product Name: {DS4Windows.Util.GetOSProductName()}");
@@ -415,7 +427,7 @@ namespace DS4WinWPF
 
             if (!firstRun && !readAppConfig)
             {
-                AppLogger.LogInfo($@"Profiles.xml not read at location ${DS4Windows.Global.appdatapath}\Profiles.xml. Using default app settings");
+                AppLogger.LogInfo($@"Profiles.xml not read at location ${_pathService.AppDataPath}\Profiles.xml. Using default app settings");
             }
 
             // Ask user which devices the mapper should attempt to open when detected.
@@ -423,11 +435,11 @@ namespace DS4WinWPF
             // Steam Input
             if (firstRun)
             {
-                ApplyLanguageSetting(DS4Windows.Global.UseLang);
+                ApplyLanguageSetting(_appSettingsService.UseLang);
                 DS4Forms.FirstLaunchUtilWindow firstLaunchUtilWin =
-                    new DS4Forms.FirstLaunchUtilWindow(DS4Windows.Global.DeviceOptions);
+                    new DS4Forms.FirstLaunchUtilWindow(_appSettingsService.DeviceOptions);
                 firstLaunchUtilWin.ShowDialog();
-                DS4Windows.Global.Save();
+                _appSettingsService.Save();
             }
 
             if (firstRun)
@@ -491,6 +503,31 @@ namespace DS4WinWPF
             window.LateChecks(parser);
         }
 
+        /// <summary>
+        /// Phase6-Step7（決定1＝A）: Post-Host で使う DI サービスを一度だけ解決してフィールドに保持する。
+        /// 明示的なホスト構築と CreateControlService の直後に呼ぶ。解決できない場合は、CreateControlService と同じく
+        /// 例外で起動を止める（ホスト構築の失敗は、従来から起動失敗である）。
+        /// </summary>
+        private void InitializePostHostServices()
+        {
+            _appSettingsService = ResolvePostHostService<IAppSettingsService>();
+            _pathService = ResolvePostHostService<IPathService>();
+            _environmentService = ResolvePostHostService<IEnvironmentService>();
+            _profileRepository = ResolvePostHostService<IProfileRepository>();
+            _specialActionRepository = ResolvePostHostService<ISpecialActionRepository>();
+            _appearanceSettingsService = ResolvePostHostService<IAppearanceSettingsService>();
+            _deviceStateService = ResolvePostHostService<IDeviceStateService>();
+
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[DI] App.InitializePostHostServices: Post-Host services resolved");
+        }
+
+        private static T ResolvePostHostService<T>() where T : class
+        {
+            return AppHost.GetService<T>()
+                ?? throw new InvalidOperationException($"{typeof(T).Name} could not be resolved from AppHost.");
+        }
+
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
             if (!Current.Dispatcher.CheckAccess())
@@ -538,9 +575,10 @@ namespace DS4WinWPF
             bool result = true;
             try
             {
-                Directory.CreateDirectory(DS4Windows.Global.appdatapath);
-                Directory.CreateDirectory(DS4Windows.Global.appdatapath + @"\Profiles\");
-                Directory.CreateDirectory(DS4Windows.Global.appdatapath + @"\Logs\");
+                string appDataPath = _pathService.AppDataPath;
+                Directory.CreateDirectory(appDataPath);
+                Directory.CreateDirectory(appDataPath + @"\Profiles\");
+                Directory.CreateDirectory(appDataPath + @"\Logs\");
                 //Directory.CreateDirectory(DS4Windows.Global.appdatapath + @"\Macros\");
             }
             catch (UnauthorizedAccessException)
@@ -554,22 +592,26 @@ namespace DS4WinWPF
 
         private void AttemptSave()
         {
-            if (!DS4Windows.Global.Save()) //if can't write to file
+            if (!_appSettingsService.Save()) //if can't write to file
             {
                 if (MessageBox.Show("Cannot write at current location\nCopy Settings to appdata?", "DS4Windows",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
                     try
                     {
-                        Directory.CreateDirectory(DS4Windows.Global.appDataPpath);
-                        File.Copy(DS4Windows.Global.exedirpath + "\\Profiles.xml",
-                            DS4Windows.Global.appDataPpath + "\\Profiles.xml");
-                        File.Copy(DS4Windows.Global.exedirpath + "\\Auto Profiles.xml",
-                            DS4Windows.Global.appDataPpath + "\\Auto Profiles.xml");
-                        Directory.CreateDirectory(DS4Windows.Global.appDataPpath + "\\Profiles");
-                        foreach (string s in Directory.GetFiles(DS4Windows.Global.exedirpath + "\\Profiles"))
+                        string roamingAppDataPath = _pathService.RoamingAppDataPath;
+                        // Global.exedirpath と同じ値（ジャンクション解決済みの実行ファイルの親フォルダ）。
+                        // IPathService.ExecutableDirectory（AppContext.BaseDirectory）とは値が異なりうるため使わない。
+                        string exeDirPath = Path.GetDirectoryName(_pathService.ExecutablePath);
+                        Directory.CreateDirectory(roamingAppDataPath);
+                        File.Copy(exeDirPath + "\\Profiles.xml",
+                            roamingAppDataPath + "\\Profiles.xml");
+                        File.Copy(exeDirPath + "\\Auto Profiles.xml",
+                            roamingAppDataPath + "\\Auto Profiles.xml");
+                        Directory.CreateDirectory(roamingAppDataPath + "\\Profiles");
+                        foreach (string s in Directory.GetFiles(exeDirPath + "\\Profiles"))
                         {
-                            File.Copy(s, DS4Windows.Global.appDataPpath + "\\Profiles\\" + Path.GetFileName(s));
+                            File.Copy(s, roamingAppDataPath + "\\Profiles\\" + Path.GetFileName(s));
                         }
                     }
                     catch { }
@@ -582,6 +624,9 @@ namespace DS4WinWPF
                         "DS4Windows");
                 }
 
+                // TODO(Phase6-Step7 決定3＝P1): 意図的に Global へ直接書き込む。IPathService.AppDataPath のセッターは
+                // Global.appdatapath を変えない（PathService 内部の上書き用フィールドに保存するだけの孤立実装。呼出元0件）ため、
+                // 置き換え先にならない。セッターは Phase6-Step12 で削除候補とし、保存先の所有を PathService へ移す Phase7 で本行も解消する。
                 DS4Windows.Global.appdatapath = null;
                 skipSave = true;
                 Current.Shutdown();
