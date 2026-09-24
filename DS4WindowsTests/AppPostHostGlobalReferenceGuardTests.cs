@@ -160,7 +160,7 @@ namespace DS4WindowsTests
 
             string startup = ExtractMethodBody(text, "Application_Startup");
             Assert.Matches(@"CreateControlService\(parser\);\s*InitializePostHostServices\(\);", startup);
-            Assert.Equal(1, Regex.Matches(text, @"\bInitializePostHostServices\(\);").Count);
+            Assert.Single(Regex.Matches(text, @"\bInitializePostHostServices\(\);"));
         }
 
         [Fact]
