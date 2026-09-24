@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 実装済み（ユーザーのビルド・テスト・実機確認待ち）。Step7-5 は未着手**  
+状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 は実装したが実機で効果なし（2026-09-25、§0.4 の訂正と決定7 を参照。決定7 はユーザー確認待ち）。Step7-5 は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -42,6 +42,12 @@
 - このため `-driverinstall` 分岐の `Global.Load()`（608 行）は、明示的な `AppHost.CreateHost(…, parser)`（298 行）より前に、**引数パーサーを登録しないホストを暗黙に構築している**。分岐はその後アプリを終了するため実害はないが、「コンテナ未構築」という旧計画の説明は正確ではない。
 - 通常起動の Pre-Host 領域（154〜289 行）で呼ばれる処理（`FindConfigLocation`、`LogRotator`、`LoggerHolder.ApplyBootstrapMinLogLevel`、`AppNotificationRegistration`、`KeyboardSettings`、`RefreshViGEmBusInfo`）は、`AppHost`／`ServiceProviderHolder` に触れないことを確認した。`Global` の静的初期化子も、フォールバック用の実体を `new` するだけでホストを構築しない。
 - 結論: 温存の方針は変えない。ただし境界の定義は「DI コンテナが存在しない領域」ではなく、「明示的なホスト構築（298 行）より前に実行される起動処理」とする（§1.2）。
+- **【訂正（2026-09-25、Step7-4 の実機確認で判明）】** 上の「`Global` の静的初期化子はホストを構築しない」は誤りだった。
+  - `ScpUtil.cs:779` の静的初期化子 `fallbackProfileRepository = new ProfileRepository(ProfileSettingsServiceInstance)`（2026-08-31、`6e8da968` から）が、`ProfileSettingsServiceInstance` のゲッター経由で `AppHost.GetService<IProfileSettingsService>()` を呼ぶ。このため、`Global` に最初に触れた時点（通常起動では 170 行 `Global.FindConfigLocation()`）で、**起動引数を登録しない `CreateHost()` によりホストが暗黙に構築される**。
+  - 実機ログでも、`Startup culture` より前に `[DI] AppHost.CreateHost: Host initialized and all services registered`（引数なし版のメッセージ）が出ていた。起動引数付き版のメッセージ `Host initialized with runtime parser` は出ない。
+  - その結果、298 行の `AppHost.CreateHost(config, parser)` は既存のホストを返すだけで、`services.AddSingleton(parser)` は一度も実行されない。直後の `AppLogger.LogInfo("AppHost.CreateHost() called successfully …")` も、実際には何も構築していない。
+  - Step7-2・7-3 への影響はない（サービスの解決は 306 行以降で、ホストが先に作られていても同じシングルトンを受け取る）。影響を受けたのは Step7-4（決定5）で、§4.0 の決定7 として扱う。
+  - 本 Step の温存方針（Pre-Host 領域のコードを変えない）は変えない。ただし、Pre-Host 領域でも DI コンテナはすでに存在する。
 
 ### 0.5 移行先サービスの挙動差（旧計画は想定していなかった）
 - **`ISpecialActionRepository.LoadActions()` と `Global.LoadActions()` は同じ動作ではない**（旧 C7-16）。
@@ -240,6 +246,27 @@
   - 本 Step では `Program.rootHub` などの `Global` 以外の静的結合（§2.7）を変更せず、台帳に記録するだけにする。
   - ただし放置はせず、後の Step または Phase で、Pure DI の方針に沿う形（`App` がコンテナから `ControlService` を受け取り、`Program.rootHub` という静的な入口に頼らない構成）へ変更する。引き継ぎ先の計画書は Step7-5 で決めて登録する（候補: `Phase6-Step12-Plan.md` の Phase7 引き継ぎ、または `DI-App-Wide-Migration-Plan.md` の Phase7 項目）。
 
+### 決定7（2026-09-25 追加、ユーザー確認待ち）: 起動引数を `ControlService` へ届ける方法
+- **前提**: 決定5＝A の 1 行の修正は、「298 行の `CreateHost(config, parser)` で起動引数がコンテナに登録される」ことを前提にしていた。実際には、ホストは `Global` の静的初期化の中で先に（起動引数なしで）作られており、この前提が成り立たない（§0.4 の訂正）。
+  - DI コンテナは、一度作ると登録を追加できない。したがって、298 行の時点で起動引数を「登録」することはできない。
+  - 一方、`ControlService` が作られるのは 306 行の `CreateControlService` で、298 行より後である。また、起動引数を実際に使う `InitOutputKBMHandler` は、サービス開始時の `ControlService.Start()`（さらに後）で呼ばれる。
+- **案 H（推奨）: 起動引数の受け渡し役をコンテナに登録し、298 行で値を渡す**
+  - 起動引数を保持するだけの小さなサービス（仮名 `IStartupArguments`／`StartupArguments`。`copilot-instructions.md` §3.4 の R1・R2 に従い、インターフェースは `DI/`、実装は `DS4Control/Services/`）を `ServiceRegistration` に登録する。
+  - `AppHost.CreateHost(config, parser)` は、ホストを新しく作った場合も既存のホストを返す場合も、この受け渡し役に `parser` を設定する（`[DI]` ログ付き）。
+  - `ServiceRegistration` の `ControlService` の生成は、受け渡し役から起動引数を受け取る（未設定なら従来どおり空のパーサー）。
+  - メリット: ホストがいつ作られたかに依存しない。コンストラクタ注入のまま（Pure DI）。`App.xaml.cs` の Pre-Host 領域を変えない。
+  - デメリット: 型が 2 つ増える（新規ファイル 2 つ）。モデル図 03・04（登録サービスの一覧）に追記が必要。
+- 案 S: `ControlService` に起動引数を後から設定するメソッドを追加し、`CreateControlService` で解決の直後に渡す
+  - メリット: 変更が最も小さい（`ControlService` に数行、`App.xaml.cs` に 1 行）。
+  - デメリット: コンストラクタ注入ではなくなる（後から値を差し込む形）。`ControlService` を別の場所で先に解決した場合に設定漏れが起きうる。
+- 案 R: 根本原因（`Global` の静的初期化がホストを先に作ること）を直し、298 行を本当の最初の構築にする
+  - メリット: 「明示的なホスト構築が Composition Root の起点」という本来の設計に戻る。起動引数の登録もそのまま効く。
+  - デメリット: `Global` の静的初期化の順序を変えることになり、影響範囲が大きい（`Phase6-Status.md` §6.4-3 の静的初期化の循環の教訓に該当）。ほかにも Pre-Host 領域でホストを作る経路がないかの調査が必要。Pre-Host 領域のコードにも触れる可能性がある。本 Step の範囲を超える。
+- 案 B: 本 Step では直さず、持ち越し事項として記録する（Step7-4 の 1 行は、害がないので残すか、元に戻す）
+  - メリット: 本 Step をすぐ完了できる。
+  - デメリット: `-virtualkbm` が効かない状態が続く。
+- **推奨理由**: 案 H は、ホストの作られ方（案 R の問題）に左右されずに確実に効き、Pure DI の形も保てる。案 R の問題（ホストが Pre-Host で暗黙に作られ、298 行の構築が空振りしていること）は、本 Step とは別に持ち越し事項として記録し、`Global` の静的初期化を整理する Phase7 などで扱うことを提案する。
+
 ### 前提（全決定に共通）
 - `App.xaml.cs` は アプリの起点（Composition Root）で、`ServiceRegistration` に登録された各サービスを組み立てて使う場所である。
 - 本 Step の目的は「Post-Host の `Global` 直参照を DI サービス経由にする」こと。挙動は変えない（`copilot-instructions.md` §2.2）。
@@ -384,7 +411,7 @@
   - テスト（更新）: `AppPostHostGlobalReferenceGuardTests.cs` の期待値を最終形に更新（`Application_Startup` の Post-Host は 0 件、`CleanShutdown` は const の 1 件だけ）。温存箇所の TODO の存在を確認するテスト `RetainedGlobalReferences_HaveTodoComments` を追加（計 4 件）。
   - 実機確認: §6 の項目（Step7-2 の分と合わせて、ユーザーがまとめて実施）。
 
-### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A）【実装済み・ビルド・テスト確認待ち（2026-09-25）】
+### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A）【実装済みだが実機で効果なし（2026-09-25）。決定7 の確認待ち】
 - §3.4 の 1 行を変更する。
 - テスト（新規）: `ServiceRegistrationArgumentParserTests`
   - `ArgumentParser` を登録したサービスコレクションから `ControlService` を解決したとき、登録したパーサーが使われること。
@@ -399,6 +426,10 @@
     - パーサーを登録しない場合も生成でき、`VirtualkbmHandler` が既定値（`default`）であること。
     - 登録は `Program.rootHub` が設定済みならそれを返すため、各テストで一時的に null にし、終了時に元へ戻す（`Phase6-Status.md` §6.4-1）。
   - 実機確認: §6.4 の 14（`-virtualkbm sendinput` でログが `Using output KB+M handler: SendInput` になること。FakerInput を導入している環境なら、引数なしでは `FakerInput`、`-virtualkbm sendinput` では `SendInput` になることで違いを確認できる）。
+  - **実機確認の結果（2026-09-25）: 効果なし**。FakerInput が未導入の環境のため、`-virtualkbm fakerinput` で起動し、接続を試す前に出る DEBUG ログ `Output KBM handler fakeKeyRepeat=… for <方式>` で判定した。結果は `for sendinput`（修正が効いていれば `for fakerinput`）。
+    - 原因: §0.4 の訂正のとおり、ホストが Pre-Host 領域で起動引数なしに暗黙に構築されるため、起動引数が DI コンテナに登録されていない。`sp.GetService<ArgumentParser>()` は常に null になり、空のパーサーが使われる。
+    - テストが成功したのは、テストでは起動引数を登録したコンテナを直接作っていて、実際の起動順序を再現していないため。
+    - 変更した 1 行は害はないが、実際の起動では効かない。対応は決定7 で決める。
 
 ### Step7-5: 文書の更新・完了報告
 - `Phase6-Status.md`、`Phase6-Plan.md` を更新する。
