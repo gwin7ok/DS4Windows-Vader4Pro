@@ -2,7 +2,7 @@
 
 作成日: 2026-09-09  
 改訂日: 2026-09-21（実地突き合わせに基づく全面改訂。案A［局所10件＋Phase7一括引き継ぎ］を撤回し、**全150件を段階的に解消する方針（論点1〜4の決定）へ変更**）  
-状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は完了確定（2026-09-24、グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ先送り］。§3.5）。Step3-6b は完了確定（2026-09-24、グループ B の12件。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.6）。Step3-6c は実装済み（グループ C の19件。ビルド・テスト・実機確認待ち。§3.7）**。次は Step3-6c の実機確認後に Step3-7。残実参照数は、Step3-5 完了後の再集計（2026-09-24）で **58件**と判明した（従来の記載「118」「73」は、Step3-2 で解消した12件の引き算漏れによる過大）。Step3-6a 完了後は34件、Step3-6b 完了後は22件、Step3-6c 完了後は3件（Step3-7 の温存3のみ）。  
+状態: 計画確定・**Step3-1・Step3-2 完了（2026-09-22〜23、ともにビルド・テスト・実機確認済み）**。**Step3-3 は対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は`Phase6-Status.md` §6.8）**。**Step3-4 は完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.3）**。**Step3-5 は完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.4）**。**Step3-6 は 3-6a／3-6b／3-6c の3バッチに分割（2026-09-24決定。§3.5）。Step3-6a は完了確定（2026-09-24、グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ先送り］。§3.5）。Step3-6b は完了確定（2026-09-24、グループ B の12件。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.6）。Step3-6c も完了確定（2026-09-24、グループ C の19件。ビルド・テストビルド・テスト実行成功、実機確認済み。§3.7）。これで Step3-6（3-6a／3-6b／3-6c）はすべて完了した**。次は Step3-7（別セッションで再開。着手前の確認事項は §3.8）。残実参照数は、Step3-5 完了後の再集計（2026-09-24）で **58件**と判明した（従来の記載「118」「73」は、Step3-2 で解消した12件の引き算漏れによる過大）。Step3-6a 完了後は34件、Step3-6b 完了後は22件、Step3-6c 完了後は3件（Step3-7 の温存3のみ）。  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §5.5, §6.9  
@@ -133,8 +133,8 @@ Step3 の最終バッチ（§3 Step3-7）着手前に確認する。既定は K-
 | **Step3-5** | `SetCurveAndDeadzone` の残り＋`Commit`/`ApplyStickCalibration` | ジャイロ系（SX/SZ のデッドゾーン・感度・カーブモード・ベジェ曲線、`IsUsingSAForControls`）13件・ドリフト補正（`ApplyStickCalibration`）8件・`outputKBMMapping`（`Commit` 24件）（Step3-4 の実地確認でスクエアスティック・カーブモードは Step3-4 側へ移動。合計は計画の約44件と整合） | 約45 | 本 Step で最大のバッチ。`Commit` は毎レポート出力確定処理のため実機回帰確認を重視する。**完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録・`Commit` の扱いの決定（C1）は §3.4 参照** |
 | **Step3-6a** | 残りのホットパス: `ctrl` から読める経路（グループ A） | `MapCustom`／`ProcessControlSettingAction`／`MapCustomAction`／`getMouseMapping`／`Scale360degreeGyroAxis`（いずれも `ControlService ctrl` を持つ）の `getProfileActionCount`／`GetSASteeringWheelEmulationAxis`／`ButtonMouseInfos`／`outputKBMMapping`／`GetDS4CSetting`／`getLSDeadzone`／`getRSDeadzone`／`SAWheelFuzzValues`／`getSXDeadzone`／`WheelSmoothInfo`／`getSXAntiDeadzone`、`reverseX360ButtonMapping`（決定 R1）、および `ctrl` を持たない `ReleaseActionKeys`／`IfAxisIsNotModified`（`settings` 引数を追加） | 24 | **完了確定（2026-09-24、ビルド・テスト・実機確認済み。ステアリングホイールエミュレーションのみ Step11 へ先送り）。実施記録は §3.5 参照** |
 | **Step3-6b** | 判定補助メソッド群（グループ B） | `GetByteMapping`／`GetBoolMappingExternal`／`GetBoolMapping`／`getBoolSpecialActionMapping`／`GetBoolActionMapping`／`GetXYAxisMapping` の `IsUsingSAForControls`（6）・`SXSens`／`SZSens`（4）、`GetMouseWheelMapping` の `Global.outputKBMMapping`（2）。**方針 P2（`Mapping` の静的 `profileSettings` を利用。決定 2026-09-24、§3.4.1）** | 12 | 呼び出し元が多く（約50箇所）`ctrl` を持たないため引数渡しは行わない。TODO コメント（Phase7 の instance 化で解消）を付ける。**完了確定（2026-09-24、ビルド・テスト・実機確認済み）。実施記録は §3.6 参照** |
-| **Step3-6c** | 非同期マクロ経路（グループ C） | `PlayMacroCodeValue`（14）・`AltTabSwapping`（3）・`AltTabSwappingRelease`（2）の `outputKBMMapping`。**方針 P2（決定 2026-09-24、§3.4.1）** | 19 | モデル図 04 の変更は不要。K3（マクロ二重ガード）は Phase7 で再設計するため触れない。**実装済み（2026-09-24、ビルド・テスト・実機確認待ち）。実施記録は §3.7 参照** |
-| **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する |
+| **Step3-6c** | 非同期マクロ経路（グループ C） | `PlayMacroCodeValue`（14）・`AltTabSwapping`（3）・`AltTabSwappingRelease`（2）の `outputKBMMapping`。**方針 P2（決定 2026-09-24、§3.4.1）** | 19 | モデル図 04 の変更は不要。K3（マクロ二重ガード）は Phase7 で再設計するため触れない。**完了確定（2026-09-24、ビルド・テスト・実機確認済み。Alt+Tab マクロの観察事項あり）。実施記録は §3.7 参照** |
+| **Step3-7** | 温存・要判断の最終処理 | `Global.ApplyProfile` フォールバック（§2.4.3 の選択、既定 K-1）、`ProfileSettingsServiceInstance`/`outputKBMHandler` の `??` フォールバック（現状維持、TODO コメント確認のみ）、`using static DS4Windows.Global;` の削除可否判定 | 3 | 全バッチ完了後、`Global.` 参照が0件（またはコメント記載どおりの温存のみ）になっていることを確認する。**次セッションで着手。事前調査の結果と確認事項は §3.8 参照** |
 
 バッチの粒度・順序は、Step3-1 完了後の実地確認（各バッチ着手前に該当範囲を再 grep する。`DI-App-Wide-Migration-Plan.md` §6.11）で必要に応じて見直す。
 
@@ -342,7 +342,23 @@ Step3-6 の `PlayMacroCodeValue`（14件）・`AltTabSwapping`／`AltTabSwapping
 
 **テスト**: `MappingMacroPathGlobalReferenceGuardTests.cs`（新規）: 3メソッドのソース走査ガード（`outputKBMMapping` の非修飾・`Global.` 修飾の参照が残っていないこと、`profileSettings.OutputKBMMapping.` 経由であること）と、`Mapping.cs` 全体に `outputKBMMapping` への `Global` 参照がないことの固定。走査の方式は実ファイルに対して事前に検証済み。マクロ再生自体は実際のキー・マウス入力を送出するため、挙動テストは追加していない（ガードと実機確認で担保）。既存の `MappingPlayMacroDispatchGuardTests`（`PlayMacro` をリフレクションで呼ぶ）は、`PlayMacro` のシグネチャを変更していないため影響を受けない。
 
-**未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) Controls タブでボタンにキー入力のマクロ（「Record A Macro」で記録）を割り当てて動作すること、(2) マウスクリック（左・右・中・X ボタン）を含むマクロが動作すること、(3) Alt+Tab のウィンドウ切り替えマクロ（押している間 Tab で切り替え、離すと確定）が動作すること、(4) スペシャルアクションのマクロ（`DefaultMacroPlayer` 経由の入口を含む）が動作すること。あわせて、押し続けの繰り返しマクロ（Repeat while held）が二重に走らないこと（K3 のガードの回帰確認）も見る。
+**検証結果（確定・2026-09-24）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。実機確認は下記の項目1・2・4・5が問題なし。項目3（Alt+Tab マクロ）は、押している間 Tab が繰り返し送られて2つのウィンドウ間でフォーカスが切り替わり続け、離した時点でフォーカスされていたウィンドウで確定する挙動だった。これは Alt+Tab マクロの設計（押している間、一定間隔で Tab を送り続け、離すと確定する）と、Windows の Alt+Tab 設定・開いているウィンドウ数に依存する見え方であり、ユーザーも環境依存と判断した。Step3-6c の変更は `KEY_TAB`／`KEY_LALT` の読み取り元の置換のみで送出内容を変えていないため、回帰とは判断していない（ただし変更前後の比較はしていない）。念のため `Phase6-Step11-Plan.md` §3.3 に参考項目として登録した。Bug1（Alt+Tab 誤爆）の調査の参考にもなる。
+
+**（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。実機確認は次の項目: (1) Controls タブでボタンにキー入力のマクロ（「Record A Macro」で記録）を割り当てて動作すること、(2) マウスクリック（左・右・中・X ボタン）を含むマクロが動作すること、(3) Alt+Tab のウィンドウ切り替えマクロ（押している間 Tab で切り替え、離すと確定）が動作すること、(4) スペシャルアクションのマクロ（`DefaultMacroPlayer` 経由の入口を含む）が動作すること。あわせて、押し続けの繰り返しマクロ（Repeat while held）が二重に走らないこと（K3 のガードの回帰確認）も見る。
+
+### 3.8 Step3-7 の事前調査と着手前の確認事項（2026-09-24、別セッションで再開）
+
+**現状（HEAD `74e344f`、Step3-6c 反映後）**: `Mapping.cs` に残る `Global` 直接参照は次の3件のみ（Step3-6 の再集計と一致）。
+
+| 行（概数） | 参照 | 内容 | 既定の扱い |
+|---:|---|---|---|
+| 75 | `Global.ProfileSettingsServiceInstance` | 静的 `profileSettings` の初期化子の `??` フォールバック（`AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance`） | 温存（防御コード。Step2 の C2-02 と同扱い）。TODO コメントの確認のみ |
+| 78 | `Global.outputKBMHandler` | `VirtualKBM` getter の `??` フォールバック（`AppHost.GetService<IVirtualKBM>() ?? Global.outputKBMHandler`） | 温存（防御コード）。TODO コメントの確認のみ |
+| 5139 | `Global.ApplyProfile` | `MapCustomAction`（`Task.Run` 内）の、`IProfileApplicationService` 未登録時のフォールバック | §2.4.3 の選択（既定 K-1: 温存＋TODO。K-2: K1 を先に是正してから `AP.ApplyProfile` へ置換）。**ユーザーへ選択肢を提示して確認する** |
+
+**`using static DS4Windows.Global;`（31行）の削除可否**: 事前調査（字句レベル）では、除外項目としていた純粋計算・定数のうち `Clamp`（23件）・`MAX_DS4_CONTROLLER_COUNT`（22件）・`TEST_PROFILE_ITEM_COUNT`（3件）はすでに `Global.` 修飾済みで、非修飾のまま残るのは `getTransitionedColor`（2件）のみ。したがって、削除には `getTransitionedColor` の修飾（2件）が必要になる見込み。ただしこの環境ではコンパイルできないため、ほかにも非修飾の `Global` メンバー（`using static` 経由の型・定数など）が残っていないかは、削除後のビルドで最終確認する必要がある。削除する場合は、ビルドエラーが出たものを1件ずつ修飾する手順を Step3-7 の計画に入れる。あわせて、`using static` を外すと `Mapping` 内の他の `Global` 参照（上表の3件）は `Global.` 修飾のままコンパイルできる。
+
+**Step3-7 着手時の作業案**: (1) 上表3件の最終確認と、K-1／K-2 の選択（メリット・デメリット・推奨の形で提示して確認）、(2) `getTransitionedColor` の修飾と `using static DS4Windows.Global;` の削除、(3) ビルド・テストビルド・テスト実行の確認（ビルドエラーが出た箇所の修飾）、(4) 回帰ガードテスト（`Global` 直接参照が `Mapping.cs` に温存3件以外に残っていないこと）の追加、(5) 実機確認（起動・接続・プロファイル適用・スペシャルアクション、K-2 を選んだ場合は `ApplyProfile` の経路）、(6) 本計画書 §6 の完了判定チェックリストの更新。
 
 ---
 
