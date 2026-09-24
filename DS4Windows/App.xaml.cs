@@ -119,7 +119,7 @@ namespace DS4WinWPF
                 AppLogger.LogDebug($"ApplyLanguageSetting requested: {cultureCode}");
                 CultureInfo culture = CultureInfo.GetCultureInfo(cultureCode);
                 // TODO(Phase6-Step7 決定4＝K): 意図的に Global を直接使う。このメソッドは Post-Host だけでなく、
-                // Pre-Host の --driverinstall 分岐（CheckOptions。DI サービスのフィールドはまだ null）と、
+                // Pre-Host の -driverinstall 分岐（CheckOptions。DI サービスのフィールドはまだ null）と、
                 // App の外（LanguagePackControl → ApplyLanguageSettingPublic）からも呼ばれる共用ヘルパーのため、
                 // DI 経由と Global 経由の二重経路を作らない。SetCulture はスレッドのカルチャを設定するだけの静的ユーティリティ。
                 // Global の解体（Phase7）で、言語設定の適用処理ごと整理する。
@@ -309,10 +309,10 @@ namespace DS4WinWPF
             CreateTempWorkerThread();
 
             // Phase6-Step7: ここまでが Pre-Host 領域（明示的なホスト構築より前に実行される起動処理）。
-            // この領域と CheckOptions（--driverinstall 分岐を含む）の Global 参照（起動時ログローテーション・
+            // この領域と CheckOptions（-driverinstall 分岐を含む）の Global 参照（起動時ログローテーション・
             // 設定の場所の決定・ViGEmBus 情報など）は、ブートストラップ処理として意図的に静的のまま温存する
             // （Phase6-Step7-Plan.md §1.2・§2.5）。なお AppHost.GetService はホスト未構築時に暗黙に構築するため、
-            // --driverinstall 分岐の Global.Load() の時点でホストが作られる（同 §0.4）。
+            // -driverinstall 分岐の Global.Load() の時点でホストが作られる（同 §0.4）。
             // DI サービスは、下の CreateControlService の直後に InitializePostHostServices で解決する。
             // フェーズ0-3: AppHost正式ルート
             try

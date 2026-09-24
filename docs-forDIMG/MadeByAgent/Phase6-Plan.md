@@ -40,7 +40,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 ### 0.3 スコープに含まないもの（明示的除外・保護対象）
 1. **仮想コントローラー出力バックエンド（ViGEm）の直接操作**: `ControlService.cs` や `ScpUtil.cs` 内の `Nefarius.ViGEm.Client` 直接依存、およびダウンキャスト配線は、仮想バス刷新イニシアチブ（`IVirtualControllerBackend` 構想）のスコープとし、Phase6 では動作安定性を最優先して温存する。
 2. **`Mapping.cs` の完全インスタンス化（101箇所）**: 全体計画書 §5.5 および Step3 合意（案A）に基づき、8,500行に及ぶクラス全体のドメイン分割・インスタンス化は Phase7 として独立させる（Step3にて完全台帳化済み）。
-3. **Pre-Host ブートストラップ処理（12箇所。2026-09-24 に Step7-0 で再集計）**: 明示的な `AppHost.CreateHost()`（`App.xaml.cs:298`）より前に実行される初期ログローテーション（`appdatapath`, `LogMaxArchiveFiles`, `LogMinLevel`）、多重起動判定、および `--driverinstall` 分岐は、ブートストラップコードとして静的のまま温存する。なお `--driverinstall` 分岐の `Global.Load()` は、`AppHost.GetService` の暗黙構築によりホストを作るため、「DIコンテナが存在しない」という旧記載は正確ではない（`Phase6-Step7-Plan.md` §0.4）。
+3. **Pre-Host ブートストラップ処理（12箇所。2026-09-24 に Step7-0 で再集計）**: 明示的な `AppHost.CreateHost()`（`App.xaml.cs:298`）より前に実行される初期ログローテーション（`appdatapath`, `LogMaxArchiveFiles`, `LogMinLevel`）、多重起動判定、および `-driverinstall` 分岐は、ブートストラップコードとして静的のまま温存する。なお `-driverinstall` 分岐の `Global.Load()` は、`AppHost.GetService` の暗黙構築によりホストを作るため、「DIコンテナが存在しない」という旧記載は正確ではない（`Phase6-Step7-Plan.md` §0.4）。
 4. **`BackingStore` の正本データ構造**: DI サービスが SSOT として参照しているため、Phase7 のドメインエンティティ化まで物理削除を禁止し完全保護する。
 5. **真の定数（`const`）および純粋計算ユーティリティ**: `MAX_DS4_CONTROLLER_COUNT`, `TEST_PROFILE_INDEX`, `ASSEMBLY_RESOURCE_PREFIX` などの定数、および `Clamp`, `getTransitionedColor` などの状態非保持ユーティリティは共通インフラとして温存する。
 6. **テストファイル内の比較用 `Global.*` 参照**: 新旧値の同一性検証用テストコードは移行対象外とする。

@@ -43,7 +43,7 @@ namespace DS4WindowsTests
 
         private static readonly Dictionary<string, int> ExpectedCheckOptions = new Dictionary<string, int>
         {
-            // E7-06〜E7-12（--driverinstall 分岐。温存）
+            // E7-06〜E7-12（-driverinstall 分岐。温存）
             ["RefreshViGEmBusInfo"] = 1,
             ["FindConfigLocation"] = 1,
             ["Load"] = 1,

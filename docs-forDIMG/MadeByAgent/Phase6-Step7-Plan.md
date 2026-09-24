@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 実装済み（ユーザーのビルド・テスト確認待ち）。実機確認は Step7-3 の後にまとめて実施。Step7-4 以降は未着手**  
+状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 完了（2026-09-25、ビルド・テストビルド・テスト実行成功、実機確認済み［3 項目は Step11 へ先送り］。§6.6）。Step7-4 以降は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -32,14 +32,14 @@
 ### 0.3 境界の誤分類
 - **旧 C7-EX01／EX02**（110〜111 行、`Global.UseLang`／`Global.SetCulture`）は Pre-Host ではない。これらは `ApplyLanguageSetting()`（94〜133 行）の中にあり、このメソッドは次の 3 種類の経路から呼ばれる**共用ヘルパー**である。
   - Post-Host: 327、361、426、459 行
-  - Pre-Host: `CheckOptions` の `--driverinstall` 分岐（613 行）
+  - Pre-Host: `CheckOptions` の `-driverinstall` 分岐（613 行）
   - App の外: `LanguagePackControl.xaml.cs:74`（公開ラッパー `ApplyLanguageSettingPublic` 経由）
 - **旧 C7-EX12** の定数 `Global.MAX_DS4_CONTROLLER_COUNT` の値は 4 ではなく 8（`ScpUtil.cs:638`）。const である点は正しい。
 
 ### 0.4 「Pre-Host ＝ DI コンテナが存在しない」という前提の不正確さ
 - `AppHost.GetService<T>()`（`DI/AppHost.cs`）は、ホストが未構築なら**その場で `CreateHost()` を呼んで暗黙に構築する**。
 - `Global.Load()`／`Global.Save()`（`ScpUtil.cs:3567`、`3728`）は、すでに `IAppSettingsService` への委譲シムになっており、内部で `AppHost.GetService` を呼ぶ。
-- このため `--driverinstall` 分岐の `Global.Load()`（608 行）は、明示的な `AppHost.CreateHost(…, parser)`（298 行）より前に、**引数パーサーを登録しないホストを暗黙に構築している**。分岐はその後アプリを終了するため実害はないが、「コンテナ未構築」という旧計画の説明は正確ではない。
+- このため `-driverinstall` 分岐の `Global.Load()`（608 行）は、明示的な `AppHost.CreateHost(…, parser)`（298 行）より前に、**引数パーサーを登録しないホストを暗黙に構築している**。分岐はその後アプリを終了するため実害はないが、「コンテナ未構築」という旧計画の説明は正確ではない。
 - 通常起動の Pre-Host 領域（154〜289 行）で呼ばれる処理（`FindConfigLocation`、`LogRotator`、`LoggerHolder.ApplyBootstrapMinLogLevel`、`AppNotificationRegistration`、`KeyboardSettings`、`RefreshViGEmBusInfo`）は、`AppHost`／`ServiceProviderHolder` に触れないことを確認した。`Global` の静的初期化子も、フォールバック用の実体を `new` するだけでホストを構築しない。
 - 結論: 温存の方針は変えない。ただし境界の定義は「DI コンテナが存在しない領域」ではなく、「明示的なホスト構築（298 行）より前に実行される起動処理」とする（§1.2）。
 
@@ -87,7 +87,7 @@
 ### 1.2 保護対象の境界（現行コードで特定）
 - **Pre-Host 領域（温存）**:
   - `Application_Startup` の 143〜304 行。明示的なホスト構築 `AppHost.CreateHost(…, parser)`（298 行）を含む try/catch の終わりまで。
-  - `CheckOptions(parser)`（592〜713 行）。233 行で、ホスト構築より前に呼ばれる。`--driverinstall` 分岐は 600〜624 行。
+  - `CheckOptions(parser)`（592〜713 行）。233 行で、ホスト構築より前に呼ばれる。`-driverinstall` 分岐は 600〜624 行。
 - **共用ヘルパー（Pre-Host と Post-Host の両方から呼ばれる）**: `ApplyLanguageSetting`（94〜133 行）。→ 決定4
 - **Post-Host 領域（置き換え対象）**:
   - `Application_Startup` の 306 行（`CreateControlService(parser)`）〜 491 行。
@@ -147,7 +147,7 @@
   - **E7-03** 157 行 `Global.LogMaxArchiveFiles`（同上）
   - **E7-04** 162 行 `Global.LogMinLevel`（起動初期のログレベル）
   - **E7-05** 289 行 `Global.RefreshViGEmBusInfo()`（ViGEmBus 情報の取得）
-- **Pre-Host（`CheckOptions` の `--driverinstall` 分岐）: 7 件**
+- **Pre-Host（`CheckOptions` の `-driverinstall` 分岐）: 7 件**
   - **E7-06** 604 行 `Global.RefreshViGEmBusInfo()`
   - **E7-07** 607 行 `Global.FindConfigLocation()`
   - **E7-08** 608 行 `Global.Load()`（§0.4 のとおり、ここでホストが暗黙に構築される）
@@ -284,9 +284,9 @@
 - **推奨理由**: P2 は 1 行のために契約の意味を変えることになり、割に合わない。削除は Step12（呼出元 0 件の旧 API の整理）の趣旨に合う。
 
 ### 決定4: `ApplyLanguageSetting` の 2 件（E7-13、E7-14）
-- 前提: このメソッドは、Pre-Host（`--driverinstall` 分岐）、Post-Host、App の外（言語パック画面）の 3 種類から呼ばれる（§0.3）。
+- 前提: このメソッドは、Pre-Host（`-driverinstall` 分岐）、Post-Host、App の外（言語パック画面）の 3 種類から呼ばれる（§0.3）。
 - **案 K（推奨）: 温存し、共用ヘルパーである理由を TODO コメントで残す**
-  - メリット: `--driverinstall` 分岐（Pre-Host）で、フィールドがまだ null の状態を気にしなくてよい。
+  - メリット: `-driverinstall` 分岐（Pre-Host）で、フィールドがまだ null の状態を気にしなくてよい。
   - デメリット: `Global` 参照が 2 件残る。
 - 案 S: `UseLang` の書き込みを `_appSettingsService` 経由にし、フィールドが null のとき（Pre-Host から呼ばれたとき）だけ `Global` へ書く
   - メリット: Post-Host から呼ばれたときは DI 経由になる。
@@ -370,7 +370,7 @@
   - 実機確認: §6.1 の 1・2・6、§6.2 の 8〜10（起動・ログ・終了時の保存と、Pre-Host の非変更の確認）。初回起動（§6.3）は Step7-3 の後にまとめて行う。
   - 挙動の同一性: `Global.Save()`／`Load()` は元から `IAppSettingsService` への委譲、`exeversion`／`DeviceOptions`／`firstRun`／`UseLang`／`appDataPpath`／`multisavespots` は同じ `Global` の値を返す委譲、`exeFileName` は定義式と同じ `Path.GetFileName(Global.exelocation)`。`AppDataPath` のゲッターは `Global.appdatapath` が空のとき `AppContext.BaseDirectory` を返すが、置き換えた箇所では必ず設定済み（§0.5）。
 
-### Step7-3: 起動後半・終了処理の置き換えと TODO【実装済み・ビルド・テスト確認待ち（2026-09-25）】
+### Step7-3: 起動後半・終了処理の置き換えと TODO【完了（2026-09-25、ビルド・テストビルド・テスト実行成功。実機確認は §6.6、3 項目は Step11 へ先送り）】
 - P7-12〜P7-25、P7-39 を置き換える（P7-16 は決定2＝L2 により `_specialActionRepository.LoadActions()` へ置き換える）。
 - 温存する箇所（決定3 の P7-38、決定4 の E7-13〜E7-14）に、`copilot-instructions.md` §3.3 原則4 の TODO コメント（理由、経緯、解消予定の Phase）を付ける。Pre-Host の 12 件には、境界の説明コメントを 1 箇所（298 行付近）に付ける。
 - `AppPostHostGlobalReferenceGuardTests` を最終形（Post-Host の `Global.` 参照は温存を決めた箇所だけ）に更新する。
@@ -414,10 +414,10 @@
 ### 6.2 起動引数と Pre-Host（変更していないことの確認）
 8. `-m`（最小化起動）でトレイアイコンだけの状態で起動する。
 9. 起動中にもう 1 つ起動すると、既存のウィンドウが前面に出て、2 つ目は終了する（多重起動判定）。
-10. `--driverinstall` で、ドライバーのインストール画面（WelcomeDialog）がクラッシュせずに開き、閉じるとアプリが終了する。
+10. `-driverinstall` で、ドライバーのインストール画面（WelcomeDialog）がクラッシュせずに開き、閉じるとアプリが終了する。
 
 ### 6.3 初回起動（設定フォルダを一時的に退避して確認。環境の準備が難しければ Step11 へ先送り）
-11. 言語選択 → 保存場所の選択 → 初回ユーティリティ画面 → 既定プロファイル「Default」の作成、の順に進み、メインウィンドウが開く。
+11. 言語選択 → 保存場所の選択 → 初回ユーティリティ画面、の順に進み、メインウィンドウが開く。既定プロファイル「Default」は、画面を出さずに自動で作成される（ログに `No config found. Creating default config` と `Default config created` が出る）。
 12. `Actions.xml` が作られ、スペシャルアクション「Disconnect Controller」が 1 件ある。**既存プロファイルの XML に「Disconnect Controller」が追記されていない**（決定2 の確認）。
 13. プログラムフォルダと AppData の両方に設定がある状態で起動すると、保存場所の選択画面に「両方にある」旨の選択肢が出る（`HasMultipleSaveLocations`）。
 
@@ -427,6 +427,23 @@
 ### 6.5 実機確認が難しい項目（Step11 へ先送りする見込み）
 - 書き込みできない場所に設定がある場合の `AttemptSave` のコピー処理（P7-29〜P7-38）。
 - Windows のサインアウト・シャットダウン時の保存（`Application_SessionEnding` → `CleanShutdown`）。
+
+### 6.6 実機確認の結果（Step7-2・7-3 分、2026-09-25）
+- **§6.1（1〜7）**: すべて問題なし。ログに `DS4Windows version 3.11.7`、`DS4Windows exe file: DS4Windows.exe`、`Running as Admin`、`HidHide control device found` が出ることも確認した。
+- **§6.2**:
+  - 9（多重起動）: 問題なし。2 つ目の起動は防止され、トレイに閉じていたメインウィンドウが開いた。
+  - 10（`-driverinstall`）: 問題なし（2026-09-25 再確認）。ドライバーのインストール画面だけが開き、DS4Windows 本体は起動しない（従来どおりの動作）。初回の確認時は `--driverinstall`（ハイフン 2 つ）で起動したためインストール画面が出なかった。`ArgumentParser.Parse` が受け付けるのは `-driverinstall` と `driverinstall` だけで、`--driverinstall` はどのオプションにも当たらず無視され、通常の起動になる（本書・コード中コメント・`Phase6-Step11-Plan.md` 等が誤って `--driverinstall` と表記していたため、2026-09-25 に `-driverinstall` へ修正した）。
+  - 8（`-m`）: 問題なし（2026-09-25）。最小化で起動した。
+- **§6.3（初回起動）**:
+  - 11: 問題なし（言語選択 → 保存場所 → 初回ユーティリティ → メインウィンドウ。既定プロファイル「Default」は自動で作成された）。旧記載の「既定プロファイル『Default』の作成」を画面の手順のように書いていたため、実際の動作（画面なしの自動作成）に合わせて表記を直した。
+  - 12: 問題なし。スペシャルアクション「Disconnect Controller」が定義され、「Default」プロファイルでは有効のチェックが入っていない。これは、`LoadActions` が `Actions.xml` のない場合の分岐（既定アクションを作って `true` を返す）を通り、`CreateStandardActions`（全プロファイルの `ProfileActions` に追記する処理）が**実行されなかった**ことを示す（決定2＝L2 の期待どおり。ログの `Runtime synthetic state reset after Actions load` もこの分岐の出力）。Step7 以前の `Global.LoadActions()` と同じ結果。
+  - 13（複数の保存場所）: 先送り（2026-09-25 にユーザー決定）。
+- **Step11 への先送り（2026-09-25 に `Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録）**: §6.3 の 13（複数の保存場所）と、§6.5 の 2 項目（`AttemptSave` のコピー処理、サインアウト・シャットダウン時の保存）。
+- **結論**: Step7-2・7-3 の実機確認は、先送りした 3 項目を除いて完了。
+- **確認中に出た WARN ログ（Step7 とは無関係と判断）**: 起動時の更新確認（`MainWindow.LateChecks` → `Changelog.CheckNewerVersionExists`）が `api.github.com:443` への接続で `SocketException (10013)`（アクセス許可で禁じられた方法でソケットにアクセスしようとした）になった。
+  - 初回起動は前回の確認日時がないため、起動時に更新確認が走る。
+  - 10013 は、Windows 側（ファイアウォール・セキュリティソフト・予約ポート等）が接続を拒否したことを示す。
+  - Step7 は `App.requestClient` の生成（`CreateControlService` 内）にも、`LateChecks`／`Changelog` にも触れていない。例外は捕捉されて WARN として記録されるだけで、アプリの動作は続く。
 
 ---
 

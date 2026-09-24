@@ -38,7 +38,7 @@ Phase7 において `Mapping.cs`（約8,500行）の完全インスタンス化�
 2. **防壁2: Phase7 引き継ぎメンバ（`Mapping.cs` が参照している101箇所）**:  
    - Step3 で台帳化された `SetCurveAndDeadzone`（34件）、`outputKBMMapping`（29件）、スティック・ボタン・ジャイロ補正（38件）は、Phase7 のインスタンス化まで `Global` を参照し続けるため、**一切削除しない**。
 3. **防壁3: Pre-Host ブートストラップ領域（`App.xaml.cs` 起動前の11箇所）**:  
-   - DI コンテナ構築前に実行される初期ログローテーション（`appdatapath`, `LogMaxArchiveFiles`, `LogMinLevel`）、多重起動判定、設定位置検索（`FindConfigLocation`）、および `--driverinstall` 分岐は、**静的呼び出しのまま完全温存**する。
+   - DI コンテナ構築前に実行される初期ログローテーション（`appdatapath`, `LogMaxArchiveFiles`, `LogMinLevel`）、多重起動判定、設定位置検索（`FindConfigLocation`）、および `-driverinstall` 分岐は、**静的呼び出しのまま完全温存**する。
 4. **防壁4: 真の定数（`const`）および純粋計算ユーティリティ**:  
    - `MAX_DS4_CONTROLLER_COUNT`, `OLD_XINPUT_CONTROLLER_COUNT`, `TEST_PROFILE_INDEX`, `ASSEMBLY_RESOURCE_PREFIX`, `RESOURCES_PREFIX` 等の定数、および `Clamp`, `getTransitionedColor` などの状態非保持ユーティリティは、4層共通インフラとして**完全温存**する。
 5. **防壁5: ViGEm クライアント直接依存（Phase6/7対象外）**:  
