@@ -1,12 +1,7 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
-<<<<<<< HEAD
-最終更新日: 2026-09-23  
-状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）、Step3-6a 完了確定（グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ Step11 へ先送り］）、Step3-6b 完了確定（グループ B の12件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）、Step3-6c 完了確定（グループ C の19件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み。Alt+Tab マクロは環境依存の観察事項あり）、これで Step3-6 はすべて完了** / Step3-7〜Step12 計画確定・承認待ち（**次は Step3-7［別セッションで再開。事前調査は `Phase6-Step3-Plan.md` §3.8］**） / BindingWindow のテンキー右端欠けを修正・完了確定（2026-09-24、UI 微修正。詳細は §6.9）  
-=======
 最終更新日: 2026-09-24  
 状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）、Step3-6a 完了確定（グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ Step11 へ先送り］）、Step3-6b 完了確定（グループ B の12件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）、Step3-6c 完了確定（グループ C の19件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-7 実装済み（2026-09-24、温存3件にTODOコメント付与、§2.4.3の選択は既定K-1採用、`using static DS4Windows.Global;`の削除可否判定は見送りで確定。ビルド・テスト確認待ち。詳細は §3.8）** / Step4〜Step12 計画確定・承認待ち（**次は Step3-7 のビルド・テスト確認後にStep3完了確定、その後Step4**） / BindingWindow のテンキー右端欠けを修正・完了確定（2026-09-24、UI 微修正。詳細は §6.9）  
->>>>>>> 2ac27857341a8f984f8d9972a8a7394f1d2ac0ea
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -19,11 +14,7 @@
 | :--- | :--- | :--- | :---: | :---: | :--- | :---: |
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
-<<<<<<< HEAD
-| **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 3箇所（2026-09-24 再集計。Step3-1・3-2・3-4・3-5・3-6a・3-6b・3-6c完了、Step3-3は対象消滅、残Step3-7の温存3件のみ） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1・3-2・3-4・3-5・3-6a・3-6b・3-6c完了（Step3-7 未着手。別セッションで再開） |
-=======
 | **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 0箇所（2026-09-24 再集計。Step3-1〜3-6完了、Step3-3は対象消滅、Step3-7実装済み。残るのはTODO付き温存3件のみ） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-7実装済み（温存3件へのTODO付与、K-1採用、using static見送りを確定。ビルド・テスト確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-6完了、Step3-7実装済み（ユーザーのビルド・テスト確認後にStep3完了確定） |
->>>>>>> 2ac27857341a8f984f8d9972a8a7394f1d2ac0ea
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 73箇所 | 計画確定・承認待ち | `Phase6-Step4-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
@@ -72,11 +63,7 @@
 ---
 
 ### Phase6-Step3: `Mapping.cs` の段階的引数渡し【Step3-1・Step3-2 完了、Step3-3 対象消滅】
-<<<<<<< HEAD
-- **進捗率**: **Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c 完了（いずれもビルド・テスト・実機確認済み）、Step3-3 対象消滅（§6.8）、Step3-7 未着手（別セッションで再開）**
-=======
 - **進捗率**: **Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c 完了（いずれもビルド・テスト・実機確認済み）、Step3-3 対象消滅（§6.8）、Step3-7 実装済み（温存3件のTODO付与・§2.4.3のK-1採用・using static見送りを確定。ビルド・テスト確認待ち）**
->>>>>>> 2ac27857341a8f984f8d9972a8a7394f1d2ac0ea
 - **Step3-1 実装内容（2026-09-21実装、2026-09-22 ビルド・テスト・実機確認完了）**:
   - 新設 `IDisplayCoordinateService`／`DisplayCoordinateService`（`UseAllMonitors`、`PrepareAbsMonitorBounds`、`TranslateCoorToAbsDisplay`）。`ServiceRegistration.cs` に登録済み。
   - **決定D1を確認済みの単一呼び出し元（`ControlService.cs`のみ）で実現**: `IEnvironmentService.PrepareAbsMonitorBounds` を削除し（実装1件・モック0件を確認済みのため、委譲シムを残さず完全移設）、`ControlService` のコンストラクタに `IDisplayCoordinateService` を追加（必須引数、Pure DI）。`SystemEvents_DisplaySettingsChanged` の呼び出し元を新サービス経由に変更。
@@ -130,10 +117,6 @@
 - **Step3-6c 実装内容（2026-09-24実装、同日ビルド・テストビルド・テスト実行成功・実機確認完了）**: グループ C（非同期マクロ再生経路）の19件を解消。**Step3の残実参照数は 22 → 3**（Step3-7 の温存3件のみ）。
   - **方式（決定 P2）**: マクロ再生は別スレッドで動き、入口が `ctrl` を持たない `DefaultMacroPlayer` 経由にもあるため、引数渡しは行わず、`Mapping` の静的 `profileSettings` から読む。`PlayMacroCodeValue`（14件）・`AltTabSwapping`（3件）・`AltTabSwappingRelease`（2件）の `outputKBMMapping.` を `profileSettings.OutputKBMMapping.` に置換し、Phase7 の instance 化で解消する旨の TODO を各メソッド冒頭に付与。シグネチャ・契約・`ControlService`・`DefaultMacroPlayer`・モデル図の変更なし。K3（マクロ二重ガード）にも触れていない。`Mapping.cs` 全体から `outputKBMMapping` への `Global` 参照がなくなった。
   - **テスト**: `MappingMacroPathGlobalReferenceGuardTests.cs`（新規、3メソッドのソース走査ガードと、`Mapping.cs` 全体に `outputKBMMapping` への Global 参照がないことの固定）。マクロ再生自体は実際の入力を送出するため挙動テストは追加していない。
-<<<<<<< HEAD
-  - **検証結果（確定・2026-09-24）**: ビルド・テストビルド・テスト実行とも成功し、コミットしてリモートリポジトリに反映済み。実機確認は、キー入力マクロ、マウスクリックを含むマクロ、スペシャルアクションのマクロ、繰り返しマクロの二重実行がないこと、がすべて問題なし。Alt+Tab マクロは、押している間 Tab が繰り返し送られて2つのウィンドウ間でフォーカスが切り替わり続け、離した時点でフォーカスされていたウィンドウで確定する挙動だった。Alt+Tab マクロの設計（押している間一定間隔で Tab を送り、離すと確定する）と、Windows の Alt+Tab 設定・開いているウィンドウ数に依存する見え方と判断した（ユーザーも環境依存と判断）。Step3-6c の変更は `KEY_TAB`／`KEY_LALT` の読み取り元の置換のみで送出内容を変えていないため回帰とは判断していないが、変更前後の比較はしていない。参考項目として `Phase6-Step11-Plan.md` §3.3 に登録した。Bug1（Alt+Tab 誤爆）の調査の参考にもなる。
-  - **（実装時点の記録）未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は未実行。ユーザー側でビルド・テスト・実機確認（キー入力マクロ、マウスクリックを含むマクロ、Alt+Tab マクロ、スペシャルアクションのマクロ、繰り返しマクロの二重実行がないこと）を行ってからコミットすること。
-=======
   - **未検証事項**: この環境には dotnet がなく、`dotnet build`／`dotnet test` は未実行。ユーザー側でビルド・テスト・実機確認（キー入力マクロ、マウスクリックを含むマクロ、Alt+Tab マクロ、スペシャルアクションのマクロ、繰り返しマクロの二重実行がないこと）を行ってからコミットすること。
   - **検証結果（確定・2026-09-24）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。実機確認（キー入力マクロ、マウスクリックを含むマクロ、Alt+Tabマクロ、スペシャルアクションのマクロ、繰り返しマクロの二重実行がないこと）はすべて問題なし。Step3の残実参照数は3（Step3-7の温存3件のみ）で確定。
 - **Step3-7 実装内容（2026-09-24実装、ビルド・テスト確認待ち）**: 温存3件（`Global.ProfileSettingsServiceInstance`／`Global.outputKBMHandler`／`Global.ApplyProfile`）の最終処理と、`using static DS4Windows.Global;` の削除可否判定を実施。**Step3の残実参照数は3 → 0**（温存3件はTODO付きで意図的に残置。詳細は `Phase6-Step3-Plan.md` §3.8）。
@@ -142,7 +125,6 @@
   - **変更内容**: `profileSettings`／`VirtualKBM`フィールドの`Global.`フォールバック、および`MapCustomAction`内の`Global.ApplyProfile`フォールバックに、それぞれTODOコメントを追加（実行コードは変更なし）。`using static`ディレクティブの直前に見送り理由を記録するコメントを追加。
   - **テスト**: `MappingStep3FinalGlobalReferenceGuardTests.cs`（新規）: using staticの存置前提（`getTransitionedColor`の非修飾呼び出し存在）、温存3件がそれぞれ厳密に1箇所ずつであること、TODOコメントの存在を固定。
   - **未検証事項**: この環境にはdotnetがなく、`dotnet build`／`dotnet test`は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。コメント追加のみで実行コードの変更はないため実機確認は必須ではないが、念のため通常のプロファイル切替動作の確認が望ましい。
->>>>>>> 2ac27857341a8f984f8d9972a8a7394f1d2ac0ea
 ---
 
 ### Phase6-Step4: マウスエミュレーション系のPure DI化【計画確定・承認待ち】
@@ -303,34 +285,21 @@
 
 ## 5. 直近の次アクション
 
-<<<<<<< HEAD
-1. **Step3-5**（`SetCurveAndDeadzone` のジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.4）。**Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）。Step3-6a**（`ctrl` から読める経路の24件＋契約追加 R1）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.5）。**Step3-6b**（判定補助メソッド群12件、方針 P2）は完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.6）。**Step3-6c**（非同期マクロ経路19件、方針 P2）も完了確定（2026-09-24、`Phase6-Step3-Plan.md` §3.7）。これで Step3-6 はすべて完了した。次は Step3-7（温存3件の最終処理と `using static DS4Windows.Global;` の削除可否判定）。**別セッションで再開する**。事前調査の結果と着手前の確認事項は `Phase6-Step3-Plan.md` §3.8 に記録済み。Step3-4 も完了確定（2026-09-24）。Step3-3は対象コード自体がAbs Mouse機能削除に伴い消滅したため、コミット・確認作業は不要（詳細は §6.8）。
-=======
 1. **Step3-6c**（非同期マクロ経路19件、方針 P2）は完了確定（2026-09-24、ユーザーのビルド・テスト・実機確認完了、`Phase6-Step3-Plan.md` §3.7）。**Step3-7**（温存3件の最終処理、§2.4.3の選択［既定K-1採用］と `using static DS4Windows.Global;` の削除可否判定［見送りで確定］）は実装済み。ユーザーのビルド・テスト確認を経てコミットする（`Phase6-Step3-Plan.md` §3.8）。確認後、Step3 完了確定 → Step4 へ進む。
->>>>>>> 2ac27857341a8f984f8d9972a8a7394f1d2ac0ea
 2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12 → Phase7 → Phase8）で進める。Phase8（Controls/SpecialActions統合ディスパッチ）は Phase7 完了後の独立フェーズとして新設済み（詳細は §6.7）。
 
 ---
 
-<<<<<<< HEAD
-## 6. 次セッションへの引き継ぎ（2026-09-24、Step3-7 の着手前）
-=======
 ## 6. 次セッションへの引き継ぎ（2026-09-24、Step3-7 のビルド・テスト確認待ち）
->>>>>>> 2ac27857341a8f984f8d9972a8a7394f1d2ac0ea
 
 ### 6.1 現在地
 - 完了: Step1（詳細監査）、Step2（`ControlService.cs`、66 ID）、Step3-1・Step3-2（`Mapping.cs`、契約整備＋非ホット12件。ともにビルド・テスト・実機確認済み）、Step13（配置整理 44件）。
 - Step3-3は対象消滅（Abs Mouse機能削除、§6.8参照）。Step3の残実参照数は150→145に更新。
 - Step3-4（`SetCurveAndDeadzone` のスティック・トリガー系27件）は完了確定（2026-09-24、ビルド・テスト・実機確認済み）。
 - Step3-5（ジャイロ系13件＋`ApplyStickCalibration` 8件＋`Commit` 24件）は完了確定（2026-09-24、ビルド・テスト・実機確認済み、§2 Step3 の実装内容参照）。Step3 の残実参照数は 73。
-<<<<<<< HEAD
-- Step3-6a（`ctrl` から読める経路の24件＋契約追加 R1）は完了確定（2026-09-24）。Step3-6b（判定補助メソッド群12件、P2）は完了確定（2026-09-24）。Step3-6c（非同期マクロ経路19件、P2）も完了確定（2026-09-24）。Step3-6 はすべて完了。Step3 の残実参照数は 3（Step3-7 の温存3件のみ）。
-- 次: **Step3-7（別セッションで再開）**（温存3件の最終処理、§2.4.3 の選択［既定 K-1］と `using static DS4Windows.Global;` の削除可否判定。着手前にユーザーへ選択肢を提示して確認する）。再開時は、まず本書と `Phase6-Step3-Plan.md` §3.8（事前調査: 残る `Global` 参照3件の行と内容、`using static` の削除に必要な修飾は `getTransitionedColor` の2件のみの見込み、作業案）を読み、最新の HEAD で再確認する。その後 Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。Phase6完了後は Phase7、その後 Phase8（新設、§6.7）。
-=======
 - Step3-6a（`ctrl` から読める経路の24件＋契約追加 R1）は完了確定（2026-09-24）。Step3-6b（判定補助メソッド群12件、P2）は完了確定（2026-09-24）。Step3-6c（非同期マクロ経路19件、P2）は完了確定（2026-09-24、ビルド・テスト・実機確認済み）。Step3 の残実参照数は 3（Step3-7 の温存3件のみ）。
 - Step3-7（温存3件へのTODO付与、§2.4.3の選択はK-1採用、`using static DS4Windows.Global;` の削除可否は見送りで確定）は実装済み（2026-09-24、`Phase6-Step3-Plan.md` §3.8）。ユーザーのビルド・テスト確認待ち。確認後、Step3 は完了確定となる。
 - 次: Step3-7 のビルド・テスト確認 → Step3 完了確定 → Step4〜Step10、Step10b（1ファイル1型）、Step11（総合検証）、Step12（旧シム削除）。Phase6完了後は Phase7、その後 Phase8（新設、§6.7）。
->>>>>>> 2ac27857341a8f984f8d9972a8a7394f1d2ac0ea
 
 ### 6.2 確定済みの決定事項（要約）
 - **Step2**: D1（`Func<IOutputSlotService>` の遅延解決）、D2（新規コンストラクタ引数はすべて必須の Pure DI）、D3（`IVirtualKBMLifecycle`）、O1=B／O4=B-2（`IProfileSlotApplier`）、O2=C／O3=A（スロット上限のサービス化と段階移行）。詳細は `Phase6-Step2-Plan.md` §0.3.2。
