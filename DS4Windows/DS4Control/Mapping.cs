@@ -28,6 +28,10 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+// Phase6-Step3-7 で削除可否を判定: 見送り。getTransitionedColor（純粋計算、Step3対象外の除外51件の1つ、
+// Phase6-Step3-Plan.md §1）が非修飾で呼ばれており本ディレクティブに依存するため、現時点では削除できない。
+// これ以外の Global 実利用箇所はすべて Global. 明示修飾（温存3件: ProfileSettingsServiceInstance／outputKBMHandler／ApplyProfile。
+// いずれも上記のTODO参照）または各DIサービス経由への置換で解消済み（Phase6-Step3-Plan.md §6 完了判定チェックリスト）。
 using static DS4Windows.Global;
 using System.Drawing; // Point struct
 using Sensorit.Base;
@@ -70,11 +74,15 @@ namespace DS4Windows
         {
             _syntheticActionCache.Clear();
         }
+        // TODO(Phase6-Step3-7, 温存・決定KEEP): DI ホスト未構築時（Pre-Host やテストの一部経路）のフォールバックとして
+        // `Global.ProfileSettingsServiceInstance` を残す。Phase7 の `Mapping` instance 化で、この静的束縛自体を解消する。
         private static readonly DS4Windows.DI.IProfileSettingsService profileSettings =
             DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>()
             ?? Global.ProfileSettingsServiceInstance;
         private static readonly DS4Windows.DI.IProfileApplicationService profileApplication =
             DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileApplicationService>();
+        // TODO(Phase6-Step3-7, 温存・決定KEEP): DI ホスト未構築時のフォールバックとして `Global.outputKBMHandler` を残す。
+        // Phase7 の `Mapping` instance 化で、この静的束縛自体を解消する。
         private static IVirtualKBM VirtualKBM => AppHost.GetService<IVirtualKBM>() ?? Global.outputKBMHandler;
         // SpecialAction名ごとのエラーログ抑制用（1プロファイル切り替えごとに1回だけ）
         // private static HashSet<string> loggedInvalidActions = new HashSet<string>();
@@ -5127,6 +5135,11 @@ namespace DS4Windows
                                         if (!handled)
                                         {
                                             // フォールバック: DI未登録時は従来の直接 ApplyProfile 呼び出し
+                                            // TODO(Phase6-Step3-7, 決定K-1): IProfileApplicationService.ApplyProfile の既知の不具合K1
+                                            // （Phase6-Status.md §6.5: deviceIndex>=4 のスロットを拒否・戻り値を捨てて成功扱い・Halt を自身で行わない）が
+                                            // 是正されるまで、このフォールバックは `Global.ApplyProfile` のまま温存する（Phase6-Step3-Plan.md §2.4.3）。
+                                            // K1 是正後に、本ファイル冒頭で解決済みの静的フィールド `profileApplication`（IProfileApplicationService）の
+                                            // `ApplyProfile` 呼び出しへ置換予定。
                                             DS4Device d = ctrl.DS4Controllers[device];
                                             string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
                                                 (device + 1).ToString(), action.details, $"{d.Battery}");
