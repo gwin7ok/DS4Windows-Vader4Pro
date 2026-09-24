@@ -123,7 +123,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
   - 出力デバイス設定の「三態（永続設定 `OutContType` / 実行時接続 `ActiveOutDevType` / UI一時 `OutDevTypeTemp`）」のSSOT台帳を確立。`OutDevTypeTemp`／`ActiveOutDevType` の裏づけの `Global` 静的配列は温存し、所有権の移動は Phase7 へ引き継ぐ。
 
 #### Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 未接続API整理
-- **状態**: 実装完了（2026-09-24）・実機確認待ち。詳細は `Phase6-Step6-Completion-Report.md`。
+- **状態**: **完了（2026-09-24）**。詳細は `Phase6-Step6-Completion-Report.md`。
 - **確定方針（2026-09-24 改訂）**:
   - `ProfileEditor.xaml.cs` の `Reload()` と `RefreshEditorBindings()`（プリセット適用後）で `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);` を明示的に呼び、編集画面を開いたとき・プリセット適用後のマッピングボタン表記（A/B/X/Y ⇄ Cross/Circle）の食い違いを解消。
   - `IOutputSlotService` の呼出元0件API（`PluginSlot`, `UnplugSlot`）は、Phase5-Step12 で UI 接続のために作られたが未接続と判明したため、非推奨化せず温存し TODO を書き換え（決定1＝案R）。UI・UDP コマンドからの接続は `Phase6-Step10-Plan.md` §8 で実施。

@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step5 完了後に現行コードと突き合わせ、台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step6-0〜6-3 実装完了（2026-09-24）。Step6-1・6-2 はビルド・テストビルド・テスト実行成功。Step6-3 の追加テストと実機確認（§5）は確認待ち。決定1は案R（未接続 API として温存し、Step10 で接続）。詳細は `Phase6-Step6-Completion-Report.md`**  
+状態: **完了確定（2026-09-24）。ビルド・テストビルド・テスト実行成功、実機確認（§5）1〜4 問題なし。決定1は案R（未接続 API として温存し、Step10 で接続）。詳細は `Phase6-Step6-Completion-Report.md`**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`, `docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5, §5.5  
@@ -115,9 +115,9 @@
 
 ## 7. 完了判定チェックリスト
 - [x] `Reload` と `RefreshEditorBindings` で `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType)` が呼ばれる（Step6-1、ビルド・テスト成功）
-- [ ] 編集画面を開いたとき・プリセット適用後に、マッピング一覧のボタン名がプロファイルの出力種別と一致する（実機確認）
+- [x] 編集画面を開いたとき・プリセット適用後に、マッピング一覧のボタン名がプロファイルの出力種別と一致する（実機確認済み）
 - [x] `PluginSlot`／`UnplugSlot` の TODO が案R の内容に書き換えられ、接続作業が `Phase6-Step10-Plan.md` に登録されている（Step6-2、ビルド・テスト成功）
 - [x] `ScpUtil.cs` の `PostLoadSnippet` によるホットスワップ機構に手を加えていない
-- [ ] `dotnet build`、`dotnet test` 全件成功（Step6-3 の追加テスト `ProfileEditorMappingDevTypeGuardTests` は確認待ち）
-- [ ] 実機確認（§5）が完了、または Step11 の先送り台帳に登録済み
+- [x] `dotnet build`、`dotnet test` 全件成功
+- [x] 実機確認（§5）が完了（副次的な観察［仮想コントローラー種別変更時の Windows トースト］は Step11 の先送り台帳に登録済み）
 - [x] `Phase6-Status.md`／`Phase6-Plan.md`／`Phase6-Step7b-Plan.md` を更新、完了報告書を作成
