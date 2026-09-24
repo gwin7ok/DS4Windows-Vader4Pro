@@ -765,6 +765,7 @@ DIサービス経由で一貫して動作する状態**を完成させる。
 
 - フェーズ6完了後、専用の事前監査（フェーズ6-Step1と同様の手法）から独立して開始する。
 - 詳細なStep構成、見積もり、ガードレールは、フェーズ6完了後に`Phase7-Plan.md`として個別策定する。
+- **Phase7 の射程に含める項目（2026-09-24 追記、Phase6-Step5 の決定2に基づく）**: 実行時状態の静的配列 `Global.outDevTypeTemp`／`Global.activeOutDevType` の所有権を `OutputSlotService` へ移し、`Global` 側を転送プロパティ（または削除）にする。Phase6 では、配列が `ScpUtil.cs` 8 箇所・UI 3 箇所・`ControlService` の参照キャッシュから直接使われているため温存した。前提条件と詳細は `Phase6-Step5-Plan.md` §9、`Phase6-Step12-Plan.md` §4 を参照。`Phase7-Plan.md` の策定時に、この項目を必ず取り込むこと。
 
 **着手前提**: フェーズ6の完了。
 

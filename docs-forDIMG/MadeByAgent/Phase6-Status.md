@@ -16,7 +16,7 @@
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
 | **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 0箇所（2026-09-24 再集計。Step3-1〜3-6完了、Step3-3は対象消滅、Step3-7実装済み。残るのはTODO付き温存3件のみ） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-7実装済み（温存3件へのTODO付与、K-1採用、using static見送りを確定。ビルド・テスト確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-6完了、Step3-7実装済み（ユーザーのビルド・テスト確認後にStep3完了確定） |
 | **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | **完了（2026-09-24）** | `Phase6-Step4-Plan.md`、`Phase6-Step4-Completion-Report.md` | Step4-0〜4-5 完了（実機確認の残りは Step11 へ先送り） |
-| **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
+| **Step 5** | OutputSlotService 孤立配列撤廃・UDP診断是正 | `OutputSlotService.cs` 等 | 台帳再作成（2026-09-24、方針確定） | Step5-0 完了・実装承認待ち | `Phase6-Step5-Plan.md` | Step5-1〜5-3 未着手 |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 32箇所 (11保護) | 計画確定・承認待ち | `Phase6-Step7-Plan.md` | 未着手 (PR-1〜4) |
 | **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 計画書作成・承認待ち（2026-09-24新設） | `Phase6-Step7b-Plan.md` | 未着手（Step7 の後・Step8 の前） |
@@ -145,13 +145,14 @@
 
 ---
 
-### Phase6-Step5: `OutputSlotService` 全面SSOT統合 ＆ 孤立配列完全撤廃【計画確定・承認待ち】
-- **進捗率**: **0%（未着手・計画確定済み）**
-- **確定方針**: **選択肢B（孤立配列完全撤廃 ＋ 出力デバイス三態SSOT確立）の採用**。
-- **対象**: 実参照式8箇所（`MainWindow.xaml.cs:1412` のUDP診断コマンド含む）。
+### Phase6-Step5: `OutputSlotService` の孤立配列撤廃と UDP 診断コマンドの是正【Step5-0 完了・実装承認待ち】
+- **進捗率**: **Step5-0（台帳再作成・計画書改訂）完了（2026-09-24）。Step5-1〜5-3 は未着手**
+- **確定方針（ユーザー決定 2026-09-24）**: 決定1＝案B（孤立配列 `_deviceTypes` と `GetOutputDeviceType`／`SetOutputDeviceType` を削除）、決定2＝案X（`Global` の静的配列を裏づけのまま維持し TODO を付与。将来は案Y＝配列の所有をサービスへ移す構成）。
+- **対象（現行コードから再集計）**: `MainWindow.xaml.cs:1432` の UDP 診断コマンド、`OutputSlotService.cs` の `_deviceTypes` 系（21・59〜86・98・139・169 行）、`IOutputSlotService.cs` の 2 宣言。旧計画の「委譲＋Obsolete」は、`UnplugSlot` 経由で永続設定へ `None` を書く危険があるため不採用。コンストラクタの変更なし。
 - **計画ハイライト**:
-  - バグの温床であった孤立配列 `_deviceTypes[]` を物理削除し、二重管理の根本原因を抹消。
+  - 孤立配列と、常に `None` を返す API を削除し、二重管理の根本原因を抹消。`OutputSlotChanged` イベントは維持。
   - 「永続設定（`OutContType`）」「実行時接続（`ActiveOutDevType`）」「UI一時状態（`OutDevTypeTemp`）」の三態台帳を確立。
+  - 案Y（所有権の移動）は Phase7 へ引き継ぎ（`Phase6-Step12-Plan.md` §4、`DI-App-Wide-Migration-Plan.md` §6.9.3 に登録済み）。Phase8 には該当なし。
 
 ---
 
