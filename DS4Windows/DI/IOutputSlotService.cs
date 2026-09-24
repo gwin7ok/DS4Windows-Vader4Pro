@@ -48,21 +48,24 @@ namespace DS4Windows.DI
         IReadOnlyList<OutSlotDevice> OutputSlots { get; }
         OutSlotDevice GetOutSlotDevice(int slotNumber);
 
-        // TODO(技術的負債・Phase6-Step6で再評価予定、2026-09-11時点): アプリ本体コードからの
-        // 呼出元が0件であることを確認済み（テストを除く、
-        // Phase5-Step14-Issue7-RootCause-and-CrossSetting-Audit-Report.md §5.2）。実装自体は
-        // ControlService.AttachUnboundOutDev を経由して実際にViGEm仮想デバイスをプラグインする
-        // 機能を持つが、どこからも呼ばれていない。現状、出力デバイス種別変更時の実際の
-        // アンプラグ／再プラグイン（ホットスワップ）は、Global.ApplyProfile →
-        // ScpUtil.cs の PostLoadSnippet（ControlService.UnplugOutDev/PluginOutDev）という
-        // 別経路のレガシーシムで実現されており、本メソッドは一度も採用されなかった並行実装
-        // である可能性が高い。削除／実配線の判断はPhase6-Step6で行う。
+        // TODO(技術的負債・未接続の DI 契約・Phase6-Step10 §8 で接続予定。Phase6-Step6 決定1＝案R、2026-09-24):
+        // PluginSlot／UnplugSlot は、UI（出力スロット管理画面）から仮想スロットを抜き差しする正式な入口として
+        // Phase5-Step12（2026-09-05）で追加された。当時の計画（Phase5-Step12-Plan.md §1.5）は、UI 側を本 API 経由へ
+        // 切り替える予定だったが、その切り替えが未実施のため、アプリ本体からの呼出元は現在 0 件である（テストのみ）。
+        // 現状の呼び出し側（CurrentOutDeviceViewModel、MainWindow の UDP コマンド）は ControlService.AttachUnboundOutDev／
+        // DetachUnboundOutDev を直接呼んでいる。全体4層モデル・Pure DI の方針では本 API 経由が正しいため、
+        // 削除も [Obsolete] 化もしない。新規コードは ControlService の API を直接呼ばず、本 API を使うこと。
+        // なお、プロファイル適用時の出力種別の切り替え（ホットスワップ）は別経路（ScpUtil.cs の PostLoadSnippet →
+        // ControlService.UnplugOutDev／PluginOutDev）であり、本 API の対象外。
+        // 接続時に是正する差分（詳細: docs-forDIMG/MadeByAgent/Phase6-Step6-Plan.md §3.1）:
+        //   1. スレッド: 画面側は ControlService.EventDispatcher へディスパッチしているが、本 API は呼び出し元のスレッドで実行する
+        //   2. 事前条件と種別: 画面側は接続状態・入力割り当てを確認し、種別に OutSlotDevice.CurrentType を使う
+        //   3. 依存: 実装が ControlService を Program.rootHub から取得している（循環依存を避けた Pure DI 化が必要）
+        //   4. イベント: 画面は OutputSlotManager.SlotAssigned／SlotUnassigned を購読しており、OutputSlotChanged の購読者はテストのみ
         bool PluginSlot(int slotNumber, OutContType devType);
 
-        // TODO(技術的負債・Phase6-Step6で再評価予定、2026-09-11時点): 上記 PluginSlot と同様、
-        // 呼出元0件（テストを除く）。実装は ControlService.DetachUnboundOutDev を経由するが、
-        // 実際のアンプラグは Global.ApplyProfile 経由の ControlService.UnplugOutDev
-        // （別経路のレガシーシム）で行われている。削除／実配線の判断はPhase6-Step6で行う。
+        // TODO(技術的負債・未接続の DI 契約・Phase6-Step10 §8 で接続予定): 上記 PluginSlot と同じ経緯・方針。
+        // 実装は ControlService.DetachUnboundOutDev を中継する。
         bool UnplugSlot(int slotNumber);
         bool LoadOutputSlots();
         bool SaveOutputSlots();

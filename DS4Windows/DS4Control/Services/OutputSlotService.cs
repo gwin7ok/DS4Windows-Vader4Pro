@@ -25,6 +25,10 @@ namespace DS4Windows
 
         public OutputSlotService(OutputSlotManager slotManager = null, IOutputSlotStore store = null, ControlService control = null)
         {
+            // TODO(技術的負債・Phase6-Step10 §8 で解消予定): ControlService を Program.rootHub（Service Locator 的な
+            // フォールバック）から取得している。ControlService は Func<IOutputSlotService> で本サービスへ依存しているため
+            // （Phase6-Step2 決定D1）、ControlService を直接コンストラクタ注入すると循環する。Func<ControlService> による
+            // 遅延解決、または仮想スロット操作用の出力ポートを導入して Pure DI 化する。
             _control = control ?? Program.rootHub;
             _slotManager = slotManager ?? _control?.OutputslotMan ?? new OutputSlotManager();
             _store = store ?? DS4WinWPF.AppHost.GetService<IOutputSlotStore>() ?? new OutputSlotStore();
@@ -104,8 +108,9 @@ namespace DS4Windows
             return _slotManager?.GetOutSlotDevice(slotNumber);
         }
 
-        // TODO(技術的負債・詳細は IOutputSlotService.PluginSlot のコメント参照):
-        // 呼出元0件（2026-09-11確認）。実際のホットスワップは別経路(ScpUtil.cs PostLoadSnippet)で実現。
+        // TODO(技術的負債・未接続の DI 契約・Phase6-Step10 §8 で接続予定。詳細は IOutputSlotService.PluginSlot のコメント参照):
+        // UI からの正式な入口として温存する（Phase6-Step6 決定1＝案R）。接続時に、ControlService.EventDispatcher への
+        // ディスパッチと、画面側と同じ事前条件（未接続かつ入力未割り当て）の確認を加えること。
         public bool PluginSlot(int slotNumber, OutContType devType)
         {
             if (slotNumber < 0 || slotNumber >= MAX_SLOTS) return false;
@@ -133,8 +138,9 @@ namespace DS4Windows
             }
         }
 
-        // TODO(技術的負債・詳細は IOutputSlotService.UnplugSlot のコメント参照):
-        // 呼出元0件（2026-09-11確認）。実際のホットスワップは別経路(ScpUtil.cs PostLoadSnippet)で実現。
+        // TODO(技術的負債・未接続の DI 契約・Phase6-Step10 §8 で接続予定。詳細は IOutputSlotService.PluginSlot のコメント参照):
+        // UI からの正式な入口として温存する（Phase6-Step6 決定1＝案R）。接続時に、ControlService.EventDispatcher への
+        // ディスパッチと、画面側と同じ事前条件（接続中かつ入力未割り当て）の確認を加えること。
         public bool UnplugSlot(int slotNumber)
         {
             if (slotNumber < 0 || slotNumber >= MAX_SLOTS) return false;
