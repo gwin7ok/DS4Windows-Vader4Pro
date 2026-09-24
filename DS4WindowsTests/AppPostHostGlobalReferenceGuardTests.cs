@@ -58,21 +58,8 @@ namespace DS4WindowsTests
             ["SetCulture"] = 1,
         };
 
-        // Step7-2 の時点で Application_Startup の Post-Host に残る参照（P7-12〜P7-25。Step7-3 で置き換える）。
-        private static readonly Dictionary<string, int> ExpectedStartupPostHost = new Dictionary<string, int>
-        {
-            ["SaveAsProfile"] = 1,
-            ["ProfilePath"] = 1,
-            ["OlderProfilePath"] = 1,
-            ["ResetConnectionFlags"] = 1,
-            ["LoadActions"] = 1,
-            ["CreateStdActions"] = 1,
-            ["UseLang"] = 3,
-            ["UseCurrentTheme"] = 2,
-            ["LoadLinkedProfiles"] = 1,
-            ["IsAdministrator"] = 1,
-            ["hidHideInstalled"] = 1,
-        };
+        // Application_Startup の Post-Host（P7-01〜P7-25）は、Step7-2・7-3 ですべて DI サービス経由に置き換えた。
+        private static readonly Dictionary<string, int> ExpectedStartupPostHost = new Dictionary<string, int>();
 
         private static readonly Dictionary<string, int> ExpectedCreateConfDirSkeleton = new Dictionary<string, int>();
 
@@ -82,10 +69,9 @@ namespace DS4WindowsTests
             ["appdatapath"] = 1,
         };
 
-        // Step7-2 の時点。P7-39（Save）は Step7-3 で置き換える。MAX_DS4_CONTROLLER_COUNT は const（E7-15）。
+        // P7-39（Save）は Step7-3 で置き換えた。残るのは const の MAX_DS4_CONTROLLER_COUNT（E7-15）だけ。
         private static readonly Dictionary<string, int> ExpectedCleanShutdown = new Dictionary<string, int>
         {
-            ["Save"] = 1,
             ["MAX_DS4_CONTROLLER_COUNT"] = 1,
         };
 
@@ -197,6 +183,22 @@ namespace DS4WindowsTests
             }.Sum(d => d.Values.Sum());
             int actualTotal = Regex.Matches(text, @"\bGlobal\.\w+").Count;
             Assert.Equal(expectedTotal, actualTotal);
+        }
+
+        [Fact]
+        public void RetainedGlobalReferences_HaveTodoComments()
+        {
+            // 温存を決めた箇所（決定3＝P1、決定4＝K）に、copilot-instructions.md §3.3 原則4 の TODO が付いていること。
+            string path = SourceFileLocator.Find(AppSourcePath);
+            if (path == null)
+            {
+                _output.WriteLine("App.xaml.cs が見つからないため検査を省略した。");
+                return;
+            }
+
+            string raw = File.ReadAllText(path);
+            Assert.Contains("TODO(Phase6-Step7 決定3＝P1)", raw);
+            Assert.Contains("TODO(Phase6-Step7 決定4＝K)", raw);
         }
 
         [Fact]

@@ -118,6 +118,11 @@ namespace DS4WinWPF
                 catch { }
                 AppLogger.LogDebug($"ApplyLanguageSetting requested: {cultureCode}");
                 CultureInfo culture = CultureInfo.GetCultureInfo(cultureCode);
+                // TODO(Phase6-Step7 決定4＝K): 意図的に Global を直接使う。このメソッドは Post-Host だけでなく、
+                // Pre-Host の --driverinstall 分岐（CheckOptions。DI サービスのフィールドはまだ null）と、
+                // App の外（LanguagePackControl → ApplyLanguageSettingPublic）からも呼ばれる共用ヘルパーのため、
+                // DI 経由と Global 経由の二重経路を作らない。SetCulture はスレッドのカルチャを設定するだけの静的ユーティリティ。
+                // Global の解体（Phase7）で、言語設定の適用処理ごと整理する。
                 DS4Windows.Global.UseLang = cultureCode;
                 DS4Windows.Global.SetCulture(cultureCode);
 
@@ -303,6 +308,12 @@ namespace DS4WinWPF
             threadComEvent = new EventWaitHandle(false, EventResetMode.ManualReset, SingleAppComEventName);
             CreateTempWorkerThread();
 
+            // Phase6-Step7: ここまでが Pre-Host 領域（明示的なホスト構築より前に実行される起動処理）。
+            // この領域と CheckOptions（--driverinstall 分岐を含む）の Global 参照（起動時ログローテーション・
+            // 設定の場所の決定・ViGEmBus 情報など）は、ブートストラップ処理として意図的に静的のまま温存する
+            // （Phase6-Step7-Plan.md §1.2・§2.5）。なお AppHost.GetService はホスト未構築時に暗黙に構築するため、
+            // --driverinstall 分岐の Global.Load() の時点でホストが作られる（同 §0.4）。
+            // DI サービスは、下の CreateControlService の直後に InitializePostHostServices で解決する。
             // フェーズ0-3: AppHost正式ルート
             try
             {
@@ -447,36 +458,40 @@ namespace DS4WinWPF
                 AppLogger.LogInfo("No config found. Creating default config");
                 AttemptSave();
 
-                DS4Windows.Global.SaveAsProfile(0, "Default");
+                _profileRepository.SaveAsProfile(0, "Default");
+                string[] profilePath = _profileRepository.ProfilePath;
+                string[] olderProfilePath = _profileRepository.OlderProfilePath;
                 for (int i = 0; i < DS4Windows.ControlService.MAX_DS4_CONTROLLER_COUNT; i++)
                 {
-                    DS4Windows.Global.ProfilePath[i] = DS4Windows.Global.OlderProfilePath[i] = "Default";
+                    profilePath[i] = olderProfilePath[i] = "Default";
                 }
 
                 AppLogger.LogInfo("Default config created");
             }
 
             // Reset first connection flags at startup
-            DS4Windows.Global.ResetConnectionFlags();
+            _deviceStateService.ResetConnectionFlags();
 
             skipSave = false;
 
-            if (!DS4Windows.Global.LoadActions())
+            // Phase6-Step7（決定2＝L2）: SpecialActionRepository.LoadActions は Step7-1 で Global.LoadActions と同じ動作
+            // （Actions.xml がなければ既定アクションを作って true）に是正済み。
+            if (!_specialActionRepository.LoadActions())
             {
-                DS4Windows.Global.CreateStdActions();
+                _specialActionRepository.CreateStandardActions();
             }
 
             // Have app use selected culture
-            SetUICulture(DS4Windows.Global.UseLang);
-            ApplyLanguageSetting(DS4Windows.Global.UseLang);
-            AppLogger.LogInfo($"Effective UI culture after initialization: CurrentUICulture={Thread.CurrentThread.CurrentUICulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, UseLang={DS4Windows.Global.UseLang}");
+            SetUICulture(_appSettingsService.UseLang);
+            ApplyLanguageSetting(_appSettingsService.UseLang);
+            AppLogger.LogInfo($"Effective UI culture after initialization: CurrentUICulture={Thread.CurrentThread.CurrentUICulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, UseLang={_appSettingsService.UseLang}");
 
-            DS4Windows.AppThemeChoice themeChoice = DS4Windows.Global.UseCurrentTheme;
-            ChangeTheme(DS4Windows.Global.UseCurrentTheme, false);
+            DS4Windows.AppThemeChoice themeChoice = _appearanceSettingsService.UseCurrentTheme;
+            ChangeTheme(_appearanceSettingsService.UseCurrentTheme, false);
             // Diagnostic: log culture state after applying theme to detect theme-induced localization regressions
             AppLogger.LogDebug($"Post-ChangeTheme: LocalizeDictionary={LocalizeDictionary.Instance.Culture}, SetCurrentThreadCulture={LocalizeDictionary.Instance.SetCurrentThreadCulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, CurrentUICulture={Thread.CurrentThread.CurrentUICulture}");
 
-            DS4Windows.Global.LoadLinkedProfiles();
+            _profileRepository.LoadLinkedProfiles();
             DS4Forms.MainWindow window = new DS4Forms.MainWindow(parser);
             MainWindow = window;
             window.IsInitialShow = true;
@@ -491,10 +506,10 @@ namespace DS4WinWPF
 
             window.CheckMinStatus();
 
-            bool runningAsAdmin = DS4Windows.Global.IsAdministrator();
+            bool runningAsAdmin = _environmentService.IsAdministrator();
             DS4Windows.Program.rootHub.LogDebug($"Running as {(runningAsAdmin ? "Admin" : "User")}");
 
-            if (DS4Windows.Global.hidHideInstalled)
+            if (_environmentService.HidHideInstalled)
             {
                 DS4Windows.Program.rootHub.CheckHidHidePresence();
             }
@@ -1041,7 +1056,10 @@ namespace DS4WinWPF
 
                 if (!skipSave)
                 {
-                    DS4Windows.Global.Save();
+                    // skipSave が false になるのは Application_Startup の Post-Host（InitializePostHostServices の後）だけなので、
+                    // ここでは _appSettingsService は必ず解決済み。CleanShutdown はホスト構築前の早期終了・例外でも呼ばれるため、
+                    // 念のため null 条件演算子で保護する（その場合は skipSave が true のままで、ここへは来ない）。
+                    _appSettingsService?.Save();
                 }
 
                 // Reset timer

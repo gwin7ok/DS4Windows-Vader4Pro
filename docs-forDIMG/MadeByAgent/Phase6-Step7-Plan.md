@@ -2,7 +2,7 @@
 
 作成日: 2026-09-11  
 改訂日: 2026-09-24（Step7-0: Step6 完了後に現行コードと突き合わせ、参照台帳を再作成。旧改訂: 2026-09-18）  
-状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 実装済み（ユーザーのビルド・テスト確認待ち）。Step7-3 以降は未着手**  
+状態: **Step7-0 完了。決定1〜6 はすべてユーザー決定済み（2026-09-24、§4.0）。Step7-1 完了（2026-09-24、コミット `c2cebab2`）。Step7-2 完了（2026-09-24、コミット `81f57801`・`2df5d661`）。Step7-3 実装済み（ユーザーのビルド・テスト確認待ち）。実機確認は Step7-3 の後にまとめて実施。Step7-4 以降は未着手**  
 対象ブランチ: `For-DI-migration-work`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
 準拠指針: `.github/copilot-instructions.md`（§2.1〜2.4、§3.1、§3.3、§3.4）、`docs-forDIMG/DI-App-Wide-Migration-Plan.md` §4.5、§5.5  
@@ -353,7 +353,7 @@
     - 1 回の呼び出しごとの割り当てなら 20000 バイト以上になるはずで、784 バイトは計測区間の途中で**一度だけ**起きた割り当て（階層型 JIT・OSR による再コンパイル等、ランタイム側の一過性の処理）と考えられる。新しいテストクラスの追加で xUnit の実行順序とタイミングが変わり、表面化したとみられる。
     - 修正: 同クラスの 3 テストの計測を、ヘルパー `MeasureMinAllocatedBytes`（最大 3 回計測して最小値を採る）に置き換えた。呼び出しごとの割り当てはどの計測回にも現れるため、検出力は落ちない。本番コードは変更していない。
 
-### Step7-2: サービス保持と、起動前半・初回起動補助の置き換え【実装済み・ビルド・テスト確認待ち（2026-09-24）】
+### Step7-2: サービス保持と、起動前半・初回起動補助の置き換え【完了（2026-09-24、ビルド・テストビルド・テスト実行成功、コミット `81f57801`。xUnit2013 の警告は `2df5d661` で解消。実機確認は Step7-3 の後にまとめて実施）】
 - §3.2 のフィールドと `InitializePostHostServices()` を追加する。
 - P7-01〜P7-11（起動前半）と P7-26〜P7-37（`CreateConfDirSkeleton`／`AttemptSave`）を置き換える。
 - P7-38 は決定3＝P1 に従い、`Global.appdatapath = null` のまま温存して TODO を付ける。
@@ -370,10 +370,19 @@
   - 実機確認: §6.1 の 1・2・6、§6.2 の 8〜10（起動・ログ・終了時の保存と、Pre-Host の非変更の確認）。初回起動（§6.3）は Step7-3 の後にまとめて行う。
   - 挙動の同一性: `Global.Save()`／`Load()` は元から `IAppSettingsService` への委譲、`exeversion`／`DeviceOptions`／`firstRun`／`UseLang`／`appDataPpath`／`multisavespots` は同じ `Global` の値を返す委譲、`exeFileName` は定義式と同じ `Path.GetFileName(Global.exelocation)`。`AppDataPath` のゲッターは `Global.appdatapath` が空のとき `AppContext.BaseDirectory` を返すが、置き換えた箇所では必ず設定済み（§0.5）。
 
-### Step7-3: 起動後半・終了処理の置き換えと TODO
+### Step7-3: 起動後半・終了処理の置き換えと TODO【実装済み・ビルド・テスト確認待ち（2026-09-25）】
 - P7-12〜P7-25、P7-39 を置き換える（P7-16 は決定2＝L2 により `_specialActionRepository.LoadActions()` へ置き換える）。
 - 温存する箇所（決定3 の P7-38、決定4 の E7-13〜E7-14）に、`copilot-instructions.md` §3.3 原則4 の TODO コメント（理由、経緯、解消予定の Phase）を付ける。Pre-Host の 12 件には、境界の説明コメントを 1 箇所（298 行付近）に付ける。
 - `AppPostHostGlobalReferenceGuardTests` を最終形（Post-Host の `Global.` 参照は温存を決めた箇所だけ）に更新する。
+- **実装結果（2026-09-25 実装、ユーザーのビルド・テスト確認待ち）**:
+  - 置き換え 15 件: P7-12〜P7-15（既定プロファイルの作成、`ProfilePath`／`OlderProfilePath`、初回接続フラグ）、P7-16〜P7-17（`_specialActionRepository.LoadActions()`／`CreateStandardActions()`。決定2＝L2）、P7-18〜P7-22（言語 3 件、テーマ 2 件）、P7-23〜P7-25（リンクプロファイルの読み込み、管理者権限、HidHide）、P7-39（`CleanShutdown` の保存）。
+    - `ProfilePath`／`OlderProfilePath` は、同じ配列をループの外で 1 回だけ取得して書き込む（`Global` 側と同一の配列インスタンス）。
+    - `CleanShutdown` の保存は `_appSettingsService?.Save()`。`skipSave` が `false` になるのは `InitializePostHostServices` の後だけなので、実際には常に解決済み。ホスト構築前の早期終了・例外でも `CleanShutdown` は呼ばれるため、念のため null 条件演算子で保護した（理由をコメントに記載）。
+    - DI 版の `SpecialActionRepository` は `BackingStore` を DI から受け取らない（未登録）ため、`Global.store` を使う。`Global.LoadActions()` と同じ実体を読み書きする。
+  - TODO コメント（`copilot-instructions.md` §3.3 原則4）: `ApplyLanguageSetting` の 2 件に `TODO(Phase6-Step7 決定4＝K)`（共用ヘルパーである理由、Phase7 で整理）。P7-38 の `TODO(Phase6-Step7 決定3＝P1)` は Step7-2 で付与済み。Pre-Host 領域には、明示的なホスト構築の直前に境界の説明コメントを 1 箇所付けた（コードは変更していない）。
+  - この時点の `Global.` 参照は **16 件**（温存 15 件＝Pre-Host 12、共用ヘルパー 2、const 1 ＋ P7-38）。Post-Host の `Application_Startup`、`CreateConfDirSkeleton` の `Global` 参照は 0 件。
+  - テスト（更新）: `AppPostHostGlobalReferenceGuardTests.cs` の期待値を最終形に更新（`Application_Startup` の Post-Host は 0 件、`CleanShutdown` は const の 1 件だけ）。温存箇所の TODO の存在を確認するテスト `RetainedGlobalReferences_HaveTodoComments` を追加（計 4 件）。
+  - 実機確認: §6 の項目（Step7-2 の分と合わせて、ユーザーがまとめて実施）。
 
 ### Step7-4: `-virtualkbm` の回帰の是正（決定5＝案 A）
 - §3.4 の 1 行を変更する。
