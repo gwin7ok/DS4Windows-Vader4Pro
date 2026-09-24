@@ -1,4 +1,4 @@
 # プロジェクト指示書
 
 プロジェクトの基本規約やコーディングガイドラインについては、以下のファイルを必ず読み込んで従うこと：
-- `.github/copilot-instructions.md`
+- @.github/copilot-instructions.md
