@@ -28,7 +28,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 | :--- | :--- | :---: | :--- |
 | **Step 2** | `ControlService.cs` | 66箇所 | Pure DIコンストラクタ拡張、ホットパスゼロアロケーション維持、KBMライフサイクル集約、循環依存回避 |
 | **Step 3** | `Mapping.cs` | 10箇所 | **案A採用**: 局所的引数渡し（10件）＋ 超高頻度ホットパス（101件）のPhase7完全引き継ぎ台帳化 |
-| **Step 4** | `Mouse.cs`, `MouseCursor.cs`, `MouseWheel.cs` | 73箇所 | **推奨案採用**: Pure DIコンストラクタ引数注入 ＋ `MouseWheel.cs`（6件）正式統合、1000Hzホットパス保護 |
+| **Step 4** | `Mouse.cs`, `MouseCursor.cs`, `MouseWheel.cs` | 81行（2026-09-24 に現行コードから再集計。**完了**） | **採用**: Pure DIコンストラクタ引数注入（フォールバックなしの必須引数）＋ `MouseWheel.cs`（6行）正式統合、1000Hzホットパス保護。契約の追加なし |
 | **Step 5** | `OutputSlotService.cs` / `MainWindow.xaml.cs` | 8箇所 | **選択肢B採用**: 孤立配列 `_deviceTypes[]` 完全撤廃、出力デバイス三態SSOT台帳確立、UDP診断是正 |
 | **Step 6** | `ProfileEditor.xaml.cs` / `IOutputSlotService` | 4箇所 | **案1採用**: マッピング一覧機種表示追従バグ是正 ＋ 呼出元0件負債API非推奨化 ＋ 実働ホットスワップ温存 |
 | **Step 7** | `App.xaml.cs` | 32箇所 | **選択肢1採用**: Pre-Host領域（11件）厳格保護 ＋ Post-Host Composition Root解決 ＋ 既存サービス集約 |
@@ -58,7 +58,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 ├─ Phase6-Step3: Mapping.cs の局所的引数渡し ＆ Phase7引き継ぎ台帳化（実装10箇所 / 引き継ぎ101箇所）
 
 ── [ドメイン2: 信号出力層] ──
-├─ Phase6-Step4: Mouse系（Mouse / MouseCursor / MouseWheel）のPure DI化（73箇所）
+├─ Phase6-Step4: Mouse系（Mouse / MouseCursor / MouseWheel）のPure DI化（81行、2026-09-24 完了）
 ├─ Phase6-Step5: OutputSlotService の全面SSOT統合 ＆ 孤立配列完全撤廃（8箇所）
 └─ Phase6-Step6: ProfileEditor 出力切替表示追従バグ是正 ＆ 負債API安全整理（4箇所）
 

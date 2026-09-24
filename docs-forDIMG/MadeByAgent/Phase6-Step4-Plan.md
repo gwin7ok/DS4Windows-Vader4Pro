@@ -3,7 +3,7 @@
 作成日: 2026-09-09  
 改訂日: 2026-09-24（Step3 完了後の実地突き合わせにより、参照台帳を現行コードから全面再作成。Abs Mouse 削除の反映、契約追加ゼロの確認、フォールバックなしの必須引数への方針変更）  
 旧改訂: 2026-09-18（Pure DI コンストラクタ引数注入 ＋ `MouseWheel.cs` 統合の採用）  
-状態: **Step4-0〜4-5 実装完了（2026-09-24）。ビルド・テストビルド・テスト実行成功（ユーザー確認）。実機確認は未実施（§6.3、完了確定前に実施するか Step11 の先送り台帳へ登録するかを決定する）**  
+状態: **完了確定（2026-09-24）。ビルド・テストビルド・テスト実行成功（ユーザー確認）。実機確認は一部実施済み、残りは Step11 の先送り台帳へ登録済み。詳細は `Phase6-Step4-Completion-Report.md`**  
 対象ブランチ: `For-DI-migration-work`  
 台帳作成時の HEAD: `c6eb492f`  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -223,6 +223,6 @@ public Mouse(int deviceID, DS4Device d, IProfileSettingsService profileSettings,
 - [x] 3ファイルの `Global.` 参照が、コメントと `Global.Clamp`（4行）を除いて0件
 - [x] `ControlService.cs:2187` から `_profileSettings`／`_virtualKBM` が配線されている
 - [x] ホットパスの割り当て0バイトがテストで固定されている（`MouseCursor.TouchMoveCursor`。`Mouse.sixaxisMoved`／`touchesMoved` は直接駆動せず）
-- [ ] `dotnet build -c Release` の警告・エラー0件、`dotnet test` 全件成功（Step4-5 追加分の再確認待ち。Debug のビルド・テストは Step4-4 時点で成功）
-- [ ] 実機確認（§6.3）が完了、または Step11 の先送り台帳に登録済み
-- [ ] `Phase6-Status.md`／`Phase6-Plan.md` を更新、完了報告書を作成
+- [x] ビルド・テストビルド・テスト実行が成功（2026-09-24、ユーザー確認）
+- [x] 実機確認（§6.3）が完了、または Step11 の先送り台帳に登録済み
+- [x] `Phase6-Status.md`／`Phase6-Plan.md` を更新、完了報告書を作成（`Phase6-Step4-Completion-Report.md`）

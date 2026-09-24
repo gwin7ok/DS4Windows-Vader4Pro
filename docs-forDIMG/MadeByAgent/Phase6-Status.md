@@ -15,7 +15,7 @@
 | **Step 1** | 詳細監査と対象確定 | ソリューション全域 | 762参照走査 | **完了** | `Phase6-Step1-Completion-Summary.md` | 2026-09-18 |
 | **Step 2** | `ControlService.cs` 解体 | `ControlService.cs` | 66箇所 | **完了（66/66 ID）** | `Phase6-Step2-Plan.md` | PR-1〜6 完了（2026-09-20）。完了確認は計画書 付録C・B.12 |
 | **Step 3** | `Mapping.cs` 段階的引数渡し | `Mapping.cs` | 0箇所（2026-09-24 再集計。Step3-1〜3-6完了、Step3-3は対象消滅、Step3-7実装済み。残るのはTODO付き温存3件のみ） | Step3-1・Step3-2・Step3-4・Step3-5・Step3-6a・Step3-6b・Step3-6c完了（ビルド・テスト・実機確認済み）、**Step3-3は対象消滅（§6.8）**、**Step3-7実装済み（温存3件へのTODO付与、K-1採用、using static見送りを確定。ビルド・テスト確認待ち）** | `Phase6-Step3-Plan.md`、`Phase6-Step3-Reality-Check-Ledger.md` | Step3-1〜3-6完了、Step3-7実装済み（ユーザーのビルド・テスト確認後にStep3完了確定） |
-| **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | Step4 実装完了・実機確認待ち | `Phase6-Step4-Plan.md` | Step4-0〜4-5 実装済み（2026-09-24） |
+| **Step 4** | マウスエミュレーション系 DI化 | `Mouse*.cs` (3ファイル) | 81行（2026-09-24 再集計） | **完了（2026-09-24）** | `Phase6-Step4-Plan.md`、`Phase6-Step4-Completion-Report.md` | Step4-0〜4-5 完了（実機確認の残りは Step11 へ先送り） |
 | **Step 5** | OutputSlotService SSOT統合 | `OutputSlotService.cs` 等 | 8箇所 | 計画確定・承認待ち | `Phase6-Step5-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 6** | 出力切替UI表示追従・負債整理 | `ProfileEditor.xaml.cs` 等 | 4箇所 | 計画確定・承認待ち | `Phase6-Step6-Plan.md` | 未着手 (PR-1〜3) |
 | **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 32箇所 (11保護) | 計画確定・承認待ち | `Phase6-Step7-Plan.md` | 未着手 (PR-1〜4) |
@@ -128,8 +128,8 @@
   - **未検証事項**: この環境にはdotnetがなく、`dotnet build`／`dotnet test`は実行できていない。ユーザー側でビルド・テストビルド・テスト実行を確認してからコミットすること。コメント追加のみで実行コードの変更はないため実機確認は必須ではないが、念のため通常のプロファイル切替動作の確認が望ましい。
 ---
 
-### Phase6-Step4: マウスエミュレーション系のPure DI化【実装完了・実機確認待ち】
-- **進捗率**: **Step4-0〜4-5 実装完了（2026-09-24）。Step4-4 時点でビルド・テストビルド・テスト実行成功（ユーザー確認）。Step4-5 追加テストの再確認と実機確認が未了**
+### Phase6-Step4: マウスエミュレーション系のPure DI化【完了】
+- **進捗率**: **100%（Step4-0〜4-5、2026-09-24 完了確定）。ビルド・テストビルド・テスト実行とも成功し、コミットしてリモートリポジトリへ反映済み。実機確認は一部実施済み（残りは Step11 の先送り台帳に登録）。完了報告書: `Phase6-Step4-Completion-Report.md`**
 - **実装結果**: `MouseWheel`（6行）・`MouseCursor`（19行）・`Mouse`（56行）を Pure DI 化（フォールバックなし）。`ControlService.cs` の生成箇所を配線。残る `Global.` は `Global.Clamp` の4行（除外）のみ。契約の追加なし。詳細は `Phase6-Step4-Plan.md` の「実装結果」。
 - **実機確認（2026-09-24）**: タッチパッドのマウス移動・タップ・クリック、ジャイロマウス、2 本指スクロールは問題なし。その他の項目は Step11 へ先送り。
 - **持ち越し K4-3（新規・既存仕様の問題）**: コントローラー横の Edit ボタンでプロファイルを開くと、編集内容が保存前に接続中のコントローラーへ即時反映される（Output Mode を Mouse にした瞬間にポインタが動く等）。編集画面を「編集用の作業スロット（`TEST_PROFILE_INDEX`）で編集し、保存・適用時にコントローラーへ反映する」仕様へ変更する（ユーザー承認済み。編集中のリアルタイム確認は廃止し、ライトバー色プレビューとランブルテストは残す）。新設の **Step7b**（`Phase6-Step7b-Plan.md`）で対応する。
