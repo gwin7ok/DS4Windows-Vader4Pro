@@ -412,6 +412,7 @@ Step4 の実機確認中に、次の問題が見つかった。
   - 実機確認の前に、ユーザーから Save／Apply の仕様（§2A 決定8）が示され、上記の「適用は `ApplyProfileToSlot(targetDevice, …)`」が仕様に反することが分かったため、修正した。
   - `ExecuteSaveOrApply`: `isApply` による分岐と `ApplyProfileToSlot(targetDevice, …)`・その 3 種のログを削除。Save・Apply 共通で `[ProfileEditor] Save|Apply: profile '名前' saved; re-applying to controller slot(s) that use it (targetDevice=N)` をログに出し、`ProfileSaved` を通知する。`ProfileEditor` からコントローラーのスロットへ直接適用する箇所はなくなった。
   - `ProfileEditorTargetDeviceGuardTests.cs`: 適用の検査を `ProfileEditor_SaveAndApplyBothDelegateReapplyToMainWindow`（`ExecuteSaveOrApply`・`ProfileEditor` 全体に `ApplyProfileToSlot(` がないこと、`ProfileSaved` の通知が 1 箇所で分岐なしであること、Save は閉じて Apply は閉じないこと）に置き換え、`MainWindow_ReappliesOnlyToSlotsUsingTheSavedProfile`（`Editor_ProfileSaved` → `SyncProfileListAndControllers` が、プロファイル名が一致するスロットにだけ `ApplyProfileToSlot` すること）を追加（計 9 件）。
+- **範囲外の追加修正（2026-09-26、実機確認中のユーザー決定）**: マクロ記録画面（`RecordBox`）の右下のボタンのうち、**Add Rumble／Change Lightbar Color** は、記録中かつ Record Delays にチェックがあるときだけ表示されていた（2019-12-18 の上流取り込み `906946a7` からの条件。理由の記録なし。開始と終了の間に Wait を入れるためと推測）。ユーザー決定により、Record Delays の条件を撤廃し、**4th/5th Mouse Button と同じく「記録中だけ表示」**にした（`RecordBox.xaml.cs` の `RecordBtn_Click`）。Record Delays がオフの場合、開始と終了のステップの間に Wait が入らないため、必要に応じて記録後に Insert Wait やダブルクリックで待ち時間を調整する。ソース走査ガード `RecordBoxExtraButtonsVisibilityGuardTests.cs`（新規、1 件）を追加。検討の過程で見つけた関連事項（本 Step では変えない）: (1) 第 4・第 5 マウスボタンの「Stop 時に終了ステップを自動で足す」処理は、判定に使う `Toggle4thMouse`／`Toggle5thMouse` がどこでも true にならず動いていない、(2) マクロ再生の終了処理（`Mapping.EndMacro`）は、押したままのボタン・ライトバー・振動を元に戻さないため、終了ステップのないマクロは再生後もその状態が続く。
 
 ### Step7b-4: 文書・実機確認・完了報告
 - **文書**: `Phase6-Status.md`（§1 の表、Step7b の節、§5、§6.5 に観察事項）、`Phase6-Plan.md`（Step7b の記載を §0.2・§1・§2 に追加。§1A.1-11）、`Phase6-Step8-Plan.md`（冒頭に「Step7b からの申し送り」を追加。`ProfileEditor.xaml.cs` の行番号と、`ExecuteSaveOrApply`・`CancelBtn_Click`・`Reload` の内容が変わるため、Step8-0 の台帳は Step7b 後の内容で作り直すこと）、モデル図 03・04（決定3＝M1）。`copilot-instructions.md` の変更は不要。
@@ -448,7 +449,8 @@ Step4 の実機確認中に、次の問題が見つかった。
 7. ランブルテスト（Rumble の Light／Heavy のテストボタン）で、そのコントローラーが振動する。Inverse Rumble Motors のチェックを変えてすぐテストし、左右が入れ替わる（決定4＝I1）。
 8. ライトバー色のプレビュー: Lightbar タブで色を選ぶダイアログを開いている間、実機の色が変わり、閉じると元に戻る。
 9. Controls タブのボタン設定画面（BindingWindow）のテストランブルと、Extra 欄の色選択中のライトバープレビュー。
-10. BindingWindow の **Record A Macro** で、マクロのライトバー色ステップを選ぶ間のプレビュー。記録中はそのコントローラーのタッチパッドでマウスが動かない（Passthru）こと、記録画面を閉じると元に戻ること（決定1＝A）。
+10. BindingWindow の **Record A Macro** で、ライトバー色ステップの色を選ぶ間のプレビュー（決定1＝A）。手順（`RecordBox.xaml.cs` で確認）: 「記録」を押す → 右下の **Change Lightbar Color** を押す（一覧に `Lightbar Color: 255,255,255` が入る）→ もう一度押す（`Reset Lightbar` が入る）→ 「Stop」→ 一覧の `Lightbar Color: …` をダブルクリックして色選択画面を開く。色選択画面を開いている間、Edit ボタンのコントローラーのライトバーが選んだ色になり、閉じると元に戻ること。確認後は「キャンセル」で閉じる。
+    - タッチパッドの Passthru: Record A Macro 画面を**開いている間**（記録中に限らない。ViewModel の生成時に設定し、保存・キャンセルで戻す）、そのコントローラーのタッチパッドがマウス操作にならないこと、閉じると元に戻ること。タッチパッドの出力が Mouse のプロファイルで確認すると分かりやすい。
 11. Special Actions タブで Check Battery アクションを編集し、空・満充電の色選択中にライトバーがプレビューされる（決定1＝A）。
 12. Controller Readings タブ: そのコントローラーの入力が表示され、編集中のデッドゾーン等を変えると、出力側の表示が変わる（保存しなくても画面上で確認できる）。
 13. マッピング一覧の「for readout」をチェックし、コントローラーのボタンを押すと、その割り当てが選ばれる。
