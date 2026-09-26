@@ -2,7 +2,7 @@
 
 作成日: 2026-09-24  
 改訂日: 2026-09-26（着手前再確認。現行コード［HEAD `360cb75b`］との突き合わせ、台帳の再作成、決定事項の追加、マイクロステップと実機確認項目の改訂。同日、決定1〜7 を確定）  
-状態: 計画書作成済み、Step7b-0（事前調査）完了（2026-09-24）、着手前再確認完了（2026-09-26）、決定1〜7 確定（2026-09-26、すべて推奨案）、**Step7b-1 実装済み（2026-09-26、ユーザーのビルド・テスト確認待ち）**  
+状態: 計画書作成済み、Step7b-0（事前調査）完了（2026-09-24）、着手前再確認完了（2026-09-26）、決定1〜7 確定（2026-09-26、すべて推奨案）、Step7b-1 完了（2026-09-26）、**Step7b-2 実装済み（2026-09-26、ユーザーのビルド・テスト確認待ち）**  
 対象ブランチ: `For-DI-migration-work`  
 位置づけ: Step7（`App.xaml.cs` Post-Host DI化）と Step8（`ProfileEditor.xaml.cs` の段階的MVVM移設）の間に挿入する独立ステップ。  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -306,7 +306,7 @@ Step4 の実機確認中に、次の問題が見つかった。
 - **結果6（プロファイル名）**: 既存プロファイルの編集では `profileNameTxt.IsEnabled = false`（`ProfileEditor.xaml.cs:1110`）。名前は変わらない。
 - **追加の発見（設計への影響）**: `ProfileSettingsViewModel` は `IViewModelFactory.CreateProfileSettingsViewModel(int device)`（`DI/IViewModelFactory.cs:11`、実装 `ViewModelFactory.cs:25`、テスト `PatternCViewModelTests.cs:86`）経由で生成される。`targetDevice` を渡すため、この契約に引数を追加する（決定2・3）。
 
-### Step7b-1: `ProfileSettingsViewModel` と `IViewModelFactory` の拡張（挙動の変化なし）【実装済み（2026-09-26）、ビルド・テスト確認待ち】
+### Step7b-1: `ProfileSettingsViewModel` と `IViewModelFactory` の拡張（挙動の変化なし）【完了（2026-09-26、ビルド・テストビルド・テスト実行成功、コミット・リモート反映済み）】
 - **変更**:
   - `ProfileSettingsViewModel`: コンストラクタの末尾に `int targetDevice = -1` を追加。`TargetDevice` プロパティを追加。`FuncDevNum = targetDevice >= 0 ? targetDevice : 0`。ライトバー強制色 3 メソッド（C4）を `targetDevice` に付け替え。
   - `IViewModelFactory.CreateProfileSettingsViewModel(int device, int targetDevice = -1)` と `ViewModelFactory`（`[DI]` Trace ログに `targetDevice` を付け足す。決定6）。
@@ -323,9 +323,9 @@ Step4 の実機確認中に、次の問題が見つかった。
   - **挙動の同一性**: Edit ボタン経由（`device`＝コントローラー番号）は `targetDevice = device` となり、`FuncDevNum` とライトバーの対象は従来と同じ。一覧経由（`device`＝8）は `targetDevice = −1` となり、`FuncDevNum = 0`、ライトバーのプレビューなしで従来と同じ。
   - **テスト**: `ProfileSettingsViewModelTargetDeviceTests.cs`（新規、6 件。編集スロットと `targetDevice` の分離、−1 と省略時のコントローラー0へのフォールバック、範囲外の値を「実機なし」として扱うこと、強制色が `targetDevice` にだけ効くこと、−1 では何もしないこと。`DS4LightBar` の静的配列と `Global.outDevTypeTemp[8]` を保存・復元し、`Global.ProfileSettingsServiceInstance` は差し替えない）。`PatternCViewModelTests.cs`（既存テストに省略時 −1 の確認を追加し、実際の DI ホストから解決したファクトリで `targetDevice` が届くことを確認するテストを 1 件追加）。
   - モデル図・`ServiceRegistration.cs` は未変更（モデル図は 7b-4 で更新）。テスト用の `IViewModelFactory` のモックは存在しない（§1A.2 D3）。
-  - **未検証事項**: この環境では `dotnet build`／`dotnet test` を実行していない。ユーザー側でビルド・テストビルド・テスト実行を確認する。
+  - **検証結果（2026-09-26）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。挙動の変化がないため実機確認は省略。
 
-### Step7b-2: サブ画面への `targetDevice` の受け渡し（挙動の変化なし）
+### Step7b-2: サブ画面への `targetDevice` の受け渡し（挙動の変化なし）【実装済み（2026-09-26）、ビルド・テスト確認待ち】
 - **前提**: 決定1＝A（サブ画面まですべて付け替え）、決定2＝P1（画面は必須引数、VM・ファクトリは省略可能）。
 - **変更**:
   - `BindingWindowViewModel`: コンストラクタ末尾に `int targetDevice = -1`。ライトバー強制色 3 メソッドを `targetDevice` に付け替え。`TargetDevice` プロパティを追加。
@@ -340,6 +340,17 @@ Step4 の実機確認中に、次の問題が見つかった。
   - `RecordBoxViewModelTargetDeviceTests`（新規）: `targetDevice >= 0` のとき `TouchOutMode[targetDevice]` が Passthru になり、`RevertControlsSettings` で元に戻ること。編集スロットの `TouchOutMode` は変えないこと。−1 のときはどのスロットも変えないこと。ライトバー強制色も同様。
   - `PatternCViewModelTests`（更新）: `CreateRecordBoxViewModel` へ `targetDevice` が届くこと。既存テストの `TouchOutMode[0]` の後始末漏れは、`targetDevice` を渡さない（−1）ことで解消される旨をコメントに残す。
 - **実機確認**: 不要（挙動の変化なし）。
+- **実装結果（2026-09-26）**:
+  - `BindingWindowViewModel.cs`: 読み取り専用 `targetDevice`・`TargetDevice`、公開の判定 `HasTargetDevice`（`targetDevice >= 0 && < CURRENT_DS4_CONTROLLER_LIMIT`）を追加。コンストラクタ末尾に `int targetDevice = -1`。ライトバー強制色 3 メソッドを `targetDevice` に付け替え。ボタン名表記用の `outDevTypeTemp[deviceNum]` は編集スロットのまま。
+  - `BindingWindow.xaml.cs`: コンストラクタを `(int deviceNum, DS4ControlSettings settings, int targetDevice, ExposeMode expose = Full)` に変更（必須引数。旧シグネチャの呼び出しは `ExposeMode`／`SpecialAction` 等が `int` に変換できずコンパイルエラーになる）。`TestRumbleBtn_Click` は `bindingVM.HasTargetDevice` のとき `DS4Controllers[bindingVM.TargetDevice]` を鳴らし、左右反転は `Global.InverseRumbleMotors[bindingVM.DeviceNum]`（編集スロット）を読む。`RecordMacroBtn_Click` は `targetDevice` を `RecordBox` へ渡す。
+  - `RecordBoxViewModel.cs`: `targetDevice`・`TargetDevice`・private の `HasTargetDevice`、フラグ `touchpadModeOverridden` を追加。コンストラクタ末尾に `int targetDevice = -1`。記録中のタッチパッド Passthru は、実機があるときだけ `TouchOutMode[targetDevice]` に設定し、`RevertControlsSettings` は設定した場合だけ元に戻す（2 回目以降は何もしない。従来は 2 回呼ぶと `TouchOutMode` が `None` になる潜在的な問題があった）。ライトバー強制色 3 メソッドを `targetDevice` に付け替え。`ProcessDS4Tick` のコントローラー0固定は未変更（§1A.5 観察1）。
+  - `IViewModelFactory.CreateRecordBoxViewModel(…, int targetDevice = -1)` と `ViewModelFactory`（`[DI]` Trace ログに `targetDevice` を付け足し）。
+  - `RecordBox.xaml.cs`: コンストラクタを `(int deviceNum, DS4ControlSettings, bool shift, int targetDevice, bool showscan = true, bool repeatable = true)` に変更（必須）。ファクトリ・レガシー生成の両方へ渡す。`RecordBoxWindow.xaml.cs`: `(int deviceNum, DS4ControlSettings, int targetDevice, bool repeatable = true)` に変更（必須）。
+  - `SpecialActionEditor.xaml.cs`: コンストラクタを `(int deviceNum, ProfileList, int targetDevice, SpecialAction specialAction = null)` に変更（必須）。`targetDevice` と private の `HasTargetDevice` を追加。バッテリー確認の色プレビューは、実機があるときだけ `checkBatteryVM.*ForcedColor(…, targetDevice)` を呼ぶ（`CheckBatteryViewModel` は変更なし。−1 をそのまま渡すと添字 −1 で例外になるため呼び出し側で判定）。`RecordBoxWindow` 4 箇所・`BindingWindow` 1 箇所へ `targetDevice` を渡す。
+  - `ProfileEditor.xaml.cs`: フィールド `targetDevice`（既定 −1）と、暫定値を返す `InterimTargetDeviceFor(int device)`（7b-3 で削除する旨の TODO 付き）を追加し、コンストラクタと `Reload` で設定。7b-1 のコンストラクタ内の暫定変数はこのフィールドに置き換えた。`BindingWindow` 生成 7 箇所・`SpecialActionEditor` 生成 2 箇所へ `targetDevice` を渡す。7b-3 では、このフィールドの設定元を `MainWindow` から渡される値に変えるだけで済む。
+  - **挙動の同一性**: Edit ボタン経由は `targetDevice`＝編集スロット＝コントローラー番号で、実機に触れる処理の対象は従来と同じ。一覧経由は `targetDevice = −1` で、従来も `deviceNum`（8）が範囲外のため動いていなかった処理が、同じく動かない。唯一の違いは、一覧経由のマクロ記録で、従来は編集スロット 8 の `TouchOutMode` を一時的に Passthru にして戻していた処理がなくなること（編集スロット 8 のタッチパッドは実機がなく、記録にも使われないため、見た目の変化はない）。
+  - **テスト**: `BindingWindowViewModelTargetDeviceTests.cs`（新規、5 件）、`RecordBoxViewModelTargetDeviceTests.cs`（新規、5 件。独立した `BackingStore` を使い、Passthru が実機のスロットにだけ設定されて元に戻ること、`RevertControlsSettings` を 2 回呼んでも値を壊さないこと、実機なしでは何も変えないこと、強制色の対象）、`PatternCViewModelTests.cs`（`CreateRecordBoxViewModel` の既存テストに省略時 −1 の確認を追加し、実際の DI ホストから解決したファクトリで `targetDevice` が届き Passthru が実機のスロットに設定・復元されることを確認するテストを 1 件追加）。既存テストの `TouchOutMode[0]` の後始末漏れ（§1A.2 F2）は、省略時に Passthru を設定しなくなったことで解消。
+  - **未検証事項**: この環境では `dotnet build`／`dotnet test` を実行していない。ユーザー側でビルド・テストビルド・テスト実行を確認する。
 
 ### Step7b-3: 編集スロットの固定と保存・適用・キャンセルの整理（主目的）
 - **変更**:

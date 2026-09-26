@@ -150,6 +150,9 @@ namespace DS4WinWPF.DS4Forms
         }
 
         private int deviceNum;
+        // Phase6-Step7b: ランブルテスト・ライトバーのプレビュー・校正・マクロ記録などで使う実機のスロット番号。
+        // -1 は「実機なし」（プロファイル一覧から開いた場合）。設定の読み書き先 deviceNum とは別に持つ
+        private int targetDevice = -1;
         private ProfileSettingsViewModel profileSettingsVM;
         private readonly DS4Windows.DI.IProfileRepository profileRepository;
         private readonly DS4Windows.Actions.IProfileSwitcher profileSwitcher;
@@ -285,17 +288,14 @@ namespace DS4WinWPF.DS4Forms
 
             deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;
-            // TODO(Phase6-Step7b-3): 暫定値。Step7b-1 の時点では編集スロットがまだ device のため、
-            // 実機（targetDevice）は「device がコントローラースロットならそれ、そうでなければ実機なし（-1）」とし、
-            // 従来と同じ判定結果にする。Step7b-3 で MainWindow から渡される targetDevice に置き換える
-            int interimTargetDevice = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : -1;
+            targetDevice = InterimTargetDeviceFor(device);
             var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
             if (vmFactory != null)
-                profileSettingsVM = vmFactory.CreateProfileSettingsViewModel(device, interimTargetDevice);
+                profileSettingsVM = vmFactory.CreateProfileSettingsViewModel(device, targetDevice);
             else
             {
                 DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=ProfileEditor, viewModel=ProfileSettingsViewModel");
-                profileSettingsVM = new ProfileSettingsViewModel(device, targetDevice: interimTargetDevice);
+                profileSettingsVM = new ProfileSettingsViewModel(device, targetDevice: targetDevice);
             }
             picBoxHover.Visibility = Visibility.Hidden;
             picBoxHover2.Visibility = Visibility.Hidden;
@@ -1092,6 +1092,17 @@ namespace DS4WinWPF.DS4Forms
             App.logHolder?.Logger?.Debug($"[PopulateHoverImages] loaded hoverImages count={hoverImages.Count}");
         }
 
+        /// <summary>
+        /// TODO(Phase6-Step7b-3): 暫定の実機番号。Step7b-1・7b-2 の時点では編集スロットがまだ device（Edit ボタン経由では
+        /// コントローラーのスロット、一覧経由では TEST_PROFILE_INDEX）のため、実機（targetDevice）は
+        /// 「device がコントローラースロットならそれ、そうでなければ実機なし（-1）」とし、従来と同じ判定結果にする。
+        /// Step7b-3 で、MainWindow から渡される targetDevice に置き換えて本メソッドを削除する。
+        /// </summary>
+        private static int InterimTargetDeviceFor(int device)
+        {
+            return device >= 0 && device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : -1;
+        }
+
         public void Reload(int device, ProfileEntity profile = null)
         {
             profileSettingsTabCon.DataContext = null;
@@ -1100,6 +1111,7 @@ namespace DS4WinWPF.DS4Forms
             lightbarRect.DataContext = null;
 
             deviceNum = device;
+            targetDevice = InterimTargetDeviceFor(device);
 
             if (profile != null)
             {
@@ -1292,7 +1304,7 @@ namespace DS4WinWPF.DS4Forms
         private void HoverConBtn_Click(object sender, RoutedEventArgs e)
         {
             MappedControl mpControl = mappingListVM.Mappings[mappingListVM.SelectedIndex];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -1817,7 +1829,7 @@ namespace DS4WinWPF.DS4Forms
         {
             baseSpeActPanel.Visibility = Visibility.Collapsed;
             ProfileList profList = (Application.Current.MainWindow as MainWindow).ProfileListHolder;
-            SpecialActionEditor actEditor = new SpecialActionEditor(deviceNum, profList, null);
+            SpecialActionEditor actEditor = new SpecialActionEditor(deviceNum, profList, targetDevice, null);
             specialActionDockPanel.Children.Add(actEditor);
             actEditor.Visibility = Visibility.Visible;
             actEditor.Cancel += (sender2, args) =>
@@ -1854,7 +1866,7 @@ namespace DS4WinWPF.DS4Forms
                 //SpecialActionItem item = specialActionsVM.ActionCol[currentIndex];
                 baseSpeActPanel.Visibility = Visibility.Collapsed;
                 ProfileList profList = (Application.Current.MainWindow as MainWindow).ProfileListHolder;
-                SpecialActionEditor actEditor = new SpecialActionEditor(deviceNum, profList, item.SpecialAction);
+                SpecialActionEditor actEditor = new SpecialActionEditor(deviceNum, profList, targetDevice, item.SpecialAction);
                 specialActionDockPanel.Children.Add(actEditor);
                 actEditor.Visibility = Visibility.Visible;
                 actEditor.Cancel += (sender2, args) =>
@@ -2075,7 +2087,7 @@ namespace DS4WinWPF.DS4Forms
         private void ShowControlBindingWindow()
         {
             MappedControl mpControl = mappingListVM.Mappings[mappingListVM.SelectedIndex];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2139,7 +2151,7 @@ namespace DS4WinWPF.DS4Forms
             Button btn = sender as Button;
             DS4Controls control = (DS4Controls)Convert.ToInt32(btn.Tag);
             MappedControl mpControl = mappingListVM.ControlMap[control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2266,7 +2278,7 @@ namespace DS4WinWPF.DS4Forms
             Button btn = sender as Button;
             DS4Controls control = (DS4Controls)Convert.ToInt32(btn.Tag);
             MappedControl mpControl = mappingListVM.ControlMap[control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2336,7 +2348,7 @@ namespace DS4WinWPF.DS4Forms
 
             //DS4ControlSettings setting = Global.getDS4CSetting(tag, ds4control);
             MappedControl mpControl = mappingListVM.ControlMap[ds4control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2377,7 +2389,7 @@ namespace DS4WinWPF.DS4Forms
             Button btn = sender as Button;
             DS4Controls control = (DS4Controls)Convert.ToInt32(btn.Tag);
             MappedControl mpControl = mappingListVM.ControlMap[control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2410,7 +2422,7 @@ namespace DS4WinWPF.DS4Forms
 
             //DS4ControlSettings setting = Global.getDS4CSetting(tag, ds4control);
             MappedControl mpControl = mappingListVM.ControlMap[ds4control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();

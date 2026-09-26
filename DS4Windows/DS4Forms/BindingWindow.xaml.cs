@@ -59,14 +59,20 @@ namespace DS4WinWPF.DS4Forms
             Keyboard,
         }
 
-        public BindingWindow(int deviceNum, DS4Windows.DS4ControlSettings settings,
+        /// <param name="deviceNum">設定を読み書きするスロット（プロファイル編集画面では編集用の作業スロット）</param>
+        /// <param name="settings">編集対象のボタン設定</param>
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: ランブルテスト・ライトバーのプレビュー・マクロ記録で使う実機のスロット番号。-1 は実機なし。
+        /// 渡し忘れをコンパイルで検出するため必須引数とする（Phase6-Step7b-Plan.md 決定2）
+        /// </param>
+        public BindingWindow(int deviceNum, DS4Windows.DS4ControlSettings settings, int targetDevice,
             ExposeMode expose = ExposeMode.Full)
         {
             InitializeComponent();
 
             controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? DS4Windows.Program.rootHub;
             this.expose = expose;
-            bindingVM = new BindingWindowViewModel(deviceNum, settings);
+            bindingVM = new BindingWindowViewModel(deviceNum, settings, targetDevice);
 
             if (settings.control != DS4Windows.DS4Controls.None)
             {
@@ -855,16 +861,17 @@ namespace DS4WinWPF.DS4Forms
 
         private void TestRumbleBtn_Click(object sender, RoutedEventArgs e)
         {
-            int deviceNum = bindingVM.DeviceNum;
-            if (deviceNum < DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            // Phase6-Step7b: 振動させるのは実機（targetDevice）。モーターの左右反転は、編集中の設定
+            // （編集スロット DeviceNum）の値を読む（Phase6-Step7b-Plan.md 決定4 と同じ考え方）
+            if (bindingVM.HasTargetDevice)
             {
-                DS4Windows.DS4Device d = controlService.DS4Controllers[deviceNum];
+                DS4Windows.DS4Device d = controlService.DS4Controllers[bindingVM.TargetDevice];
                 if (d != null)
                 {
                     if (!bindingVM.RumbleActive)
                     {
                         bindingVM.RumbleActive = true;
-                        if (Global.InverseRumbleMotors[deviceNum])
+                        if (Global.InverseRumbleMotors[bindingVM.DeviceNum])
                             d.setRumble((byte)Math.Min(255, bindingVM.ActionBinding.HeavyRumble),
                                 (byte)Math.Min(255, bindingVM.ActionBinding.LightRumble));
                         else
@@ -928,7 +935,7 @@ namespace DS4WinWPF.DS4Forms
         private void RecordMacroBtn_Click(object sender, RoutedEventArgs e)
         {
             RecordBox box = new RecordBox(bindingVM.DeviceNum, bindingVM.Settings,
-                bindingVM.ActionBinding.IsShift());
+                bindingVM.ActionBinding.IsShift(), bindingVM.TargetDevice);
             box.Visibility = Visibility.Visible;
             mapBindingPanel.Visibility = Visibility.Collapsed;
             extrasSidePanel.Visibility = Visibility.Collapsed;

@@ -108,13 +108,31 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         /// Needed to revert output control to Touchpad later
         /// </summary>
         private TouchpadOutMode oldTouchpadMode = TouchpadOutMode.None;
+        /// <summary>
+        /// Phase6-Step7b: 記録中の Passthru を実機（targetDevice）に設定したか。設定した場合だけ元に戻す
+        /// </summary>
+        private bool touchpadModeOverridden;
         private readonly IProfileSettingsService profileSettingsService;
         private readonly ControlService controlService;
 
+        // Phase6-Step7b: 設定の読み書き先（DeviceNum＝編集スロット）とは別に、ライトバーのプレビューと
+        // 記録中のタッチパッド Passthru で実際に使うコントローラーのスロット番号を持つ。-1 は「実機なし」。
+        // 詳細は docs-forDIMG/MadeByAgent/Phase6-Step7b-Plan.md §2.1
+        private readonly int targetDevice;
+        public int TargetDevice { get => targetDevice; }
+
+        /// <summary>
+        /// 実機（targetDevice）が指定され、かつ有効なコントローラースロットの範囲内であるか。
+        /// </summary>
+        private bool HasTargetDevice =>
+            targetDevice >= 0 && targetDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
         public RecordBoxViewModel(int deviceNum, DS4ControlSettings controlSettings, bool shift, bool repeatable = true,
             IProfileSettingsService profileSettingsService = null,
-            ControlService controlService = null)
+            ControlService controlService = null,
+            int targetDevice = -1)
         {
+            this.targetDevice = targetDevice;
             this.profileSettingsService = profileSettingsService ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
             this.controlService = controlService ?? Program.rootHub;
 
@@ -164,8 +182,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             // Temporarily use Passthru mode for Touchpad. Store old TouchOutMode.
             // Don't conflict Touchpad Click with default output Mouse button controls
-            oldTouchpadMode = this.profileSettingsService.TouchOutMode[deviceNum];
-            this.profileSettingsService.TouchOutMode[deviceNum] = TouchpadOutMode.Passthru;
+            // Phase6-Step7b: 対象は実機（targetDevice）のタッチパッド。編集スロットの設定は変えない。
+            // 実機なし（-1）の場合は何もしない
+            if (HasTargetDevice)
+            {
+                oldTouchpadMode = this.profileSettingsService.TouchOutMode[targetDevice];
+                this.profileSettingsService.TouchOutMode[targetDevice] = TouchpadOutMode.Passthru;
+                touchpadModeOverridden = true;
+            }
         }
 
         private void CreateKeyDownOverrides()
@@ -361,35 +385,36 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             macroSteps.Insert(index, item);
         }
 
+        // Phase6-Step7b: ライトバー強制色のプレビューは、編集スロット（DeviceNum）ではなく実機（targetDevice）に対して行う
         public void StartForcedColor(Color color)
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
                 DS4Color dcolor = new DS4Color() { red = color.R, green = color.G, blue = color.B };
-                DS4LightBar.forcedColor[deviceNum] = dcolor;
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = true;
+                DS4LightBar.forcedColor[targetDevice] = dcolor;
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = true;
             }
         }
 
         public void EndForcedColor()
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
-                DS4LightBar.forcedColor[deviceNum] = new DS4Color(0, 0, 0);
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = false;
+                DS4LightBar.forcedColor[targetDevice] = new DS4Color(0, 0, 0);
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = false;
             }
         }
 
         public void UpdateForcedColor(Color color)
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
                 DS4Color dcolor = new DS4Color() { red = color.R, green = color.G, blue = color.B };
-                DS4LightBar.forcedColor[deviceNum] = dcolor;
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = true;
+                DS4LightBar.forcedColor[targetDevice] = dcolor;
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = true;
             }
         }
 
@@ -436,7 +461,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         /// </summary>
         public void RevertControlsSettings()
         {
-            profileSettingsService.TouchOutMode[deviceNum] = oldTouchpadMode;
+            // Phase6-Step7b: コンストラクタで実機（targetDevice）に Passthru を設定した場合だけ元に戻す。
+            // Save と Cancel の両方から呼ばれ得るため、2 回目以降は何もしない
+            if (touchpadModeOverridden)
+            {
+                profileSettingsService.TouchOutMode[targetDevice] = oldTouchpadMode;
+                touchpadModeOverridden = false;
+            }
             oldTouchpadMode = TouchpadOutMode.None;
         }
     }

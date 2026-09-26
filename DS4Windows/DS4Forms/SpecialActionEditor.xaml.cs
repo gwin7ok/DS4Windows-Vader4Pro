@@ -51,10 +51,25 @@ namespace DS4WinWPF.DS4Forms
         public delegate void SaveHandler(object sender, string actionName);
         public event SaveHandler Saved;
 
-        public SpecialActionEditor(int deviceNum, ProfileList profileList,
+        // Phase6-Step7b: 設定の読み書き先（specialActVM.DeviceNum＝編集スロット）とは別に、バッテリー確認の
+        // 色プレビューと、ここから開くボタン設定画面・マクロ記録で使う実機のスロット番号を持つ。-1 は「実機なし」。
+        // 詳細は docs-forDIMG/MadeByAgent/Phase6-Step7b-Plan.md §2.1
+        private readonly int targetDevice;
+
+        /// <summary>実機（targetDevice）が指定され、かつ有効なコントローラースロットの範囲内であるか。</summary>
+        private bool HasTargetDevice =>
+            targetDevice >= 0 && targetDevice < DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
+        /// <param name="deviceNum">設定を読み書きするスロット（プロファイル編集画面では編集用の作業スロット）</param>
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: 実機のスロット番号。-1 は実機なし。
+        /// 渡し忘れをコンパイルで検出するため必須引数とする（Phase6-Step7b-Plan.md 決定2）
+        /// </param>
+        public SpecialActionEditor(int deviceNum, ProfileList profileList, int targetDevice,
             DS4Windows.SpecialAction specialAction = null)
         {
             InitializeComponent();
+            this.targetDevice = targetDevice;
 
             triggerBoxes = new List<CheckBox>()
             {
@@ -411,7 +426,7 @@ namespace DS4WinWPF.DS4Forms
         private void RecordMacroBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = macroActVM.PrepareSettings();
-            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings);
+            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, targetDevice);
             recordWin.Saved += (sender2, args) =>
             {
                 macroActVM.Macro.Clear();
@@ -434,13 +449,14 @@ namespace DS4WinWPF.DS4Forms
             dialog.Owner = Application.Current.MainWindow;
             Color tempcolor = checkBatteryVM.EmptyColor;
             dialog.colorPicker.SelectedColor = tempcolor;
-            checkBatteryVM.StartForcedColor(tempcolor, specialActVM.DeviceNum);
+            // Phase6-Step7b: 色のプレビューは実機（targetDevice）に対して行う。実機なしなら何もしない
+            if (HasTargetDevice) checkBatteryVM.StartForcedColor(tempcolor, targetDevice);
             dialog.ColorChanged += (sender2, color) =>
             {
-                checkBatteryVM.UpdateForcedColor(color, specialActVM.DeviceNum);
+                if (HasTargetDevice) checkBatteryVM.UpdateForcedColor(color, targetDevice);
             };
             dialog.ShowDialog();
-            checkBatteryVM.EndForcedColor(specialActVM.DeviceNum);
+            if (HasTargetDevice) checkBatteryVM.EndForcedColor(targetDevice);
             checkBatteryVM.EmptyColor = dialog.colorPicker.SelectedColor.GetValueOrDefault();
         }
 
@@ -450,20 +466,21 @@ namespace DS4WinWPF.DS4Forms
             dialog.Owner = Application.Current.MainWindow;
             Color tempcolor = checkBatteryVM.FullColor;
             dialog.colorPicker.SelectedColor = tempcolor;
-            checkBatteryVM.StartForcedColor(tempcolor, specialActVM.DeviceNum);
+            // Phase6-Step7b: 色のプレビューは実機（targetDevice）に対して行う。実機なしなら何もしない
+            if (HasTargetDevice) checkBatteryVM.StartForcedColor(tempcolor, targetDevice);
             dialog.ColorChanged += (sender2, color) =>
             {
-                checkBatteryVM.UpdateForcedColor(color, specialActVM.DeviceNum);
+                if (HasTargetDevice) checkBatteryVM.UpdateForcedColor(color, targetDevice);
             };
             dialog.ShowDialog();
-            checkBatteryVM.EndForcedColor(specialActVM.DeviceNum);
+            if (HasTargetDevice) checkBatteryVM.EndForcedColor(targetDevice);
             checkBatteryVM.FullColor = dialog.colorPicker.SelectedColor.GetValueOrDefault();
         }
 
         private void MultiTapTrigBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = multiActButtonVM.PrepareTapSettings();
-            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, false);
+            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, targetDevice, false);
             recordWin.Saved += (sender2, args) =>
             {
                 multiActButtonVM.TapMacro.Clear();
@@ -477,7 +494,7 @@ namespace DS4WinWPF.DS4Forms
         private void MultiHoldTapTrigBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = multiActButtonVM.PrepareHoldSettings();
-            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, false);
+            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, targetDevice, false);
             recordWin.Saved += (sender2, args) =>
             {
                 multiActButtonVM.HoldMacro.Clear();
@@ -491,7 +508,7 @@ namespace DS4WinWPF.DS4Forms
         private void MultiDoubleTapTrigBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = multiActButtonVM.PrepareDoubleTapSettings();
-            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, false);
+            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, targetDevice, false);
             recordWin.Saved += (sender2, args) =>
             {
                 multiActButtonVM.DoubleTapMacro.Clear();
@@ -521,7 +538,7 @@ namespace DS4WinWPF.DS4Forms
         private void PressKeySelectBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = pressKeyVM.PrepareSettings();
-            BindingWindow window = new BindingWindow(specialActVM.DeviceNum, settings,
+            BindingWindow window = new BindingWindow(specialActVM.DeviceNum, settings, targetDevice,
                 BindingWindow.ExposeMode.ForPressToggle);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();

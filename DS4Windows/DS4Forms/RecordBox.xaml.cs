@@ -58,17 +58,22 @@ namespace DS4WinWPF.DS4Forms
         // 動作は完全に同一（フォールバック先が同じProgram.rootHubのため）で、実行時の挙動に変化はない。
         private readonly DS4Windows.ControlService controlService;
 
-        public RecordBox(int deviceNum, DS4Windows.DS4ControlSettings controlSettings, bool shift, bool showscan = true, bool repeatable = true)
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: ライトバーのプレビューと記録中のタッチパッド Passthru で使う実機のスロット番号。-1 は実機なし。
+        /// 渡し忘れをコンパイルで検出するため必須引数とする（Phase6-Step7b-Plan.md 決定2）
+        /// </param>
+        public RecordBox(int deviceNum, DS4Windows.DS4ControlSettings controlSettings, bool shift, int targetDevice,
+            bool showscan = true, bool repeatable = true)
         {
             controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? DS4Windows.Program.rootHub;
             InitializeComponent();
             var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
             if (vmFactory != null)
-                recordBoxVM = vmFactory.CreateRecordBoxViewModel(deviceNum, controlSettings, shift, repeatable);
+                recordBoxVM = vmFactory.CreateRecordBoxViewModel(deviceNum, controlSettings, shift, repeatable, targetDevice);
             else
             {
                 DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=RecordBox, viewModel=RecordBoxViewModel");
-                recordBoxVM = new RecordBoxViewModel(deviceNum, controlSettings, shift, repeatable);
+                recordBoxVM = new RecordBoxViewModel(deviceNum, controlSettings, shift, repeatable, targetDevice: targetDevice);
             }
             mouseButtonsPanel.Visibility = Visibility.Hidden;
             extraConPanel.Visibility = Visibility.Hidden;

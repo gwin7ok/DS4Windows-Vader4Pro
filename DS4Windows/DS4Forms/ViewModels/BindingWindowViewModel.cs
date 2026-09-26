@@ -51,9 +51,23 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public bool RumbleActive { get => rumbleActive; set => rumbleActive = value; }
         public DS4ControlSettings Settings { get => settings; }
 
-        public BindingWindowViewModel(int deviceNum, DS4ControlSettings settings)
+        // Phase6-Step7b: 設定の読み書き先（DeviceNum＝編集スロット）とは別に、ランブルテスト・ライトバーの
+        // プレビューで実際に使うコントローラーのスロット番号を持つ。-1 は「実機なし」
+        // （プロファイル一覧から開いた場合）。詳細は docs-forDIMG/MadeByAgent/Phase6-Step7b-Plan.md §2.1
+        private readonly int targetDevice;
+        public int TargetDevice { get => targetDevice; }
+
+        /// <summary>
+        /// 実機（targetDevice）が指定され、かつ有効なコントローラースロットの範囲内であるか。
+        /// Phase6-Step7b: 実機に触れる処理はこの判定を使う（編集スロット DeviceNum ではない）。
+        /// </summary>
+        public bool HasTargetDevice =>
+            targetDevice >= 0 && targetDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
+        public BindingWindowViewModel(int deviceNum, DS4ControlSettings settings, int targetDevice = -1)
         {
             this.deviceNum = deviceNum;
+            this.targetDevice = targetDevice;
             use360Mode = Global.outDevTypeTemp[deviceNum] == OutContType.X360;
             this.settings = settings;
             currentOutBind = new OutBinding();
@@ -165,35 +179,36 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             shiftOutBind.WriteBind(settings);
         }
 
+        // Phase6-Step7b: ライトバー強制色のプレビューは、編集スロット（DeviceNum）ではなく実機（targetDevice）に対して行う
         public void StartForcedColor(Color color)
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
                 DS4Color dcolor = new DS4Color() { red = color.R, green = color.G, blue = color.B };
-                DS4LightBar.forcedColor[deviceNum] = dcolor;
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = true;
+                DS4LightBar.forcedColor[targetDevice] = dcolor;
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = true;
             }
         }
 
         public void EndForcedColor()
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
-                DS4LightBar.forcedColor[deviceNum] = new DS4Color(0, 0, 0);
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = false;
+                DS4LightBar.forcedColor[targetDevice] = new DS4Color(0, 0, 0);
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = false;
             }
         }
 
         public void UpdateForcedColor(Color color)
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
                 DS4Color dcolor = new DS4Color() { red = color.R, green = color.G, blue = color.B };
-                DS4LightBar.forcedColor[deviceNum] = dcolor;
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = true;
+                DS4LightBar.forcedColor[targetDevice] = dcolor;
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = true;
             }
         }
     }

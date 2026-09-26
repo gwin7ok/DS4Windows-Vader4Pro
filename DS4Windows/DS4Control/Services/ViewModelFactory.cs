@@ -29,11 +29,11 @@ namespace DS4Windows
             return new ProfileSettingsViewModel(device, _profileSettings, targetDevice: targetDevice);
         }
 
-        public RecordBoxViewModel CreateRecordBoxViewModel(int device, DS4ControlSettings controlSettings, bool recordMacro = true, bool extraHold = false)
+        public RecordBoxViewModel CreateRecordBoxViewModel(int device, DS4ControlSettings controlSettings, bool recordMacro = true, bool extraHold = false, int targetDevice = -1)
         {
             if (AppLogger.IsTraceEnabled)
-                AppLogger.LogTrace($"[DI] ViewModelFactory: Created RecordBoxViewModel for Device {device}");
-            return new RecordBoxViewModel(device, controlSettings, recordMacro, extraHold);
+                AppLogger.LogTrace($"[DI] ViewModelFactory: Created RecordBoxViewModel for Device {device}, targetDevice {targetDevice}");
+            return new RecordBoxViewModel(device, controlSettings, recordMacro, extraHold, targetDevice: targetDevice);
         }
 
         public SpecialActEditorViewModel CreateSpecialActEditorViewModel(int device, SpecialAction action = null)

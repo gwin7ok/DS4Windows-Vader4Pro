@@ -127,8 +127,55 @@ namespace DS4WindowsTests
             Assert.NotNull(factory);
 
             var settings = new DS4ControlSettings(DS4Controls.Cross);
+            // Phase6-Step7b-2: targetDevice を省略（-1＝実機なし）するため、以前のように
+            // TouchOutMode[0] を Passthru にしたまま戻さない副作用は起きない
             var vm = factory.CreateRecordBoxViewModel(0, settings, true, false);
             Assert.NotNull(vm);
+            Assert.Equal(-1, vm.TargetDevice);
+        }
+
+        /// <summary>
+        /// Phase6-Step7b-2: 実際の DI ホストから解決したファクトリ経由でも、targetDevice が RecordBoxViewModel に届き、
+        /// 記録中のタッチパッド Passthru が実機のスロットに設定され、RevertControlsSettings で元に戻ること
+        /// （Phase6-Status.md K7-1 の教訓により、アプリと同じ AppHost.GetService の経路で確認する）。
+        /// </summary>
+        [Fact]
+        public void ViewModelFactory_PassesTargetDevice_ToRecordBoxViewModel()
+        {
+            DS4WinWPF.AppHost.CreateHost();
+
+            var factory = DS4WinWPF.AppHost.GetService<IViewModelFactory>();
+            Assert.NotNull(factory);
+            var profileSettings = DS4WinWPF.AppHost.GetService<IProfileSettingsService>();
+            Assert.NotNull(profileSettings);
+
+            // CURRENT_DS4_CONTROLLER_LIMIT は 4 または 8 のため、どちらでも範囲内の 1 を使う
+            const int targetSlot = 1;
+            TouchpadOutMode savedTargetMode = profileSettings.TouchOutMode[targetSlot];
+            TouchpadOutMode savedEditSlotMode = profileSettings.TouchOutMode[Global.TEST_PROFILE_INDEX];
+            RecordBoxViewModel vm = null;
+            try
+            {
+                profileSettings.TouchOutMode[targetSlot] = TouchpadOutMode.Mouse;
+                profileSettings.TouchOutMode[Global.TEST_PROFILE_INDEX] = TouchpadOutMode.Mouse;
+
+                vm = factory.CreateRecordBoxViewModel(Global.TEST_PROFILE_INDEX,
+                    new DS4ControlSettings(DS4Controls.Cross), true, false, targetSlot);
+                Assert.NotNull(vm);
+                Assert.Equal(Global.TEST_PROFILE_INDEX, vm.DeviceNum);
+                Assert.Equal(targetSlot, vm.TargetDevice);
+                Assert.Equal(TouchpadOutMode.Passthru, profileSettings.TouchOutMode[targetSlot]);
+                Assert.Equal(TouchpadOutMode.Mouse, profileSettings.TouchOutMode[Global.TEST_PROFILE_INDEX]);
+
+                vm.RevertControlsSettings();
+                Assert.Equal(TouchpadOutMode.Mouse, profileSettings.TouchOutMode[targetSlot]);
+            }
+            finally
+            {
+                vm?.RevertControlsSettings();
+                profileSettings.TouchOutMode[targetSlot] = savedTargetMode;
+                profileSettings.TouchOutMode[Global.TEST_PROFILE_INDEX] = savedEditSlotMode;
+            }
         }
 
         [Fact]
