@@ -413,6 +413,12 @@ Step4 の実機確認中に、次の問題が見つかった。
   - `ExecuteSaveOrApply`: `isApply` による分岐と `ApplyProfileToSlot(targetDevice, …)`・その 3 種のログを削除。Save・Apply 共通で `[ProfileEditor] Save|Apply: profile '名前' saved; re-applying to controller slot(s) that use it (targetDevice=N)` をログに出し、`ProfileSaved` を通知する。`ProfileEditor` からコントローラーのスロットへ直接適用する箇所はなくなった。
   - `ProfileEditorTargetDeviceGuardTests.cs`: 適用の検査を `ProfileEditor_SaveAndApplyBothDelegateReapplyToMainWindow`（`ExecuteSaveOrApply`・`ProfileEditor` 全体に `ApplyProfileToSlot(` がないこと、`ProfileSaved` の通知が 1 箇所で分岐なしであること、Save は閉じて Apply は閉じないこと）に置き換え、`MainWindow_ReappliesOnlyToSlotsUsingTheSavedProfile`（`Editor_ProfileSaved` → `SyncProfileListAndControllers` が、プロファイル名が一致するスロットにだけ `ApplyProfileToSlot` すること）を追加（計 9 件）。
 - **範囲外の追加修正（2026-09-26、実機確認中のユーザー決定）**: マクロ記録画面（`RecordBox`）の右下のボタンのうち、**Add Rumble／Change Lightbar Color** は、記録中かつ Record Delays にチェックがあるときだけ表示されていた（2019-12-18 の上流取り込み `906946a7` からの条件。理由の記録なし。開始と終了の間に Wait を入れるためと推測）。ユーザー決定により、Record Delays の条件を撤廃し、**4th/5th Mouse Button と同じく「記録中だけ表示」**にした（`RecordBox.xaml.cs` の `RecordBtn_Click`）。Record Delays がオフの場合、開始と終了のステップの間に Wait が入らないため、必要に応じて記録後に Insert Wait やダブルクリックで待ち時間を調整する。ソース走査ガード `RecordBoxExtraButtonsVisibilityGuardTests.cs`（新規、1 件）を追加。検討の過程で見つけた関連事項（本 Step では変えない）: (1) 第 4・第 5 マウスボタンの「Stop 時に終了ステップを自動で足す」処理は、判定に使う `Toggle4thMouse`／`Toggle5thMouse` がどこでも true にならず動いていない、(2) マクロ再生の終了処理（`Mapping.EndMacro`）は、押したままのボタン・ライトバー・振動を元に戻さないため、終了ステップのないマクロは再生後もその状態が続く。
+- **範囲外の追加修正 2（2026-09-26、§4-12 の実機確認中のユーザー決定）**: Controller Readings のデッドゾーンの円（赤い円）が、スティックの Dead Zone を▲で増やしても入力欄からフォーカスが外れるまで更新されない（▼で減らしたときと、別のタブへ切り替えたときは更新される）既存の問題があった。
+  - 原因: スティックの Dead Zone の入力欄 4 つ（`ProfileEditor.xaml` の `LSDeadZone`／`RSDeadZone`、`AxialStickUserControl.xaml` の `DeadZoneX`／`DeadZoneY`）が `UpdateSourceTrigger=LostFocus` で、フォーカスが外れるまで設定へ書き込まれず、円を描き直す変更通知も出ない。2020-04-12 の上流コミット `56dd7b9b`（issue #1150、デッドゾーン値の丸めの追加）から。Six Axis の Dead Zone（`SXDeadZone`／`SZDeadZone`）は指定がなく、即時に反映される。▼だけ即時に反映される理由は特定できていない（Xceed `DoubleUpDown` の内部の動きと推測）。Step7b 前の Edit ボタン経由でも同じ動作で、Step7b の回帰ではない。
+  - 修正: 4 つの入力欄から `,UpdateSourceTrigger=LostFocus` を削除した（経緯の XAML コメント付き）。スティックのデッドゾーンは内部で 0〜127 の整数に丸めて保存するため、キーボードで直接打ち込む途中で表示が丸めた値に変わる可能性がある（最終的な保存値は従来と同じ）。Step7b により書き込み先は作業スロットなので、途中の値がコントローラーに反映されることはない。ほかに `LostFocus` を使う入力欄（27 箇所）は変更していない。
+  - テスト: `StickDeadZoneBindingGuardTests.cs`（新規、4 件の Theory。4 つの入力欄が `Value="{Binding プロパティ名}"` で、`UpdateSourceTrigger=LostFocus` を含まないこと）。
+  - 実機確認: ▲▼のどちらでも赤い円が即時に変わること、キーボードでの直接入力（例: 0.25、0.05、全消去してからの入力）で使いにくくならないこと、保存・適用後の値が入力した値（小数第 2 位）と一致すること。
+- **§4-12 の判定（2026-09-26）**: Controller Readings が作業スロット（編集中の設定）で計算されることを、入力欄からフォーカスを外した後の出力値と円で確認し、合格とした。円の表示の遅れは上記「範囲外の追加修正 2」で扱う。
 
 ### Step7b-4: 文書・実機確認・完了報告
 - **文書**: `Phase6-Status.md`（§1 の表、Step7b の節、§5、§6.5 に観察事項）、`Phase6-Plan.md`（Step7b の記載を §0.2・§1・§2 に追加。§1A.1-11）、`Phase6-Step8-Plan.md`（冒頭に「Step7b からの申し送り」を追加。`ProfileEditor.xaml.cs` の行番号と、`ExecuteSaveOrApply`・`CancelBtn_Click`・`Reload` の内容が変わるため、Step8-0 の台帳は Step7b 後の内容で作り直すこと）、モデル図 03・04（決定3＝M1）。`copilot-instructions.md` の変更は不要。
@@ -452,7 +458,7 @@ Step4 の実機確認中に、次の問題が見つかった。
 10. BindingWindow の **Record A Macro** で、ライトバー色ステップの色を選ぶ間のプレビュー（決定1＝A）。手順（`RecordBox.xaml.cs` で確認）: 「記録」を押す → 右下の **Change Lightbar Color** を押す（一覧に `Lightbar Color: 255,255,255` が入る）→ もう一度押す（`Reset Lightbar` が入る）→ 「Stop」→ 一覧の `Lightbar Color: …` をダブルクリックして色選択画面を開く。色選択画面を開いている間、Edit ボタンのコントローラーのライトバーが選んだ色になり、閉じると元に戻ること。確認後は「キャンセル」で閉じる。
     - タッチパッドの Passthru: Record A Macro 画面を**開いている間**（記録中に限らない。ViewModel の生成時に設定し、保存・キャンセルで戻す）、そのコントローラーのタッチパッドがマウス操作にならないこと、閉じると元に戻ること。タッチパッドの出力が Mouse のプロファイルで確認すると分かりやすい。
 11. Special Actions タブで Check Battery アクションを編集し、空・満充電の色選択中にライトバーがプレビューされる（決定1＝A）。
-12. Controller Readings タブ: そのコントローラーの入力が表示され、編集中のデッドゾーン等を変えると、出力側の表示が変わる（保存しなくても画面上で確認できる）。
+12. Controller Readings タブ: そのコントローラーの入力が表示され、編集中のデッドゾーン等を変えると、出力側の表示が変わる（保存しなくても画面上で確認できる）。**合格（2026-09-26）**。スティックの Dead Zone を▲▼で変えたとき、デッドゾーンの円が即時に変わること（範囲外の追加修正 2 の確認）。
 13. マッピング一覧の「for readout」をチェックし、コントローラーのボタンを押すと、その割り当てが選ばれる。
 
 ### 4.5 校正

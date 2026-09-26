@@ -389,7 +389,8 @@
                                                         </Grid.RowDefinitions>
 
                                                         <Label Content="{lex:Loc DeadZone}" ContentStringFormat="{}{0}:" Grid.Row="0" Grid.Column="0" />
-                                                        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding LSDeadZone,UpdateSourceTrigger=LostFocus}" FormatString="F2" MinWidth="50" Grid.Row="0" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
+                                                        <!-- 2026-09-26: UpdateSourceTrigger=LostFocus を撤廃（Six Axis の Dead Zone と同じく即時に設定へ書き込み、Controller Readings の円を即時に更新する。Phase6-Step7b-Plan.md の範囲外の追加修正） -->
+                                                        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding LSDeadZone}" FormatString="F2" MinWidth="50" Grid.Row="0" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
                                                    Margin="{StaticResource spaceMargin}" />
 
                                                         <Label Content="{lex:Loc MaxZone}" ContentStringFormat="{}{0}:" Grid.Row="1" Grid.Column="0" />
@@ -698,7 +699,8 @@
                                                         </Grid.RowDefinitions>
 
                                                         <Label Content="{lex:Loc DeadZone}" ContentStringFormat="{}{0}:" Grid.Row="0" Grid.Column="0" />
-                                                        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding RSDeadZone,UpdateSourceTrigger=LostFocus}" FormatString="F2" MinWidth="50" Grid.Row="0" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
+                                                        <!-- 2026-09-26: UpdateSourceTrigger=LostFocus を撤廃（LS と同じ。Phase6-Step7b-Plan.md の範囲外の追加修正） -->
+                                                        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding RSDeadZone}" FormatString="F2" MinWidth="50" Grid.Row="0" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
                                                    Margin="{StaticResource spaceMargin}" />
 
                                                         <Label Content="{lex:Loc MaxZone}" ContentStringFormat="{}{0}:" Grid.Row="1" Grid.Column="0" />
