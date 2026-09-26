@@ -1844,7 +1844,7 @@ Suspend support not enabled.", true);
             if (profilesListBox.SelectedIndex >= 0)
             {
                 ProfileEntity entity = profileListHolder.ProfileListCol[profilesListBox.SelectedIndex];
-                ShowProfileEditor(Global.TEST_PROFILE_INDEX, entity);
+                ShowProfileEditor(ProfileEditor.NoTargetDevice, entity);
             }
         }
 
@@ -1888,10 +1888,20 @@ Suspend support not enabled.", true);
 
         private void NewProfListBtn_Click(object sender, RoutedEventArgs e)
         {
-            ShowProfileEditor(Global.TEST_PROFILE_INDEX, null);
+            ShowProfileEditor(ProfileEditor.NoTargetDevice, null);
         }
 
-        private void ShowProfileEditor(int device, ProfileEntity entity = null)
+        /// <summary>
+        /// プロファイル編集画面を開く。
+        /// Phase6-Step7b: 編集は常に作業スロット（Global.TEST_PROFILE_INDEX）に対して行い、保存・適用を押すまで
+        /// コントローラーには反映しない。編集スロットは ProfileEditor の内部で決まり、呼び出し元は指定しない。
+        /// </summary>
+        /// <param name="targetDevice">
+        /// Edit／New Profile ボタンを押したコントローラーのスロット番号（ランブルテスト・ライトバーのプレビュー・校正・適用先）。
+        /// プロファイル一覧から開いた場合は ProfileEditor.NoTargetDevice
+        /// </param>
+        /// <param name="entity">編集するプロファイル。null は新規作成</param>
+        private void ShowProfileEditor(int targetDevice, ProfileEntity entity)
         {
             if (editor == null)
             {
@@ -1917,11 +1927,11 @@ Suspend support not enabled.", true);
                 //     this.Height = WindowLayoutDefaults.PROFILE_EDITOR_HEIGHT;
                 // }
 
-                editor = new ProfileEditor(device);
+                editor = new ProfileEditor(targetDevice);
                 editor.ProfileSaved += Editor_ProfileSaved;
                 editor.Closed += ProfileEditor_Closed;
                 profDockPanel.Children.Add(editor);
-                editor.Reload(device, entity);
+                editor.Reload(entity);
 
                 // When the profile editor is opened, emit missing-action logs once
                 // per editor-open. We temporarily clear the per-load suppression set
@@ -1932,7 +1942,8 @@ Suspend support not enabled.", true);
                     // Force emitting missing-action logs for this editor open (ignore suppression).
                     // Pass explicit profile name to avoid confusion with device's currently-assigned profile.
                     string profileNameForLog = entity != null ? entity.Name : "(new profile)";
-                    profileRepo.EmitMissingActionLogsForDevice(device, true, profileNameForLog);
+                    // Phase6-Step7b: 読み込んだプロファイルのアクションを調べるため、実機ではなく作業スロットを渡す
+                    profileRepo.EmitMissingActionLogsForDevice(Global.TEST_PROFILE_INDEX, true, profileNameForLog);
                 }
                 catch (Exception ex)
                 {
@@ -2078,7 +2089,7 @@ Suspend support not enabled.", true);
             if (profilesListBox.SelectedIndex >= 0)
             {
                 ProfileEntity entity = profileListHolder.ProfileListCol[profilesListBox.SelectedIndex];
-                ShowProfileEditor(Global.TEST_PROFILE_INDEX, entity);
+                ShowProfileEditor(ProfileEditor.NoTargetDevice, entity);
             }
         }
 

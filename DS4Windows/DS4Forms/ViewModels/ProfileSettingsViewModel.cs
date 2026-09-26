@@ -3016,7 +3016,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             };
 
             GyroOutModeIndexChanged += CalcProfileFlags;
-            GyroOutModeIndexChanging += ProfileSettingsViewModel_GyroOutModeIndexChanging;
             SASteeringWheelEmulationAxisIndexChanged += CalcProfileFlags;
             LSOutputIndexChanged += CalcProfileFlags;
             RSOutputIndexChanged += CalcProfileFlags;
@@ -3024,59 +3023,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             GyroMouseSmoothMethodIndexChanged += ProfileSettingsViewModel_GyroMouseSmoothMethodIndexChanged;
             GyroMouseStickSmoothMethodIndexChanged += ProfileSettingsViewModel_GyroMouseStickSmoothMethodIndexChanged;
 
-            LSDeltaAccelEnabledChanged += ProfileSettingsViewModel_LSDeltaAccelEnabledChanged;
-            RSDeltaAccelEnabledChanged += ProfileSettingsViewModel_RSDeltaAccelEnabledChanged;
-            TouchpadOutputIndexChanging += ProfileSettingsViewModel_TouchpadOutputIndexChanging;
-            TouchpadOutputIndexChanged += ProfileSettingsViewModel_TouchpadOutputIndexChanged;
-            TouchMouseStickTrackballFrictionChanged += ProfileSettingsViewModel_TouchMouseStickTrackballFrictionChanged;
-        }
-
-        private void ProfileSettingsViewModel_TouchMouseStickTrackballFrictionChanged(object sender, EventArgs e)
-        {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                controlService.touchPad[device]?.ResetTouchStickAccel(TouchMouseStickTrackballFriction);
-            }
-        }
-
-        private void ProfileSettingsViewModel_GyroOutModeIndexChanging(object sender, GyroOutMode oldValue, GyroOutMode newValue)
-        {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                controlService.touchPad[device]?.Reset();
-            }
-        }
-
-        private void ProfileSettingsViewModel_TouchpadOutputIndexChanging(object sender, TouchpadOutMode oldValue, TouchpadOutMode newValue)
-        {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                controlService.touchPad[device]?.Reset();
-            }
-        }
-
-        private void ProfileSettingsViewModel_TouchpadOutputIndexChanged(object sender, EventArgs e)
-        {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                controlService.touchPad[device]?.PostSetup();
-            }
-        }
-
-        private void ProfileSettingsViewModel_LSDeltaAccelEnabledChanged(object sender, EventArgs e)
-        {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                Mapping.deltaAccelProcessors[device].LSProcessor.Reset();
-            }
-        }
-
-        private void ProfileSettingsViewModel_RSDeltaAccelEnabledChanged(object sender, EventArgs e)
-        {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                Mapping.deltaAccelProcessors[device].RSProcessor.Reset();
-            }
+            // Phase6-Step7b（決定7＝H1）: 編集操作のたびに実機へ即時に効かせていた 6 件のフックを削除した
+            // （GyroOutModeIndexChanging／TouchpadOutputIndexChanging の touchPad.Reset()、TouchpadOutputIndexChanged の
+            // PostSetup()、TouchMouseStickTrackballFrictionChanged の ResetTouchStickAccel、LS／RSDeltaAccelEnabledChanged の
+            // deltaAccelProcessors のリセット）。プロファイル編集画面の編集スロットが常に作業スロット（8）になり、
+            // device < CURRENT_DS4_CONTROLLER_LIMIT の判定を通らなくなったため。同じ処理は、適用・保存時の
+            // ApplyProfile → ControlService.PreLoadReset／CheckProfileOptions で行われる（Phase6-Step7b-Plan.md §1A.3）
         }
 
         private void ProfileSettingsViewModel_GyroMouseStickSmoothMethodIndexChanged(object sender, EventArgs e)

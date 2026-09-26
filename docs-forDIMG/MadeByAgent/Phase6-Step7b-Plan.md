@@ -2,7 +2,7 @@
 
 作成日: 2026-09-24  
 改訂日: 2026-09-26（着手前再確認。現行コード［HEAD `360cb75b`］との突き合わせ、台帳の再作成、決定事項の追加、マイクロステップと実機確認項目の改訂。同日、決定1〜7 を確定）  
-状態: 計画書作成済み、Step7b-0（事前調査）完了（2026-09-24）、着手前再確認完了（2026-09-26）、決定1〜7 確定（2026-09-26、すべて推奨案）、Step7b-1 完了（2026-09-26）、**Step7b-2 実装済み（2026-09-26、ユーザーのビルド・テスト確認待ち）**  
+状態: 計画書作成済み、Step7b-0（事前調査）完了（2026-09-24）、着手前再確認完了（2026-09-26）、決定1〜7 確定（2026-09-26、すべて推奨案）、決定8（Save／Apply の仕様）確定（2026-09-26）、Step7b-1・7b-2 完了（2026-09-26）、**Step7b-3 実装済み（2026-09-26、決定8 の修正を含む。ユーザーのビルド・テスト・実機確認待ち）**  
 対象ブランチ: `For-DI-migration-work`  
 位置づけ: Step7（`App.xaml.cs` Post-Host DI化）と Step8（`ProfileEditor.xaml.cs` の段階的MVVM移設）の間に挿入する独立ステップ。  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -27,8 +27,10 @@ Step4 の実機確認中に、次の問題が見つかった。
 ### 0.3 新しい仕様
 - プロファイル編集画面は、常に**編集用の作業スロット**（`Global.TEST_PROFILE_INDEX`＝8）に対して読み書きする。編集内容は、保存・適用を押すまで、接続中のどのコントローラーにも影響しない。
 - 接続中のコントローラーは、**別の引数 `targetDevice`**（Edit ボタンを押したコントローラーの番号。プロファイル一覧から開いた場合は −1）として編集画面に渡す。ランブルテスト、ライトバーのプレビュー、入力読み取り表示、スティック・ジャイロ・ステアリングホイールの校正など、実際のコントローラーを使う機能だけがこれを使う。
-- **適用**: プロファイルを保存し、`ApplyProfileToSlot(targetDevice, …)` で対象コントローラーへ**設定全体を一括で適用**する（既存の処理。適用時に `PreLoadReset`・`CheckProfileOptions` 等が走り、タッチパッドのリセットや `PostSetup` も行われる。§1A.3 で確認済み）。
-- **保存**: プロファイルを保存し、既存の `SyncProfileListAndControllers` が、そのプロファイルを使っている**全スロット**へ再適用する（既存の処理）。
+- **保存（Save）と適用（Apply）**（2026-09-26 決定8 で改訂。旧記載は「適用は `ApplyProfileToSlot(targetDevice, …)` で対象コントローラーへ適用」だった）:
+  1. プロファイル編集画面の設定値の内容を、すべてプロファイル設定ファイルに保存する（作業スロットから保存）。
+  2. その後、編集したプロファイルを使っている（`Global.ProfilePath[i]` がそのプロファイル名の）コントローラーのスロットに、プロファイル設定ファイルの内容で再適用する（既存の `ProfileSaved` → `MainWindow.SyncProfileListAndControllers`。適用時に `PreLoadReset`・`CheckProfileOptions` 等が走り、タッチパッドのリセットや `PostSetup` も行われる。§1A.3 で確認済み）。そのプロファイルを使っていないコントローラー（New Profile の作成元を含む）には適用しない。
+  3. Save はプロファイル編集画面を閉じ、Apply は閉じない。違いはこれだけ。
 - **キャンセル**: 作業スロットを破棄するだけ。コントローラーのスロットは一切変更しない（現行の「元のプロファイルを再読み込みして取り消す」処理は不要になる）。
 
 ---
@@ -102,7 +104,7 @@ Step4 の実機確認中に、次の問題が見つかった。
 - B5 `RefreshEditorBindings`（1225 行付近、`UpdateMappingDevType` は 1238）→ 変更なし
 - B6 `CancelBtn_Click`（1261 行）: ランブル停止（1263〜1266、`FuncDevNum`）→ 維持。`Global.outDevTypeTemp[deviceNum] = X360`（1268）→ 維持（編集スロット）。`Task.Run` 内の再読み込み（1270〜1283、`HaltReportingRunAction` と `LoadProfile(deviceNum, …)`）→ 削除
 - B7 `GyroOutModeCombo_SelectionChanged`（1358 行）: `deviceNum < LIMIT` のとき `touchPad[deviceNum]?.ResetToggleGyroModes()`（1363〜1366）→ 常に偽になる。決定7
-- B8 `ExecuteSaveOrApply`（1378 行）: `ProfileActions[deviceNum]`（1392）、`SaveProfile(deviceNum, …)`（1400、1404）→ 編集スロットから保存（正しい）。適用の `ApplyProfileToSlot(deviceNum, …)`（1416）→ `targetDevice >= 0` のときだけ `ApplyProfileToSlot(targetDevice, …)`
+- B8 `ExecuteSaveOrApply`（1378 行）: `ProfileActions[deviceNum]`（1392）、`SaveProfile(deviceNum, …)`（1400、1404）→ 編集スロットから保存（正しい）。適用の `ApplyProfileToSlot(deviceNum, …)`（1416）→ `targetDevice >= 0` のときだけ `ApplyProfileToSlot(targetDevice, …)`（2026-09-26 決定8 で変更: Save と同じく `ProfileSaved` を通知し、`ApplyProfileToSlot` は削除）
 - B9 `Close`（1447 行）: ランブル停止（1449〜1452、`FuncDevNum`）→ 維持
 - B10 `RumbleTestBtn_Click`（1515 行）: `FuncDevNum`（1517）→ 自動的に `targetDevice`（または 0）。`InverseRumbleMotors[deviceNum]`（1525、1569、1576、1588、1597）→ 決定4
 - B11 ライトバー色の選択（`profileSettingsVM.StartForcedColor` 1489、1502、1697、1956）→ VM 側で判定（C4）
@@ -166,8 +168,9 @@ Step4 の実機確認中に、次の問題が見つかった。
 
 ### 1A.5 観察事項（本 Step では変えない）
 1. **マクロ記録の入力元**: `RecordBoxViewModel.ProcessDS4Tick` は常にコントローラー0の入力を記録する。Edit ボタンでコントローラー2を開いても、記録されるのはコントローラー0の入力で、一時的に Passthru になるのはコントローラー2のタッチパッド、という既存の不整合がある。`targetDevice` を記録の入力元に使えば解消できるが、機能の変更になるため、必要なら別途提案・承認を経て扱う。
-2. **新規プロファイル作成時のコントローラー切り替え**: §1A.4 のとおり 2026-09-14 から動いていない。現状、New Profile → 保存 では、コントローラーは元のプロファイル名のまま残る。ただし即時反映のため、そのコントローラーには新しいプロファイルの設定がメモリ上で効いていた。Step7b 後は、保存しても元のプロファイルの設定のまま（名前と中身が一致する）で、新しいプロファイルを使うには、適用を押すか、一覧で選び直す。上流の切り替え機能を戻すかは、別件としてユーザー判断。
+2. **新規プロファイル作成時のコントローラー切り替え**: §1A.4 のとおり 2026-09-14 から動いていない。現状、New Profile → 保存 では、コントローラーは元のプロファイル名のまま残る（Apply の場合は、2026-09-16 以降、そのコントローラーが新しいプロファイルに切り替わっていたが、決定8 で Save と同じ動作に揃えた）。ただし即時反映のため、そのコントローラーには新しいプロファイルの設定がメモリ上で効いていた。Step7b 後は、保存しても元のプロファイルの設定のまま（名前と中身が一致する）で、新しいプロファイルを使うには、適用を押すか、一覧で選び直す。上流の切り替え機能を戻すかは、別件としてユーザー判断。
 3. **UI の Edit ボタン**: コントローラー一覧の Edit はスプリットボタン（`ProfEditSBtn`）で、押すと Edit、右の▼を開くと New Profile（`newProfBtn`）が出る。
+4. **一時プロファイルが有効なスロットへの再適用（2026-09-26 追加、決定8 の検討時に確認）**: 保存・適用後の再適用は `Global.ProfilePath[i]` とプロファイル名の一致で判定する。一時プロファイルとして使われているプロファイルを保存しても、そのスロットには再適用されない。逆に `ProfilePath` がそのプロファイル名で、一時プロファイルが有効なスロットでは、保存で通常のプロファイルに戻る。Step7b 前からの動作で、本 Step では変えない。
 
 ---
 
@@ -189,14 +192,16 @@ Step4 の実機確認中に、次の問題が見つかった。
 - `BindingWindow`、`RecordBox`、`RecordBoxWindow`、`SpecialActionEditor` のコンストラクタ: `int targetDevice` を必須引数として追加する（呼び出し元の渡し忘れをコンパイラで検出するため）。
 - `ProfileSettingsViewModel`、`BindingWindowViewModel`、`RecordBoxViewModel` のコンストラクタと、`IViewModelFactory.CreateProfileSettingsViewModel`／`CreateRecordBoxViewModel`: 末尾に省略可能な `int targetDevice = -1` を追加する（既存の省略可能な DI 引数の後ろにしか置けないため）。
 - **Step6 との関係**: `Reload` と `RefreshEditorBindings` の `mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType)`（`UpdateLateProperties()` の直後）を、書き換え後も維持する。ソース走査ガード `ProfileEditorMappingDevTypeGuardTests` が、この呼び出しと順序を検査する。
-- 適用（`ExecuteSaveOrApply(isApply: true)`）: 保存後、`targetDevice >= 0` のときだけ `ApplyProfileToSlot(targetDevice, …)` を実行する（一覧から開いた場合は保存のみ。現行も `slotIndex >= LIMIT` で `false` を返すだけで、実質保存のみ）。
+- 適用（`ExecuteSaveOrApply(isApply: true)`）: 決定8 により、Save と同じく保存後に `ProfileSaved` を通知する（再適用は `MainWindow.SyncProfileListAndControllers` が、そのプロファイルを使っているスロットにだけ行う）。`targetDevice` は適用先の決定に使わない。（旧記載: `targetDevice >= 0` のときだけ `ApplyProfileToSlot(targetDevice, …)`。）
+- `Reload` は `Reload(ProfileEntity profile = null)` とし、`targetDevice` はコンストラクタでだけ受け取る（Step7b-3 の実装時に変更。§3 Step7b-3 の実装結果）。
 
 ### 2.3 挙動の変更点（ユーザー向け）
 - 編集中の設定変更は、保存・適用を押すまで、コントローラーに反映されない。実機で確認するには、適用または保存を押す。
 - 編集画面で Output Mode を Mouse にしても、ポインタは動かない。適用した時点で有効になる。
 - Controller Readings タブは、編集中の設定（作業スロット）で計算した結果を、接続中のコントローラーの入力に対して表示する（スティック・トリガー・ジャイロのカーブとデッドゾーン。一覧経由と同じ方式）。画面上での確認は従来どおり可能。
 - キャンセルは、コントローラーの動作に何もしない（編集中の変更がもともと届いていないため）。
-- New Profile → 保存では、コントローラーは元のプロファイルのまま（§1A.5 観察2）。New Profile → 適用では、従来どおり新しいプロファイルに切り替わる。
+- New Profile → 保存・適用のどちらでも、コントローラーは元のプロファイルのまま（§1A.5 観察2、決定8）。従来の New Profile → 適用は、そのコントローラーを新しいプロファイルに切り替えていたが、これは Save／Apply の仕様（決定8）に反するため改めた。
+- Apply でも、そのプロファイルを使っている全コントローラーへ再適用され、プロファイル一覧も更新される（決定8。従来の Apply は Edit ボタンのコントローラーだけに適用し、一覧経由では保存のみで、一覧も更新しなかった）。
 
 ---
 
@@ -210,6 +215,7 @@ Step4 の実機確認中に、次の問題が見つかった。
 - **決定5＝案D1**: `ProfileEditor.DeviceNum`（呼出元 0 件）は削除する（§2.4 の「使うべきでないもの」）。新規作成時のコントローラー切り替え機能の復活は本 Step では扱わない（§1A.5 観察2）。
 - **決定6＝案L1**: 既存の 2 行のログ（`[ProfileEditor] Opened profile editor …`、`[DI] ViewModelFactory: Created ProfileSettingsViewModel …`）の末尾に `targetDevice` を付け足し、`Reload`・適用・キャンセルに `LogDebug` を 1 行ずつ追加する（文言は決定6 の本文のとおり）。
 - **決定7＝案H1**: 到達しなくなる即時フック 8 件（VM の C3 の 6 件と `SetupEvents` での登録、`ProfileEditor` の B7・B12 と `ProfileEditor.xaml` のイベント属性）を、Step7b-3 で削除する（承認済みの機能廃止［§0.2-1］の本体）。
+- **決定8（2026-09-26 追加・確定）**: Save と Apply は、どちらも (1) 編集画面の設定値をすべてプロファイル設定ファイルに保存し、(2) 編集したプロファイルを使っているコントローラーにだけ、ファイルの内容で再適用する。違いは (3) Save は画面を閉じ、Apply は閉じないことだけ。Apply も `ProfileSaved` を通知して `MainWindow.SyncProfileListAndControllers` に再適用を任せ、編集画面から `ApplyProfileToSlot` を直接呼ばない。詳細は下記「決定8」。
 
 以下は、提示時の前提・選択肢・推奨理由の記録。
 
@@ -278,6 +284,15 @@ Step4 の実機確認中に、次の問題が見つかった。
 - **案H2: 残し、§3.3 原則4 の TODO（Step7b 以降は到達しない旨と理由）を付ける**
   - 利点: 差分が最小。欠点: 到達しないコードが Step8 以降も残る。
 
+### 決定8: Save／Apply の仕様と、Apply の再適用先（2026-09-26 追加・確定）
+- **発端**: Step7b-3 の実機確認項目（「New Profile から Apply すると、そのコントローラーが新しいプロファイルに切り替わること」）について、ユーザーから Save／Apply の仕様が示された（§0.3 の改訂後の記載）。
+- **仕様と現行コードの照合結果**:
+  - Save は仕様どおり（保存 → `ProfileSaved` → `SyncProfileListAndControllers` が、プロファイル名が一致するスロットにだけ再適用 → 画面を閉じる）。
+  - Apply は仕様から外れていた。`ProfileSaved` を通知せず、`Global.ApplyProfileToSlot(targetDevice, …)`（Step7b 前は `deviceNum`）を直接呼んでいたため、次の 4 点が仕様と異なる: (1) New Profile から Apply すると、そのコントローラーの `ProfilePath` が新しいプロファイルに書き換わり切り替わる、(2) 同じプロファイルを使う他のコントローラーへ再適用されない、(3) 一覧経由では再適用が一切ない、(4) プロファイル一覧が更新されない。
+- **経緯**: 2026-09-14（`0da35884`）の時点では Save・Apply ともに `ProfileSaved` を通知しており、仕様どおりだった。2026-09-16（`36d124a6`、Phase5-Step14）で Apply だけが `ApplyProfileToSlot(deviceNum, …)` に分岐した。分岐の理由は計画書・完了報告書に記録がない。Step7b の着手前確認では、この分岐を既存仕様とみなして計画に取り込んでいた（確認不足）。
+- **決定（ユーザー承認 2026-09-26）**: Apply も Save と同じく `ProfileSaved` を通知し、違いは画面を閉じるかどうかだけにする。`targetDevice` はプレビュー・校正・ランブルテスト専用とし、適用先の決定には使わない。2026-09-14 時点の動作に戻す形で、仕様どおりの変更（§2.2 の機能削減には当たらない）。
+- **変更しないこと（観察事項）**: 再適用の判定は `Global.ProfilePath[i]` とプロファイル名の一致で行う。自動プロファイル等で一時プロファイルが有効なスロットについては、(a) 一時プロファイルとして使われているプロファイルを保存しても再適用されない、(b) `ProfilePath` がそのプロファイル名のスロットでは、保存で一時プロファイルから通常のプロファイルに戻る。Step7b 前からの動作で、本 Step では変えない（§1A.5 観察4）。
+
 ---
 
 ## 3. マイクロステップ（2026-09-26 改訂）
@@ -325,7 +340,7 @@ Step4 の実機確認中に、次の問題が見つかった。
   - モデル図・`ServiceRegistration.cs` は未変更（モデル図は 7b-4 で更新）。テスト用の `IViewModelFactory` のモックは存在しない（§1A.2 D3）。
   - **検証結果（2026-09-26）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。挙動の変化がないため実機確認は省略。
 
-### Step7b-2: サブ画面への `targetDevice` の受け渡し（挙動の変化なし）【実装済み（2026-09-26）、ビルド・テスト確認待ち】
+### Step7b-2: サブ画面への `targetDevice` の受け渡し（挙動の変化なし）【完了（2026-09-26、ビルド・テストビルド・テスト実行成功、コミット・リモート反映済み）】
 - **前提**: 決定1＝A（サブ画面まですべて付け替え）、決定2＝P1（画面は必須引数、VM・ファクトリは省略可能）。
 - **変更**:
   - `BindingWindowViewModel`: コンストラクタ末尾に `int targetDevice = -1`。ライトバー強制色 3 メソッドを `targetDevice` に付け替え。`TargetDevice` プロパティを追加。
@@ -350,9 +365,9 @@ Step4 の実機確認中に、次の問題が見つかった。
   - `ProfileEditor.xaml.cs`: フィールド `targetDevice`（既定 −1）と、暫定値を返す `InterimTargetDeviceFor(int device)`（7b-3 で削除する旨の TODO 付き）を追加し、コンストラクタと `Reload` で設定。7b-1 のコンストラクタ内の暫定変数はこのフィールドに置き換えた。`BindingWindow` 生成 7 箇所・`SpecialActionEditor` 生成 2 箇所へ `targetDevice` を渡す。7b-3 では、このフィールドの設定元を `MainWindow` から渡される値に変えるだけで済む。
   - **挙動の同一性**: Edit ボタン経由は `targetDevice`＝編集スロット＝コントローラー番号で、実機に触れる処理の対象は従来と同じ。一覧経由は `targetDevice = −1` で、従来も `deviceNum`（8）が範囲外のため動いていなかった処理が、同じく動かない。唯一の違いは、一覧経由のマクロ記録で、従来は編集スロット 8 の `TouchOutMode` を一時的に Passthru にして戻していた処理がなくなること（編集スロット 8 のタッチパッドは実機がなく、記録にも使われないため、見た目の変化はない）。
   - **テスト**: `BindingWindowViewModelTargetDeviceTests.cs`（新規、5 件）、`RecordBoxViewModelTargetDeviceTests.cs`（新規、5 件。独立した `BackingStore` を使い、Passthru が実機のスロットにだけ設定されて元に戻ること、`RevertControlsSettings` を 2 回呼んでも値を壊さないこと、実機なしでは何も変えないこと、強制色の対象）、`PatternCViewModelTests.cs`（`CreateRecordBoxViewModel` の既存テストに省略時 −1 の確認を追加し、実際の DI ホストから解決したファクトリで `targetDevice` が届き Passthru が実機のスロットに設定・復元されることを確認するテストを 1 件追加）。既存テストの `TouchOutMode[0]` の後始末漏れ（§1A.2 F2）は、省略時に Passthru を設定しなくなったことで解消。
-  - **未検証事項**: この環境では `dotnet build`／`dotnet test` を実行していない。ユーザー側でビルド・テストビルド・テスト実行を確認する。
+  - **検証結果（2026-09-26）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。挙動の変化がないため実機確認は省略。
 
-### Step7b-3: 編集スロットの固定と保存・適用・キャンセルの整理（主目的）
+### Step7b-3: 編集スロットの固定と保存・適用・キャンセルの整理（主目的）【実装済み（2026-09-26）、ビルド・テスト・実機確認待ち】
 - **変更**:
   - `MainWindow`: `ShowProfileEditor(int targetDevice, ProfileEntity entity)` に変更し、A1〜A5 を更新（Edit／New Profile は `idx`、一覧経由は −1）。`new ProfileEditor(targetDevice)`、`editor.Reload(targetDevice, entity)`。`EmitMissingActionLogsForDevice` には `Global.TEST_PROFILE_INDEX` を渡す（A6）。
   - `ProfileEditor` のコンストラクタと `Reload`: 引数を `targetDevice` にし、`deviceNum = Global.TEST_PROFILE_INDEX` に固定。`Reload` の `TEST_PROFILE_INDEX` 分岐（1103）は常に通る形に整理する（`ProfilePath[8]` の設定は維持）。`useControllerUD` と `conReadingsUserCon.UseDevice(targetDevice >= 0 ? targetDevice : 0, Global.TEST_PROFILE_INDEX)`。**`UpdateMappingDevType` の呼び出しと位置は変えない**。
@@ -360,7 +375,7 @@ Step4 の実機確認中に、次の問題が見つかった。
   - `UseControllerReadoutCk_Click`: `profileSettingsVM.TargetDevice >= 0` の判定に変更（B18）。
   - `CalibrateStick_OnClick`: `targetDevice < 0` を不可の判定にし（メッセージの文言は維持）、`StickCalibrationWindow` へ `targetDevice` を渡す（B22）。
   - `RumbleTestBtn_Click`: 決定4＝I1 により、`InverseRumbleMotors` を編集スロット（`deviceNum` フィールド）から読むよう、ローカル変数名を分ける（例: 鳴らす実機は `rumbleDevice`、設定は `deviceNum`）。
-  - **適用**: `ExecuteSaveOrApply` の適用分岐は、`targetDevice >= 0` のときだけ `ApplyProfileToSlot(targetDevice, …)`。決定6＝L1 のログ。
+  - **適用**: 決定8 により、Save と同じく `ProfileSaved` を通知し、`MainWindow.SyncProfileListAndControllers` がそのプロファイルを使っているスロットにだけ再適用する（当初計画の `ApplyProfileToSlot(targetDevice, …)` は取りやめ）。決定6＝L1 のログ。
   - **キャンセル**: `CancelBtn_Click` の `Task.Run` による再読み込み（1270〜1283）を削除。ランブル停止・`outDevTypeTemp` のリセット・`Closed` 通知は維持。決定6＝L1 のログ。
   - 決定5＝D1 により `DeviceNum` を削除。
   - 決定7＝H1 により、即時フック 8 件（VM の C3 と `SetupEvents` の登録、`ProfileEditor` の B7・B12 と XAML のイベント属性）を削除。
@@ -375,6 +390,28 @@ Step4 の実機確認中に、次の問題が見つかった。
     - `MainWindow.xaml.cs` の `ShowProfileEditor(` 呼び出しに `Global.TEST_PROFILE_INDEX` が渡されていないこと（編集スロットを呼び出し元が決めない）。
   - `ProfileEditorMappingDevTypeGuardTests`（既存）: 変更なしで合格すること。
 - **実機確認**: §4 の全項目。
+- **実装結果（2026-09-26）**:
+  - **計画からの変更点（2 件）**:
+    - `Reload` は `Reload(int targetDevice, ProfileEntity)` ではなく `Reload(ProfileEntity profile = null)` にした。理由: `ProfileSettingsViewModel` はコンストラクタで `targetDevice` を使って生成されるため、`Reload` でも受け取ると両者が食い違う余地が生まれる。`targetDevice` はコンストラクタでだけ受け取り、読み取り専用フィールドにした。既存ガード `ProfileEditorMappingDevTypeGuardTests` のマーカー `public void Reload(` は一致する。
+    - 一覧経由を表す定数 `ProfileEditor.NoTargetDevice`（＝ −1）を追加し、`MainWindow` の 3 箇所で使う（リテラル −1 より意図が読みやすいため。新しい型ではなく既存クラスの定数）。
+  - `ProfileEditor.xaml.cs`:
+    - `deviceNum` を `private readonly int deviceNum = Global.TEST_PROFILE_INDEX;` に固定。`targetDevice` を読み取り専用にし、コンストラクタ `ProfileEditor(int targetDevice)` で設定。private の判定 `HasTargetDevice` を追加。7b-1・7b-2 の暫定値 `InterimTargetDeviceFor` を削除。
+    - コンストラクタ: VM（ファクトリ・レガシー）、`SpecialActionsListViewModel`、`TouchButtonUserControl` へ `deviceNum`（作業スロット）を渡す。ログを `[ProfileEditor] Opened profile editor for device=8, targetDevice=N` に（決定6）。
+    - `Reload`: 冒頭に `[ProfileEditor] Reload: editSlot=8, targetDevice=N, profile=名前` のログ。`ProfilePath[8]` の設定を無条件に。`LoadProfile`・`LoadBlankDevProfile`・`LSModInfo`／`RSModInfo` は作業スロット。Controller Readings は `UseDevice(profileSettingsVM.FuncDevNum, Global.TEST_PROFILE_INDEX)`（実機、なければコントローラー0）。**`UpdateMappingDevType` の呼び出しと位置は変更なし**。
+    - `CancelBtn_Click`: `Task.Run` 内の `HaltReportingRunAction`／`LoadProfile` を削除し、`[ProfileEditor] Cancel: edit slot 8 discarded; controller slots were not modified (targetDevice=N)` のログを追加。ランブル停止・`outDevTypeTemp` のリセット・`Closed` 通知は維持。
+    - `ExecuteSaveOrApply`: （当初）適用は `HasTargetDevice` のとき `ApplyProfileToSlot(targetDevice, …)` を実行していた。→ 決定8 により修正（下記「決定8 による追加修正」）。保存は従来どおり作業スロットから。
+    - `RumbleTestBtn_Click`: ローカル変数を `rumbleDevice`（`FuncDevNum`）に改名し、左右反転は作業スロット（フィールド `deviceNum`）を読む（決定4＝I1）。`GyroCalibration_Click` も同様にローカル変数を `calibrationDevice` に改名（動作は同じ）。
+    - `UseControllerReadoutCk_Click`: `HasTargetDevice` で判定。`CalibrateStick_OnClick`: `!HasTargetDevice` で不可（メッセージ文言は維持）、`StickCalibrationWindow` へ `targetDevice`。
+    - 決定5＝D1: `DeviceNum` プロパティを削除。決定7＝H1: `GyroOutModeCombo_SelectionChanged`（`SetupEvents`／`UnregisterEvents` の登録・解除を含む）と `FrictionUD_ValueChanged` を削除し、経緯のコメントを残した。
+  - `ProfileEditor.xaml`: `frictionUD` の `ValueChanged="FrictionUD_ValueChanged"` を削除（1 行）。
+  - `ProfileSettingsViewModel.cs`（決定7＝H1）: 即時フック 6 件のハンドラーと `SetupEvents` での登録を削除し、経緯のコメントを残した。イベント自体（`GyroOutModeIndexChanging` 等）は他の購読者があるため残す。
+  - `MainWindow.xaml.cs`: `ShowProfileEditor(int targetDevice, ProfileEntity entity)`（XML コメント付き）。一覧経由の 3 箇所は `ProfileEditor.NoTargetDevice`。`new ProfileEditor(targetDevice)`、`editor.Reload(entity)`、`EmitMissingActionLogsForDevice(Global.TEST_PROFILE_INDEX, …)`。
+  - **テスト**: `ProfileEditorTargetDeviceGuardTests.cs`（新規、8 件のソース走査ガード）: 作業スロットの固定と代入が初期化子の 1 箇所だけであること、`deviceNum == 8`／`deviceNum < CURRENT_DS4_CONTROLLER_LIMIT`／`InterimTargetDeviceFor` がないこと、キャンセルに `LoadProfile(`／`HaltReportingRunAction` がないこと、保存が `SaveProfile(deviceNum,` であること（適用の検査は下記「決定8 による追加修正」で置き換え）、`BindingWindow`（7 件）・`SpecialActionEditor`（2 件）・VM 生成へ `targetDevice` を渡すこと、スティック再校正の判定と引数、`DeviceNum`・削除した即時フックの再混入がないこと（XAML を含む）、VM に `touchPad[device]`／`deltaAccelProcessors[device]` がないこと、`MainWindow` の `ShowProfileEditor(` に `TEST_PROFILE_INDEX` を渡さないこと、サブ画面の下位への受け渡し（7 種の呼び出し）。
+  - **未検証事項**: この環境では `dotnet build`／`dotnet test` を実行していない。ユーザー側でビルド・テストビルド・テスト実行と、§4 の実機確認を行う。
+- **決定8 による追加修正（2026-09-26、7b-3 のビルド前に実施）**:
+  - 実機確認の前に、ユーザーから Save／Apply の仕様（§2A 決定8）が示され、上記の「適用は `ApplyProfileToSlot(targetDevice, …)`」が仕様に反することが分かったため、修正した。
+  - `ExecuteSaveOrApply`: `isApply` による分岐と `ApplyProfileToSlot(targetDevice, …)`・その 3 種のログを削除。Save・Apply 共通で `[ProfileEditor] Save|Apply: profile '名前' saved; re-applying to controller slot(s) that use it (targetDevice=N)` をログに出し、`ProfileSaved` を通知する。`ProfileEditor` からコントローラーのスロットへ直接適用する箇所はなくなった。
+  - `ProfileEditorTargetDeviceGuardTests.cs`: 適用の検査を `ProfileEditor_SaveAndApplyBothDelegateReapplyToMainWindow`（`ExecuteSaveOrApply`・`ProfileEditor` 全体に `ApplyProfileToSlot(` がないこと、`ProfileSaved` の通知が 1 箇所で分岐なしであること、Save は閉じて Apply は閉じないこと）に置き換え、`MainWindow_ReappliesOnlyToSlotsUsingTheSavedProfile`（`Editor_ProfileSaved` → `SyncProfileListAndControllers` が、プロファイル名が一致するスロットにだけ `ApplyProfileToSlot` すること）を追加（計 9 件）。
 
 ### Step7b-4: 文書・実機確認・完了報告
 - **文書**: `Phase6-Status.md`（§1 の表、Step7b の節、§5、§6.5 に観察事項）、`Phase6-Plan.md`（Step7b の記載を §0.2・§1・§2 に追加。§1A.1-11）、`Phase6-Step8-Plan.md`（冒頭に「Step7b からの申し送り」を追加。`ProfileEditor.xaml.cs` の行番号と、`ExecuteSaveOrApply`・`CancelBtn_Click`・`Reload` の内容が変わるため、Step8-0 の台帳は Step7b 後の内容で作り直すこと）、モデル図 03・04（決定3＝M1）。`copilot-instructions.md` の変更は不要。
@@ -395,13 +432,13 @@ Step4 の実機確認中に、次の問題が見つかった。
    - ログ: `[ProfileEditor] Opened profile editor for device=8, targetDevice=N` と `[ProfileEditor] Reload: editSlot=8, targetDevice=N, profile=名前` が出る（決定6＝L1）。
 2. ジャイロタブの Output Mode を Mouse に変える。**ポインタが動かない**こと。
    - ログ: この操作の時点で `ApplyProfile CALLED` が出ないこと。
-3. Apply を押す。**ポインタが動き出す**こと（プロファイルでジャイロマウスの起動条件がある場合は、その条件を満たしたとき）。
-   - ログ: `ApplyProfile CALLED: device=N, profile=名前, isTemp=False, source=Manual` と `[ProfileEditor] Apply: profile '名前' applied to controller slot N`。
+3. Apply を押す。**ポインタが動き出す**こと（プロファイルでジャイロマウスの起動条件がある場合は、その条件を満たしたとき）。画面は開いたまま。
+   - ログ: `[ProfileEditor] Apply: profile '名前' saved; re-applying to controller slot(s) that use it (targetDevice=N)` と、そのプロファイルを使っているスロットごとの `ApplyProfile CALLED: device=…, profile=名前, isTemp=False, source=Manual`（決定8）。
 
-### 4.2 設定の反映
-4. 編集して **Apply** を押すと、そのコントローラーに反映される（ログは 4.1-3 と同じ）。
-5. 同じプロファイルを 2 台のコントローラーで使っている状態で、編集して **Save** を押すと、両方に反映される。
-   - ログ: 使用中のスロットの数だけ `ApplyProfile CALLED: device=…` が出る。
+### 4.2 設定の反映（決定8: Save と Apply の違いは画面を閉じるかどうかだけ）
+4. 編集して **Apply** を押すと、そのプロファイルを使っているコントローラーに反映され、画面は開いたまま（ログは 4.1-3 と同じ）。
+5. 同じプロファイルを 2 台のコントローラーで使っている状態で、編集して **Apply**（画面は開いたまま）または **Save**（画面を閉じる）を押すと、両方に反映される。
+   - ログ: 使用中のスロットの数だけ `ApplyProfile CALLED: device=…` が出る。Save のときは `[ProfileEditor] Save: profile '名前' saved; …`。
 
 ### 4.3 キャンセル
 6. 編集（例: Output Mode を Mouse、ライトバー色の変更）して、保存も適用もせずに **Cancel** を押す。コントローラーの動作が変わらず、プロファイルファイル（`Profiles` フォルダの `名前.xml`）の更新日時も変わらないこと。
@@ -422,9 +459,10 @@ Step4 の実機確認中に、次の問題が見つかった。
 16. ステアリングホイール校正（vJoy 環境がない場合は Step11 へ先送り）。
 
 ### 4.6 一覧経由・新規作成
-17. プロファイル一覧の Edit／ダブルクリックで開いて編集・保存する従来の動作に変化がない。ランブルテストはコントローラー0 に対して動く（従来どおり）。ライトバーのプレビューは従来どおり動かない。
-   - ログ: `Reload: editSlot=8, targetDevice=-1`、Apply 時は `Apply: no target controller (opened from profile list); saved only`。
-18. コントローラー一覧の New Profile: プリセット選択 → 編集 → **Apply** で、そのコントローラーが新しいプロファイルに切り替わる。**Save** の場合はコントローラーは元のプロファイルのまま（§1A.5 観察2。従来は即時反映のため新しい設定がメモリ上で効いていた）。
+17. プロファイル一覧の Edit／ダブルクリックで開いて編集・保存する動作。ランブルテストはコントローラー0 に対して動く（従来どおり）。ライトバーのプレビューは従来どおり動かない。**Apply でも、そのプロファイルを使っているコントローラーへ再適用される**（決定8による変更。従来の一覧経由の Apply は保存のみだった）。
+   - ログ: `Reload: editSlot=8, targetDevice=-1`。Apply／Save 時は、そのプロファイルを使っているコントローラーの数だけ `ApplyProfile CALLED: device=…` が出る。
+18. コントローラー一覧の New Profile: プリセット選択 → 編集 → **Apply**／**Save** のどちらでも、そのコントローラーは元のプロファイルのまま（決定8。新しいプロファイルはどのコントローラーにも使われていないため）。新しいプロファイルは、Apply の時点でプロファイル一覧に現れる。コントローラーで使うには、コントローラー一覧のプロファイル選択で選ぶ。
+   - ログ: `[ProfileEditor] Apply: profile '名前' saved; …` のあとに、`ApplyProfile CALLED` が出ないこと。
 19. プロファイル一覧の New: 従来どおり作成・保存できる。
 
 - 環境がなく実施できない項目は、`Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録する。
@@ -454,13 +492,13 @@ Step4 の実機確認中に、次の問題が見つかった。
 ## 8. 完了判定チェックリスト
 - [x] Step7b-0 の調査項目 1〜6 が確認され、本書へ追記されている（2026-09-24）
 - [x] 着手前再確認（台帳の再作成、旧調査との乖離の記録、決定事項の提示）（2026-09-26）
-- [x] 決定1〜7 がユーザーにより確定し、本書に記録されている（2026-09-26、すべて推奨案。§2A.0）
+- [x] 決定1〜7 がユーザーにより確定し、本書に記録されている（2026-09-26、すべて推奨案。§2A.0）。決定8（Save／Apply の仕様）も確定・記録済み（2026-09-26）
+- [ ] 保存・適用で、そのプロファイルを使っている全スロットに設定全体が再適用され、使っていないコントローラー（New Profile の作成元を含む）には適用されない（決定8）
 - [ ] プロファイル編集画面の編集スロットが、常に `TEST_PROFILE_INDEX` である
 - [ ] 編集中の変更が、保存・適用まで接続中のコントローラーに反映されない
-- [ ] 適用で対象コントローラーに、保存で該当する全スロットに、設定全体が反映される
 - [ ] キャンセルでコントローラーのスロットが変化しない
 - [ ] ランブルテスト、ライトバー色プレビュー（`BindingWindow`・マクロ記録・バッテリー確認のものを含む。決定1＝A）、入力読み取り表示、各種校正が `targetDevice` で動く
-- [ ] 一覧経由の編集の動作が従来と変わらない
+- [ ] 一覧経由の編集の動作が従来と変わらない（決定8 による Apply の再適用を除く）
 - [ ] `ProfileEditorMappingDevTypeGuardTests` を含む既存テストと新規テストが全件成功（`dotnet build`、`dotnet test`）
 - [ ] 実機確認（§4）が完了、または Step11 の先送り台帳に登録済み
 - [ ] `Phase6-Status.md`／`Phase6-Plan.md`／`Phase6-Step8-Plan.md`（台帳の作り直しの申し送り）を更新、モデル図 03・04 を更新（決定3＝M1）、完了報告書を作成

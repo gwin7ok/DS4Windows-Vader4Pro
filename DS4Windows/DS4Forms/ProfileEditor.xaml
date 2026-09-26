@@ -1436,7 +1436,7 @@
                                         <CheckBox Content="Trackball" IsChecked="{Binding TouchTrackball}" VerticalAlignment="Center" ToolTip="{lex:Loc TouchpadTrackballEnableTooltip}" />
                                         <Label Content="Friction:" Padding="0" Margin="20,0,5,0" VerticalAlignment="Center"/>
                                         <xctk:DoubleUpDown x:Name="frictionUD" d:IsHidden="True" MinWidth="80" IsEnabled="{Binding TouchTrackball}" Minimum="0.1" Maximum="20.0"
-                                                               Value="{Binding TouchTrackballFriction,FallbackValue='10'}" ValueChanged="FrictionUD_ValueChanged"
+                                                               Value="{Binding TouchTrackballFriction,FallbackValue='10'}"
                                                        ToolTip="{lex:Loc TouchpadTrackballFrictionTooltip}"
                                                        Margin="8,0,0,0" />
                                     </StackPanel>

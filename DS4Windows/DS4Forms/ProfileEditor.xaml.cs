@@ -149,10 +149,20 @@ namespace DS4WinWPF.DS4Forms
             public Size size;
         }
 
-        private int deviceNum;
+        /// <summary>実機なし（プロファイル一覧から開いた場合）を表す targetDevice の値。</summary>
+        public const int NoTargetDevice = -1;
+
+        // Phase6-Step7b: 設定の読み書き先（編集スロット）。常に作業スロット Global.TEST_PROFILE_INDEX を使い、
+        // 編集内容は保存・適用を押すまで、接続中のどのコントローラーにも影響しない
+        private readonly int deviceNum = Global.TEST_PROFILE_INDEX;
         // Phase6-Step7b: ランブルテスト・ライトバーのプレビュー・校正・マクロ記録などで使う実機のスロット番号。
-        // -1 は「実機なし」（プロファイル一覧から開いた場合）。設定の読み書き先 deviceNum とは別に持つ
-        private int targetDevice = -1;
+        // NoTargetDevice（-1）は「実機なし」。設定の読み書き先 deviceNum とは別に持つ。
+        // ViewModel をこの値で生成するため、コンストラクタでだけ設定する
+        private readonly int targetDevice = NoTargetDevice;
+
+        /// <summary>実機（targetDevice）が指定され、かつ有効なコントローラースロットの範囲内であるか。</summary>
+        private bool HasTargetDevice =>
+            targetDevice >= 0 && targetDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
         private ProfileSettingsViewModel profileSettingsVM;
         private readonly DS4Windows.DI.IProfileRepository profileRepository;
         private readonly DS4Windows.Actions.IProfileSwitcher profileSwitcher;
@@ -191,11 +201,6 @@ namespace DS4WinWPF.DS4Forms
         public bool Keepsize
         {
             get => keepsize;
-        }
-
-        public int DeviceNum
-        {
-            get => deviceNum;
         }
 
         private NonFormTimer inputTimer;
@@ -267,9 +272,14 @@ namespace DS4WinWPF.DS4Forms
         // divergence. If a call site needs specific behavior not covered by UtilMethods,
         // add a narrowly-scoped helper or adapt the call site accordingly.
 
-        public ProfileEditor(int device)
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: Edit／New Profile ボタンを押したコントローラーのスロット番号。
+        /// プロファイル一覧から開いた場合は NoTargetDevice（-1）。編集スロットは常に Global.TEST_PROFILE_INDEX
+        /// </param>
+        public ProfileEditor(int targetDevice)
         {
-            AppLogger.LogDebug($"[ProfileEditor] Opened profile editor for device={device}");
+            this.targetDevice = targetDevice;
+            AppLogger.LogDebug($"[ProfileEditor] Opened profile editor for device={deviceNum}, targetDevice={targetDevice}");
 
             InitializeComponent();
 
@@ -286,24 +296,22 @@ namespace DS4WinWPF.DS4Forms
             System.Threading.Thread.CurrentThread.CurrentUICulture = ci;
             System.Threading.Thread.CurrentThread.CurrentCulture = ci;
 
-            deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;
-            targetDevice = InterimTargetDeviceFor(device);
             var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
             if (vmFactory != null)
-                profileSettingsVM = vmFactory.CreateProfileSettingsViewModel(device, targetDevice);
+                profileSettingsVM = vmFactory.CreateProfileSettingsViewModel(deviceNum, targetDevice);
             else
             {
                 DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=ProfileEditor, viewModel=ProfileSettingsViewModel");
-                profileSettingsVM = new ProfileSettingsViewModel(device, targetDevice: targetDevice);
+                profileSettingsVM = new ProfileSettingsViewModel(deviceNum, targetDevice: targetDevice);
             }
             picBoxHover.Visibility = Visibility.Hidden;
             picBoxHover2.Visibility = Visibility.Hidden;
 
             mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
-            specialActionsVM = new SpecialActionsListViewModel(device);
+            specialActionsVM = new SpecialActionsListViewModel(deviceNum);
 
-            touchButtonUC = new TouchButtonUserControl(device);
+            touchButtonUC = new TouchButtonUserControl(deviceNum);
             TouchpadButtonControlDisplaySetup();
 
             RemoveHoverBtnText();
@@ -456,7 +464,6 @@ namespace DS4WinWPF.DS4Forms
 
         private void SetupEvents()
         {
-            gyroOutModeCombo.SelectionChanged += GyroOutModeCombo_SelectionChanged;
             outConTypeCombo.SelectionChanged += OutConTypeCombo_SelectionChanged;
             mappingListBox.SelectionChanged += MappingListBox_SelectionChanged;
             Closed += ProfileEditor_Closed;
@@ -478,7 +485,6 @@ namespace DS4WinWPF.DS4Forms
 
         private void UnregisterEvents()
         {
-            gyroOutModeCombo.SelectionChanged -= GyroOutModeCombo_SelectionChanged;
             outConTypeCombo.SelectionChanged -= OutConTypeCombo_SelectionChanged;
             mappingListBox.SelectionChanged -= MappingListBox_SelectionChanged;
             Closed -= ProfileEditor_Closed;
@@ -1093,35 +1099,26 @@ namespace DS4WinWPF.DS4Forms
         }
 
         /// <summary>
-        /// TODO(Phase6-Step7b-3): 暫定の実機番号。Step7b-1・7b-2 の時点では編集スロットがまだ device（Edit ボタン経由では
-        /// コントローラーのスロット、一覧経由では TEST_PROFILE_INDEX）のため、実機（targetDevice）は
-        /// 「device がコントローラースロットならそれ、そうでなければ実機なし（-1）」とし、従来と同じ判定結果にする。
-        /// Step7b-3 で、MainWindow から渡される targetDevice に置き換えて本メソッドを削除する。
+        /// 編集するプロファイルを作業スロット（Global.TEST_PROFILE_INDEX）へ読み込み、画面を初期化する。
+        /// Phase6-Step7b: 読み込み先は常に作業スロットで、コントローラーのスロットには触れない。
+        /// 実機（targetDevice）はコンストラクタで確定しているため、引数では受け取らない。
         /// </summary>
-        private static int InterimTargetDeviceFor(int device)
-        {
-            return device >= 0 && device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : -1;
-        }
-
-        public void Reload(int device, ProfileEntity profile = null)
+        /// <param name="profile">編集するプロファイル。null は新規作成（プリセット選択から始める）</param>
+        public void Reload(ProfileEntity profile = null)
         {
             profileSettingsTabCon.DataContext = null;
             mappingListBox.DataContext = null;
             specialActionsTab.DataContext = null;
             lightbarRect.DataContext = null;
 
-            deviceNum = device;
-            targetDevice = InterimTargetDeviceFor(device);
+            AppLogger.LogDebug($"[ProfileEditor] Reload: editSlot={deviceNum}, targetDevice={targetDevice}, profile={(profile != null ? profile.Name : "(new profile)")}");
 
             if (profile != null)
             {
                 currentProfile = profile;
-                if (device == Global.TEST_PROFILE_INDEX)
-                {
-                    Global.ProfilePath[Global.TEST_PROFILE_INDEX] = profile.Name;
-                }
+                Global.ProfilePath[Global.TEST_PROFILE_INDEX] = profile.Name;
 
-                profileRepository.LoadProfile(device, profile.Name);
+                profileRepository.LoadProfile(deviceNum, profile.Name);
                 profileNameTxt.Text = profile.Name;
                 profileNameTxt.IsEnabled = false;
             }
@@ -1133,7 +1130,7 @@ namespace DS4WinWPF.DS4Forms
                 presetWin.ShowDialog();
                 if (presetWin.Result == MessageBoxResult.Cancel)
                 {
-                    Global.LoadBlankDevProfile(device, false, controlService, false);
+                    Global.LoadBlankDevProfile(deviceNum, false, controlService, false);
                 }
             }
 
@@ -1146,22 +1143,16 @@ namespace DS4WinWPF.DS4Forms
 
             ColorByBatteryPerCheck();
 
-            if (device < Global.TEST_PROFILE_INDEX)
-            {
-                useControllerUD.Value = device + 1;
-                conReadingsUserCon.UseDevice(device, device);
-                contReadingsTab.IsEnabled = true;
-            }
-            else
-            {
-                useControllerUD.Value = 1;
-                conReadingsUserCon.UseDevice(0, Global.TEST_PROFILE_INDEX);
-                contReadingsTab.IsEnabled = true;
-            }
+            // Phase6-Step7b: Controller Readings は、実機（なければコントローラー0）の入力に対して、
+            // 作業スロット（編集中の設定）で計算した結果を表示する
+            int readingsDevice = profileSettingsVM.FuncDevNum;
+            useControllerUD.Value = readingsDevice + 1;
+            conReadingsUserCon.UseDevice(readingsDevice, Global.TEST_PROFILE_INDEX);
+            contReadingsTab.IsEnabled = true;
 
             conReadingsUserCon.EnableControl(false);
-            axialLSStickControl.UseDevice(Global.LSModInfo[device]);
-            axialRSStickControl.UseDevice(Global.RSModInfo[device]);
+            axialLSStickControl.UseDevice(Global.LSModInfo[deviceNum]);
+            axialRSStickControl.UseDevice(Global.RSModInfo[deviceNum]);
 
             mappingListVM.UpdateMappings();
             profileSettingsVM.UpdateLateProperties();
@@ -1178,7 +1169,7 @@ namespace DS4WinWPF.DS4Forms
             specialActionsTab.DataContext = specialActionsVM;
             lightbarRect.DataContext = profileSettingsVM;
 
-            StickDeadZoneInfo lsMod = Global.LSModInfo[device];
+            StickDeadZoneInfo lsMod = Global.LSModInfo[deviceNum];
             if (lsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Radial)
             {
                 conReadingsUserCon.LsDeadX = profileSettingsVM.LSDeadZone;
@@ -1190,7 +1181,7 @@ namespace DS4WinWPF.DS4Forms
                 conReadingsUserCon.LsDeadY = axialLSStickControl.AxialVM.DeadZoneY;
             }
 
-            StickDeadZoneInfo rsMod = Global.RSModInfo[device];
+            StickDeadZoneInfo rsMod = Global.RSModInfo[deviceNum];
             if (rsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Radial)
             {
                 conReadingsUserCon.RsDeadX = profileSettingsVM.RSDeadZone;
@@ -1282,21 +1273,10 @@ namespace DS4WinWPF.DS4Forms
             }
 
             Global.outDevTypeTemp[deviceNum] = OutContType.X360;
-            // Run profile loading in Task. Need to still wait for Task to finish
-            Task.Run(() =>
-            {
-                DS4Device device = deviceNum >= 0 && deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT
-                    ? controlService.DS4Controllers[deviceNum]
-                    : null;
-                if (device != null)
-                {
-                    device.HaltReportingRunAction(() => { profileRepository.LoadProfile(deviceNum, Global.ProfilePath[deviceNum]); });
-                }
-                else
-                {
-                    profileRepository.LoadProfile(deviceNum, Global.ProfilePath[deviceNum]);
-                }
-            });
+            // Phase6-Step7b: 編集は作業スロットに対して行っており、コントローラーのスロットには届いていないため、
+            // 元のプロファイルを読み込み直して取り消す処理は不要（旧: HaltReportingRunAction 内で LoadProfile していた）。
+            // 作業スロットは次に編集画面を開いたときに読み込み直される
+            AppLogger.LogDebug($"[ProfileEditor] Cancel: edit slot {deviceNum} discarded; controller slots were not modified (targetDevice={targetDevice})");
 
             Closed?.Invoke(this, EventArgs.Empty);
         }
@@ -1371,17 +1351,11 @@ namespace DS4WinWPF.DS4Forms
             picBoxHover.Visibility = Visibility.Hidden;
         }
 
-        private void GyroOutModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            int idx = gyroOutModeCombo.SelectedIndex;
-            if (idx >= 0)
-            {
-                if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-                {
-                    controlService.touchPad[deviceNum]?.ResetToggleGyroModes();
-                }
-            }
-        }
+        // Phase6-Step7b（決定7＝H1）: GyroOutModeCombo_SelectionChanged（ジャイロ出力モードの変更時に、実機の
+        // touchPad.ResetToggleGyroModes() を即時に呼ぶ処理）と FrictionUD_ValueChanged（トラックボール摩擦の変更時に
+        // ResetTrackAccel を即時に呼ぶ処理）は削除した。編集スロットが常に作業スロット（8）になり到達しなくなったため。
+        // 同じ処理は、適用・保存時の ApplyProfile → ControlService.CheckProfileOptions で行われる
+        // （Phase6-Step7b-Plan.md §1A.3）
 
         #region Save / Apply Profile Logic (Unified)
 
@@ -1423,14 +1397,13 @@ namespace DS4WinWPF.DS4Forms
             if (saved)
             {
                 AppLogger.LogToGui($"[DI] Profile '{profileName}' saved successfully.", false);
-                if (!isApply)
-                {
-                    ProfileSaved?.Invoke(this, profileName);
-                }
-                else
-                {
-                    Global.ApplyProfileToSlot(deviceNum, profileName, ProfileChangeSource.Manual);
-                }
+                // Phase6-Step7b（決定8）: 保存（Save）と適用（Apply）の違いは、画面を閉じるかどうかだけ。
+                // どちらも親画面へ ProfileSaved を通知し、MainWindow.SyncProfileListAndControllers が、
+                // プロファイル一覧を読み込み直したうえで、このプロファイルを使っているスロットにだけ再適用する。
+                // 編集画面を開いたコントローラー（targetDevice）へ直接適用はしない（新規作成したプロファイルで
+                // コントローラーが切り替わらないようにするため）。targetDevice はプレビュー・校正・ランブルテスト専用
+                AppLogger.LogDebug($"[ProfileEditor] {(isApply ? "Apply" : "Save")}: profile '{profileName}' saved; re-applying to controller slots that use it (targetDevice={targetDevice})");
+                ProfileSaved?.Invoke(this, profileName);
                 return true;
             }
             else
@@ -1530,10 +1503,12 @@ namespace DS4WinWPF.DS4Forms
 
         private void RumbleTestBtn_Click(object sender, RoutedEventArgs e)
         {
-            int deviceNum = profileSettingsVM.FuncDevNum;
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            // Phase6-Step7b: 振動させるのは実機（FuncDevNum＝targetDevice、実機なしならコントローラー0）。
+            // モーターの左右反転（InverseRumbleMotors）は、編集中の設定（作業スロット deviceNum）の値を読む（決定4＝I1）
+            int rumbleDevice = profileSettingsVM.FuncDevNum;
+            if (rumbleDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                DS4Device d = controlService.DS4Controllers[deviceNum];
+                DS4Device d = controlService.DS4Controllers[rumbleDevice];
                 if (d != null)
                 {
                     RumbleType type;
@@ -1671,17 +1646,6 @@ namespace DS4WinWPF.DS4Forms
             if (dialog.ShowDialog() == true)
             {
                 profileSettingsVM.UpdateLaunchProgram(dialog.FileName);
-            }
-        }
-
-        private void FrictionUD_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-        {
-            if (profileSettingsVM == null)
-                return;
-
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                controlService.touchPad[deviceNum]?.ResetTrackAccel(frictionUD.Value.GetValueOrDefault());
             }
         }
 
@@ -2074,7 +2038,8 @@ namespace DS4WinWPF.DS4Forms
 
         private void UseControllerReadoutCk_Click(object sender, RoutedEventArgs e)
         {
-            if (profileSettingsVM.UseControllerReadout && profileSettingsVM.Device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            // Phase6-Step7b: 判定は編集スロット（常に 8）ではなく実機の有無で行う（一覧経由では従来どおり開始しない）
+            if (profileSettingsVM.UseControllerReadout && HasTargetDevice)
             {
                 inputTimer.Start();
             }
@@ -2357,10 +2322,12 @@ namespace DS4WinWPF.DS4Forms
 
         private void GyroCalibration_Click(object sender, RoutedEventArgs e)
         {
-            int deviceNum = profileSettingsVM.FuncDevNum;
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            // Phase6-Step7b: 校正するのは実機（FuncDevNum＝targetDevice、実機なしならコントローラー0）。
+            // 編集スロットのフィールド deviceNum と区別するため、ローカル変数名を分けた
+            int calibrationDevice = profileSettingsVM.FuncDevNum;
+            if (calibrationDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                DS4Device d = controlService.DS4Controllers[deviceNum];
+                DS4Device d = controlService.DS4Controllers[calibrationDevice];
                 d.SixAxis.ResetContinuousCalibration();
                 if (d.JointDeviceSlotNumber != DS4Device.DEFAULT_JOINT_SLOT_NUMBER)
                 {
@@ -2431,7 +2398,9 @@ namespace DS4WinWPF.DS4Forms
 
         private void CalibrateStick_OnClick(object sender, RoutedEventArgs e)
         {
-            if (deviceNum == 8)
+            // Phase6-Step7b: 校正には実機が必要。旧判定 deviceNum == 8（一覧経由）は、編集スロットが常に 8 になったため
+            // 実機の有無（targetDevice）の判定に置き換えた。メッセージの文言は維持
+            if (!HasTargetDevice)
             {
                 MessageBox.Show("Stick recalibration is only available if the profile editor is opened " +
                                 "with the Edit button next to the controller you want to recalibrate in the main " +
@@ -2449,7 +2418,8 @@ namespace DS4WinWPF.DS4Forms
                 _ => throw new IndexOutOfRangeException("Wrong stick index. Must be 0 for left or 1 for right.")
             };
 
-            StickCalibrationWindow window = new(stick, deviceNum, profileSettingsVM)
+            // 実機（targetDevice）の現在の入力を読み、補正値は profileSettingsVM 経由で作業スロットへ書く
+            StickCalibrationWindow window = new(stick, targetDevice, profileSettingsVM)
             {
                 Owner = Application.Current.MainWindow,
             };
