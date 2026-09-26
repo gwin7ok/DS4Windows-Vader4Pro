@@ -223,7 +223,7 @@ classDiagram
 
     class IViewModelFactory {
         <<interface>>
-        +CreateProfileSettingsVM(string profileName) ProfileSettingsViewModel
+        +CreateProfileSettingsVM(string profileName, int targetDevice) ProfileSettingsViewModel
     }
     class ViewModelFactory {
         -IServiceProvider _sp
@@ -301,3 +301,7 @@ classDiagram
 %% - あわせて `IProfileSettingsService.ButtonAbsMouseInfos`／`TouchAbsMouse`、`IVirtualKBM.MoveAbsoluteMouse`（本図には個別メンバーとして未記載だったため図の変更なし）も削除済み。
 %% 注釈補強（2026-09-25 Phase6-Step7-4 決定7＝案H 反映）
 %% - Composition Root の補助として `IStartupArguments`（`StartupArguments` が実装）を新設した。アプリの起動引数（`ArgumentParser`）を保持するだけのサービスで、`AppHost.CreateHost(config, parser)` が値を設定し、`ServiceRegistration` が `ControlService` を生成するときに取り出して渡す。`ControlService` のクラス定義（依存）には変更がないため、図本体には追加していない。詳細は `04-Service-Lifecycle-Spec.md` の 2026-09-25 の注釈と `Phase6-Step7-Plan.md` 決定7。
+%% 注釈補強（2026-09-26 Phase6-Step7b 決定3＝案M1 反映）
+%% - `IViewModelFactory.CreateProfileSettingsVM` の理想形のシグネチャに `int targetDevice` を追加した。プロファイル編集画面では、編集対象（プロファイル。編集内容は作業領域に保持し、保存・適用を押すまで実機へ反映しない）と、ランブルテスト・ライトバーのプレビュー・校正などで使う実機（`targetDevice`。-1 は実機なし）を分けて渡す。現行コードは `CreateProfileSettingsViewModel(int device, int targetDevice = -1)`（`device` は作業スロット `Global.TEST_PROFILE_INDEX`）で、`CreateRecordBoxViewModel` にも同じ `targetDevice` を追加した。
+%% - Step8 以降の MVVM 移設でも、編集スロットと実機を同じ番号で兼用しないこと（兼用すると、編集中の変更が保存前にコントローラーへ即時反映される。Phase6-Status.md K4-3）。詳細は `Phase6-Step7b-Plan.md` §2A 決定3、`04-Service-Lifecycle-Spec.md` §1-3。
+

@@ -2,7 +2,7 @@
 
 作成日: 2026-09-24  
 改訂日: 2026-09-26（着手前再確認。現行コード［HEAD `360cb75b`］との突き合わせ、台帳の再作成、決定事項の追加、マイクロステップと実機確認項目の改訂。同日、決定1〜7 を確定）  
-状態: 計画書作成済み、Step7b-0（事前調査）完了（2026-09-24）、着手前再確認完了（2026-09-26）、決定1〜7 確定（2026-09-26、すべて推奨案）、決定8（Save／Apply の仕様）確定（2026-09-26）、Step7b-1・7b-2 完了（2026-09-26）、**Step7b-3 実装済み（2026-09-26、決定8 の修正を含む。ユーザーのビルド・テスト・実機確認待ち）**  
+状態: **完了（2026-09-26）**。Step7b-0（事前調査 2026-09-24、着手前再確認 2026-09-26）、決定1〜8 確定、Step7b-1〜7b-4 完了。実機確認済み（ステアリングホイール校正は Step11 へ先送り）。持ち越し K7b-1（異常終了、原因未特定・先送り）。完了報告書 `Phase6-Step7b-Completion-Report.md`  
 対象ブランチ: `For-DI-migration-work`  
 位置づけ: Step7（`App.xaml.cs` Post-Host DI化）と Step8（`ProfileEditor.xaml.cs` の段階的MVVM移設）の間に挿入する独立ステップ。  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -367,7 +367,7 @@ Step4 の実機確認中に、次の問題が見つかった。
   - **テスト**: `BindingWindowViewModelTargetDeviceTests.cs`（新規、5 件）、`RecordBoxViewModelTargetDeviceTests.cs`（新規、5 件。独立した `BackingStore` を使い、Passthru が実機のスロットにだけ設定されて元に戻ること、`RevertControlsSettings` を 2 回呼んでも値を壊さないこと、実機なしでは何も変えないこと、強制色の対象）、`PatternCViewModelTests.cs`（`CreateRecordBoxViewModel` の既存テストに省略時 −1 の確認を追加し、実際の DI ホストから解決したファクトリで `targetDevice` が届き Passthru が実機のスロットに設定・復元されることを確認するテストを 1 件追加）。既存テストの `TouchOutMode[0]` の後始末漏れ（§1A.2 F2）は、省略時に Passthru を設定しなくなったことで解消。
   - **検証結果（2026-09-26）**: ユーザー側でビルド・テストビルド・テスト実行がすべて成功し、コミットしてリモートリポジトリに反映済み。挙動の変化がないため実機確認は省略。
 
-### Step7b-3: 編集スロットの固定と保存・適用・キャンセルの整理（主目的）【実装済み（2026-09-26）、ビルド・テスト・実機確認待ち】
+### Step7b-3: 編集スロットの固定と保存・適用・キャンセルの整理（主目的）【完了（2026-09-26、決定8 の修正と範囲外の追加修正 2 件を含む。ビルド・テスト・実機確認済み）】
 - **変更**:
   - `MainWindow`: `ShowProfileEditor(int targetDevice, ProfileEntity entity)` に変更し、A1〜A5 を更新（Edit／New Profile は `idx`、一覧経由は −1）。`new ProfileEditor(targetDevice)`、`editor.Reload(targetDevice, entity)`。`EmitMissingActionLogsForDevice` には `Global.TEST_PROFILE_INDEX` を渡す（A6）。
   - `ProfileEditor` のコンストラクタと `Reload`: 引数を `targetDevice` にし、`deviceNum = Global.TEST_PROFILE_INDEX` に固定。`Reload` の `TEST_PROFILE_INDEX` 分岐（1103）は常に通る形に整理する（`ProfilePath[8]` の設定は維持）。`useControllerUD` と `conReadingsUserCon.UseDevice(targetDevice >= 0 ? targetDevice : 0, Global.TEST_PROFILE_INDEX)`。**`UpdateMappingDevType` の呼び出しと位置は変えない**。
@@ -419,8 +419,9 @@ Step4 の実機確認中に、次の問題が見つかった。
   - テスト: `StickDeadZoneBindingGuardTests.cs`（新規、4 件の Theory。4 つの入力欄が `Value="{Binding プロパティ名}"` で、`UpdateSourceTrigger=LostFocus` を含まないこと）。
   - 実機確認: ▲▼のどちらでも赤い円が即時に変わること、キーボードでの直接入力（例: 0.25、0.05、全消去してからの入力）で使いにくくならないこと、保存・適用後の値が入力した値（小数第 2 位）と一致すること。
 - **§4-12 の判定（2026-09-26）**: Controller Readings が作業スロット（編集中の設定）で計算されることを、入力欄からフォーカスを外した後の出力値と円で確認し、合格とした。円の表示の遅れは上記「範囲外の追加修正 2」で扱う。
+- **実機確認中の異常終了（2026-09-26、持ち越し K7b-1）**: プロファイル一覧から編集中に、Controller Readings を表示した状態で Lightbar の色選択画面を開くと、DS4Windows が異常終了することがある（再現する回としない回がある）。Windows イベントログでは、3 回とも落ちた場所・種類が違い（入力スレッドの `IndexOutOfRangeException`、`coreclr.dll` のアクセス違反、UI スレッドの `AccessViolationException`）、メモリ破壊が疑われる。再現手順の経路は Step7b で変わっておらず、Step7b の回帰である証拠はないが未検証。ユーザー決定により、**切り分けを含めて対策を先送り**し、Step7b の完了判定からは切り離す。詳細・分析・先送りした切り分け手順は `Phase6-Status.md` §6.5 K7b-1。
 
-### Step7b-4: 文書・実機確認・完了報告
+### Step7b-4: 文書・実機確認・完了報告【完了（2026-09-26）】
 - **文書**: `Phase6-Status.md`（§1 の表、Step7b の節、§5、§6.5 に観察事項）、`Phase6-Plan.md`（Step7b の記載を §0.2・§1・§2 に追加。§1A.1-11）、`Phase6-Step8-Plan.md`（冒頭に「Step7b からの申し送り」を追加。`ProfileEditor.xaml.cs` の行番号と、`ExecuteSaveOrApply`・`CancelBtn_Click`・`Reload` の内容が変わるため、Step8-0 の台帳は Step7b 後の内容で作り直すこと）、モデル図 03・04（決定3＝M1）。`copilot-instructions.md` の変更は不要。
 - **先送り**: 実機で確認できない項目は `Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録する。
 - **完了報告書**: `Phase6-Step7b-Completion-Report.md`。
@@ -459,12 +460,12 @@ Step4 の実機確認中に、次の問題が見つかった。
     - タッチパッドの Passthru: Record A Macro 画面を**開いている間**（記録中に限らない。ViewModel の生成時に設定し、保存・キャンセルで戻す）、そのコントローラーのタッチパッドがマウス操作にならないこと、閉じると元に戻ること。タッチパッドの出力が Mouse のプロファイルで確認すると分かりやすい。
 11. Special Actions タブで Check Battery アクションを編集し、空・満充電の色選択中にライトバーがプレビューされる（決定1＝A）。
 12. Controller Readings タブ: そのコントローラーの入力が表示され、編集中のデッドゾーン等を変えると、出力側の表示が変わる（保存しなくても画面上で確認できる）。**合格（2026-09-26）**。スティックの Dead Zone を▲▼で変えたとき、デッドゾーンの円が即時に変わること（範囲外の追加修正 2 の確認）。
-13. マッピング一覧の「for readout」をチェックし、コントローラーのボタンを押すと、その割り当てが選ばれる。
+13. Other タブの Rumble 枠の下にある「Use Controller … for readout」のチェックを入れ、DS4Windows のウィンドウをアクティブにしてコントローラーのボタンを押すと、その割り当てが選ばれ、ボタン設定画面が開く（2026-09-26 に場所と動作の記述を訂正）。
 
 ### 4.5 校正
 14. スティックの Automatically recalibrate stick（Edit ボタン経由のみ可。一覧経由では従来どおり「Stick recalibration is only available if the profile editor is opened with the Edit button …」のメッセージが出る）。校正後、保存・適用すると補正が効く。
 15. Gyro Calibration ボタン。
-16. ステアリングホイール校正（vJoy 環境がない場合は Step11 へ先送り）。
+16. ステアリングホイール校正（ジャイロタブで Output Mode を Controls にしたときの「360 Steering Wheel」枠の校正ボタン）。**vJoy 環境がないため Step11 へ先送り（2026-09-26）**。
 
 ### 4.6 一覧経由・新規作成
 17. プロファイル一覧の Edit／ダブルクリックで開いて編集・保存する動作。ランブルテストはコントローラー0 に対して動く（従来どおり）。ライトバーのプレビューは従来どおり動かない。**Apply でも、そのプロファイルを使っているコントローラーへ再適用される**（決定8による変更。従来の一覧経由の Apply は保存のみだった）。
@@ -474,6 +475,17 @@ Step4 の実機確認中に、次の問題が見つかった。
 19. プロファイル一覧の New: 従来どおり作成・保存できる。
 
 - 環境がなく実施できない項目は、`Phase6-Step11-Plan.md` §3.3 の先送り台帳へ登録する。
+
+### 4.7 実機確認の結果（2026-09-26）
+- **合格**: 4.1〜4.6 の各項目（1〜15、17〜19）。個別に報告・検討した項目は次のとおり。
+  - 4.1（主目的）: 最初の確認で再接続後にジャイロマウスが動かなくなったのは、切断後にジャイロタブの「Turn Behavior - Turns Gyro」のチェックを外したため（Triggers が Always On のとき、チェックなしはジャイロマウスが常に停止する設定）。Step7b の不具合ではない。
+  - 決定8: 実機確認の前に Save／Apply の仕様がユーザーから示され、Apply の再適用先を修正した（§2A 決定8）。
+  - 10（Record A Macro）: 確認手順を §4-10 のとおり訂正。Add Rumble／Change Lightbar Color の表示条件を変更した（§3 Step7b-3「範囲外の追加修正」）。
+  - 12（Controller Readings）: 合格。デッドゾーンの円の表示が遅れる既存の問題を修正した（同「範囲外の追加修正 2」）。
+  - 13（for readout）: チェックボックスは Other タブの Rumble 枠の下（「Use Controller」の行）にある。チェックを入れてコントローラーのボタンを押すと、その割り当てが選ばれ、ボタン設定画面が開く（§4-13 の記述「マッピング一覧の」「割り当てが選ばれる」は不正確だった）。
+  - 15（Gyro Calibration）: 画面は開かない。計測のやり直し中は Controller Readings の SixAxis 枠の左上で緑の丸が点滅する。
+- **先送り**: 16（ステアリングホイール校正）は vJoy 環境がないため `Phase6-Step11-Plan.md` §3.3 に登録。
+- **持ち越し**: 実機確認中に発生した異常終了は K7b-1 として、切り分けを含めて先送り（`Phase6-Status.md` §6.5）。
 
 ---
 
@@ -501,12 +513,12 @@ Step4 の実機確認中に、次の問題が見つかった。
 - [x] Step7b-0 の調査項目 1〜6 が確認され、本書へ追記されている（2026-09-24）
 - [x] 着手前再確認（台帳の再作成、旧調査との乖離の記録、決定事項の提示）（2026-09-26）
 - [x] 決定1〜7 がユーザーにより確定し、本書に記録されている（2026-09-26、すべて推奨案。§2A.0）。決定8（Save／Apply の仕様）も確定・記録済み（2026-09-26）
-- [ ] 保存・適用で、そのプロファイルを使っている全スロットに設定全体が再適用され、使っていないコントローラー（New Profile の作成元を含む）には適用されない（決定8）
-- [ ] プロファイル編集画面の編集スロットが、常に `TEST_PROFILE_INDEX` である
-- [ ] 編集中の変更が、保存・適用まで接続中のコントローラーに反映されない
-- [ ] キャンセルでコントローラーのスロットが変化しない
-- [ ] ランブルテスト、ライトバー色プレビュー（`BindingWindow`・マクロ記録・バッテリー確認のものを含む。決定1＝A）、入力読み取り表示、各種校正が `targetDevice` で動く
-- [ ] 一覧経由の編集の動作が従来と変わらない（決定8 による Apply の再適用を除く）
-- [ ] `ProfileEditorMappingDevTypeGuardTests` を含む既存テストと新規テストが全件成功（`dotnet build`、`dotnet test`）
-- [ ] 実機確認（§4）が完了、または Step11 の先送り台帳に登録済み
-- [ ] `Phase6-Status.md`／`Phase6-Plan.md`／`Phase6-Step8-Plan.md`（台帳の作り直しの申し送り）を更新、モデル図 03・04 を更新（決定3＝M1）、完了報告書を作成
+- [x] 保存・適用で、そのプロファイルを使っている全スロットに設定全体が再適用され、使っていないコントローラー（New Profile の作成元を含む）には適用されない（決定8）
+- [x] プロファイル編集画面の編集スロットが、常に `TEST_PROFILE_INDEX` である
+- [x] 編集中の変更が、保存・適用まで接続中のコントローラーに反映されない
+- [x] キャンセルでコントローラーのスロットが変化しない
+- [x] ランブルテスト、ライトバー色プレビュー（`BindingWindow`・マクロ記録・バッテリー確認のものを含む。決定1＝A）、入力読み取り表示、各種校正が `targetDevice` で動く
+- [x] 一覧経由の編集の動作が従来と変わらない（決定8 による Apply の再適用を除く）
+- [x] `ProfileEditorMappingDevTypeGuardTests` を含む既存テストと新規テストが全件成功（`dotnet build`、`dotnet test`）
+- [x] 実機確認（§4）が完了、または Step11 の先送り台帳に登録済み（2026-09-26。ステアリングホイール校正のみ Step11 へ先送り、K7b-1 は先送り）
+- [x] `Phase6-Status.md`／`Phase6-Plan.md`／`Phase6-Step8-Plan.md`（台帳の作り直しの申し送り）を更新、モデル図 03・04 を更新（決定3＝M1）、完了報告書を作成

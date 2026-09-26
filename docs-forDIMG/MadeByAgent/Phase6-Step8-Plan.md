@@ -20,6 +20,17 @@
 > - 起動時の DI ホストは、`Global` の静的初期化で起動引数なしに先に作られている（持ち越し K7-1）。`AppHost.GetService` はいつでも同じシングルトンを返すため Step8 の作業への影響はないが、「ホストは `App.xaml.cs` の明示的な構築で作られる」という前提で設計しないこと。
 > - 詳細は `Phase6-Step7-Plan.md` §2.8、`Phase6-Step7-Completion-Report.md`。
 
+> **Step7b からの申し送り（2026-09-26 追記。Step8-0 で必ず確認すること）**
+> - **台帳は作り直しが必要**: Step7b で `ProfileEditor.xaml.cs` を大きく変更したため、本書 §2 以降の行番号・参照の台帳（C8-xx）は使えない。Step8-0 で、Step7b 完了後のコードから台帳を作り直すこと。
+> - **編集スロットと実機の分離**: `ProfileEditor` の `deviceNum` は `private readonly int deviceNum = Global.TEST_PROFILE_INDEX;` に固定された（作業スロット）。実機は `targetDevice`（コンストラクタ `ProfileEditor(int targetDevice)` でだけ受け取る。一覧経由は `ProfileEditor.NoTargetDevice`＝−1）。`Reload(ProfileEntity profile = null)` は `targetDevice` を受け取らない。`ProfileEditor.DeviceNum` は削除済み。MVVM 移設後も、編集スロットと実機を同じ番号で兼用しないこと（モデル図 03・04 の 2026-09-26 の注釈）。
+> - **保存・適用（B9 の前提が変わった）**: `ExecuteSaveOrApply` は Save・Apply のどちらでも保存後に `ProfileSaved` を通知するだけになり、`ProfileEditor` から `ApplyProfileToSlot` を直接呼ぶ箇所はなくなった（決定8。違いは画面を閉じるかどうかだけ）。再適用は `MainWindow.SyncProfileListAndControllers`（そのプロファイル名を使うスロットにだけ `Global.ApplyProfileToSlot`）が行う。本書の C8-44（`ApplyProfileToSlot` を `ProfileSettingsViewModel.SaveProfile()` へ移す案）と §3.3 の B9 シムの設計は、この前提で見直すこと。
+> - **キャンセル**: `CancelBtn_Click` はコントローラーのスロットへの再読み込み（`HaltReportingRunAction`／`LoadProfile`）を行わない。
+> - **削除済みの即時フック**: `GyroOutModeCombo_SelectionChanged`、`FrictionUD_ValueChanged`（XAML の属性を含む）、`ProfileSettingsViewModel` の 6 件（`touchPad[device]`／`deltaAccelProcessors[device]` への即時リセット）。
+> - **`targetDevice` を受け取るようになった型**: `ProfileSettingsViewModel`・`BindingWindowViewModel`・`RecordBoxViewModel`（省略可能、既定 −1）、`BindingWindow`・`RecordBox`・`RecordBoxWindow`・`SpecialActionEditor`（必須）、`IViewModelFactory.CreateProfileSettingsViewModel`／`CreateRecordBoxViewModel`（省略可能）。
+> - **維持が必要なソース走査ガード**: `ProfileEditorTargetDeviceGuardTests`（作業スロットの固定、キャンセル、Save／Apply の通知、`targetDevice` の受け渡し、削除したコードの再混入）、`ProfileEditorMappingDevTypeGuardTests`（`Reload`／`RefreshEditorBindings` の `UpdateMappingDevType`）、`RecordBoxExtraButtonsVisibilityGuardTests`、`StickDeadZoneBindingGuardTests`。ロジックを ViewModel へ移すときは、これらのガードを移設先に合わせて書き換えること（検査の意図は維持する）。
+> - **持ち越し K7b-1**: 実機確認中の異常終了（原因未特定、先送り）。`ProfileEditor` の操作中に発生したが、Step7b の回帰である証拠はない。`Phase6-Status.md` §6.5。
+> - 詳細は `Phase6-Step7b-Plan.md`、`Phase6-Step7b-Completion-Report.md`。
+
 ## 0. 背景と改訂の経緯
 
 ### 0.1 暫定18件から全98箇所への精査と課題の所在

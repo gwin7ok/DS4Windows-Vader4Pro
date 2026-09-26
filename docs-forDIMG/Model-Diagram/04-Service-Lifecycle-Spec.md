@@ -16,6 +16,7 @@
    * 開くたびに最新の設定値を読み込み直すダイアログ・独立画面（`SettingsViewModel`, `LogViewModel`, `AboutViewModel` 等）に適用。
 3. **Factory生成（Pattern C / Composite Mediator）:**
    * `ProfileSettingsViewModel` などのパラメータ（プロファイル名）を伴う複合ViewModel。`IViewModelFactory` 経由で生成され、配下の各サブViewModel（`StickSubVM` 等）に必要な依存サービスを自動伝播してインスタンス化する。
+   * プロファイル編集画面では、編集対象（プロファイル）と、プレビュー・校正に使う実機（`targetDevice`。-1 は実機なし）を分けて渡す。編集内容は作業領域（現行コードでは作業スロット `Global.TEST_PROFILE_INDEX`）に保持し、保存・適用を押すまで実機へは反映しない。実機を使うのは、ランブルテスト、ライトバーのプレビュー、入力読み取り表示、スティック・ジャイロ・ステアリングホイールの校正、マクロ記録など、一時的な確認機能だけとする（2026-09-26 Phase6-Step7b 決定3）。
 
 ---
 
@@ -134,3 +135,7 @@
 %% - 背景: 現在の起動順序では、ホストは `Global` の静的初期化（`ScpUtil.cs` の `fallbackProfileRepository`）の中で起動引数なしに先に暗黙構築され、`App.xaml.cs` の `AppHost.CreateHost(config, parser)` は既存のホストを返すだけになっている。構築済みのコンテナには登録を追加できないため、`CreateHost(config, parser)` は登録済みの本サービスへ起動引数を設定する（`Phase6-Step7-Plan.md` §0.4 の訂正・決定7）。
 %% - `ControlService` 自体の依存（コンストラクタ引数）は変わらない。`ServiceRegistration` の生成処理が本サービスから起動引数を取り出して渡す。
 %% - ホストが Pre-Host 領域で暗黙構築される問題そのもの（案R）は持ち越し事項（`Phase6-Status.md` §6.5 K7-1）。
+
+%% 注釈補強（2026-09-26 Phase6-Step7b 決定3＝案M1 反映）
+%% - §1-3（Factory 生成）に、プロファイル編集画面では編集対象と実機（`targetDevice`）を分けて渡す旨を追記した。`IViewModelFactory` のライフタイム・依存（§2）は変わらない。現行コードの契約は `CreateProfileSettingsViewModel(int device, int targetDevice = -1)`／`CreateRecordBoxViewModel(…, int targetDevice = -1)`。
+%% - 詳細は `03-Class-Interface-Diagram.md` の 2026-09-26 の注釈と `Phase6-Step7b-Plan.md` §2A 決定3。

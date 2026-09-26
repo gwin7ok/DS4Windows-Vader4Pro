@@ -1,7 +1,7 @@
 # フェーズ6 進捗管理文書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
-最終更新日: 2026-09-25  
-状態: Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）、Step3-6a 完了確定（グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ Step11 へ先送り］）、Step3-6b 完了確定（グループ B の12件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）、Step3-6c 完了確定（グループ C の19件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-7 実装済み（2026-09-24、温存3件にTODOコメント付与、§2.4.3の選択は既定K-1採用、`using static DS4Windows.Global;`の削除可否判定は見送りで確定。ビルド・テスト確認待ち。詳細は §3.8）** / Step4〜Step12 計画確定・承認待ち（**次は Step3-7 のビルド・テスト確認後にStep3完了確定、その後Step4**） / BindingWindow のテンキー右端欠けを修正・完了確定（2026-09-24、UI 微修正。詳細は §6.9）  
+最終更新日: 2026-09-26  
+状態: **最新: Step4〜Step7b 完了（Step7b は 2026-09-26）、次は Step8** / Phase6-Step1 完了 / **Step2 完了（2026-09-21 確定）** / **Step13（配置整理 44件）完了（2026-09-21 確定）** / **Step3-1・Step3-2 完了確定（ともにビルド・テスト・実機確認済み、2026-09-22〜23）** / **Step3-3 対象消滅（2026-09-23、Abs Mouse機能削除に伴い対象コード自体を撤去。詳細は §6.8）** / Step10b（1ファイル1型の全数是正）新設 / **Phase8（Controls/SpecialActions統合ディスパッチ）新設（2026-09-23、Phase7完了後に独立フェーズとして着手。詳細は §6.7）** / **Step3-4 完了確定（2026-09-24、`SetCurveAndDeadzone` のスティック・トリガー系27件を解消。ビルド・テスト・実機確認済み）** / **Step3-5 完了確定（2026-09-24、ジャイロ系13件・`ApplyStickCalibration` 8件・`Commit` 24件の計45件を解消。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-6 は 3-6a／3-6b／3-6c に分割（2026-09-24決定）、Step3-6a 完了確定（グループ A の24件＋契約追加 R1。ビルド・テストビルド・テスト実行成功、実機確認済み［ステアリングホイールエミュレーションのみ Step11 へ先送り］）、Step3-6b 完了確定（グループ B の12件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）、Step3-6c 完了確定（グループ C の19件、方針 P2。ビルド・テストビルド・テスト実行成功、実機確認済み）** / **Step3-7 実装済み（2026-09-24、温存3件にTODOコメント付与、§2.4.3の選択は既定K-1採用、`using static DS4Windows.Global;`の削除可否判定は見送りで確定。ビルド・テスト確認待ち。詳細は §3.8）** / Step4〜Step12 計画確定・承認待ち（**次は Step3-7 のビルド・テスト確認後にStep3完了確定、その後Step4**） / BindingWindow のテンキー右端欠けを修正・完了確定（2026-09-24、UI 微修正。詳細は §6.9）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ完了状況: **Phase5 完了（Step1〜15 完了済み、SSOT確立・Issue 7根本解消完了）**  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -19,7 +19,7 @@
 | **Step 5** | OutputSlotService 孤立配列撤廃・UDP診断是正 | `OutputSlotService.cs` 等 | UDP診断1行＋孤立配列系 | **完了（2026-09-24）** | `Phase6-Step5-Plan.md`、`Phase6-Step5-Completion-Report.md` | Step5-0〜5-3 完了（実機確認は Step11 へ先送り） |
 | **Step 6** | 出力切替UI表示追従・未接続API整理 | `ProfileEditor.xaml.cs`, `OutputSlotService.cs` 等 | 台帳再作成（2026-09-24、方針確定） | **完了（2026-09-24）** | `Phase6-Step6-Plan.md`、`Phase6-Step6-Completion-Report.md` | Step6-0〜6-3 完了 |
 | **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 39件（温存15。2026-09-24 再集計） | **完了（2026-09-25）** | `Phase6-Step7-Plan.md`、`Phase6-Step7-Completion-Report.md` | Step7-0〜7-5 完了（実機確認の3項目は Step11 へ先送り） |
-| **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 決定1〜8 確定、Step7b-1・7b-2 完了、Step7b-3 実装済み（2026-09-26、決定8［Apply も Save と同じく、そのプロファイルを使うスロットにだけ再適用］を含む。ビルド・テスト・実機確認待ち） | `Phase6-Step7b-Plan.md` | 実装未着手（Step7 の後・Step8 の前） |
+| **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` ほか | 編集スロット固定＋`targetDevice`導入 | **完了（2026-09-26）** | `Phase6-Step7b-Plan.md`、`Phase6-Step7b-Completion-Report.md` | Step7b-0〜7b-4 完了（ステアリングホイール校正は Step11 へ先送り、K7b-1 は先送り） |
 | **Step 8** | `ProfileEditor` 段階的MVVM移設 | `ProfileEditor.xaml.cs` 等 | 60箇所 | 計画確定・承認待ち | `Phase6-Step8-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 9** | 主要4大ViewModel Pure DI化 | `SettingsVM`, `MainWindowVM` 等 | 79箇所 | 計画確定・承認待ち | `Phase6-Step9-Plan.md` | 未着手 (PR-1〜6) |
 | **Step 10**| 小型UI/ViewModel ドメイン別DI化| 小型View 11, 小型VM 12 等 | 72箇所 | 計画確定・承認待ち | `Phase6-Step10-Plan.md` | 未着手 (PR-1〜4) |
@@ -190,12 +190,13 @@
 
 ---
 
-### Phase6-Step7b: プロファイル編集画面の即時反映廃止（保存・適用時に一括反映）【着手前再確認完了・決定確定】
-- **進捗率**: **0%（実装未着手）。着手前再確認（2026-09-26、HEAD `360cb75b`）完了: 台帳を再作成し、旧調査で漏れていた実機に触れる機能（マクロ記録画面のライトバー色プレビューと記録中のタッチパッド Passthru、スペシャルアクションのバッテリー確認の色プレビュー）を追加。呼出元 0 件の `ProfileEditor.DeviceNum` を §2.4 で調査。決定1〜7 はユーザーによりすべて推奨案で確定（2026-09-26: A［サブ画面まで付け替え］／P1［画面は必須引数、VM・ファクトリは省略可能］／M1［モデル図 03・04 に追記］／I1［左右反転は編集中の値］／D1［`DeviceNum` 削除］／L1［確認用ログ追加］／H1［即時フック 8 件を削除］）。マイクロステップは 7b-1〜7b-4 に改訂（挙動を変えない下準備を先に行う）。詳細は `Phase6-Step7b-Plan.md` §1A・§2A・§3**
-- **新設の経緯**: Step4 の実機確認で、Edit ボタン経由の編集が接続中のコントローラーへ即時反映される既存仕様の問題（K4-3）が判明。ユーザー決定（2026-09-24）: 編集中のリアルタイム確認は廃止（機能削除の承認）、ライトバー色プレビューとランブルテストは `targetDevice` に対して残す、独立 Step として Step8 の前に実施。
-- **方針**: 編集画面は常に作業スロット（`TEST_PROFILE_INDEX`）へ読み書きし、接続中のコントローラーは別引数 `targetDevice` として渡す。適用・保存時の一括反映は既存の `ApplyProfileToSlot`／`SyncProfileListAndControllers` を使う。
-- **見積り**: 約 1.5〜2 日（7b-0 調査 → 7b-1 編集スロット固定 → 7b-2 コントローラー機能の付け替え → 7b-3 保存・適用・キャンセル → 7b-4 テスト・文書・実機確認）。
-- **注意**: `ProfileEditor.xaml.cs` を大きく触るため、Step8 の行番号台帳は本ステップの完了後に更新する。
+### Phase6-Step7b: プロファイル編集画面の即時反映廃止（保存・適用時に一括反映）【完了】
+- **完了（2026-09-26）**: Step7b-0〜7b-4。完了報告書 `Phase6-Step7b-Completion-Report.md`。ビルド・テストビルド・テスト実行成功、実機確認済み（ステアリングホイール校正のみ vJoy 環境がなく Step11 へ先送り）。
+- **結果**: プロファイル編集画面は常に作業スロット（`TEST_PROFILE_INDEX`）へ読み書きし、実機（Edit ボタンのコントローラー）は `targetDevice` として別に持つ。編集中の変更は保存・適用まで実機に届かない（K4-3 解消）。ランブルテスト、ライトバー色のプレビュー（ボタン設定画面・マクロ記録・バッテリー確認を含む）、Controller Readings、for readout、各校正は `targetDevice`（一覧経由はコントローラー0 または無効、従来どおり）で動く。Save と Apply はどちらも保存後にそのプロファイルを使うスロットへ再適用し、違いは画面を閉じるかどうかだけ（決定8）。
+- **決定**: 決定1＝A、決定2＝P1、決定3＝M1（モデル図 03・04 に追記）、決定4＝I1、決定5＝D1（`ProfileEditor.DeviceNum` 削除）、決定6＝L1（確認用ログ）、決定7＝H1（即時フック 8 件削除）、決定8（Save／Apply の仕様。Apply が 2026-09-16 以降 `ApplyProfileToSlot(deviceNum)` に分岐していたのを是正）。詳細は `Phase6-Step7b-Plan.md` §2A。
+- **範囲外の追加修正（実機確認中のユーザー決定）**: (1) マクロ記録画面の Add Rumble／Change Lightbar Color を、Record Delays の有無にかかわらず記録中に表示、(2) スティックの Dead Zone の入力欄 4 つから `UpdateSourceTrigger=LostFocus` を撤廃（Controller Readings の円が即時に更新される）。
+- **持ち越し**: K7b-1（実機確認中の異常終了。原因未特定、切り分けを含めて先送り。§6.5）。
+- **Step8 への申し送り**: `ProfileEditor.xaml.cs` の行番号と保存・適用・キャンセル・`Reload` の内容が変わったため、Step8-0 で台帳を作り直す（`Phase6-Step8-Plan.md` 冒頭に記載）。
 
 ---
 
@@ -316,6 +317,7 @@
 
 ## 5. 直近の次アクション
 
+0. **（2026-09-26 時点の最新）** Step7b は完了確定（2026-09-26、`Phase6-Step7b-Completion-Report.md`）。次は **Step8**（`ProfileEditor.xaml.cs` の段階的MVVM移設。Step8-0 で、Step7b 後のコードから台帳を作り直すことから始める）→ Step9 → Step10 → Step10b → Step11 → Step12 の順。持ち越し K7b-1（異常終了）は先送り。
 0. **（2026-09-25 時点の最新）** Step3〜Step7 は完了確定（Step7 は 2026-09-25、`Phase6-Step7-Completion-Report.md`）。次は **Step7b**（プロファイル編集画面の即時反映廃止。Step7b-0 の事前調査は完了済みのため、着手時に現行コードとの再確認から始める）→ Step8 → Step9 → Step10 → Step10b → Step11 → Step12 の順。以下の 1. は Step3 当時の記録。
 1. **Step3-6c**（非同期マクロ経路19件、方針 P2）は完了確定（2026-09-24、ユーザーのビルド・テスト・実機確認完了、`Phase6-Step3-Plan.md` §3.7）。**Step3-7**（温存3件の最終処理、§2.4.3の選択［既定K-1採用］と `using static DS4Windows.Global;` の削除可否判定［見送りで確定］）は実装済み。ユーザーのビルド・テスト確認を経てコミットする（`Phase6-Step3-Plan.md` §3.8）。確認後、Step3 完了確定 → Step4 へ進む。
 2. Step3 以降は、確定済みの順序（Step3 → Step4 → Step5 → ... → Step10 → Step10b → Step11 → Step12 → Phase7 → Phase8）で進める。Phase8（Controls/SpecialActions統合ディスパッチ）は Phase7 完了後の独立フェーズとして新設済み（詳細は §6.7）。
@@ -367,6 +369,14 @@
 **K7-1（新規、2026-09-25、Phase6-Step7-4 の実機確認で判明・決定7 で持ち越しを決定）**: DI コンテナ（ホスト）が、`App.xaml.cs` の明示的な構築（`AppHost.CreateHost(config, parser)`）より前に、`Global` の静的初期化の中で起動引数なしに暗黙に構築されている。`ScpUtil.cs:779` の静的初期化子 `fallbackProfileRepository = new ProfileRepository(ProfileSettingsServiceInstance)`（2026-08-31、`6e8da968` から）が `ProfileSettingsServiceInstance` のゲッター経由で `AppHost.GetService` を呼び、`AppHost.GetService` はホスト未構築時に引数なしの `CreateHost()` を呼ぶため。通常起動では 170 行の `Global.FindConfigLocation()`（`Global` への最初の接触）の時点でホストができる。影響: (1) 明示的な `CreateHost(config, parser)` は既存のホストを返すだけで、`services.AddSingleton(parser)` は実行されない（起動引数 `-virtualkbm` が効かなかった原因。Step7-4 では決定7＝案H［`IStartupArguments` 経由で起動引数を渡す］で回避済み）、(2) 「Pre-Host 領域は DI コンテナが存在しない」という前提が成り立たない（`Phase6-Step7-Plan.md` §0.4 の訂正）、(3) 起動ログの `AppHost.CreateHost() called successfully (Phase 0-3 verification)` は実態を表していない。**対応（案R）**: `Global` の静的初期化がホストを作らないようにし（例: フォールバック実体の生成で DI シムのゲッターを呼ばない）、明示的な構築を本当の最初の構築にする。`Global` の静的初期化の順序を変えるため、静的初期化の循環（§6.4-3）に注意し、ほかに Pre-Host 領域でホストを作る経路がないかを起動ログ（`Host initialized with runtime parser` が出ること）で確認する。`Global` の静的初期化を整理する Phase7 で扱う（`Phase6-Step12-Plan.md` §4 に登録済み）。
 
 **K7-2（新規、2026-09-25、Phase6-Step7-4 の実機確認で観察・記録のみ。Step7 の回帰ではない）**: FakerInput が未導入の環境で起動引数 `-virtualkbm fakerinput` を指定すると、`FakerInputHandler.Connect()`（外部ライブラリ `FakerInputWrapper.dll` の `fakerInput.Connect()` の戻り値をそのまま返す）が成功を返し、SendInput へのフォールバックが起きない（INFO ログ `Using output KB+M handler: FakerInput 0.0.0.0`）。キーボード・マウス出力が効かない可能性がある。引数なしの通常起動では、DS4Windows の導入判定（`root\FakerInput` の有無）で最初から SendInput が選ばれるため影響はない。対応案（未決定）: 導入判定（`Global.fakerInputInstalled`）が偽なら `fakerinput` の明示指定でも SendInput にする、または接続後に実際の動作を確認する。外部ライブラリの動作に関わるため、対応の要否・時期はユーザー判断。詳細は `Phase6-Step7-Plan.md` Step7-4 の実機確認の結果。
+
+**K7b-1（新規、2026-09-26、Phase6-Step7b の実機確認中に発生。原因未特定。ユーザー決定により切り分けを含めて対策を先送り）**: DS4Windows が異常終了することがある（再現する回としない回がある）。
+- **再現手順**: DS4Windows を起動 → コントローラーを Bluetooth で接続 → プロファイル A を適用 → プロファイル一覧からプロファイル B を編集 → 左ペインを Controller Readings タブに切り替え → 右ペインを Lightbar タブに切り替え → 色選択画面（ColorPickerWindow）を開く。この時点で異常終了することがある。
+- **発生記録（2026-09-26、Windows イベントログ）**: (1) 11:29:46 入力スレッドで `System.IndexOutOfRangeException`（`DS4Device.sendOutputReport` ← `performDs4Input`。アプリのログにも記録あり、行番号なし）、(2) 11:36:32 `coreclr.dll` 内のアクセス違反（`0xc0000005`、.NET のスタックトレースなし）、(3) 11:44:45 UI スレッドで `System.AccessViolationException`（WPF のフォーカス変更処理中、`ColumnDefinitionCollection.get_Item`。アプリのログには何も残らず、プロセスが即時終了）。
+- **分析（未確定）**: 落ちるスレッド・場所・種類が毎回違い、通常の C# コードで起きないアクセス違反を含むため、どこかで .NET の管理メモリ（ヒープ）が壊されている可能性が高い（壊した箇所と落ちた箇所は別）。候補は、ポインタを直接扱うコードや OS の非同期 I/O を使うコントローラーの入出力（`DS4Device`、`HidLibrary/HidDevice`、`DS4Sixaxis`、仮想 DS4 出力 `DS4OutDeviceExt` など。いずれも Phase6 では未変更）。2026-09-19 のコミット `24ded790`（入力受信タイムスタンプの計測）で `timeoutEvent = false` を読み取り成功時だけに移したことにより、入力スレッドが 3 秒以上止まった場合に `TimeoutTestThread` と入力スレッドが同時に `sendOutputReport` を実行する可能性があるが、今回の手順で入力スレッドが 3 秒止まる経路は未確認（仮説）。
+- **Step7b との関係**: 再現手順の経路（一覧経由の Controller Readings は Step7b 前から「コントローラー0 の入力をスロット 8 の設定で再計算」、ライトバーのプレビューは実機に触れない）は Step7b で変わっておらず、Step7b で変更したコードにポインタ操作や非同期 I/O はない。Step7b の回帰である証拠はないが、未検証。なお Step7b により、Edit ボタン経由でも Controller Readings が再計算の経路を通るようになった。
+- **先送りした切り分け手順（着手時にこの順で実施）**: (1) Step7b 着手前のコミット `360cb75b` のビルドで同じ手順を 10 回程度試し、再現するか確認する（再現すれば Step7b と無関係と確定）、(2) 左ペインを Controls のままにして同じ手順を試し、Controller Readings が条件かを確認する、(3) Controller Readings が条件なら `24ded790` の直前のビルドでも試す、(4) それでも絞れない場合は環境変数 `DOTNET_HeapVerify=1` で起動し、ヒープを壊した直後に検出させる。
+- **対応時期**: 未定（ユーザー判断）。Step7b の完了判定からは切り離す（`Phase6-Step7b-Plan.md` §4 の記録を参照）。
 
 ### 6.6 Step3 着手時の確認事項
 - （着手前の想定。実地確認で150件に更新済み。下段参照）対象は `Mapping.cs` の Global 直接参照。Phase7（`Mapping.cs` の完全 instance 化）の下地として、静的結合を段階的に減らす方針（`DI-App-Wide-Migration-Plan.md` §5.5・§6.9）。

@@ -1,7 +1,7 @@
 # フェーズ6計画書: 残存 `Global` 実利用箇所の解体と4層構造DI化の完成
 
 作成日: 2026-09-09  
-改定日: 2026-09-20（Step13［.cs ファイル配置の統一］、Step10b［1ファイル1型の全数是正］を新設）／2026-09-19（Step1再監査および全ステップ［Step2〜Step12］確定実装計画書に基づく全面改訂）  
+改定日: 2026-09-26（Step7b［プロファイル編集の即時反映廃止］の追加と完了）／2026-09-20（Step13［.cs ファイル配置の統一］、Step10b［1ファイル1型の全数是正］を新設）／2026-09-19（Step1再監査および全ステップ［Step2〜Step12］確定実装計画書に基づく全面改訂）  
 対象ブランチ: `For-DI-migration-work`  
 前フェーズ: `Phase5-Plan.md`（Step1〜15、ドメイン集約型・完了済み）  
 全体計画書: `docs-forDIMG/DI-App-Wide-Migration-Plan.md`  
@@ -32,6 +32,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 | **Step 5** | `OutputSlotService.cs` / `MainWindow.xaml.cs` | 孤立配列系＋UDP診断1行（**完了**、2026-09-24） | **選択肢B採用**: 孤立配列 `_deviceTypes[]` と Get/SetOutputDeviceType を削除、出力デバイス三態SSOT台帳確立、UDP診断是正 |
 | **Step 6** | `ProfileEditor.xaml.cs` / `IOutputSlotService` | 2行追加＋TODO書き換え（2026-09-24 実装完了） | **案1採用（2026-09-24 改訂）**: マッピング一覧機種表示追従バグ是正 ＋ 呼出元0件の未接続APIを温存し Step10 で接続 ＋ 実働ホットスワップ温存 |
 | **Step 7** | `App.xaml.cs` | 39件（温存15、2026-09-24 再集計。**完了**、2026-09-25） | **選択肢1採用**: Pre-Host領域（12件）厳格保護 ＋ Post-Host Composition Root解決 ＋ 既存サービス集約 |
+| **Step 7b** | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` ほか | 編集スロット固定＋`targetDevice` 導入（**完了**、2026-09-26） | プロファイル編集の即時反映を廃止（ユーザー承認の機能廃止、K4-3）。編集は作業スロット、実機は `targetDevice`、Save／Apply は同じ再適用（違いは画面を閉じるかどうか） |
 | **Step 8** | `ProfileEditor.xaml.cs` | 60箇所 | **案3-A採用**: 段階的MVVM移設（ロジックを `ProfileSettingsViewModel` へ集約）＋ `MainWindow` 解体推進 ＋ 契約差B8, B9, B10吸収 |
 | **Step 9** | 主要4大ViewModel (`Settings`, `MainWindow`, `TrayIcon`, `ProfileSettings`) | 79箇所 | **選択肢1採用**: 中枢4大ViewModel集中 ＋ 機能カテゴリ別段階的移行 ＋ Pure DI徹底（残存小型VMはStep10へ引き継ぎ） |
 | **Step 10** | 残存小型View (11) & 小型ViewModel (12) & `PresetOption` | 72箇所 | **選択肢A採用**: 機能ドメイン別3グループ分割 ＋ View/ViewModelペアPure DI化 ＋ 全域直参照ゼロ化 |
@@ -47,10 +48,10 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 
 ---
 
-## 1. 実施ステップ一覧（全14ステップ、ドメイン集約型）
+## 1. 実施ステップ一覧（全15ステップ（2026-09-26 に Step7b を追加）、ドメイン集約型）
 
 ```text
-【Phase6 全14ステップ構成】
+【Phase6 全15ステップ構成】
 [完了] Phase6-Step1: 詳細監査と対象確定（全762参照走査、実参照約404箇所特定・分類確定）
 
 ── [ドメイン1: コア層（信号変換・入力監視境界）] ──
@@ -64,6 +65,7 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
 
 ── [ドメイン3: 起動・UI層] ──
 ├─ Phase6-Step7: App.xaml.cs Post-Host領域のPure DI化（39件、温存15件［Pre-Host12件を含む］。2026-09-25 完了）
+├─ Phase6-Step7b: プロファイル編集画面の即時反映廃止（編集は作業スロット、保存・適用時に一括反映。2026-09-26 完了）
 ├─ Phase6-Step8: ProfileEditor.xaml.cs の段階的MVVM移設 ＆ MainWindow解体推進（60箇所）
 ├─ Phase6-Step9: 主要4大ViewModelのPure DI徹底 ＆ カテゴリ別移行（79箇所）
 ├─ Phase6-Step10: 残存小型UI・小型ViewModel・補助クラスのドメイン別ペアPure DI化（72箇所）
@@ -142,6 +144,13 @@ Phase6 では、アプリケーション全域に残存する呼び出し元側�
   - Pre-Host 領域（ログ初期化、多重起動判定、driverinstall等）を厳格に保護し、静的のまま温存。
   - `AppHost.CreateHost()` 直後に `InitializePostHostServices()` を実行し、WPF Composition Root パターンに則って安全にサービス解決。
   - 分類(c)の項目（保存場所選択、標準アクション等）を既存サービスへ薄いシムとして集約。
+
+#### Phase6-Step7b: プロファイル編集画面の「編集内容の即時反映」廃止
+- **状態**: **完了（2026-09-26）**。Step7b-0〜7b-4。詳細は `Phase6-Step7b-Plan.md`、`Phase6-Step7b-Completion-Report.md`。
+- **経緯**: Step4 の実機確認で、コントローラー横の Edit ボタンで開いた編集画面の変更が保存前にコントローラーへ即時反映される既存仕様の問題（K4-3）が判明。ユーザー決定（2026-09-24）で、編集中のリアルタイム確認を廃止（copilot-instructions §2.2 の承認済みの機能廃止）し、ライトバー色のプレビューとランブルテストは残す。
+- **決定（2026-09-26）**: 決定1＝A（実機に触れる処理をサブ画面まで `targetDevice` に付け替え）、決定2＝P1（画面は必須引数、VM・ファクトリは省略可能）、決定3＝M1（モデル図 03・04 に追記）、決定4＝I1（ランブルテストの左右反転は編集中の値）、決定5＝D1（`ProfileEditor.DeviceNum` 削除）、決定6＝L1（確認用ログ）、決定7＝H1（到達しなくなる即時フック 8 件を削除）、決定8（Save と Apply はどちらも保存後にそのプロファイルを使うスロットへ再適用し、違いは画面を閉じるかどうかだけ）。
+- **マイクロステップ**: 7b-1（VM・ファクトリ拡張）→ 7b-2（サブ画面への受け渡し）→ 7b-3（編集スロット固定と保存・適用・キャンセル整理）→ 7b-4（文書・実機確認・完了報告）。
+- **持ち越し**: K7b-1（実機確認中の異常終了。原因未特定、切り分けを含めて先送り。`Phase6-Status.md` §6.5）。ステアリングホイール校正の実機確認は Step11 へ先送り。
 
 #### Phase6-Step8: `ProfileEditor.xaml.cs` の段階的MVVM移設 ＆ `MainWindow` 解体推進
 - **対象**: 実参照式60箇所（const除外38箇所）。
