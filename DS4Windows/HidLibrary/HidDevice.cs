@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.IO;
-using System.Threading.Tasks;
-using Windows.Win32;
-using Windows.Win32.Foundation;
-using Windows.Win32.Security;
-using Windows.Win32.Storage.FileSystem;
 using Microsoft.Win32.SafeHandles;
+
 namespace DS4Windows
 {
     public class HidDevice : IDisposable
@@ -24,13 +20,63 @@ namespace DS4Windows
             NotConnected = 5
         }
 
+        #region Win32 Native Constants & P/Invoke (WPF tmpビルド及びOmniSharpキャッシュ喪失耐性用)
+        private const uint GENERIC_READ = 0x80000000;
+        private const uint GENERIC_WRITE = 0x40000000;
+        private const uint FILE_SHARE_READ = 0x00000001;
+        private const uint FILE_SHARE_WRITE = 0x00000002;
+        private const uint OPEN_EXISTING = 3;
+        private const uint FILE_FLAG_OVERLAPPED = 0x40000000;
+        private const int ERROR_IO_PENDING = 997;
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern SafeFileHandle CreateFile(
+            string lpFileName,
+            uint dwDesiredAccess,
+            uint dwShareMode,
+            IntPtr lpSecurityAttributes,
+            uint dwCreationDisposition,
+            uint dwFlagsAndAttributes,
+            IntPtr hTemplateFile);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern unsafe bool ReadFile(
+            SafeFileHandle hFile,
+            void* lpBuffer,
+            uint nNumberOfBytesToRead,
+            uint* lpNumberOfBytesRead,
+            NativeOverlapped* lpOverlapped);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern unsafe bool WriteFile(
+            SafeFileHandle hFile,
+            void* lpBuffer,
+            uint nNumberOfBytesToWrite,
+            uint* lpNumberOfBytesWritten,
+            NativeOverlapped* lpOverlapped);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetOverlappedResult(
+            SafeFileHandle hFile,
+            in NativeOverlapped lpOverlapped,
+            out uint lpNumberOfBytesTransferred,
+            bool bWait);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetOverlappedResultEx(
+            SafeFileHandle hFile,
+            in NativeOverlapped lpOverlapped,
+            out uint lpNumberOfBytesTransferred,
+            uint dwMilliseconds,
+            bool bAlertable);
+        #endregion
+
         private readonly string _description;
         private readonly string _devicePath;
         private readonly string _parentPath;
         private readonly HidDeviceAttributes _deviceAttributes;
 
         private readonly HidDeviceCapabilities _deviceCapabilities;
-        //private bool _monitorDeviceEvents;
         private string serial = null;
         private SafeFileHandle safeReadHandle;
         private bool isOpen;
@@ -173,12 +219,15 @@ namespace DS4Windows
 
             var ov = new NativeOverlapped { EventHandle = wait.SafeWaitHandle.DangerousGetHandle() };
 
-            if (PInvoke.ReadFile(SafeReadHandle, inputBuffer, null, &ov))
-                return ReadStatus.Success;
+            fixed (byte* pBuffer = inputBuffer)
+            {
+                if (ReadFile(SafeReadHandle, pBuffer, (uint)inputBuffer.Length, null, &ov))
+                    return ReadStatus.Success;
+            }
 
-            if (Marshal.GetLastWin32Error() != (uint)WIN32_ERROR.ERROR_IO_PENDING) return ReadStatus.ReadError;
+            if (Marshal.GetLastWin32Error() != ERROR_IO_PENDING) return ReadStatus.ReadError;
 
-            if (!PInvoke.GetOverlappedResultEx(SafeReadHandle, ov, out _, timeout, true))
+            if (!GetOverlappedResultEx(SafeReadHandle, ov, out _, timeout, true))
                 return ReadStatus.ReadError;
 
             return ReadStatus.Success;
@@ -193,35 +242,42 @@ namespace DS4Windows
 
         public unsafe bool WriteOutputReportViaInterrupt(byte[] outputBuffer, int timeout)
         {
-                SafeReadHandle ??= OpenHandle(_devicePath, true, false);
-                using AutoResetEvent wait = new(false);
-                var ov = new NativeOverlapped { EventHandle = wait.SafeWaitHandle.DangerousGetHandle() };
+            SafeReadHandle ??= OpenHandle(_devicePath, true, false);
+            using AutoResetEvent wait = new(false);
+            var ov = new NativeOverlapped { EventHandle = wait.SafeWaitHandle.DangerousGetHandle() };
 
-                if (PInvoke.WriteFile(SafeReadHandle, outputBuffer, null, &ov))
+            fixed (byte* pBuffer = outputBuffer)
+            {
+                if (WriteFile(SafeReadHandle, pBuffer, (uint)outputBuffer.Length, null, &ov))
                     return true;
+            }
 
-                if (Marshal.GetLastWin32Error() != (uint)WIN32_ERROR.ERROR_IO_PENDING) return false;
+            if (Marshal.GetLastWin32Error() != ERROR_IO_PENDING) return false;
 
-                if (!PInvoke.GetOverlappedResult(SafeReadHandle, ov, out _, true))
-                    return false;
+            if (!GetOverlappedResult(SafeReadHandle, ov, out _, true))
+                return false;
 
-                return true;
+            return true;
         }
 
         private SafeFileHandle OpenHandle(string devicePathName, bool isExclusive, bool enumerate)
         {
-            return PInvoke.CreateFile(
+            uint desiredAccess = enumerate
+                ? GENERIC_READ
+                : (GENERIC_READ | GENERIC_WRITE);
+
+            uint shareMode = isExclusive
+                ? 0
+                : (FILE_SHARE_READ | FILE_SHARE_WRITE);
+
+            return CreateFile(
                 devicePathName,
-                enumerate
-                    ? (uint)FILE_ACCESS_RIGHTS.FILE_GENERIC_READ
-                    : (uint)(FILE_ACCESS_RIGHTS.FILE_GENERIC_READ | FILE_ACCESS_RIGHTS.FILE_GENERIC_WRITE),
-                isExclusive
-                    ? 0
-                    : FILE_SHARE_MODE.FILE_SHARE_READ | FILE_SHARE_MODE.FILE_SHARE_WRITE,
-                null,
-                FILE_CREATION_DISPOSITION.OPEN_EXISTING,
-                FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OVERLAPPED,
-                null
+                desiredAccess,
+                shareMode,
+                IntPtr.Zero,
+                OPEN_EXISTING,
+                FILE_FLAG_OVERLAPPED,
+                IntPtr.Zero
             );
         }
 
@@ -240,14 +296,9 @@ namespace DS4Windows
             if (serial != null)
                 return serial;
 
-            // Some devices don't have MAC address (especially gamepads with USB only suports in PC). If the serial number reading fails 
-            // then use dummy zero MAC address, because there is a good chance the gamepad stll works in DS4Windows app (the code would throw
-            // an index out of bounds exception anyway without IF-THEN-ELSE checks after trying to read a serial number).
-
             if (Capabilities.InputReportByteLength == 64)
             {
                 byte[] buffer = new byte[64];
-                //buffer[0] = 18;
                 buffer[0] = featureID;
                 if (readFeatureData(buffer))
                     serial = String.Format("{0:X02}:{1:X02}:{2:X02}:{3:X02}:{4:X02}:{5:X02}",
@@ -272,9 +323,6 @@ namespace DS4Windows
                 }
             }
 
-            // If serial# reading failed then generate a dummy MAC address based on HID device path (WinOS generated runtime unique value based on connected usb port and hub or BT channel).
-            // The device path remains the same as long the gamepad is always connected to the same usb/BT port, but may be different in other usb ports. Therefore this value is unique
-            // as long the same device is always connected to the same usb port.
             if (serial == null)
             {
                 AppLogger.LogToGui($"WARNING: Failed to read serial# from a gamepad ({this._deviceAttributes.VendorHexId}/{this._deviceAttributes.ProductHexId}). Generating MAC address from a device path. From now on you should connect this gamepad always into the same USB port or BT pairing host to keep the same device path.", true);
@@ -290,21 +338,17 @@ namespace DS4Windows
 
             try
             {
-                // Substring: \\?\hid#vid_054c&pid_09cc&mi_03#7&1f882A25&0&0001#{4d1e55b2-f16f-11cf-88cb-001111000030} -> \\?\hid#vid_054c&pid_09cc&mi_03#7&1f882A25&0&0001#
                 int endPos = this.DevicePath.LastIndexOf('{');
                 if (endPos < 0)
                     endPos = this.DevicePath.Length;
 
-                // String array: \\?\hid#vid_054c&pid_09cc&mi_03#7&1f882A25&0&0001# -> [0]=\\?\hidvid_054c, [1]=pid_09cc, [2]=mi_037, [3]=1f882A25, [4]=0, [5]=0001
                 string[] devPathItems = this.DevicePath.Substring(0, endPos).Replace("#", "").Replace("-", "").Replace("{", "").Replace("}", "").Split('&');
 
                 if (devPathItems.Length >= 3)
-                    MACAddr = devPathItems[devPathItems.Length - 3].ToUpper()                   // 1f882A25
-                              + devPathItems[devPathItems.Length - 2].ToUpper()                 // 0
-                              + devPathItems[devPathItems.Length - 1].TrimStart('0').ToUpper(); // 0001 -> 1
+                    MACAddr = devPathItems[devPathItems.Length - 3].ToUpper()
+                              + devPathItems[devPathItems.Length - 2].ToUpper()
+                              + devPathItems[devPathItems.Length - 1].TrimStart('0').ToUpper();
                 else if (devPathItems.Length >= 1)
-                    // Device and usb hub and port identifiers missing in devicePath string. Fallback to use vendor and product ID values and 
-                    // take a number from the last part of the devicePath. Hopefully the last part is a usb port number as it usually should be.
                     MACAddr = this._deviceAttributes.VendorId.ToString("X4")
                               + this._deviceAttributes.ProductId.ToString("X4")
                               + devPathItems[devPathItems.Length - 1].TrimStart('0').ToUpper();
@@ -315,19 +359,17 @@ namespace DS4Windows
                     MACAddr = $"{MACAddr[0]}{MACAddr[1]}:{MACAddr[2]}{MACAddr[3]}:{MACAddr[4]}{MACAddr[5]}:{MACAddr[6]}{MACAddr[7]}:{MACAddr[8]}{MACAddr[9]}:{MACAddr[10]}{MACAddr[11]}";
                 }
                 else
-                    // Hmm... Shold never come here. Strange format in devicePath because all identifier items of devicePath string are missing.
-                    //serial = BLANK_SERIAL;
                     MACAddr = BLANK_SERIAL;
             }
             catch (Exception e)
             {
                 AppLogger.LogToGui($"ERROR: Failed to generate runtime MAC address from device path {this.DevicePath}. {e.Message}", true);
-                //serial = BLANK_SERIAL;
                 MACAddr = BLANK_SERIAL;
             }
 
             return MACAddr;
         }
+
         public string GetVader4ProMacAddress(int timeout = 1000)
         {
             byte[] command = new byte[32];

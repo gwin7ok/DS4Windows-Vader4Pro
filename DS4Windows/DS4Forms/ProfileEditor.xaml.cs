@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,6 +18,7 @@ using System.Windows.Controls.Primitives;
 using NonFormTimer = System.Timers.Timer;
 using DS4WinWPF.DS4Forms.ViewModels;
 using DS4Windows;
+using DS4Windows.DI;
 using System.ComponentModel;
 using System.Windows.Forms;
 using Application = System.Windows.Application;
@@ -26,6 +27,7 @@ using MessageBox = System.Windows.MessageBox;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using UserControl = System.Windows.Controls.UserControl;
+using DS4Windows.Actions;
 
 namespace DS4WinWPF.DS4Forms
 {
@@ -36,10 +38,10 @@ namespace DS4WinWPF.DS4Forms
     {
         // ...既存フィールド...
 
-    public string ActiveSortButtonContent => GetSortButtonContent("Active", currentSortColumn, currentSortAsc);
-    public string NameSortButtonContent => GetSortButtonContent("Name", currentSortColumn, currentSortAsc);
-    public string TriggerSortButtonContent => GetSortButtonContent("Trigger", currentSortColumn, currentSortAsc);
-    public string ActionSortButtonContent => GetSortButtonContent("Action", currentSortColumn, currentSortAsc);
+        public string ActiveSortButtonContent => GetSortButtonContent("Active", specialActionsVM?.CurrentSortColumn ?? "Name", specialActionsVM?.CurrentSortAscending ?? true);
+        public string NameSortButtonContent => GetSortButtonContent("Name", specialActionsVM?.CurrentSortColumn ?? "Name", specialActionsVM?.CurrentSortAscending ?? true);
+        public string TriggerSortButtonContent => GetSortButtonContent("Trigger", specialActionsVM?.CurrentSortColumn ?? "Name", specialActionsVM?.CurrentSortAscending ?? true);
+        public string ActionSortButtonContent => GetSortButtonContent("Action", specialActionsVM?.CurrentSortColumn ?? "Name", specialActionsVM?.CurrentSortAscending ?? true);
 
         private string GetSortButtonContent(string col, string currentCol, bool asc)
         {
@@ -147,29 +149,44 @@ namespace DS4WinWPF.DS4Forms
             public Size size;
         }
 
-        private int deviceNum;
+        /// <summary>実機なし（プロファイル一覧から開いた場合）を表す targetDevice の値。</summary>
+        public const int NoTargetDevice = -1;
+
+        // Phase6-Step7b: 設定の読み書き先（編集スロット）。常に作業スロット Global.TEST_PROFILE_INDEX を使い、
+        // 編集内容は保存・適用を押すまで、接続中のどのコントローラーにも影響しない
+        private readonly int deviceNum = Global.TEST_PROFILE_INDEX;
+        // Phase6-Step7b: ランブルテスト・ライトバーのプレビュー・校正・マクロ記録などで使う実機のスロット番号。
+        // NoTargetDevice（-1）は「実機なし」。設定の読み書き先 deviceNum とは別に持つ。
+        // ViewModel をこの値で生成するため、コンストラクタでだけ設定する
+        private readonly int targetDevice = NoTargetDevice;
+
+        /// <summary>実機（targetDevice）が指定され、かつ有効なコントローラースロットの範囲内であるか。</summary>
+        private bool HasTargetDevice =>
+            targetDevice >= 0 && targetDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
         private ProfileSettingsViewModel profileSettingsVM;
+        private readonly DS4Windows.DI.IProfileRepository profileRepository;
+        private readonly DS4Windows.Actions.IProfileSwitcher profileSwitcher;
+        private readonly DS4Windows.ControlService controlService;
         private MappingListViewModel mappingListVM;
         private ProfileEntity currentProfile;
         private SpecialActionsListViewModel specialActionsVM;
         // Active 列の初期幅は BackingStore の定数を使う（プロファイルに永続化しない）
-    // フラグ: 初期ヘッダー更新を一度だけ行うためのガード
-    #pragma warning disable CS0414 // initialHeaderUpdated assigned but not read directly; used as a guard
-    private bool initialHeaderUpdated = false;
-    #pragma warning restore CS0414
+        // フラグ: 初期ヘッダー更新を一度だけ行うためのガード
+#pragma warning disable CS0414 // initialHeaderUpdated assigned but not read directly; used as a guard
+        private bool initialHeaderUpdated = false;
+#pragma warning restore CS0414
         // カラムヘッダーの Loaded 発火を数えるためのカウンタ
         private int specialActionsHeaderLoadedCount = 0;
         // ヘッダーテンプレート割当が既に行われているかを示すガード
         private bool specialActionsHeadersAssigned = false;
-    // Special Actions ヘッダー内の TextBlock 参照を保持しておき、後で直接更新できるようにする
-    // indices: 0=Active,1=Name,2=Trigger,3=Action
-    private TextBlock[] specialActionsHeaderTextBlocks = new TextBlock[4];
+        // Special Actions ヘッダー内の TextBlock 参照を保持しておき、後で直接更新できるようにする
+        // indices: 0=Active,1=Name,2=Trigger,3=Action
+        private TextBlock[] specialActionsHeaderTextBlocks = new TextBlock[4];
 
         public event EventHandler Closed;
 
-        public delegate void CreatedProfileHandler(ProfileEditor sender, string profile);
-
-        public event CreatedProfileHandler CreatedProfile;
+        public delegate void ProfileSavedHandler(ProfileEditor sender, string profile);
+        public event ProfileSavedHandler ProfileSaved;
 
         private Dictionary<Button, ImageBrush> hoverImages =
             new Dictionary<Button, ImageBrush>();
@@ -186,11 +203,6 @@ namespace DS4WinWPF.DS4Forms
             get => keepsize;
         }
 
-        public int DeviceNum
-        {
-            get => deviceNum;
-        }
-
         private NonFormTimer inputTimer;
 
         private TouchButtonUserControl touchButtonUC;
@@ -200,18 +212,15 @@ namespace DS4WinWPF.DS4Forms
         // 統一ソート処理
         private void SortSpecialActionsList(string columnName, bool asc)
         {
-            // 保存されていたソート状態をログに出す
-            var prevCol = currentSortColumn;
-            var prevAsc = currentSortAsc;
-
-            currentSortColumn = columnName;
-            currentSortAsc = asc;
-
-            AppLogger.LogDebug($"[SortSpecialActionsList] Called: column={columnName}, asc={asc}, prevCol={prevCol}, prevAsc={prevAsc}");
+            // Phase6系の是正: 「直前のソート列・方向」は SpecialActionsListViewModel が
+            // 唯一の実体として保持する（CurrentSortColumn/CurrentSortAscending）。
+            // ここでは SortActions 呼び出し前の値をログ用に読むだけで、View 側では保持しない。
+            AppLogger.LogDebug($"[SortSpecialActionsList] Called: column={columnName}, asc={asc}, prevCol={specialActionsVM?.CurrentSortColumn}, prevAsc={specialActionsVM?.CurrentSortAscending}");
 
             // 1) ViewModel-side sort execution
             AppLogger.LogDebug($"[SortSpecialActionsList] Calling specialActionsVM.SortActions");
-            specialActionsVM.SortActions(columnName, asc);
+            ListSortDirection sortDirection = asc ? ListSortDirection.Ascending : ListSortDirection.Descending;
+            specialActionsVM.SortActions(columnName, sortDirection);
             AppLogger.LogDebug($"[SortSpecialActionsList] specialActionsVM.SortActions completed");
 
             // 2) CollectionView の準備と状態ログ
@@ -263,11 +272,22 @@ namespace DS4WinWPF.DS4Forms
         // divergence. If a call site needs specific behavior not covered by UtilMethods,
         // add a narrowly-scoped helper or adapt the call site accordingly.
 
-        public ProfileEditor(int device)
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: Edit／New Profile ボタンを押したコントローラーのスロット番号。
+        /// プロファイル一覧から開いた場合は NoTargetDevice（-1）。編集スロットは常に Global.TEST_PROFILE_INDEX
+        /// </param>
+        public ProfileEditor(int targetDevice)
         {
-            AppLogger.LogDebug($"[ProfileEditor] Opened profile editor for device={device}");
+            this.targetDevice = targetDevice;
+            AppLogger.LogDebug($"[ProfileEditor] Opened profile editor for device={deviceNum}, targetDevice={targetDevice}");
 
             InitializeComponent();
+
+            profileRepository = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>()
+                ?? new DS4Windows.ProfileRepository();
+            profileSwitcher = DS4WinWPF.AppHost.GetService<DS4Windows.Actions.IProfileSwitcher>()
+                ?? new DefaultProfileSwitcher();
+            controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? DS4Windows.Program.rootHub;
 
             // SpecialActionsリスト表示前にカルチャを明示的に再設定
             var lang = DS4Windows.Global.UseLang;
@@ -276,16 +296,22 @@ namespace DS4WinWPF.DS4Forms
             System.Threading.Thread.CurrentThread.CurrentUICulture = ci;
             System.Threading.Thread.CurrentThread.CurrentCulture = ci;
 
-            deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;
-            profileSettingsVM = new ProfileSettingsViewModel(device);
+            var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            if (vmFactory != null)
+                profileSettingsVM = vmFactory.CreateProfileSettingsViewModel(deviceNum, targetDevice);
+            else
+            {
+                DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=ProfileEditor, viewModel=ProfileSettingsViewModel");
+                profileSettingsVM = new ProfileSettingsViewModel(deviceNum, targetDevice: targetDevice);
+            }
             picBoxHover.Visibility = Visibility.Hidden;
             picBoxHover2.Visibility = Visibility.Hidden;
 
             mappingListVM = new MappingListViewModel(deviceNum, profileSettingsVM.ContType);
-            specialActionsVM = new SpecialActionsListViewModel(device);
+            specialActionsVM = new SpecialActionsListViewModel(deviceNum);
 
-            touchButtonUC = new TouchButtonUserControl(device);
+            touchButtonUC = new TouchButtonUserControl(deviceNum);
             TouchpadButtonControlDisplaySetup();
 
             RemoveHoverBtnText();
@@ -438,7 +464,6 @@ namespace DS4WinWPF.DS4Forms
 
         private void SetupEvents()
         {
-            gyroOutModeCombo.SelectionChanged += GyroOutModeCombo_SelectionChanged;
             outConTypeCombo.SelectionChanged += OutConTypeCombo_SelectionChanged;
             mappingListBox.SelectionChanged += MappingListBox_SelectionChanged;
             Closed += ProfileEditor_Closed;
@@ -455,11 +480,11 @@ namespace DS4WinWPF.DS4Forms
             profileSettingsVM.LeftStickDriftYAxisChanged += UpdateReadingsLSDrift;
             profileSettingsVM.RightStickDriftXAxisChanged += UpdateReadingsRSDrift;
             profileSettingsVM.RightStickDriftYAxisChanged += UpdateReadingsRSDrift;
+
         }
 
         private void UnregisterEvents()
         {
-            gyroOutModeCombo.SelectionChanged -= GyroOutModeCombo_SelectionChanged;
             outConTypeCombo.SelectionChanged -= OutConTypeCombo_SelectionChanged;
             mappingListBox.SelectionChanged -= MappingListBox_SelectionChanged;
             Closed -= ProfileEditor_Closed;
@@ -482,12 +507,14 @@ namespace DS4WinWPF.DS4Forms
             profileSettingsVM.RightStickDriftXAxisChanged -= UpdateReadingsRSDrift;
             profileSettingsVM.RightStickDriftYAxisChanged -= UpdateReadingsRSDrift;
 
+
             inputTimer.Stop();
             inputTimer.Elapsed -= InputDS4;
             inputTimer = null;
 
             StopEditorBindings();
         }
+
 
         /// <summary>
         /// Place touchpad button mode options UserControl in active Touchpad TabItem.
@@ -508,10 +535,6 @@ namespace DS4WinWPF.DS4Forms
                     activeTouchButtonDisplayControl = touchContentControl4;
                     break;
                 case 3:
-                    touchContentControl3.Content = touchButtonUC;
-                    activeTouchButtonDisplayControl = touchContentControl3;
-                    break;
-                case 4:
                     break;
 
                 case 0:
@@ -731,7 +754,7 @@ namespace DS4WinWPF.DS4Forms
                 size = new Size(circleConBtn.Width, circleConBtn.Height)
             };
 
-                App.logHolder?.Logger?.Debug($"[PopulateHoverLocations] Populated hoverLocations count={hoverLocations.Count}");
+            App.logHolder?.Logger?.Debug($"[PopulateHoverLocations] Populated hoverLocations count={hoverLocations.Count}");
             hoverLocations[squareConBtn] = new HoverImageInfo()
             {
                 point = new Point(Canvas.GetLeft(squareConBtn), Canvas.GetTop(squareConBtn)),
@@ -1075,26 +1098,29 @@ namespace DS4WinWPF.DS4Forms
             App.logHolder?.Logger?.Debug($"[PopulateHoverImages] loaded hoverImages count={hoverImages.Count}");
         }
 
-        public void Reload(int device, ProfileEntity profile = null)
+        /// <summary>
+        /// 編集するプロファイルを作業スロット（Global.TEST_PROFILE_INDEX）へ読み込み、画面を初期化する。
+        /// Phase6-Step7b: 読み込み先は常に作業スロットで、コントローラーのスロットには触れない。
+        /// 実機（targetDevice）はコンストラクタで確定しているため、引数では受け取らない。
+        /// </summary>
+        /// <param name="profile">編集するプロファイル。null は新規作成（プリセット選択から始める）</param>
+        public void Reload(ProfileEntity profile = null)
         {
             profileSettingsTabCon.DataContext = null;
             mappingListBox.DataContext = null;
             specialActionsTab.DataContext = null;
             lightbarRect.DataContext = null;
 
-            deviceNum = device;
+            AppLogger.LogDebug($"[ProfileEditor] Reload: editSlot={deviceNum}, targetDevice={targetDevice}, profile={(profile != null ? profile.Name : "(new profile)")}");
+
             if (profile != null)
             {
                 currentProfile = profile;
-                if (device == Global.TEST_PROFILE_INDEX)
-                {
-                    Global.ProfilePath[Global.TEST_PROFILE_INDEX] = profile.Name;
-                }
+                Global.ProfilePath[Global.TEST_PROFILE_INDEX] = profile.Name;
 
-                Global.LoadProfile(device, false, App.rootHub, false);
+                profileRepository.LoadProfile(deviceNum, profile.Name);
                 profileNameTxt.Text = profile.Name;
                 profileNameTxt.IsEnabled = false;
-                applyBtn.IsEnabled = true;
             }
             else
             {
@@ -1104,32 +1130,35 @@ namespace DS4WinWPF.DS4Forms
                 presetWin.ShowDialog();
                 if (presetWin.Result == MessageBoxResult.Cancel)
                 {
-                    Global.LoadBlankDevProfile(device, false, App.rootHub, false);
+                    Global.LoadBlankDevProfile(deviceNum, false, controlService, false);
                 }
             }
 
+            // プロファイルロード完了後に、XMLから読み込まれた ProfileActions を使ってリストを初期化・復元
+            List<string> currentActionsList = Global.ProfileActions != null && Global.ProfileActions.Length > deviceNum
+                ? Global.ProfileActions[deviceNum]
+                : null;
+            string currentProfileActions = currentActionsList != null ? string.Join("/", currentActionsList) : string.Empty;
+            specialActionsVM.LoadActions(currentProfile == null, currentProfileActions);
+
             ColorByBatteryPerCheck();
 
-            if (device < Global.TEST_PROFILE_INDEX)
-            {
-                useControllerUD.Value = device + 1;
-                conReadingsUserCon.UseDevice(device, device);
-                contReadingsTab.IsEnabled = true;
-            }
-            else
-            {
-                useControllerUD.Value = 1;
-                conReadingsUserCon.UseDevice(0, Global.TEST_PROFILE_INDEX);
-                contReadingsTab.IsEnabled = true;
-            }
+            // Phase6-Step7b: Controller Readings は、実機（なければコントローラー0）の入力に対して、
+            // 作業スロット（編集中の設定）で計算した結果を表示する
+            int readingsDevice = profileSettingsVM.FuncDevNum;
+            useControllerUD.Value = readingsDevice + 1;
+            conReadingsUserCon.UseDevice(readingsDevice, Global.TEST_PROFILE_INDEX);
+            contReadingsTab.IsEnabled = true;
 
             conReadingsUserCon.EnableControl(false);
-            axialLSStickControl.UseDevice(Global.LSModInfo[device]);
-            axialRSStickControl.UseDevice(Global.RSModInfo[device]);
+            axialLSStickControl.UseDevice(Global.LSModInfo[deviceNum]);
+            axialRSStickControl.UseDevice(Global.RSModInfo[deviceNum]);
 
-            specialActionsVM.LoadActions(currentProfile == null);
             mappingListVM.UpdateMappings();
             profileSettingsVM.UpdateLateProperties();
+            // Phase6-Step6-1: mappingListVM はプロファイル読み込み前の出力種別で生成されるため、読み込み後の
+            // 出力種別（Xbox 360／DS4）でボタン名表記を明示的に揃える（outConTypeCombo の SelectionChanged の発生有無に依存しない）
+            mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);
             profileSettingsVM.PopulateTouchDisInver(touchDisInvertBtn.ContextMenu);
             profileSettingsVM.PopulateGyroMouseTrig(gyroMouseTrigBtn.ContextMenu);
             profileSettingsVM.PopulateGyroMouseStickTrig(gyroMouseStickTrigBtn.ContextMenu);
@@ -1140,7 +1169,7 @@ namespace DS4WinWPF.DS4Forms
             specialActionsTab.DataContext = specialActionsVM;
             lightbarRect.DataContext = profileSettingsVM;
 
-            StickDeadZoneInfo lsMod = Global.LSModInfo[device];
+            StickDeadZoneInfo lsMod = Global.LSModInfo[deviceNum];
             if (lsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Radial)
             {
                 conReadingsUserCon.LsDeadX = profileSettingsVM.LSDeadZone;
@@ -1152,7 +1181,7 @@ namespace DS4WinWPF.DS4Forms
                 conReadingsUserCon.LsDeadY = axialLSStickControl.AxialVM.DeadZoneY;
             }
 
-            StickDeadZoneInfo rsMod = Global.RSModInfo[device];
+            StickDeadZoneInfo rsMod = Global.RSModInfo[deviceNum];
             if (rsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Radial)
             {
                 conReadingsUserCon.RsDeadX = profileSettingsVM.RSDeadZone;
@@ -1204,9 +1233,16 @@ namespace DS4WinWPF.DS4Forms
 
         private void RefreshEditorBindings()
         {
+            // 注意: profileSettingsVM は INotifyPropertyChanged 非実装のため、直後のDataContext代入
+            // （同一インスタンスの再代入）だけではWPFのバインディングは更新されない。本メソッドの
+            // 呼び出し元（PresetBtn_Click）が必ず先にStopEditorBindings()（DataContext=null）を
+            // 呼んでいることが、UI反映を成立させる前提条件になっている。詳細はUpdateLateProperties()の
+            // コメント、および Phase5-Step14-FormSettings-Unification-Status.md タスク(c)-1 を参照。
             specialActionsVM.LoadActions(currentProfile == null);
             mappingListVM.UpdateMappings();
             profileSettingsVM.UpdateLateProperties();
+            // Phase6-Step6-1: プリセット適用後の出力種別でボタン名表記を明示的に揃える（Reload と同じ理由）
+            mappingListVM.UpdateMappingDevType(profileSettingsVM.ContType);
             profileSettingsVM.PopulateTouchDisInver(touchDisInvertBtn.ContextMenu);
             profileSettingsVM.PopulateGyroMouseTrig(gyroMouseTrigBtn.ContextMenu);
             profileSettingsVM.PopulateGyroMouseStickTrig(gyroMouseStickTrigBtn.ContextMenu);
@@ -1233,25 +1269,14 @@ namespace DS4WinWPF.DS4Forms
         {
             if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
+                controlService.setRumble(0, 0, profileSettingsVM.FuncDevNum);
             }
 
             Global.outDevTypeTemp[deviceNum] = OutContType.X360;
-            // Run profile loading in Task. Need to still wait for Task to finish
-            Task.Run(() =>
-            {
-                DS4Device device = deviceNum >= 0 && deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT
-                    ? App.rootHub.DS4Controllers[deviceNum]
-                    : null;
-                if (device != null)
-                {
-                    device.HaltReportingRunAction(() => { Global.LoadProfile(deviceNum, false, App.rootHub); });
-                }
-                else
-                {
-                    Global.LoadProfile(deviceNum, false, App.rootHub);
-                }
-            });
+            // Phase6-Step7b: 編集は作業スロットに対して行っており、コントローラーのスロットには届いていないため、
+            // 元のプロファイルを読み込み直して取り消す処理は不要（旧: HaltReportingRunAction 内で LoadProfile していた）。
+            // 作業スロットは次に編集画面を開いたときに読み込み直される
+            AppLogger.LogDebug($"[ProfileEditor] Cancel: edit slot {deviceNum} discarded; controller slots were not modified (targetDevice={targetDevice})");
 
             Closed?.Invoke(this, EventArgs.Empty);
         }
@@ -1259,7 +1284,7 @@ namespace DS4WinWPF.DS4Forms
         private void HoverConBtn_Click(object sender, RoutedEventArgs e)
         {
             MappedControl mpControl = mappingListVM.Mappings[mappingListVM.SelectedIndex];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -1326,224 +1351,81 @@ namespace DS4WinWPF.DS4Forms
             picBoxHover.Visibility = Visibility.Hidden;
         }
 
-        private void GyroOutModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            int idx = gyroOutModeCombo.SelectedIndex;
-            if (idx >= 0)
-            {
-                if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-                {
-                    App.rootHub.touchPad[deviceNum]?.ResetToggleGyroModes();
-                }
-            }
-        }
+        // Phase6-Step7b（決定7＝H1）: GyroOutModeCombo_SelectionChanged（ジャイロ出力モードの変更時に、実機の
+        // touchPad.ResetToggleGyroModes() を即時に呼ぶ処理）と FrictionUD_ValueChanged（トラックボール摩擦の変更時に
+        // ResetTrackAccel を即時に呼ぶ処理）は削除した。編集スロットが常に作業スロット（8）になり到達しなくなったため。
+        // 同じ処理は、適用・保存時の ApplyProfile → ControlService.CheckProfileOptions で行われる
+        // （Phase6-Step7b-Plan.md §1A.3）
 
-        private void SetLateProperties(bool fullSave = true)
+        #region Save / Apply Profile Logic (Unified)
+
+        /// <summary>
+        /// プロファイル保存および適用の共通処理ルート。
+        /// UI上の選択値をSSOTに反映してXMLに保存し、親画面へ保存完了通知（ProfileSaved）を送信します。
+        /// </summary>
+        /// <param name="isApply">保存（false）か適用（true）か</param>
+        /// <returns>保存成否</returns>
+        private bool ExecuteSaveOrApply(bool isApply = false)
         {
-            Global.BTPollRate[deviceNum] = profileSettingsVM.TempBTPollRateIndex;
-            Global.OutContType[deviceNum] = profileSettingsVM.TempConType;
-            if (fullSave)
+            string profileName = profileNameTxt.Text.Trim();
+            if (string.IsNullOrEmpty(profileName))
             {
-                Global.outDevTypeTemp[deviceNum] = OutContType.X360;
+                MessageBox.Show(Properties.Resources.ValidName, "DS4Windows",
+                    MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return false;
+            }
+
+            // Phase 5 Step 14: SpecialActionsListViewModel から有効なアクション名リストを取得し、Global.ProfileActions に確実に反映
+            if (specialActionsVM != null)
+            {
+                specialActionsVM.SyncProfileActionsString();
+                Global.ProfileActions[deviceNum] = specialActionsVM.GetEnabledActionNames();
+            }
+
+            SaveSplitterAndColumnWidths();
+
+            bool saved = false;
+            if (profileRepository != null)
+            {
+                saved = profileRepository.SaveProfile(deviceNum, profileName);
+            }
+            else
+            {
+                saved = Global.SaveProfile(deviceNum, profileName);
+            }
+
+            if (saved)
+            {
+                AppLogger.LogToGui($"[DI] Profile '{profileName}' saved successfully.", false);
+                // Phase6-Step7b（決定8）: 保存（Save）と適用（Apply）の違いは、画面を閉じるかどうかだけ。
+                // どちらも親画面へ ProfileSaved を通知し、MainWindow.SyncProfileListAndControllers が、
+                // プロファイル一覧を読み込み直したうえで、このプロファイルを使っているスロットにだけ再適用する。
+                // 編集画面を開いたコントローラー（targetDevice）へ直接適用はしない（新規作成したプロファイルで
+                // コントローラーが切り替わらないようにするため）。targetDevice はプレビュー・校正・ランブルテスト専用
+                AppLogger.LogDebug($"[ProfileEditor] {(isApply ? "Apply" : "Save")}: profile '{profileName}' saved; re-applying to controller slots that use it (targetDevice={targetDevice})");
+                ProfileSaved?.Invoke(this, profileName);
+                return true;
+            }
+            else
+            {
+                AppLogger.LogToGui($"[DI] Failed to save profile '{profileName}'.", true);
+                return false;
             }
         }
 
         private void SaveBtn_Click(object sender, RoutedEventArgs e)
         {
-            if (profileSettingsVM.UseDs3PitchRollSim)
+            if (ExecuteSaveOrApply(isApply: false))
             {
-                // change controller type to DS4 if the DS3 pitch and roll sim is on
-                profileSettingsVM.TempControllerIndex = 1;
-            }
-
-            if (profileSettingsVM.HasUseDs3PitchRollSimChanged)
-            {
-                var mainWindow = (MainWindow)Application.Current.MainWindow;
-                if (mainWindow is not null)
-                {
-                    var changeServiceTask = Task.Run(() => Dispatcher.InvokeAsync(mainWindow.ChangeService));
-                    changeServiceTask.ContinueWith(_ => Dispatcher.InvokeAsync(() => mainWindow.ChangeService()));
-
-                }
-                else
-                {
-                    MessageBox.Show("The app has to be restarted for DS3 gyro simulation to work.",
-                        "DS4Windows", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-
-            bool saved = ApplyProfileStep(false);
-            if (saved)
-            {
-                Closed?.Invoke(this, EventArgs.Empty);
+                Close();
             }
         }
-
-        private bool ApplyProfileStep(bool fullSave = true)
+        private void ApplyBtn_Click(object sender, RoutedEventArgs e)
         {
-            bool result = false;
-            if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
-            }
-
-            if (profileSettingsVM.HasDebouncingMsChanged)
-            {
-                Global.DebouncingMsHasChanged();
-            }
-
-            string temp = profileNameTxt.Text;
-            if (!string.IsNullOrWhiteSpace(temp) &&
-                temp.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) == -1)
-            {
-                SetLateProperties(false);
-
-                // Compute pre-save vs to-be-saved special-action lists and defer
-                // persistence until now. We must detect which actions will be removed
-                // and which of those are invalid (not present in Actions.xml). The
-                // actual Global.ProfileActions update and CacheExtraProfileInfo call
-                // happen here before we save the profile to disk.
-                List<string> removedInvalidSpecialActions = new List<string>();
-                try
-                {
-                    var prevList = Global.ProfileActions != null && Global.ProfileActions.Length > deviceNum && Global.ProfileActions[deviceNum] != null
-                        ? new List<string>(Global.ProfileActions[deviceNum])
-                        : new List<string>();
-
-                    var newList = specialActionsVM?.GetEnabledActionNames() ?? new List<string>();
-
-                    // Perform name normalization (trim) and case-insensitive comparison
-                    var prevNorm = prevList.Select(n => Global.NormalizeActionName(n)).ToList();
-                    var newNorm = newList.Select(n => Global.NormalizeActionName(n)).ToList();
-                    var removed = prevNorm.Except(newNorm, StringComparer.OrdinalIgnoreCase).ToList();
-
-                    var actionsXml = Global.GetActions() ?? new List<SpecialAction>();
-                    var xmlSet = new HashSet<string>(actionsXml.Select(a => Global.NormalizeActionName(a.name)), StringComparer.OrdinalIgnoreCase);
-                    removedInvalidSpecialActions = removed.Where(name => !xmlSet.Contains(name)).ToList();
-
-                    // Persist the new list into Global and rebuild cached info before saving file
-                    // Global.ProfileActions is an array of List<string> exposed via a read-only
-                    // property; update the element in-place.
-                    try
-                    {
-                        var pa = Global.ProfileActions; // List<string>[]
-                        if (pa != null && pa.Length > deviceNum)
-                        {
-                            pa[deviceNum] = new List<string>(newList);
-                        }
-                        Global.CacheExtraProfileInfo(deviceNum);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to update ProfileActions: {ex.Message}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to compute removed invalid special actions: {ex.Message}");
-                }
-                DS4Windows.Global.ProfilePath[deviceNum] =
-                    DS4Windows.Global.OlderProfilePath[deviceNum] = temp;
-
-                if (currentProfile != null)
-                {
-                    if (temp != currentProfile.Name)
-                    {
-                        //File.Delete(DS4Windows.Global.appdatapath + @"\Profiles\" + currentProfile.Name + ".xml");
-                        currentProfile.DeleteFile();
-                        currentProfile.Name = temp;
-                    }
-                }
-
-                if (currentProfile != null)
-                {
-                    currentProfile.SaveProfile(deviceNum);
-                    currentProfile.FireSaved();
-
-                    // After saving an existing profile, reload it for all devices currently using it
-                    // This ensures backlight color and other settings are updated
-                    for (int i = 0; i < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i++)
-                    {
-                        if (Global.SelectedProfile[i] == temp)
-                        {
-                            DS4Device device = App.rootHub.DS4Controllers[i];
-                            if (device != null)
-                            {
-                                device.HaltReportingRunAction(() =>
-                                {
-                                    string prolog = string.Format(Properties.Resources.UsingProfile,
-                                        (i + 1).ToString(), temp, $"{device.Battery}");
-                                    bool display = Global.ProfileChangedNotification;
-                                    Global.ApplyProfile(i, temp, false, true, App.rootHub,
-                                        DS4Windows.ProfileChangeSource.Manual, prolog, display);
-                                });
-                            }
-                        }
-                    }
-
-                    // Log removed invalid special actions after save completes
-                    try
-                    {
-                        if (removedInvalidSpecialActions != null && removedInvalidSpecialActions.Count > 0)
-                        {
-                            string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
-                            foreach (var name in removedInvalidSpecialActions)
-                            {
-                                try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to GUI: {ex.Message}"); }
-                                try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to tray: {ex.Message}"); }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to log removed invalid special actions: {ex.Message}");
-                    }
-
-                    result = true;
-                }
-                else
-                {
-                    string tempprof = Global.appdatapath + @"\Profiles\" + temp + ".xml";
-                    if (!File.Exists(tempprof))
-                    {
-                        Global.SaveProfile(deviceNum, temp);
-                        CreatedProfile?.Invoke(this, temp);
-
-                        // Log removed invalid special actions after save completes
-                        try
-                        {
-                            if (removedInvalidSpecialActions != null && removedInvalidSpecialActions.Count > 0)
-                            {
-                                string displayProfile = string.IsNullOrEmpty(temp) ? "(unknown)" : temp;
-                                foreach (var name in removedInvalidSpecialActions)
-                                {
-                                    try { AppLogger.LogToGui($"Profile '{displayProfile}' removed invalid special action '{name}' from its action list.", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to GUI: {ex.Message}"); }
-                                    try { if (Global.ProfileChangedNotification) AppLogger.LogToTray($"Profile '{displayProfile}' removed invalid special action '{name}'", false); } catch (Exception ex) { AppLogger.LogError($"[ProfileEditor] Failed to log to tray: {ex.Message}"); }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            AppLogger.LogError($"[ProfileEditor.ApplyProfileStep] Failed to log removed invalid special actions: {ex.Message}");
-                        }
-
-                        result = true;
-                    }
-                    else
-                    {
-                        MessageBox.Show(Properties.Resources.ValidName, Properties.Resources.NotValid,
-                            MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show(Properties.Resources.ValidName, Properties.Resources.NotValid,
-                    MessageBoxButton.OK, MessageBoxImage.Exclamation);
-            }
-
-            return result;
+            ExecuteSaveOrApply(isApply: true);
         }
+
+        #endregion
 
         private void KeepSizeCheckBox_Click(object sender, RoutedEventArgs e)
         {
@@ -1555,7 +1437,7 @@ namespace DS4WinWPF.DS4Forms
         {
             if (profileSettingsVM.FuncDevNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                App.rootHub.setRumble(0, 0, profileSettingsVM.FuncDevNum);
+                controlService.setRumble(0, 0, profileSettingsVM.FuncDevNum);
             }
 
             // 画面サイズ保持チェックが有効な場合のみレイアウト保存
@@ -1621,10 +1503,12 @@ namespace DS4WinWPF.DS4Forms
 
         private void RumbleTestBtn_Click(object sender, RoutedEventArgs e)
         {
-            int deviceNum = profileSettingsVM.FuncDevNum;
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            // Phase6-Step7b: 振動させるのは実機（FuncDevNum＝targetDevice、実機なしならコントローラー0）。
+            // モーターの左右反転（InverseRumbleMotors）は、編集中の設定（作業スロット deviceNum）の値を読む（決定4＝I1）
+            int rumbleDevice = profileSettingsVM.FuncDevNum;
+            if (rumbleDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                DS4Device d = App.rootHub.DS4Controllers[deviceNum];
+                DS4Device d = controlService.DS4Controllers[rumbleDevice];
                 if (d != null)
                 {
                     RumbleType type;
@@ -1765,14 +1649,6 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        private void FrictionUD_ValueChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-        {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
-            {
-                App.rootHub.touchPad[deviceNum]?.ResetTrackAccel(frictionUD.Value.GetValueOrDefault());
-            }
-        }
-
         private void RainbowBtn_Click(object sender, RoutedEventArgs e)
         {
             bool active = profileSettingsVM.Rainbow != 0.0;
@@ -1812,7 +1688,7 @@ namespace DS4WinWPF.DS4Forms
         {
             if (profileSettingsVM.SASteeringWheelEmulationAxisIndex > 0)
             {
-                DS4Windows.DS4Device d = App.rootHub.DS4Controllers[profileSettingsVM.FuncDevNum];
+                DS4Windows.DS4Device d = controlService.DS4Controllers[profileSettingsVM.FuncDevNum];
                 if (d != null)
                 {
                     System.Drawing.Point origWheelCenterPoint = new System.Drawing.Point(d.wheelCenterPoint.X, d.wheelCenterPoint.Y);
@@ -1891,18 +1767,33 @@ namespace DS4WinWPF.DS4Forms
 
         private void OutConTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            int index = outConTypeCombo.SelectedIndex;
-            if (index >= 0)
+            if (outConTypeCombo == null)
+                return;
+
+            OutContType selected = outConTypeCombo.SelectedIndex == 1 ? OutContType.DS4 : OutContType.X360;
+            Global.OutContType[deviceNum] = selected;
+            if (Global.ProfileSettingsServiceInstance != null)
             {
-                mappingListVM.UpdateMappingDevType(profileSettingsVM.TempConType);
+                Global.ProfileSettingsServiceInstance.OutContType[deviceNum] = selected;
+            }
+
+            if (profileSettingsVM != null)
+            {
+                profileSettingsVM.ControllerTypeIndex = outConTypeCombo.SelectedIndex;
+                profileSettingsVM.TempControllerIndex = outConTypeCombo.SelectedIndex;
+                profileSettingsVM.TempConType = selected;
+            }
+
+            if (mappingListVM != null)
+            {
+                mappingListVM.UpdateMappingDevType(selected);
             }
         }
-
         private void NewActionBtn_Click(object sender, RoutedEventArgs e)
         {
             baseSpeActPanel.Visibility = Visibility.Collapsed;
             ProfileList profList = (Application.Current.MainWindow as MainWindow).ProfileListHolder;
-            SpecialActionEditor actEditor = new SpecialActionEditor(deviceNum, profList, null);
+            SpecialActionEditor actEditor = new SpecialActionEditor(deviceNum, profList, targetDevice, null);
             specialActionDockPanel.Children.Add(actEditor);
             actEditor.Visibility = Visibility.Visible;
             actEditor.Cancel += (sender2, args) =>
@@ -1922,7 +1813,7 @@ namespace DS4WinWPF.DS4Forms
                 baseSpeActPanel.Visibility = Visibility.Visible;
                 // After adding a new special action, re-apply the current sort
                 // so the list reflects the user's chosen sort column and order.
-                SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                SortSpecialActionsList(specialActionsVM.CurrentSortColumn, specialActionsVM.CurrentSortAscending);
                 // Persistence and cache update deferred to Apply/Save to avoid
                 // emitting removed-invalid logs at UI-time.
             };
@@ -1939,7 +1830,7 @@ namespace DS4WinWPF.DS4Forms
                 //SpecialActionItem item = specialActionsVM.ActionCol[currentIndex];
                 baseSpeActPanel.Visibility = Visibility.Collapsed;
                 ProfileList profList = (Application.Current.MainWindow as MainWindow).ProfileListHolder;
-                SpecialActionEditor actEditor = new SpecialActionEditor(deviceNum, profList, item.SpecialAction);
+                SpecialActionEditor actEditor = new SpecialActionEditor(deviceNum, profList, targetDevice, item.SpecialAction);
                 specialActionDockPanel.Children.Add(actEditor);
                 actEditor.Visibility = Visibility.Visible;
                 actEditor.Cancel += (sender2, args) =>
@@ -2001,7 +1892,7 @@ namespace DS4WinWPF.DS4Forms
                     // After editing an existing special action, re-apply the
                     // current sort so any name/type changes are reflected
                     // according to the current sort column and direction.
-                    SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                    SortSpecialActionsList(specialActionsVM.CurrentSortColumn, specialActionsVM.CurrentSortAscending);
                 };
             }
         }
@@ -2019,9 +1910,13 @@ namespace DS4WinWPF.DS4Forms
 
         private void SpecialActionCheckBox_Click(object sender, RoutedEventArgs e)
         {
-            // Export is intentionally not invoked here; Apply/Save will handle persistence.
+            // Phase 5 Step 14: ViewModel 側の ProfileActions 文字列を即時再同期
+            if (specialActionsVM != null)
+            {
+                specialActionsVM.SyncProfileActionsString();
+                Global.ProfileActions[deviceNum] = specialActionsVM.GetEnabledActionNames();
+            }
         }
-
         private void Ds4LightbarColorBtn_MouseEnter(object sender, MouseEventArgs e)
         {
             highlightControlDisplayLb.Content = "Click the lightbar for color picker";
@@ -2063,7 +1958,9 @@ namespace DS4WinWPF.DS4Forms
             if (activeWin && profileSettingsVM.UseControllerReadout)
             {
                 int index = -1;
-                switch (Program.rootHub.GetActiveInputControl(tempDeviceNum))
+                // Phase5-Step15-2-d: 281行目で解決済みのcontrolServiceフィールドを使わず、
+                // ここだけProgram.rootHubを直接呼んでいた置換漏れを修正。
+                switch (controlService.GetActiveInputControl(tempDeviceNum))
                 {
                     case DS4Controls.None: break;
                     case DS4Controls.Cross: index = 0; break;
@@ -2105,7 +2002,7 @@ namespace DS4WinWPF.DS4Forms
 
                 if (index >= 0)
                 {
-                    Dispatcher.BeginInvoke((Action)(() =>
+                    Dispatcher.BeginInvoke((System.Action)(() =>
                     {
                         mappingListVM.SelectedIndex = index;
                         ShowControlBindingWindow();
@@ -2141,7 +2038,8 @@ namespace DS4WinWPF.DS4Forms
 
         private void UseControllerReadoutCk_Click(object sender, RoutedEventArgs e)
         {
-            if (profileSettingsVM.UseControllerReadout && profileSettingsVM.Device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            // Phase6-Step7b: 判定は編集スロット（常に 8）ではなく実機の有無で行う（一覧経由では従来どおり開始しない）
+            if (profileSettingsVM.UseControllerReadout && HasTargetDevice)
             {
                 inputTimer.Start();
             }
@@ -2154,7 +2052,7 @@ namespace DS4WinWPF.DS4Forms
         private void ShowControlBindingWindow()
         {
             MappedControl mpControl = mappingListVM.Mappings[mappingListVM.SelectedIndex];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2218,7 +2116,7 @@ namespace DS4WinWPF.DS4Forms
             Button btn = sender as Button;
             DS4Controls control = (DS4Controls)Convert.ToInt32(btn.Tag);
             MappedControl mpControl = mappingListVM.ControlMap[control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2311,7 +2209,7 @@ namespace DS4WinWPF.DS4Forms
                         if (specialActionsHeaderLoadedCount >= targetCount)
                         {
                             App.logHolder?.Logger?.Debug("[EnsureSpecialActionsHeadersAssigned] all headers loaded - calling SortSpecialActionsList");
-                            SortSpecialActionsList(currentSortColumn, currentSortAsc);
+                            SortSpecialActionsList(specialActionsVM.CurrentSortColumn, specialActionsVM.CurrentSortAscending);
                         }
                     };
 
@@ -2345,7 +2243,7 @@ namespace DS4WinWPF.DS4Forms
             Button btn = sender as Button;
             DS4Controls control = (DS4Controls)Convert.ToInt32(btn.Tag);
             MappedControl mpControl = mappingListVM.ControlMap[control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2403,11 +2301,6 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        private void ApplyBtn_Click(object sender, RoutedEventArgs e)
-        {
-            ApplyProfileStep();
-        }
-
         private void TriggerFullPullBtn_Click(object sender, RoutedEventArgs e)
         {
             Button btn = sender as Button;
@@ -2420,7 +2313,7 @@ namespace DS4WinWPF.DS4Forms
 
             //DS4ControlSettings setting = Global.getDS4CSetting(tag, ds4control);
             MappedControl mpControl = mappingListVM.ControlMap[ds4control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2429,14 +2322,16 @@ namespace DS4WinWPF.DS4Forms
 
         private void GyroCalibration_Click(object sender, RoutedEventArgs e)
         {
-            int deviceNum = profileSettingsVM.FuncDevNum;
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            // Phase6-Step7b: 校正するのは実機（FuncDevNum＝targetDevice、実機なしならコントローラー0）。
+            // 編集スロットのフィールド deviceNum と区別するため、ローカル変数名を分けた
+            int calibrationDevice = profileSettingsVM.FuncDevNum;
+            if (calibrationDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                DS4Device d = App.rootHub.DS4Controllers[deviceNum];
+                DS4Device d = controlService.DS4Controllers[calibrationDevice];
                 d.SixAxis.ResetContinuousCalibration();
                 if (d.JointDeviceSlotNumber != DS4Device.DEFAULT_JOINT_SLOT_NUMBER)
                 {
-                    DS4Device tempDev = App.rootHub.DS4Controllers[d.JointDeviceSlotNumber];
+                    DS4Device tempDev = controlService.DS4Controllers[d.JointDeviceSlotNumber];
                     tempDev?.SixAxis.ResetContinuousCalibration();
                 }
             }
@@ -2461,7 +2356,7 @@ namespace DS4WinWPF.DS4Forms
             Button btn = sender as Button;
             DS4Controls control = (DS4Controls)Convert.ToInt32(btn.Tag);
             MappedControl mpControl = mappingListVM.ControlMap[control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2494,7 +2389,7 @@ namespace DS4WinWPF.DS4Forms
 
             //DS4ControlSettings setting = Global.getDS4CSetting(tag, ds4control);
             MappedControl mpControl = mappingListVM.ControlMap[ds4control];
-            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting);
+            BindingWindow window = new BindingWindow(deviceNum, mpControl.Setting, targetDevice);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
             mpControl.UpdateMappingName();
@@ -2503,7 +2398,9 @@ namespace DS4WinWPF.DS4Forms
 
         private void CalibrateStick_OnClick(object sender, RoutedEventArgs e)
         {
-            if (deviceNum == 8)
+            // Phase6-Step7b: 校正には実機が必要。旧判定 deviceNum == 8（一覧経由）は、編集スロットが常に 8 になったため
+            // 実機の有無（targetDevice）の判定に置き換えた。メッセージの文言は維持
+            if (!HasTargetDevice)
             {
                 MessageBox.Show("Stick recalibration is only available if the profile editor is opened " +
                                 "with the Edit button next to the controller you want to recalibrate in the main " +
@@ -2521,7 +2418,8 @@ namespace DS4WinWPF.DS4Forms
                 _ => throw new IndexOutOfRangeException("Wrong stick index. Must be 0 for left or 1 for right.")
             };
 
-            StickCalibrationWindow window = new(stick, deviceNum, profileSettingsVM)
+            // 実機（targetDevice）の現在の入力を読み、補正値は profileSettingsVM 経由で作業スロットへ書く
+            StickCalibrationWindow window = new(stick, targetDevice, profileSettingsVM)
             {
                 Owner = Application.Current.MainWindow,
             };
@@ -2545,9 +2443,8 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        // ソート状態保持
-        private string currentSortColumn = "Name";
-        private bool currentSortAsc = true;
+        // ソート状態（列名・方向）は SpecialActionsListViewModel.CurrentSortColumn /
+        // CurrentSortAscending が唯一の実体。View 側では保持しない（二重状態の解消）。
 
         // 列ヘッダークリックイベント
         void SpecialActionsHeader_Click(object sender, RoutedEventArgs e)
@@ -2556,9 +2453,11 @@ namespace DS4WinWPF.DS4Forms
             var col = btn?.Tag as string;
             if (col != null)
             {
+                string currentCol = specialActionsVM?.CurrentSortColumn ?? "Name";
+                bool currentAsc = specialActionsVM?.CurrentSortAscending ?? true;
                 // Log: sort state just before click
-                AppLogger.LogDebug($"[SpecialActionsHeader_Click] Click: col={col}, currentSortColumn={currentSortColumn}, currentSortAsc={currentSortAsc}");
-                bool asc = col != currentSortColumn ? true : !currentSortAsc;
+                AppLogger.LogDebug($"[SpecialActionsHeader_Click] Click: col={col}, currentSortColumn={currentCol}, currentSortAsc={currentAsc}");
+                bool asc = col != currentCol ? true : !currentAsc;
                 AppLogger.LogDebug($"[SpecialActionsHeader_Click] Determined sort direction: col={col}, asc={asc}");
                 SortSpecialActionsList(col, asc);
                 AppLogger.LogDebug($"[SpecialActionsHeader_Click] Column click handling complete: {col}");

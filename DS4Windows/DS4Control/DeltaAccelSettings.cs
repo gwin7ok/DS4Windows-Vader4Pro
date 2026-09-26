@@ -21,10 +21,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DS4Windows;
 
 namespace DS4WinWPF.DS4Control
 {
-    public class DeltaAccelSettings
+    public class DeltaAccelSettings : ProfileSubSettingBase
     {
         public const bool ENABLED_DEFAULT = false;
         public const double MINFACTOR_DEFAULT = 1.0;
@@ -43,37 +44,79 @@ namespace DS4WinWPF.DS4Control
         public bool Enabled
         {
             get => enabled;
-            set => enabled = value;
+            set
+            {
+                if (enabled != value)
+                {
+                    enabled = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public double Multiplier
         {
             get => multiplier;
-            set => multiplier = value;
+            set
+            {
+                if (Math.Abs(multiplier - value) > 0.0001)
+                {
+                    multiplier = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public double MaxTravel
         {
             get => maxTravel;
-            set => maxTravel = value;
+            set
+            {
+                if (Math.Abs(maxTravel - value) > 0.0001)
+                {
+                    maxTravel = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public double MinTravel
         {
             get => minTravel;
-            set => minTravel = value;
+            set
+            {
+                if (Math.Abs(minTravel - value) > 0.0001)
+                {
+                    minTravel = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public double EasingDuration
         {
             get => easingDuration;
-            set => easingDuration = value;
+            set
+            {
+                if (Math.Abs(easingDuration - value) > 0.0001)
+                {
+                    easingDuration = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public double MinFactor
         {
             get => minfactor;
-            set => minfactor = value;
+            set
+            {
+                if (Math.Abs(minfactor - value) > 0.0001)
+                {
+                    minfactor = value;
+                    RaisePropertyChanged();
+                }
+            }
         }
 
         public DeltaAccelSettings()
@@ -98,6 +141,7 @@ namespace DS4WinWPF.DS4Control
             minTravel = MIN_TRAVEL_DEFAULT;
             easingDuration = EASING_DURATION_DEFAULT;
             minfactor = MINFACTOR_DEFAULT;
+            RaiseAllPropertiesChanged();
         }
     }
 }

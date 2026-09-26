@@ -29,8 +29,9 @@ using Nefarius.ViGEm.Client;
 
 namespace DS4Windows
 {
-    public class OutputSlotManager
+    public class OutputSlotManager : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         public const int DELAY_TIME = 500; // measured in ms
         private OutSlotDevice[] outputSlots;/* = new OutSlotDevice[Global.MAX_DS4_CONTROLLER_COUNT]
         {

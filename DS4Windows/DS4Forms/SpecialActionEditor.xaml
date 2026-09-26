@@ -16,7 +16,7 @@
         <DockPanel DockPanel.Dock="Top" Margin="4,8,4,8">
             <Label Content="Name:" DockPanel.Dock="Left" />
             <TextBox x:Name="actionNameTxt" Text="{Binding ActionName,FallbackValue=Name,ValidatesOnNotifyDataErrors=True}"
-                     Margin="8,0,0,0" DockPanel.Dock="Right" VerticalContentAlignment="Center" />
+                     Margin="8,0,0,0" DockPanel.Dock="Right" VerticalContentAlignment="Center" InputMethod.IsInputMethodEnabled="True" InputMethod.PreferredImeState="Off" />
         </DockPanel>
         <DockPanel DockPanel.Dock="Bottom">
             <DockPanel DockPanel.Dock="Left">
@@ -437,27 +437,21 @@
                                         </CompositeCollection>
                                     </ComboBox.ItemsSource>
                                 </ComboBox>
-                                <Button x:Name="loadProfUnloadBtn" Content="{lex:Loc SpecialActionEdit.SetUnloadTrigger}" Margin="{StaticResource spaceMargin}"
-                                        IsEnabled="{Binding UnloadEnabled}" Click="LoadProfUnloadBtn_Click" />
                                 <CheckBox Content="{lex:Loc SpecialActionEdit.UnloadTriggerRelease}" Margin="{StaticResource spaceMargin}" IsChecked="{Binding AutoUntrigger}" />
                             </StackPanel>
                         </TabItem>
                         <TabItem x:Name="pressKetActTab" Header="Press Key">
                             <StackPanel Margin="{StaticResource spaceMargin}">
-                                <Button x:Name="pressKeySelectBtn" Content="{Binding DescribeText,FallbackValue={lex:Loc SpecialActionEdit.SelectKey}}"
-                                        Margin="{StaticResource spaceMargin}" Click="PressKeySelectBtn_Click" />
-                                <Button x:Name="pressKeyToggleTriggerBtn" Content="{lex:Loc SpecialActionEdit.SetUnloadTrigger}"
-                                        Tag="{Binding UnloadError,ValidatesOnNotifyDataErrors=True}"
-                                        Visibility="{Binding ShowToggleControls}"
-                                        Margin="{StaticResource spaceMargin}" Click="PressKeyToggleTriggerBtn_Click" />
-
-                                <StackPanel Margin="{StaticResource spaceMargin}" Visibility="{Binding ShowToggleControls}">
-                                    <Label Content="{lex:Loc SpecialActionEdit.UntoggleKeyBy}" />
-                                    <ComboBox x:Name="pressReleaseKeyCombo" SelectedIndex="{Binding PressReleaseIndex}">
-                                        <ComboBoxItem Content="{lex:Loc SpecialActionEdit.PressingUnloadTrigger}" />
-                                        <ComboBoxItem Content="{lex:Loc SpecialActionEdit.ReleasingUnloadTrigger}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6" VerticalAlignment="Center">
+                                    <Label Content="Switch Mode:" VerticalAlignment="Center" />
+                                    <ComboBox Width="120" Margin="8,0,0,0" SelectedValue="{Binding SwitchMode, Mode=TwoWay}" SelectedValuePath="Content">
+                                        <ComboBoxItem Content="Press" />
+                                        <ComboBoxItem Content="Toggle" />
                                     </ComboBox>
                                 </StackPanel>
+                                <Button x:Name="pressKeySelectBtn" Content="{Binding DescribeText,FallbackValue={lex:Loc SpecialActionEdit.SelectKey}}"
+                                        Margin="{StaticResource spaceMargin}" Click="PressKeySelectBtn_Click" />
+                                <!-- Unload trigger UI removed: Key-type SpecialActions now use single-trigger toggle by design -->
                             </StackPanel>
                         </TabItem>
                         <TabItem x:Name="disconnectBTTab" Header="DisBT">

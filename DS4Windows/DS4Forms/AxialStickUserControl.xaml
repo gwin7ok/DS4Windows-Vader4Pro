@@ -36,9 +36,10 @@
         <TextBlock Text="Y" Grid.Column="2"  FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8" />
 
         <Label Content="{lex:Loc DeadZone}" ContentStringFormat="{}{0}:" Grid.Row="1" Grid.Column="0" />
-        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding DeadZoneX,UpdateSourceTrigger=LostFocus}" FormatString="F2" MinWidth="50" Grid.Row="1" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
+        <!-- 2026-09-26: Dead Zone X/Y の UpdateSourceTrigger=LostFocus を撤廃（Six Axis の Dead Zone と同じく即時に設定へ書き込み、Controller Readings の円を即時に更新する。Phase6-Step7b-Plan.md の範囲外の追加修正） -->
+        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding DeadZoneX}" FormatString="F2" MinWidth="50" Grid.Row="1" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
                                                    Margin="{StaticResource spaceMargin}" />
-        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding DeadZoneY,UpdateSourceTrigger=LostFocus}" FormatString="F2" MinWidth="50" Grid.Row="1" Grid.Column="2" Maximum="1.0" Minimum="0.0" Increment="0.1"
+        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding DeadZoneY}" FormatString="F2" MinWidth="50" Grid.Row="1" Grid.Column="2" Maximum="1.0" Minimum="0.0" Increment="0.1"
                                                    Margin="{StaticResource spaceMargin}" />
 
         <Label Content="{lex:Loc MaxZone}" ContentStringFormat="{}{0}:" Grid.Row="2" Grid.Column="0" />

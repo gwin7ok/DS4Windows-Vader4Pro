@@ -51,10 +51,25 @@ namespace DS4WinWPF.DS4Forms
         public delegate void SaveHandler(object sender, string actionName);
         public event SaveHandler Saved;
 
-        public SpecialActionEditor(int deviceNum, ProfileList profileList,
+        // Phase6-Step7b: 設定の読み書き先（specialActVM.DeviceNum＝編集スロット）とは別に、バッテリー確認の
+        // 色プレビューと、ここから開くボタン設定画面・マクロ記録で使う実機のスロット番号を持つ。-1 は「実機なし」。
+        // 詳細は docs-forDIMG/MadeByAgent/Phase6-Step7b-Plan.md §2.1
+        private readonly int targetDevice;
+
+        /// <summary>実機（targetDevice）が指定され、かつ有効なコントローラースロットの範囲内であるか。</summary>
+        private bool HasTargetDevice =>
+            targetDevice >= 0 && targetDevice < DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
+        /// <param name="deviceNum">設定を読み書きするスロット（プロファイル編集画面では編集用の作業スロット）</param>
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: 実機のスロット番号。-1 は実機なし。
+        /// 渡し忘れをコンパイルで検出するため必須引数とする（Phase6-Step7b-Plan.md 決定2）
+        /// </param>
+        public SpecialActionEditor(int deviceNum, ProfileList profileList, int targetDevice,
             DS4Windows.SpecialAction specialAction = null)
         {
             InitializeComponent();
+            this.targetDevice = targetDevice;
 
             triggerBoxes = new List<CheckBox>()
             {
@@ -85,12 +100,19 @@ namespace DS4WinWPF.DS4Forms
                 unloadSwipeRightTrigCk, unloadTiltUpTrigCk, unloadTiltDownTrigCk, unloadTiltLeftTrigCk,
                 unloadTiltRightTrigCk,unloadTouchStartedTrigCk, unloadTouchEndedTrigCk,
             };
-
-            specialActVM = new SpecialActEditorViewModel(deviceNum, specialAction);
+            var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            if (vmFactory != null)
+                specialActVM = vmFactory.CreateSpecialActEditorViewModel(deviceNum, specialAction);
+            else
+            {
+                DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=SpecialActionEditor, viewModel=SpecialActEditorViewModel");
+                specialActVM = new SpecialActEditorViewModel(deviceNum, specialAction);
+            }
             macroActVM = new MacroViewModel();
             launchProgVM = new LaunchProgramViewModel();
             loadProfileVM = new LoadProfileViewModel(profileList);
             pressKeyVM = new PressKeyViewModel();
+            pressKeyVM.SetDeviceNum(deviceNum);
             disconnectBtVM = new SpecialActionViewModel(5);
             checkBatteryVM = new CheckBatteryViewModel();
             multiActButtonVM = new MultiActButtonViewModel();
@@ -210,6 +232,10 @@ namespace DS4WinWPF.DS4Forms
                     loadProfileVM.LoadAction(specialAction);
                     break;
                 case DS4Windows.SpecialAction.ActionTypeId.Key:
+                    pressKeyVM.LoadAction(specialAction);
+                    break;
+                case DS4Windows.SpecialAction.ActionTypeId.Button:
+                    // Button special actions use the same editor as Key (Press Key tab)
                     pressKeyVM.LoadAction(specialAction);
                     break;
                 case DS4Windows.SpecialAction.ActionTypeId.DisconnectBT:
@@ -400,50 +426,22 @@ namespace DS4WinWPF.DS4Forms
         private void RecordMacroBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = macroActVM.PrepareSettings();
-            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings);
+            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, targetDevice);
             recordWin.Saved += (sender2, args) =>
             {
                 macroActVM.Macro.Clear();
                 macroActVM.Macro.AddRange((int[])settings.action.actionMacro);
                 macroActVM.UpdateMacroString();
+                // Sync repeat and scan-code flags back to the MacroViewModel so the
+                // SpecialAction editor's checkboxes reflect changes made in RecordBox.
+                macroActVM.UseScanCode = settings.keyType.HasFlag(DS4KeyType.ScanCode);
+                macroActVM.RepeatHeld = settings.keyType.HasFlag(DS4KeyType.RepeatMacro) || settings.keyType.HasFlag(DS4KeyType.HoldMacro);
             };
 
             recordWin.ShowDialog();
         }
 
-        private void PressKeyToggleTriggerBtn_Click(object sender, RoutedEventArgs e)
-        {
-            bool normalTrigger = pressKeyVM.NormalTrigger = !pressKeyVM.NormalTrigger;
-            if (normalTrigger)
-            {
-                pressKeyToggleTriggerBtn.Content = "Set Unload Trigger";
-                triggersListView.Visibility = Visibility.Visible;
-                unloadTriggersListView.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                pressKeyToggleTriggerBtn.Content = "Set Regular Trigger";
-                triggersListView.Visibility = Visibility.Collapsed;
-                unloadTriggersListView.Visibility = Visibility.Visible;
-            }
-        }
-
-        private void LoadProfUnloadBtn_Click(object sender, RoutedEventArgs e)
-        {
-            bool normalTrigger = loadProfileVM.NormalTrigger = !loadProfileVM.NormalTrigger;
-            if (normalTrigger)
-            {
-                loadProfUnloadBtn.Content = "Set Unload Trigger";
-                triggersListView.Visibility = Visibility.Visible;
-                unloadTriggersListView.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                loadProfUnloadBtn.Content = "Set Regular Trigger";
-                triggersListView.Visibility = Visibility.Collapsed;
-                unloadTriggersListView.Visibility = Visibility.Visible;
-            }
-        }
+        // Unload trigger toggle buttons and handlers removed: Key-type SpecialActions use single-trigger toggle mode.
 
         private void BatteryEmptyColorBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -451,13 +449,14 @@ namespace DS4WinWPF.DS4Forms
             dialog.Owner = Application.Current.MainWindow;
             Color tempcolor = checkBatteryVM.EmptyColor;
             dialog.colorPicker.SelectedColor = tempcolor;
-            checkBatteryVM.StartForcedColor(tempcolor, specialActVM.DeviceNum);
+            // Phase6-Step7b: 色のプレビューは実機（targetDevice）に対して行う。実機なしなら何もしない
+            if (HasTargetDevice) checkBatteryVM.StartForcedColor(tempcolor, targetDevice);
             dialog.ColorChanged += (sender2, color) =>
             {
-                checkBatteryVM.UpdateForcedColor(color, specialActVM.DeviceNum);
+                if (HasTargetDevice) checkBatteryVM.UpdateForcedColor(color, targetDevice);
             };
             dialog.ShowDialog();
-            checkBatteryVM.EndForcedColor(specialActVM.DeviceNum);
+            if (HasTargetDevice) checkBatteryVM.EndForcedColor(targetDevice);
             checkBatteryVM.EmptyColor = dialog.colorPicker.SelectedColor.GetValueOrDefault();
         }
 
@@ -467,20 +466,21 @@ namespace DS4WinWPF.DS4Forms
             dialog.Owner = Application.Current.MainWindow;
             Color tempcolor = checkBatteryVM.FullColor;
             dialog.colorPicker.SelectedColor = tempcolor;
-            checkBatteryVM.StartForcedColor(tempcolor, specialActVM.DeviceNum);
+            // Phase6-Step7b: 色のプレビューは実機（targetDevice）に対して行う。実機なしなら何もしない
+            if (HasTargetDevice) checkBatteryVM.StartForcedColor(tempcolor, targetDevice);
             dialog.ColorChanged += (sender2, color) =>
             {
-                checkBatteryVM.UpdateForcedColor(color, specialActVM.DeviceNum);
+                if (HasTargetDevice) checkBatteryVM.UpdateForcedColor(color, targetDevice);
             };
             dialog.ShowDialog();
-            checkBatteryVM.EndForcedColor(specialActVM.DeviceNum);
+            if (HasTargetDevice) checkBatteryVM.EndForcedColor(targetDevice);
             checkBatteryVM.FullColor = dialog.colorPicker.SelectedColor.GetValueOrDefault();
         }
 
         private void MultiTapTrigBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = multiActButtonVM.PrepareTapSettings();
-            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, false);
+            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, targetDevice, false);
             recordWin.Saved += (sender2, args) =>
             {
                 multiActButtonVM.TapMacro.Clear();
@@ -494,7 +494,7 @@ namespace DS4WinWPF.DS4Forms
         private void MultiHoldTapTrigBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = multiActButtonVM.PrepareHoldSettings();
-            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, false);
+            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, targetDevice, false);
             recordWin.Saved += (sender2, args) =>
             {
                 multiActButtonVM.HoldMacro.Clear();
@@ -508,7 +508,7 @@ namespace DS4WinWPF.DS4Forms
         private void MultiDoubleTapTrigBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = multiActButtonVM.PrepareDoubleTapSettings();
-            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, false);
+            RecordBoxWindow recordWin = new RecordBoxWindow(specialActVM.DeviceNum, settings, targetDevice, false);
             recordWin.Saved += (sender2, args) =>
             {
                 multiActButtonVM.DoubleTapMacro.Clear();
@@ -538,12 +538,11 @@ namespace DS4WinWPF.DS4Forms
         private void PressKeySelectBtn_Click(object sender, RoutedEventArgs e)
         {
             DS4Windows.DS4ControlSettings settings = pressKeyVM.PrepareSettings();
-            BindingWindow window = new BindingWindow(specialActVM.DeviceNum, settings,
-                BindingWindow.ExposeMode.Keyboard);
+            BindingWindow window = new BindingWindow(specialActVM.DeviceNum, settings, targetDevice,
+                BindingWindow.ExposeMode.ForPressToggle);
             window.Owner = App.Current.MainWindow;
             window.ShowDialog();
-            pressKeyVM.ReadSettings(settings);
-            pressKeyVM.UpdateDescribeText();
+            pressKeyVM.ReadSettings(settings, specialActVM.DeviceNum);
             pressKeyVM.UpdateToggleControls();
         }
 
@@ -639,11 +638,11 @@ namespace DS4WinWPF.DS4Forms
                     var src = PresentationSource.FromVisual(this);
                     if (src != null && src.CompositionTarget != null)
                     {
-                            var transform = src.CompositionTarget.TransformFromDevice;
-                            var dpiPt = transform.Transform(anchorPt);
-                            AppLogger.LogDebug($"SpecialActionEditor.ShowPositionedMessageBox: anchorPt(physical)={anchorPt} dpiPt(logical)={dpiPt} anchorSize=({anchor.ActualWidth}x{anchor.ActualHeight})");
-                            left = dpiPt.X + anchor.ActualWidth / 2.0; // center anchor horizontally
-                            top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
+                        var transform = src.CompositionTarget.TransformFromDevice;
+                        var dpiPt = transform.Transform(anchorPt);
+                        AppLogger.LogDebug($"SpecialActionEditor.ShowPositionedMessageBox: anchorPt(physical)={anchorPt} dpiPt(logical)={dpiPt} anchorSize=({anchor.ActualWidth}x{anchor.ActualHeight})");
+                        left = dpiPt.X + anchor.ActualWidth / 2.0; // center anchor horizontally
+                        top = dpiPt.Y + anchor.ActualHeight + 8; // slightly below anchor
                     }
                     else
                     {

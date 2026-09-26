@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -24,7 +24,14 @@ namespace DS4Windows
     public class AppLogger
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        // 2026-09: MainWindowの購読先を INotificationService.NotificationTriggered へ移行済みのため、
+        // このイベント自体は発火されなくなった。次回クリーンアップで削除予定（Phase5-Step14 通知経路統合参照）。
+        // CS0067（未使用イベント）を意図的に抑制する。削除ではなく[Obsolete]付きで一旦残す判断は
+        // 過渡期の安全策（3.3原則4）であり、警告放置ではなく明示的な抑制であることを示す。
+        [Obsolete("MainWindowの購読先をINotificationService.NotificationTriggeredへ移行済み。次回クリーンアップで削除予定。")]
+#pragma warning disable CS0067 // 発火元を撤去済み。次回クリーンアップでイベント自体を削除するまでの意図的な残置。
         public static event EventHandler<DebugEventArgs> TrayIconLog;
+#pragma warning restore CS0067
         public static event EventHandler<DebugEventArgs> GuiLog;
         // 型付きプロファイル変更イベント
         public static event EventHandler<ProfileChangedEventArgs> ProfileChanged;
@@ -50,7 +57,15 @@ namespace DS4Windows
             Logger.Trace(data);
         }
 
+        // Expose trace-enabled flag to avoid expensive string formatting when trace is off
+        public static bool IsTraceEnabled => Logger.IsTraceEnabled;
+
         // Errorレベルログ専用メソッド（エラー情報用）
+        // Warnレベルログ専用メソッド（警告情報用）
+        public static void LogWarn(string data)
+        {
+            Logger.Warn(data);
+        }
         public static void LogError(string data)
         {
             Logger.Error(data);
@@ -64,33 +79,44 @@ namespace DS4Windows
 
         public static void LogToTray(string data, bool warning = false, bool ignoreSettings = false)
         {
-            if (TrayIconLog != null)
+            // ignoreSettings: 現状も無効（無機能）のパラメータ。旧実装でも受信側(MainWindow)が
+            // sender引数を一切参照していなかったため実質未配線だった。今回のリファクタでも
+            // 意図的に配線しない（挙動を変えないため）。将来対応が必要になった場合は、
+            // INotificationService.SendNotification 側にも同等の引数追加を検討すること。
+            Logger.Debug($"[Diag-Toast] LogToTray 呼び出し: data='{data}', warning={warning}, ignoreSettings={ignoreSettings}");
+
+            try
             {
-                if (ignoreSettings)
-                    TrayIconLog(ignoreSettings, new DebugEventArgs(data, warning));
-                else
-                    TrayIconLog(null, new DebugEventArgs(data, warning));
+                // title は意図的に空文字を渡す。表示本体(MainWindow.ShowSystemNotification)は
+                // イベント側のタイトルを使わず常に TrayIconViewModel.ballonTitle を自前解決するため、
+                // ここでUI層のクラスへ依存を持ち込む必要がない（下位層→上位層参照の禁止に抵触しないため）。
+                // temporary は旧実装でも LogToTray からは常に false 固定だった（このメソッド自体に
+                // temporary パラメータが存在しなかったため）。挙動を変えないためここでも false 固定とする。
+                Global.NotificationServiceInstance.SendNotification(string.Empty, data, warning: warning, temporary: false);
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"[Diag-Toast] LogToTray から SendNotification 呼び出しで例外発生: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
-        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null, bool displayNotification = true)
+        /// <summary>
+        /// プロファイル適用イベントを記録し、ProfileChanged イベントを発火する。
+        /// </summary>
+        /// <param name="displayNotification">
+        /// このプロファイル変更をイベントとして通知対象とするか否か（サイレント内部処理を除外するためのフラグ。既定は true）。
+        /// UIへの実際の表示可否（トースト／独自ウィンドウのどちらで出すか、あるいは出さないか）は、
+        /// 本イベントの購読側（MainWindow.OnProfileChanged）が ProfileChangedNotification 設定を見て別途判定する。
+        /// </param>
+        public static void LogProfileChanged(int deviceIndex, string profileName, bool isTemp, ProfileChangeSource source = ProfileChangeSource.Unknown, string originalMessage = null, DateTime? timestamp = null)
         {
-            // NLog Debugレベルで出力（NLog.configで制御可能）
-            Logger.Debug($"LogProfileChanged CALLED: device={deviceIndex}, profile={profileName}, isTemp={isTemp}, source={source}, display={displayNotification}");
-            
+            Logger.Debug($"LogProfileChanged CALLED: device={deviceIndex}, profile={profileName}, isTemp={isTemp}, source={source}");
+
             try
             {
-                // originalMessageは呼び出し側で出力されるのでここでは出力しない（重複防止）
-
-                if (displayNotification)
-                {
-                    Logger.Debug("LogProfileChanged: Invoking ProfileChanged event");
-                    ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
-                }
-                else
-                {
-                    Logger.Debug("LogProfileChanged: Skipping notification (displayNotification=false)");
-                }
+                // ★ displayNotification による不要なスキップを完全撤廃し、プロファイル適用イベントを常に発行する
+                Logger.Debug("LogProfileChanged: Invoking ProfileChanged event");
+                ProfileChanged?.Invoke(null, new ProfileChangedEventArgs(deviceIndex, profileName, isTemp, source, originalMessage, timestamp ?? DateTime.UtcNow));
             }
             catch { }
         }
@@ -127,4 +153,3 @@ namespace DS4Windows
         }
     }
 }
-

@@ -1,0 +1,70 @@
+﻿using System;
+using System.Collections.Generic;
+using DS4Windows;
+
+namespace DS4Windows.DI
+{
+    public interface IProfileRepository
+    {
+        string ProfilesPath { get; }
+        string GetProfilePath(string profileName);
+
+        bool LoadProfile(int deviceIndex, string profileName);
+        bool SaveProfile(int deviceIndex, string profileName);
+
+        // --- 旧 DS4Windows.DS4Control.IProfileRepository から統合したDTOベースのXML直列化メソッド ---
+        bool LoadProfile(string filePath, int deviceIndex, BackingStore destination);
+        bool SaveProfile(string filePath, int deviceIndex, BackingStore source);
+        // ---------------------------------------------------------------------------------------------
+
+        bool LoadDefaultProfile(int deviceIndex);
+        bool LoadProfileToSlot(int deviceIndex, string profileName);
+
+        IReadOnlyList<string> GetProfileNames();
+        bool ProfileExists(string profileName);
+
+        bool ApplyProfileDirect(int deviceIndex, string profileName);
+        bool RestoreProfileDirect(int deviceIndex);
+
+        // ---- Phase5-Step13-2: デバイススロット別・実行時プロファイル状態 (m_Config委譲、BackingStore共有参照) ----
+        string[] ProfilePath { get; }
+        string[] OlderProfilePath { get; }
+        string[] SelectedProfile { get; }
+        string[] LinkedProfileUI { get; }
+
+        event EventHandler<SelectedProfileChangedEventArgs> SelectedProfileChanged;
+        void RaiseSelectedProfileChanged(int deviceIndex, string profileName);
+
+        // ---- Phase5-Step13-2: LinkedProfile（コントローラーMAC単位のプロファイル紐付け）管理 ----
+        void ChangeLinkedProfile(string serial, string profile);
+        void RemoveLinkedProfile(string serial);
+        bool SaveLinkedProfiles();
+        // ---- Phase5-Step13-5: デバイス別・割当済みSpecialAction名リスト ----
+        List<string>[] ProfileActions { get; }
+        void CacheExtraProfileInfo(int deviceIndex);
+
+        // ---- Phase5-Step13-6: プロファイルのカスタムフラグキャッシュ更新 ----
+        void CacheProfileCustomsFlags(int deviceIndex);
+
+        // ---- Phase5-Step13-7: 一時プロファイル読込（スワイプ操作等での即時切替用） ----
+        bool LoadTempProfile(int deviceIndex, string profileName, bool launchProgram, ControlService control, bool xinputChange = true);
+
+        // ---- Phase5-Step13-7 Tier4: プロファイル未定義アクションの警告ログ出力 ----
+        void EmitMissingActionLogsForDevice(int deviceIndex, bool forceEmit = false, string overrideProfileName = null);
+
+
+        // ---- Phase6-Step2-2 (PR-2): リンクプロファイル解決（Global への薄い委譲）----
+        bool ContainsLinkedProfile(string serial);
+        string GetLinkedProfile(string serial);
+
+        // ---- Phase6-Step7-1: App.xaml.cs（Post-Host）の Global 直接参照解消（Global への薄い委譲）----
+        /// <summary>
+        /// スロットの設定を初期値に戻したうえで、プロファイル名 <paramref name="profileName"/> として保存する
+        /// （初回起動時の既定プロファイル作成に使う）。保存の成否を返す。
+        /// </summary>
+        bool SaveAsProfile(int deviceIndex, string profileName);
+
+        /// <summary>LinkedProfiles.xml（コントローラーとプロファイルの紐付け）を読み込む。</summary>
+        bool LoadLinkedProfiles();
+    }
+}

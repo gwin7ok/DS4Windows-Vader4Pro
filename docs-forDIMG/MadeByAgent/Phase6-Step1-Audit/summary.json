@@ -1,0 +1,59 @@
+{
+  "revision": "aa0e503c1b6f241dd14d0f01224d211f2a20f008",
+  "sourceTree": "6c40f77b480835be48af2d07ab1caff73f2ec09d",
+  "trackedCSharpFiles": 346,
+  "productionFiles": 286,
+  "memberCount": 503,
+  "selfTests": "passed",
+  "totals": [
+    {
+      "variant": "DEBUG_WIN64",
+      "defines": [
+        "DEBUG",
+        "TRACE",
+        "WIN64"
+      ],
+      "stats": {
+        "other-symbol": 2121,
+        "global-symbol": 2142,
+        "unbound-other-context": 188,
+        "outside-production-candidate": 190
+      },
+      "compilationErrors": 19883,
+      "members": 503
+    },
+    {
+      "variant": "RELEASE_WIN64",
+      "defines": [
+        "WIN64"
+      ],
+      "stats": {
+        "other-symbol": 2121,
+        "global-symbol": 2142,
+        "unbound-other-context": 188,
+        "outside-production-candidate": 190
+      },
+      "compilationErrors": 19883,
+      "members": 503
+    },
+    {
+      "variant": "NO_SYMBOLS",
+      "defines": [],
+      "stats": {
+        "other-symbol": 2121,
+        "global-symbol": 2142,
+        "unbound-other-context": 188,
+        "outside-production-candidate": 190
+      },
+      "compilationErrors": 19883,
+      "members": 503
+    }
+  ],
+  "limitations": [
+    "Partial semantic model, not an MSBuild build. Compilation diagnostics must be reviewed.",
+    "Outside-production references require separate project/stub ownership review.",
+    "Three preprocessor variants only; inactive text is retained separately.",
+    "Candidate ledger includes same-name unrelated identifiers; do not count all candidates as references.",
+    "No DI classification or hot-path correctness is inferred by this extractor."
+  ]
+}

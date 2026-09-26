@@ -199,5 +199,8 @@
 
     <!-- based on https://github.com/whistyun/MdXaml/blob/787605545ace5b7cd7d02ff19e80b1c7a019b0d3/MdXaml/Markdown.Style.xaml#L338
     need to use it here because I had to modify it to accomodate for dark theme too -->
-    <Style x:Key="WindowStyle" TargetType="{x:Type Window}" />
+    <Style x:Key="WindowStyle" TargetType="{x:Type Window}">
+        <Setter Property="InputMethod.IsInputMethodEnabled" Value="True" />
+        <Setter Property="InputMethod.PreferredImeState" Value="Off" />
+    </Style>
 </ResourceDictionary>

@@ -1,4 +1,7 @@
-﻿/*
+using IVirtualKBM = DS4Windows.Services.IVirtualKBM;
+using DS4Windows.Services;
+using DS4WinWPF;
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -25,10 +28,15 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+// Phase6-Step3-7 で削除可否を判定: 見送り。getTransitionedColor（純粋計算、Step3対象外の除外51件の1つ、
+// Phase6-Step3-Plan.md §1）が非修飾で呼ばれており本ディレクティブに依存するため、現時点では削除できない。
+// これ以外の Global 実利用箇所はすべて Global. 明示修飾（温存3件: ProfileSettingsServiceInstance／outputKBMHandler／ApplyProfile。
+// いずれも上記のTODO参照）または各DIサービス経由への置換で解消済み（Phase6-Step3-Plan.md §6 完了判定チェックリスト）。
 using static DS4Windows.Global;
 using System.Drawing; // Point struct
 using Sensorit.Base;
 using DS4WinWPF.DS4Control;
+using DS4Windows.DS4Control;
 using DS4WinWPF.DS4Forms.ViewModels;
 using ThreadState = System.Threading.ThreadState;
 
@@ -36,6 +44,46 @@ namespace DS4Windows
 {
     public class Mapping
     {
+        // ==========================================
+        // 【修正後】
+        // ==========================================
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(int dev, int key, bool toggle, bool useScan), SpecialAction> _syntheticActionCache
+            = new System.Collections.Concurrent.ConcurrentDictionary<(int dev, int key, bool toggle, bool useScan), SpecialAction>();
+
+        public static SpecialAction GetOrCreateSyntheticKeyAction(int device, int kvpKey, uint outputKey, bool toggle, bool useScan)
+        {
+            // キャッシュキーに toggle を含めて Press用と Toggle用のアクションを分離
+            var cacheKey = (device, kvpKey, toggle, useScan);
+            return _syntheticActionCache.GetOrAdd(cacheKey, k =>
+            {
+                // 名前はテストの期待通り "Synthetic_Key_{dev}_{key}"
+                var sa = new SpecialAction($"Synthetic_Key_{k.dev}_{k.key}", "Synthetic", "Key", "Key", 0, "");
+                sa.typeID = SpecialAction.ActionTypeId.Key;
+                sa.type = "Key";
+                sa.details = outputKey.ToString();
+
+                DS4KeyType kt = (DS4KeyType)0;
+                if (k.useScan) kt |= DS4KeyType.ScanCode;
+                if (k.toggle) kt |= DS4KeyType.Toggle; // ← ★ActionManager/KeyAction にトグルであることを伝える
+                sa.keyType = kt;
+
+                return sa;
+            });
+        }
+        public static void ClearSyntheticActionCache()
+        {
+            _syntheticActionCache.Clear();
+        }
+        // TODO(Phase6-Step3-7, 温存・決定KEEP): DI ホスト未構築時（Pre-Host やテストの一部経路）のフォールバックとして
+        // `Global.ProfileSettingsServiceInstance` を残す。Phase7 の `Mapping` instance 化で、この静的束縛自体を解消する。
+        private static readonly DS4Windows.DI.IProfileSettingsService profileSettings =
+            DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>()
+            ?? Global.ProfileSettingsServiceInstance;
+        private static readonly DS4Windows.DI.IProfileApplicationService profileApplication =
+            DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileApplicationService>();
+        // TODO(Phase6-Step3-7, 温存・決定KEEP): DI ホスト未構築時のフォールバックとして `Global.outputKBMHandler` を残す。
+        // Phase7 の `Mapping` instance 化で、この静的束縛自体を解消する。
+        private static IVirtualKBM VirtualKBM => AppHost.GetService<IVirtualKBM>() ?? Global.outputKBMHandler;
         // SpecialAction名ごとのエラーログ抑制用（1プロファイル切り替えごとに1回だけ）
         // private static HashSet<string> loggedInvalidActions = new HashSet<string>();
 
@@ -59,6 +107,12 @@ namespace DS4Windows
             {
                 public int vkCount, scanCodeCount, repeatCount, toggleCount; // repeat takes priority over non-, and scancode takes priority over non-
                 public bool toggle;
+                // pending: indicates a toggle occurred and should be prioritized when committing
+                public bool pending;
+                // timestamp of last toggle (UTC ticks)
+                public long lastToggleTimeUtcTicks;
+                // timestamp of last synthetic send (UTC ticks) used to throttle excessive sends
+                public long lastSyntheticSendUtcTicks;
             }
             public class KeyPresses
             {
@@ -90,10 +144,9 @@ namespace DS4Windows
             }
         }
 
-        public class ActionState
-        {
-            public bool[] dev = new bool[Global.MAX_DS4_CONTROLLER_COUNT];
-        }
+        // ToggleRepeatController removed — replaced by ToggleActionController and per-device controllers.
+
+        // Legacy ActionState removed; per-action state lives in ActionManager/ActionInstanceState.
 
         struct ControlToXInput
         {
@@ -109,6 +162,13 @@ namespace DS4Windows
         // private static HashSet<string> loggedInvalidActions = new HashSet<string>();
 
         static Queue<ControlToXInput>[] customMapQueue;
+        // Cache of last trigger states for Button SpecialActions to reduce logging noise.
+        private static Dictionary<string, bool> lastButtonTriggerState;
+
+        // Instrumentation counters to help diagnose hot loops
+        private static long mappingEvalSinceLast = 0;
+        private static long setBeingTriggeredCallsSinceLast = 0;
+        private static long mappingLastSummaryUtcTicks = DateTime.UtcNow.Ticks;
 
         // プロファイル切り替え時に呼び出すことでエラーログ抑制をリセット
         // public static void ResetLoggedInvalidActions()
@@ -125,6 +185,215 @@ namespace DS4Windows
                 new Queue<ControlToXInput>(), new Queue<ControlToXInput>(),
                 new Queue<ControlToXInput>(), new Queue<ControlToXInput>(),
             };
+            try
+            {
+                ActionManager.ToggledOnChanged += (sa, dev, oldv, newv) =>
+                {
+                    try { AppLogger.LogTrace($"Mapping: ToggledOnChanged name={sa?.name} device={dev} old={oldv} new={newv}"); } catch { }
+                };
+            }
+            catch { }
+        }
+
+        // Per-device×SpecialAction Key/Button controller instances (lazy-created).
+        // Key format: "{device}:{actionName}". If actionName is null use "{device}:<default>" to preserve device-only fallbacks.
+        private static readonly object keyButtonControllerLock = new object();
+        private static readonly Dictionary<string, KeyButtonActionController> keyButtonControllers = new Dictionary<string, KeyButtonActionController>();
+
+        private static string MakeKbcDictKey(int device, string actionName)
+        {
+            return device + ":" + (string.IsNullOrEmpty(actionName) ? "<default>" : actionName);
+        }
+
+        private static KeyButtonActionController GetOrCreateKeyButtonController(int device, KeyButtonActionController.Mode mode, string actionName = null)
+        {
+            try
+            {
+                lock (keyButtonControllerLock)
+                {
+                    string dictKey = MakeKbcDictKey(device, actionName ?? "<mapping>");
+                    if (!keyButtonControllers.TryGetValue(dictKey, out KeyButtonActionController inst) || inst == null)
+                    {
+                        KeyButtonActionController temp = null;
+                        try
+                        {
+                            var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                            if (sp != null)
+                            {
+                                var factory = sp.GetService(typeof(DS4Windows.Actions.IKeyButtonActionControllerFactory)) as DS4Windows.Actions.IKeyButtonActionControllerFactory;
+                                if (factory != null) temp = factory.Create(device, mode, actionName ?? "<mapping>");
+                            }
+                        }
+                        catch { }
+
+                        inst = temp ?? new KeyButtonActionController(device, mode, actionName ?? "<mapping>");
+                        keyButtonControllers[dictKey] = inst;
+                        try { AppLogger.LogTrace($"KBC DIAGNOSTIC: Created controller dictKey={dictKey} id={inst.InstanceId} assignedAction={(inst.AssignedActionName ?? "(null)")} mode={mode} device={device}"); } catch { }
+                    }
+                    else
+                    {
+                        try { AppLogger.LogTrace($"KBC DIAGNOSTIC: Reusing existing controller dictKey={dictKey} id={inst.InstanceId} assignedAction={(inst.AssignedActionName ?? "(null)")} mode={mode} device={device}"); } catch { }
+                    }
+                    return inst;
+                }
+            }
+            catch { return null; }
+        }
+
+        private static KeyButtonActionController GetOrCreateKeyButtonController(int device, SpecialAction sa)
+        {
+            try
+            {
+                lock (keyButtonControllerLock)
+                {
+                    string name = sa?.name ?? "<sa>";
+                    string dictKey = MakeKbcDictKey(device, name);
+                    if (!keyButtonControllers.TryGetValue(dictKey, out KeyButtonActionController inst) || inst == null)
+                    {
+                        KeyButtonActionController temp = null;
+                        try
+                        {
+                            var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                            if (sp != null)
+                            {
+                                var factory = sp.GetService(typeof(DS4Windows.Actions.IKeyButtonActionControllerFactory)) as DS4Windows.Actions.IKeyButtonActionControllerFactory;
+                                if (factory != null) temp = factory.Create(device, sa, name);
+                            }
+                        }
+                        catch { }
+
+                        inst = temp ?? new KeyButtonActionController(device, sa, name);
+                        keyButtonControllers[dictKey] = inst;
+                        try { AppLogger.LogTrace($"KBC DIAGNOSTIC: Created controller dictKey={dictKey} id={inst.InstanceId} assignedAction={(inst.AssignedActionName ?? "(null)")} device={device}"); } catch { }
+                    }
+                    else
+                    {
+                        try { AppLogger.LogTrace($"KBC DIAGNOSTIC: Reusing existing controller dictKey={dictKey} id={inst.InstanceId} assignedAction={(inst.AssignedActionName ?? "(null)")} device={device}"); } catch { }
+                    }
+                    // additional check: if existing assignedAction differs from requested, log warning
+                    try
+                    {
+                        if (inst != null && !string.Equals(inst.AssignedActionName, name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            AppLogger.LogDebug($"KBC DIAGNOSTIC: assignedAction mismatch for dictKey={dictKey} existing={(inst.AssignedActionName ?? "(null)")} requested={name} device={device}");
+                        }
+                    }
+                    catch { }
+                    return inst;
+                }
+            }
+            catch { return null; }
+        }
+
+        // Legacy actionDone compatibility removed — use ActionManager and ActionInstanceState.
+
+        // Remove and destroy all per-device KeyButtonActionController instances for given device
+        public static void ClearKeyButtonControllersForDevice(int device)
+        {
+            try
+            {
+                lock (keyButtonControllerLock)
+                {
+                    var prefix = device + ":";
+                    var keys = new List<string>(keyButtonControllers.Keys);
+                    foreach (var k in keys)
+                    {
+                        if (k.StartsWith(prefix))
+                        {
+                            try
+                            {
+                                var inst = keyButtonControllers[k];
+                                try { inst?.Dispose(); } catch { }
+                                try
+                                {
+                                    var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                                    if (sp != null)
+                                    {
+                                        var reg = sp.GetService(typeof(DS4Windows.Actions.IControllerRegistry)) as DS4Windows.Actions.IControllerRegistry;
+                                        if (reg != null) reg.Unregister(k);
+                                    }
+                                }
+                                catch { }
+                                keyButtonControllers.Remove(k);
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Centralized logging helper for SpecialActions. Keeps TRACE formatting and expensive work guarded.
+        private static void LogSpecialActionTrace(string actionName, SpecialAction sa, int device, bool risingEdge,
+            DS4StateFieldMapping outputfieldMapping, SyntheticState[] deviceStates)
+        {
+            if (!AppLogger.IsTraceEnabled) return;
+
+            try
+            {
+                if (risingEdge)
+                {
+                    AppLogger.LogTrace($"Trigger detected for SA '{actionName}' on device {device}");
+
+                    string mapping;
+                    if (sa.typeID == SpecialAction.ActionTypeId.Button && int.TryParse(sa.details, out int vb))
+                        mapping = $"X360Controls {((X360Controls)vb).ToString()} ({vb})";
+                    else
+                        mapping = $"Type:{sa.type} Details:{sa.details}";
+
+                    AppLogger.LogTrace($"SA '{actionName}' maps to {mapping}");
+
+                    // Build trigger key list
+                    var triggerParts = new List<string>();
+                    if (sa.trigger != null)
+                    {
+                        foreach (DS4Controls trg in sa.trigger)
+                        {
+                            try
+                            {
+                                if (getBoolSpecialActionMapping(device, trg, null, null, null, null))
+                                    triggerParts.Add(trg.ToString());
+                            }
+                            catch { }
+                        }
+                    }
+
+                    string triggers = triggerParts.Count > 0 ? string.Join(", ", triggerParts) : "<none>";
+                    AppLogger.LogTrace($"Trigger keys for SA '{actionName}': {triggers}");
+                }
+
+                // Output combo: emit only on rising edge to avoid per-tick noise
+                if (risingEdge)
+                {
+                    try
+                    {
+                        var parts = new List<string>();
+                        var ds = deviceStates?[device];
+                        if (outputfieldMapping.outputTouchButton) parts.Add("TouchpadClick");
+                        if (ds != null)
+                        {
+                            if (ds.currentClicks.leftCount > 0) parts.Add($"LeftMouse({ds.currentClicks.leftCount})");
+                            if (ds.currentClicks.rightCount > 0) parts.Add($"RightMouse({ds.currentClicks.rightCount})");
+                            if (ds.currentClicks.middleCount > 0) parts.Add($"MiddleMouse({ds.currentClicks.middleCount})");
+                            if (ds.currentClicks.fourthCount > 0) parts.Add($"FourthMouse({ds.currentClicks.fourthCount})");
+                            if (ds.currentClicks.fifthCount > 0) parts.Add($"FifthMouse({ds.currentClicks.fifthCount})");
+                            if (ds.currentClicks.wUpCount > 0) parts.Add($"WUP({ds.currentClicks.wUpCount})");
+                            if (ds.currentClicks.wDownCount > 0) parts.Add($"WDOWN({ds.currentClicks.wDownCount})");
+                        }
+
+                        for (int bi = 0; bi < outputfieldMapping.buttons.Length; bi++)
+                        {
+                            if (outputfieldMapping.buttons[bi]) parts.Add($"{((X360Controls)bi)}({bi})");
+                        }
+
+                        string combo = parts.Count > 0 ? string.Join(", ", parts) : "<none>";
+                        AppLogger.LogTrace($"SA '{actionName}' output combo: {combo}");
+                    }
+                    catch { }
+                }
+            }
+            catch { }
         }
 
 
@@ -236,93 +505,6 @@ namespace DS4Windows
                 LY = 128;
                 RX = 128;
                 RY = 128;
-            }
-        }
-
-        public struct AbsMouseOutput
-        {
-            public double x;
-            public double y;
-            public double previousX;
-            public double previousY;
-            public bool dirtyX;
-            public bool dirtyY;
-            public bool previousDirty;
-            public double angleRad;
-
-            public bool Centered
-            {
-                get => x != 0.5 || y != 0.5;
-            }
-
-            public bool Dirty
-            {
-                get => dirtyX || dirtyY;
-                set
-                {
-                    dirtyX = dirtyY = value;
-                }
-            }
-
-            public AbsMouseOutput()
-            {
-                x = y = 0.5;
-                previousX = previousY = 0.5;
-                dirtyX = dirtyY = false;
-                previousDirty = false;
-                angleRad = 0.0;
-            }
-
-            public AbsMouseOutput(double x, double y)
-            {
-                this.x = previousX = x;
-                this.y = previousY = y;
-                this.dirtyX = this.dirtyY = false;
-                previousDirty = false;
-                angleRad = 0.0;
-            }
-
-            public void Reset()
-            {
-                x = y = 0.5;
-                previousX = previousY = 0.5;
-                dirtyX = dirtyY = false;
-                previousDirty = false;
-                angleRad = 0.0;
-            }
-
-            public void CalculateAngle()
-            {
-                angleRad = Math.Atan2(-(y - 0.5), (x - 0.5));
-            }
-
-            public void CalculateDeadCoords(ButtonAbsMouseInfo absMouseInfo,
-                out double releaseX, out double releaseY)
-            {
-                double lxUnit = Math.Cos(angleRad);
-                double lyUnit = Math.Sin(angleRad);
-                double deadRadius = absMouseInfo.antiRadius;
-
-                //double midX = ((absMouseInfo.maxX - absMouseInfo.minX) / 2.0) + absMouseInfo.minX;
-                //double midY = ((absMouseInfo.maxY - absMouseInfo.minY) / 2.0) + absMouseInfo.minY;
-                ////Trace.WriteLine($"MIDY: {midY}");
-                //double tempx = lxUnit >= 0.0 ? ((absMouseInfo.maxX - midX) * (Math.Abs(lxUnit) * deadRadius) + midX) :
-                //    ((absMouseInfo.minX - midX) * (Math.Abs(lxUnit) * deadRadius) + midX);
-                //double tempy = lyUnit >= 0.0 ? ((absMouseInfo.minY - midY) * (Math.Abs(lyUnit) * deadRadius) + midY) :
-                //    ((absMouseInfo.maxY - midY) * (Math.Abs(lyUnit) * deadRadius) + midY);
-
-                double xdiff = lxUnit * deadRadius;
-                double ydiff = -lyUnit * deadRadius; // Make down past ycenter be positive
-                double tempx = (absMouseInfo.width / 2.0) * xdiff + absMouseInfo.xcenter;
-                double tempy = (absMouseInfo.height / 2.0) * ydiff + absMouseInfo.ycenter;
-
-                tempx = Math.Clamp(tempx, 0.0, 1.0);
-                tempy = Math.Clamp(tempy, 0.0, 1.0);
-
-                releaseX = tempx;
-                releaseY = tempy;
-
-                //Trace.WriteLine($"TEMPX: {tempx}");
             }
         }
 
@@ -699,13 +881,6 @@ namespace DS4Windows
             new DeltaSettingsProcessorGroup(), new DeltaSettingsProcessorGroup(),
         };
 
-        public static AbsMouseOutput[] absMouseOutputState = new AbsMouseOutput[Global.MAX_DS4_CONTROLLER_COUNT]
-        {
-            new AbsMouseOutput(), new AbsMouseOutput(), new AbsMouseOutput(),
-            new AbsMouseOutput(), new AbsMouseOutput(), new AbsMouseOutput(),
-            new AbsMouseOutput(), new AbsMouseOutput(),
-        };
-
         static ReaderWriterLockSlim syncStateLock = new ReaderWriterLockSlim();
 
         public static SyntheticState globalState = new SyntheticState();
@@ -734,14 +909,46 @@ namespace DS4Windows
         // TODO When we disconnect, process a null/dead state to release any keys or buttons.
         public static DateTime oldnow = DateTime.UtcNow;
         private static bool pressagain = false;
-        private static int wheel = 0, keyshelddown = 0;
+        private static int wheel = 0;
 
         // Data needed to calculate Stick to Mouse Wheel conversion
         private static double stickWheel = 0.0, stickWheelRemainder = 0.0;
         private static bool stickWheelDownDir = false;
 
         //mapcustom
-        public static bool[] pressedonce = new bool[2400], macrodone = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
+        public static bool[] macrodone = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
+
+        // ---- 暫定対策（申し送り: 下記コメント参照）----
+        // PlayMacro の「二重実行防止ガード」は、SpecialAction 経由（action != null）にしか
+        // 効いていなかった。Controls タブの直接マクロ割り当て（action == null）は、ボタンが
+        // 押されている間、入力ポーリングのたびに PlayMacro が呼ばれ続けるにもかかわらず、
+        // 二重実行防止ガードが素通りになり、既に実行中／クールダウン中でも毎ティック新しい
+        // Task を生成しようとしていた（216ms 間隔で約64回の無駄な Task 生成を実測）。
+        //
+        // macrodone[control] は PlayMacroTask 内部で「実際にキー送信を行うか」の判定に
+        // 使われている既存の実体であり、意味を変えずに流用することはできない（Task 生成前で
+        // true にしてしまうと、PlayMacroTask 内部の判定が常に false になり、通常マクロが
+        // 一切実行されなくなる）。そのため、Task 生成前だけを見る独立した実体を新設する。
+        //
+        // 【申し送り事項（恒久対応が必要）】
+        // これは暫定対策であり、根本的には「トリガー判定層」と「マクロ実行層」が分離できて
+        // いないことが原因である。docs-forDIMG/Model-Diagram/02-Layer-Architecture-Diagram.md・
+        // 03-Class-Interface-Diagram.md が示す理想構造（§3.3 の 2-d マクロの分解／3-b KBM出力）
+        // では、マクロの「実行」は Controls 由来か SpecialActions 由来かに関わらず単一の
+        // 実行層（IVirtualKBM 経由の逐次送出）に一本化される想定であり、二重実行防止も
+        // その単一の実行層で一元的に行われるべきである。Phase7（Mapping.cs 完全 instance 化、
+        // DI-App-Wide-Migration-Plan.md §6.9）で、この場当たり的な macroDispatchInFlight を
+        // 含めて再設計すること。
+        private static readonly bool[] macroDispatchInFlight = new bool[DS4_CONTROL_MACRO_ARRAY_LEN];
+        private static readonly object macroDispatchLock = new object();
+
+        // debounce for SpecialAction toggle (milliseconds)
+        private const int ToggleDebounceMs = 30;
+        // hold toggled-on clear for a short window after toggle to avoid rapid reset during bouncy inputs
+        private const int ToggleReleaseHoldMs = 200;
+        // throttle synthetic sends per key (milliseconds)
+        // Keep below fakeKeyRepeat internal repeat interval (25ms) to avoid suppressing repeats
+        private const int SyntheticSendThrottleMs = 10;
         static bool[] macroControl = new bool[26];
         static uint macroCount = 0;
         static Dictionary<string, Task>[] macroTaskQueue = new Dictionary<string, Task>[Global.MAX_DS4_CONTROLLER_COUNT] { new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>(), new Dictionary<string, Task>() };
@@ -751,18 +958,193 @@ namespace DS4Windows
         public static int[] fadetimer = new int[Global.MAX_DS4_CONTROLLER_COUNT] { 0, 0, 0, 0, 0, 0, 0, 0 };
         public static int[] prevFadetimer = new int[Global.MAX_DS4_CONTROLLER_COUNT] { 0, 0, 0, 0, 0, 0, 0, 0 };
         public static DS4Color[] lastColor = new DS4Color[Global.MAX_DS4_CONTROLLER_COUNT];
-        public static List<ActionState> actionDone = new List<ActionState>();
-        public static SpecialAction[] untriggeraction = new SpecialAction[Global.MAX_DS4_CONTROLLER_COUNT];
+        // Legacy `actionDone` list removed — per-action state now lives in ActionManager/ActionInstanceState.
+        // Per-device runtime state replacing legacy `untriggeraction`/`untriggerindex` globals
+        public static DeviceRuntimeState[] deviceRuntime = new DeviceRuntimeState[Global.MAX_DS4_CONTROLLER_COUNT]
+        {
+            new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState(),
+            new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState(), new DeviceRuntimeState()
+        };
 
-        // ★新規追加: actionDone初期化状態管理
-        public static volatile bool actionDoneInitialized = false;
-        public static readonly object actionDoneLock = new object();
-        // Rate-limit logging for ActionDone size mismatch to avoid log flood
-        private static DateTime lastActionDoneMismatchLog = DateTime.MinValue;
-        private static readonly TimeSpan actionDoneMismatchLogInterval = TimeSpan.FromSeconds(1);
+        // Issue8-1(3)是正: トリガー成立時に抑制対象となった物理ボタンのうち、
+        // まだ「離される」ことを観測していないものの集合（デバイスごと）。
+        // ここに含まれる間は、当該ボタン自身の通常出力（デフォルト信号／通常マッピング／KBM／機能）を抑制し続ける。
+        // トリガー全体の成立/解除（いずれか1つが離れたら解除）とは独立に、ボタン単位で管理する。
+        // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-3-Fix-Plan.md §2.1
+        public static HashSet<DS4Controls>[] suppressedTriggerButtons = new HashSet<DS4Controls>[Global.MAX_DS4_CONTROLLER_COUNT]
+        {
+            new HashSet<DS4Controls>(), new HashSet<DS4Controls>(), new HashSet<DS4Controls>(), new HashSet<DS4Controls>(),
+            new HashSet<DS4Controls>(), new HashSet<DS4Controls>(), new HashSet<DS4Controls>(), new HashSet<DS4Controls>()
+        };
+
+        // Cache of previous input-level 'established' state per (actionIndex, device).
+        // Mapping will use this to detect input-edge (rise/fall) and only call DispatchTriggerEdge when input changed.
+        private static readonly Dictionary<long, bool> prevInputEstablished = new Dictionary<long, bool>();
+
+        private static long MakePrevKey(int index, int device)
+        {
+            return (((long)index) << 32) | (uint)device;
+        }
+
+        // Helper: query/set per-action `BeingTriggered` through ActionManager-backed per-action state.
+        // New preferred names matching the property: GetBeingTriggered / SetBeingTriggered
+        private static bool GetBeingTriggered(int index, SpecialAction action, int device)
+        {
+            try
+            {
+                return ActionManager.IsBeingTriggered(action, device);
+            }
+            catch { }
+
+            return false;
+        }
+
+        private static void SetBeingTriggered(int index, SpecialAction action, int device, bool value)
+        {
+            try
+            {
+                var key = MakePrevKey(index, device);
+                bool prevInput = false;
+                lock (prevInputEstablished)
+                {
+                    if (prevInputEstablished.TryGetValue(key, out var v)) prevInput = v;
+                    // If input-level established state hasn't changed, nothing to do.
+                    if (prevInput == value) return;
+                    // update cache
+                    prevInputEstablished[key] = value;
+                }
+
+                // Input edge detected — request dispatch. ActionManager.DispatchTriggerEdge
+                // will still gate actual mutation of BeingTriggered by its own per-action state.
+                var ctx = new DS4Windows.TriggerContext
+                {
+                    ActionDef = action,
+                    Device = device,
+                    LogicalValue = 0,
+                    NativeValue = 0,
+                    UseScanCode = false,
+                    OutputHandler = null,
+                    IsEstablished = value
+                };
+
+                bool handled = ActionManager.DispatchTriggerEdge(ctx);
+                try { AppLogger.LogTrace($"Mapping.SetBeingTriggered (input-edge): index={index} name={action?.name} device={device} requested={value} dispatched={handled} prevInput={prevInput}"); } catch { }
+            }
+            catch { }
+        }
+
+        // NOTE: old wrappers removed — callers must use GetBeingTriggered/SetBeingTriggered.
+
+        // Helper: query per-action `IsToggledOn` through ActionManager-backed per-action state.
+        private static bool GetIsToggledOn(int index, SpecialAction action, int device)
+        {
+            try
+            {
+                var st = ActionManager.GetStateFor(action, device);
+                if (st != null) return st.IsToggledOn;
+            }
+            catch { }
+            return false;
+        }
+
+        // Helper: only set BeingTriggered when value differs to avoid redundant work
+        private static void SetBeingTriggeredIf(int index, SpecialAction action, int device, bool value)
+        {
+            try
+            {
+                if (ActionManager.IsBeingTriggered(action, device) == value) return;
+            }
+            catch { }
+
+            // count actual mutation attempts for diagnostics
+            try { System.Threading.Interlocked.Increment(ref setBeingTriggeredCallsSinceLast); } catch { }
+            SetBeingTriggered(index, action, device, value);
+        }
+
+        // Try dispatch via ActionManager.DispatchTriggerEdge; if no Action handled it, fall back to Setting BeingTriggered
+        private static void DispatchOrSetBeingTriggered(SpecialAction action, int device, bool value, ushort logicalValue = 0, uint nativeValue = 0, bool useScan = false, DS4Windows.Services.IVirtualKBM outputHandler = null)
+        {
+            try
+            {
+                var ctx = new DS4Windows.TriggerContext
+                {
+                    ActionDef = action,
+                    Device = device,
+                    LogicalValue = logicalValue,
+                    NativeValue = nativeValue,
+                    UseScanCode = useScan,
+                    OutputHandler = outputHandler,
+                    IsEstablished = value
+                };
+
+                bool handled = DispatchInputEdge(ctx);
+                if (!handled)
+                {
+                    try { SetBeingTriggeredIf(-1, action, device, value); } catch { }
+                }
+            }
+            catch
+            {
+                try { SetBeingTriggeredIf(-1, action, device, value); } catch { }
+            }
+        }
+
+        internal static void DispatchProfileActionEdge(SpecialAction action, int device, bool value)
+        {
+            DispatchOrSetBeingTriggered(action, device, value);
+        }
+
+        // Centralized Mapping-side input-edge handler. Detects input-level rise/fall per (action,device)
+        // and only calls ActionManager.DispatchTriggerEdge when an input edge is observed.
+        private static bool DispatchInputEdge(DS4Windows.TriggerContext ctx, int index = -1)
+        {
+            try
+            {
+                if (ctx == null || ctx.ActionDef == null) return false;
+
+                long key = index >= 0 ? MakePrevKey(index, ctx.Device) : (((long)ctx.ActionDef.name.GetHashCode() << 32) | (uint)ctx.Device);
+                bool prevInput = false;
+                lock (prevInputEstablished)
+                {
+                    if (prevInputEstablished.TryGetValue(key, out var v)) prevInput = v;
+                    if (prevInput == ctx.IsEstablished) return false;
+                    prevInputEstablished[key] = ctx.IsEstablished;
+                }
+
+                bool handled = false;
+                try { handled = ActionManager.DispatchTriggerEdge(ctx); } catch { }
+                try { AppLogger.LogTrace($"Mapping.DispatchInputEdge: name={ctx.ActionDef?.name} device={ctx.Device} requested={ctx.IsEstablished} dispatched={handled} prevInput={prevInput}"); } catch { }
+                return handled;
+            }
+            catch { return false; }
+        }
+
+        // IsToggledOn lifecycle is managed by Action implementations (e.g., KeyAction).
+        // Mapping must not mutate per-action IsToggledOn state.
+
+        // Determine whether it's safe to clear the toggled-on flag for given device/key.
+        private static bool ShouldClearToggledOn(int device, ushort key)
+        {
+            try
+            {
+                if (deviceState == null || device < 0 || device >= deviceState.Length) return true;
+                if (deviceState[device] == null) return true;
+                if (deviceState == null || device < 0 || device >= deviceState.Length) return true;
+                if (deviceState[device].keyPresses == null) return true;
+                if (deviceState[device].keyPresses.TryGetValue(key, out SyntheticState.KeyPresses kp))
+                {
+                    long last = kp.current.lastToggleTimeUtcTicks;
+                    if (last == 0) return true;
+                    long delta = DateTime.UtcNow.Ticks - last;
+                    return delta > TimeSpan.FromMilliseconds(ToggleReleaseHoldMs).Ticks;
+                }
+            }
+            catch { }
+            return true;
+        }
         public static DateTime[] nowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
         public static DateTime[] oldnowAction = { DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
-        public static int[] untriggerindex = new int[Global.MAX_DS4_CONTROLLER_COUNT] { -1, -1, -1, -1, -1, -1, -1, -1 };
+        // legacy `untriggerindex` removed; use `deviceRuntime[device].UntriggerIndex`
         public static DateTime[] oldnowKeyAct = new DateTime[Global.MAX_DS4_CONTROLLER_COUNT] { DateTime.MinValue,
             DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue, DateTime.MinValue };
 
@@ -843,9 +1225,9 @@ namespace DS4Windows
             50, // DS4Controls.BLP
             51, // DS4Controls.BRP
         };
-        #pragma warning disable CS0414 // macroEndIndex assigned but not read; keep for readability of macro array length
+#pragma warning disable CS0414 // macroEndIndex assigned but not read; keep for readability of macro array length
         private static int macroEndIndex = DS4_CONTROL_MACRO_ARRAY_LEN - 1;
-        #pragma warning restore CS0414
+#pragma warning restore CS0414
 
         // Special macros
         static bool altTabDone = true;
@@ -862,7 +1244,7 @@ namespace DS4Windows
         private const double MOUSESTICKMINVELOCITY = 67.5;
         //private const double MOUSESTICKMINVELOCITY = 40.0;
 
-        public static void Commit(int device)
+        public static void Commit(int device, DS4Windows.DI.IProfileSettingsService settings)
         {
             SyntheticState state = deviceState[device];
             syncStateLock.EnterWriteLock();
@@ -879,72 +1261,194 @@ namespace DS4Windows
 
             if (globalState.currentClicks.toggleCount != 0 && globalState.previousClicks.toggleCount == 0 && globalState.currentClicks.toggle)
             {
-                if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftDown");
+                AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
+                // C2 MouseOutputAction integration (§2.1修正版: new DI route + fallback preserved)
+                bool mouseHandled = false;
+                try
+                {
+                    var mouseCtx = new DS4Windows.TriggerContext
+                    {
+                        ActionDef = null,
+                        Device = device,
+                        LogicalValue = 0,
+                        NativeValue = 0,
+                        UseScanCode = false,
+                        OutputHandler = VirtualKBM,
+                        IsEstablished = true
+                    };
+                    var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                    if (sp != null)
+                    {
+                        var mouseAction = sp.GetService(typeof(DS4Windows.Actions.MouseOutputAction)) as DS4Windows.Actions.MouseOutputAction;
+                        if (mouseAction != null)
+                        {
+                            mouseAction.Execute(new DS4Windows.Actions.OutputContextImpl(device, VirtualKBM));
+                            mouseHandled = true;
+                        }
+                    }
+                }
+                catch { mouseHandled = false; }
+
+                if (!mouseHandled)
+                {
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                }
+
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                }
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleDown");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                }
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=1");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                }
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=2");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                }
             }
             else if (globalState.currentClicks.toggleCount != 0 && globalState.previousClicks.toggleCount == 0 && !globalState.currentClicks.toggle)
             {
                 if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_LEFTUP);
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_RIGHTUP);
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_MIDDLEUP);
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
             }
 
             if (globalState.currentClicks.toggleCount == 0 && globalState.previousClicks.toggleCount == 0)
             {
                 if (globalState.currentClicks.leftCount != 0 && globalState.previousClicks.leftCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftDown");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftDown");
+                    // C2 MouseOutputAction integration (§2.1修正版: new DI route + fallback preserved)
+                    bool mouseHandled = false;
+                    try
+                    {
+                        var mouseCtx = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = null,
+                            Device = device,
+                            LogicalValue = 0,
+                            NativeValue = 0,
+                            UseScanCode = false,
+                            OutputHandler = VirtualKBM,
+                            IsEstablished = true
+                        };
+                        var sp = DS4Windows.DI.ServiceProviderHolder.Provider;
+                        if (sp != null)
+                        {
+                            var mouseAction = sp.GetService(typeof(DS4Windows.Actions.MouseOutputAction)) as DS4Windows.Actions.MouseOutputAction;
+                            if (mouseAction != null)
+                            {
+                                mouseAction.Execute(new DS4Windows.Actions.OutputContextImpl(device, VirtualKBM));
+                                mouseHandled = true;
+                            }
+                        }
+                    }
+                    catch { mouseHandled = false; }
+
+                    if (!mouseHandled)
+                    {
+                        VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                    }
+                }
                 else if (globalState.currentClicks.leftCount == 0 && globalState.previousClicks.leftCount != 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseLeftUp");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseLeftUp");
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_LEFTUP);
+                }
 
                 if (globalState.currentClicks.middleCount != 0 && globalState.previousClicks.middleCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleDown");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleDown");
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                }
                 else if (globalState.currentClicks.middleCount == 0 && globalState.previousClicks.middleCount != 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseMiddleUp");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseMiddleUp");
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                }
 
                 if (globalState.currentClicks.rightCount != 0 && globalState.previousClicks.rightCount == 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightDown");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightDown");
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                }
                 else if (globalState.currentClicks.rightCount == 0 && globalState.previousClicks.rightCount != 0)
-                    outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseRightUp");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseRightUp");
+                    VirtualKBM.PerformMouseButtonEvent(settings.OutputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                }
 
                 if (globalState.currentClicks.fourthCount != 0 && globalState.previousClicks.fourthCount == 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=1");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=1");
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                }
                 else if (globalState.currentClicks.fourthCount == 0 && globalState.previousClicks.fourthCount != 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonUp btn=1");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=1");
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                }
 
                 if (globalState.currentClicks.fifthCount != 0 && globalState.previousClicks.fifthCount == 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonDown btn=2");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonDown btn=2");
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                }
                 else if (globalState.currentClicks.fifthCount == 0 && globalState.previousClicks.fifthCount != 0)
-                    outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                {
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseXButtonUp btn=2");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseXButtonUp btn=2");
+                    VirtualKBM.PerformMouseButtonEventAlt(settings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                }
 
                 if (globalState.currentClicks.wUpCount != 0 && globalState.previousClicks.wUpCount == 0)
                 {
-                    outputKBMHandler.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_UP, 0);
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseWheelUp");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelUp");
+                    VirtualKBM.PerformMouseWheelEvent(settings.OutputKBMMapping.WHEEL_TICK_UP, 0);
                     oldnow = DateTime.UtcNow;
-                    wheel = outputKBMMapping.WHEEL_TICK_UP;
+                    wheel = settings.OutputKBMMapping.WHEEL_TICK_UP;
                 }
                 else if (globalState.currentClicks.wUpCount == 0 && globalState.previousClicks.wUpCount != 0)
                     wheel = 0;
 
                 if (globalState.currentClicks.wDownCount != 0 && globalState.previousClicks.wDownCount == 0)
                 {
-                    outputKBMHandler.PerformMouseWheelEvent(outputKBMMapping.WHEEL_TICK_DOWN, 0);
+                    AppLogger.LogTrace($"SYNTHETIC TRACE device={device} event=MouseWheelDown");
+                    AppLogger.LogDebug($"EVENT SENT [SYNTHETIC] device={device} event=MouseWheelDown");
+                    VirtualKBM.PerformMouseWheelEvent(settings.OutputKBMMapping.WHEEL_TICK_DOWN, 0);
                     oldnow = DateTime.UtcNow;
-                    wheel = outputKBMMapping.WHEEL_TICK_DOWN;
+                    wheel = settings.OutputKBMMapping.WHEEL_TICK_DOWN;
                 }
                 if (globalState.currentClicks.wDownCount == 0 && globalState.previousClicks.wDownCount != 0)
                     wheel = 0;
@@ -957,113 +1461,7 @@ namespace DS4Windows
                 if (now >= oldnow + TimeSpan.FromMilliseconds(150) && !pressagain)
                 {
                     oldnow = now;
-                    outputKBMHandler.PerformMouseWheelEvent(wheel, 0);
-                }
-            }
-
-            // Merge and synthesize all key presses/releases that are present in this device's mapping.
-            // TODO what about the rest?  e.g. repeat keys really ought to be on some set schedule
-            Dictionary<UInt16, SyntheticState.KeyPresses>.KeyCollection kvpKeys = state.keyPresses.Keys;
-            //foreach (KeyValuePair<UInt16, SyntheticState.KeyPresses> kvp in state.keyPresses)
-            //for (int i = 0, keyCount = kvpKeys.Count; i < keyCount; i++)
-            for (var keyEnum = kvpKeys.GetEnumerator(); keyEnum.MoveNext();)
-            {
-                //UInt16 kvpKey = kvpKeys.ElementAt(i);
-                UInt16 kvpKey = keyEnum.Current;
-                SyntheticState.KeyPresses kvpValue = state.keyPresses[kvpKey];
-
-                SyntheticState.KeyPresses gkp;
-                if (globalState.keyPresses.TryGetValue(kvpKey, out gkp))
-                {
-                    gkp.current.vkCount += kvpValue.current.vkCount - kvpValue.previous.vkCount;
-                    gkp.current.scanCodeCount += kvpValue.current.scanCodeCount - kvpValue.previous.scanCodeCount;
-                    gkp.current.repeatCount += kvpValue.current.repeatCount - kvpValue.previous.repeatCount;
-                    gkp.current.toggle = kvpValue.current.toggle;
-                    gkp.current.toggleCount += kvpValue.current.toggleCount - kvpValue.previous.toggleCount;
-                }
-                else
-                {
-                    gkp = new SyntheticState.KeyPresses();
-                    gkp.current = kvpValue.current;
-                    globalState.keyPresses[kvpKey] = gkp;
-                }
-
-                uint nativeKey = state.nativeKeyAlias[kvpKey];
-                if (gkp.current.toggleCount != 0 && gkp.previous.toggleCount == 0 && gkp.current.toggle)
-                {
-                    if (gkp.current.scanCodeCount != 0)
-                        outputKBMHandler.PerformKeyPressAlt(nativeKey);
-                    else
-                        outputKBMHandler.PerformKeyPress(nativeKey);
-                }
-                else if (gkp.current.toggleCount != 0 && gkp.previous.toggleCount == 0 && !gkp.current.toggle)
-                {
-                    if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
-                        outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
-                    else
-                        outputKBMHandler.PerformKeyRelease(nativeKey);
-                }
-                else if (gkp.current.vkCount + gkp.current.scanCodeCount != 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount == 0)
-                {
-                    if (gkp.current.scanCodeCount != 0)
-                    {
-                        oldnow = DateTime.UtcNow;
-                        outputKBMHandler.PerformKeyPressAlt(nativeKey);
-                        pressagain = false;
-                        keyshelddown = kvpKey;
-                    }
-                    else
-                    {
-                        oldnow = DateTime.UtcNow;
-                        outputKBMHandler.PerformKeyPress(nativeKey);
-                        pressagain = false;
-                        keyshelddown = kvpKey;
-                    }
-                }
-                else if (outputKBMHandler.fakeKeyRepeat && (gkp.current.toggleCount != 0 || gkp.previous.toggleCount != 0 || gkp.current.repeatCount != 0 || // repeat or SC/VK transition
-                     ((gkp.previous.scanCodeCount == 0) != (gkp.current.scanCodeCount == 0)))) //repeat keystroke after 500ms
-                {
-                    if (keyshelddown == kvpKey)
-                    {
-                        DateTime now = DateTime.UtcNow;
-                        if (now >= oldnow + TimeSpan.FromMilliseconds(500) && !pressagain)
-                        {
-                            oldnow = now;
-                            pressagain = true;
-                        }
-                        if (pressagain && gkp.current.scanCodeCount != 0)
-                        {
-                            now = DateTime.UtcNow;
-                            if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
-                            {
-                                oldnow = now;
-                                outputKBMHandler.PerformKeyPressAlt(nativeKey);
-                            }
-                        }
-                        else if (pressagain)
-                        {
-                            now = DateTime.UtcNow;
-                            if (now >= oldnow + TimeSpan.FromMilliseconds(25) && pressagain)
-                            {
-                                oldnow = now;
-                                outputKBMHandler.PerformKeyPress(nativeKey);
-                            }
-                        }
-                    }
-                }
-
-                if ((gkp.current.toggleCount == 0 && gkp.previous.toggleCount == 0) && gkp.current.vkCount + gkp.current.scanCodeCount == 0 && gkp.previous.vkCount + gkp.previous.scanCodeCount != 0)
-                {
-                    if (gkp.previous.scanCodeCount != 0) // use the last type of VK/SC
-                    {
-                        outputKBMHandler.PerformKeyReleaseAlt(nativeKey);
-                        pressagain = false;
-                    }
-                    else
-                    {
-                        outputKBMHandler.PerformKeyRelease(nativeKey);
-                        pressagain = false;
-                    }
+                    VirtualKBM.PerformMouseWheelEvent(wheel, 0);
                 }
             }
 
@@ -1074,7 +1472,9 @@ namespace DS4Windows
 
             // Send possible virtual events to system. Only used for FakerInput atm.
             // SendInput version does nothing
-            outputKBMHandler.Sync();
+            // Update toggle-driven repeat controller so it can emit repeats using stored handlers
+            // ToggleActionController removed from per-path usage — per-device controllers handle updates.
+            VirtualKBM.Sync();
         }
 
         public enum Click { None, Left, Middle, Right, Fourth, Fifth, WUP, WDOWN };
@@ -1129,18 +1529,19 @@ namespace DS4Windows
             return (value < min) ? min : (value > max) ? max : value;
         }
 
-        public static DS4State SetCurveAndDeadzone(int device, DS4State cState, DS4State dState)
+        public static DS4State SetCurveAndDeadzone(int device, DS4State cState, DS4State dState,
+                DS4Windows.DI.IProfileSettingsService settings)
         {
-            double rotation = /*tempDoubleArray[device] =*/  getLSRotation(device);
+            double rotation = /*tempDoubleArray[device] =*/  settings.LSRotation[device];
             if (rotation > 0.0 || rotation < 0.0)
                 cState.rotateLSCoordinates(rotation);
 
-            double rotationRS = /*tempDoubleArray[device] =*/ getRSRotation(device);
+            double rotationRS = /*tempDoubleArray[device] =*/ settings.RSRotation[device];
             if (rotationRS > 0.0 || rotationRS < 0.0)
                 cState.rotateRSCoordinates(rotationRS);
 
-            StickAntiSnapbackInfo lsAntiSnapback = GetLSAntiSnapbackInfo(device);
-            StickAntiSnapbackInfo rsAntiSnapback = GetRSAntiSnapbackInfo(device);
+            StickAntiSnapbackInfo lsAntiSnapback = settings.LSAntiSnapbackInfo[device];
+            StickAntiSnapbackInfo rsAntiSnapback = settings.RSAntiSnapbackInfo[device];
 
             if (lsAntiSnapback.enabled)
             {
@@ -1152,8 +1553,8 @@ namespace DS4Windows
                 CalcAntiSnapbackStick(device, 1, rsAntiSnapback.delta, rsAntiSnapback.timeout, cState.RX, cState.RY, out cState.RX, out cState.RY);
             }
 
-            StickDeadZoneInfo lsMod = GetLSDeadInfo(device);
-            StickDeadZoneInfo rsMod = GetRSDeadInfo(device);
+            StickDeadZoneInfo lsMod = settings.LSModInfo[device];
+            StickDeadZoneInfo rsMod = settings.RSModInfo[device];
 
             if (lsMod.fuzz > 0)
             {
@@ -1168,7 +1569,7 @@ namespace DS4Windows
             cState.CopyTo(dState);
             //DS4State dState = new DS4State(cState);
 
-            cState = ApplyStickCalibration(device, dState);
+            cState = ApplyStickCalibration(device, dState, settings);
 
 
             if (lsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Radial)
@@ -1643,7 +2044,7 @@ namespace DS4Windows
             int l2Maxzone = getL2Maxzone(device);
             */
 
-            TriggerDeadZoneZInfo l2ModInfo = GetL2ModInfo(device);
+            TriggerDeadZoneZInfo l2ModInfo = settings.L2ModInfo[device];
             byte l2Deadzone = l2ModInfo.deadZone;
             int l2AntiDeadzone = l2ModInfo.antiDeadZone;
             int l2Maxzone = l2ModInfo.maxZone;
@@ -1698,7 +2099,7 @@ namespace DS4Windows
             int r2AntiDeadzone = getR2AntiDeadzone(device);
             int r2Maxzone = getR2Maxzone(device);
             */
-            TriggerDeadZoneZInfo r2ModInfo = GetR2ModInfo(device);
+            TriggerDeadZoneZInfo r2ModInfo = settings.R2ModInfo[device];
             byte r2Deadzone = r2ModInfo.deadZone;
             int r2AntiDeadzone = r2ModInfo.antiDeadZone;
             int r2Maxzone = r2ModInfo.maxZone;
@@ -1752,7 +2153,7 @@ namespace DS4Windows
             // Only apply deprecated Sensitivity modifier for Radial DZ
             if (lsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Radial)
             {
-                double lsSens = getLSSens(device);
+                double lsSens = settings.LSSens[device];
                 if (lsSens != 1.0)
                 {
                     dState.LX = (byte)Global.Clamp(0, lsSens * (dState.LX - 128.0) + 128.0, 255);
@@ -1763,7 +2164,7 @@ namespace DS4Windows
             // Only apply deprecated Sensitivity modifier for Radial DZ
             if (rsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Radial)
             {
-                double rsSens = getRSSens(device);
+                double rsSens = settings.RSSens[device];
                 if (rsSens != 1.0)
                 {
                     dState.RX = (byte)Global.Clamp(0, rsSens * (dState.RX - 128.0) + 128.0, 255);
@@ -1771,15 +2172,15 @@ namespace DS4Windows
                 }
             }
 
-            double l2Sens = getL2Sens(device);
+            double l2Sens = settings.L2Sens[device];
             if (l2Sens != 1.0)
                 dState.L2 = (byte)Global.Clamp(0, l2Sens * dState.L2, 255);
 
-            double r2Sens = getR2Sens(device);
+            double r2Sens = settings.R2Sens[device];
             if (r2Sens != 1.0)
                 dState.R2 = (byte)Global.Clamp(0, r2Sens * dState.R2, 255);
 
-            SquareStickInfo squStk = GetSquareStickInfo(device);
+            SquareStickInfo squStk = settings.SquStickInfo[device];
             if (squStk.lsMode && (dState.LX != 128 || dState.LY != 128))
             {
                 double capX = dState.LX >= 128 ? 127.0 : 128.0;
@@ -1798,7 +2199,7 @@ namespace DS4Windows
                 dState.LY = (byte)(tempY * capY + 128.0);
             }
 
-            int lsOutCurveMode = getLsOutCurveMode(device);
+            int lsOutCurveMode = settings.GetLsOutCurveMode(device);
             if (lsOutCurveMode > 0 && (dState.LX != 128 || dState.LY != 128))
             {
                 double tempRatioX = 0.0, tempRatioY = 0.0;
@@ -1907,8 +2308,8 @@ namespace DS4Windows
                         byte tempOutY = (byte)(tempRatioY * maxY + 128.0);
 
                         // Perform curve based on byte values from vector
-                        byte tempX = lsOutBezierCurveObj[device].arrayBezierLUT[tempOutX];
-                        byte tempY = lsOutBezierCurveObj[device].arrayBezierLUT[tempOutY];
+                        byte tempX = settings.LsOutBezierCurveObj[device].arrayBezierLUT[tempOutX];
+                        byte tempY = settings.LsOutBezierCurveObj[device].arrayBezierLUT[tempOutY];
 
                         // Calculate new ratio
                         double tempRatioOutX = (tempX - 128.0) / maxX;
@@ -1921,8 +2322,8 @@ namespace DS4Windows
                     }
                     else if (lsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Axial)
                     {
-                        dState.LX = lsOutBezierCurveObj[device].arrayBezierLUT[dState.LX];
-                        dState.LY = lsOutBezierCurveObj[device].arrayBezierLUT[dState.LY];
+                        dState.LX = settings.LsOutBezierCurveObj[device].arrayBezierLUT[dState.LX];
+                        dState.LY = settings.LsOutBezierCurveObj[device].arrayBezierLUT[dState.LY];
                     }
                 }
             }
@@ -1945,7 +2346,7 @@ namespace DS4Windows
                 dState.RY = (byte)(tempY * capY + 128.0);
             }
 
-            int rsOutCurveMode = getRsOutCurveMode(device);
+            int rsOutCurveMode = settings.GetRsOutCurveMode(device);
             if (rsOutCurveMode > 0 && (dState.RX != 128 || dState.RY != 128))
             {
                 double tempRatioX = 0.0, tempRatioY = 0.0;
@@ -2054,8 +2455,8 @@ namespace DS4Windows
                         byte tempOutY = (byte)(tempRatioY * maxY + 128.0);
 
                         // Perform curve based on byte values from vector
-                        byte tempX = rsOutBezierCurveObj[device].arrayBezierLUT[tempOutX];
-                        byte tempY = rsOutBezierCurveObj[device].arrayBezierLUT[tempOutY];
+                        byte tempX = settings.RsOutBezierCurveObj[device].arrayBezierLUT[tempOutX];
+                        byte tempY = settings.RsOutBezierCurveObj[device].arrayBezierLUT[tempOutY];
 
                         // Calculate new ratio
                         double tempRatioOutX = (tempX - 128.0) / maxX;
@@ -2067,13 +2468,13 @@ namespace DS4Windows
                     }
                     else if (rsMod.deadzoneType == StickDeadZoneInfo.DeadZoneType.Axial)
                     {
-                        dState.RX = rsOutBezierCurveObj[device].arrayBezierLUT[dState.RX];
-                        dState.RY = rsOutBezierCurveObj[device].arrayBezierLUT[dState.RY];
+                        dState.RX = settings.RsOutBezierCurveObj[device].arrayBezierLUT[dState.RX];
+                        dState.RY = settings.RsOutBezierCurveObj[device].arrayBezierLUT[dState.RY];
                     }
                 }
             }
 
-            int l2OutCurveMode = getL2OutCurveMode(device);
+            int l2OutCurveMode = settings.GetL2OutCurveMode(device);
             if (l2OutCurveMode > 0 && dState.L2 != 0)
             {
                 double temp = dState.L2 / 255.0;
@@ -2112,11 +2513,11 @@ namespace DS4Windows
                 }
                 else if (l2OutCurveMode == 6)
                 {
-                    dState.L2 = l2OutBezierCurveObj[device].arrayBezierLUT[dState.L2];
+                    dState.L2 = settings.L2OutBezierCurveObj[device].arrayBezierLUT[dState.L2];
                 }
             }
 
-            int r2OutCurveMode = getR2OutCurveMode(device);
+            int r2OutCurveMode = settings.GetR2OutCurveMode(device);
             if (r2OutCurveMode > 0 && dState.R2 != 0)
             {
                 double temp = dState.R2 / 255.0;
@@ -2155,22 +2556,22 @@ namespace DS4Windows
                 }
                 else if (r2OutCurveMode == 6)
                 {
-                    dState.R2 = r2OutBezierCurveObj[device].arrayBezierLUT[dState.R2];
+                    dState.R2 = settings.R2OutBezierCurveObj[device].arrayBezierLUT[dState.R2];
                 }
             }
 
 
-            bool saControls = IsUsingSAForControls(device);
+            bool saControls = settings.GyroOutputMode[device] == GyroOutMode.Controls;
             if (saControls && dState.Motion.outputGyroControls)
             {
-                int SXD = (int)(128d * getSXDeadzone(device));
-                int SZD = (int)(128d * getSZDeadzone(device));
-                double SXMax = getSXMaxzone(device);
-                double SZMax = getSZMaxzone(device);
-                double sxAntiDead = getSXAntiDeadzone(device);
-                double szAntiDead = getSZAntiDeadzone(device);
-                double sxsens = getSXSens(device);
-                double szsens = getSZSens(device);
+                int SXD = (int)(128d * settings.SXDeadzone[device]);
+                int SZD = (int)(128d * settings.SZDeadzone[device]);
+                double SXMax = settings.SXMaxzone[device];
+                double SZMax = settings.SZMaxzone[device];
+                double sxAntiDead = settings.SXAntiDeadzone[device];
+                double szAntiDead = settings.SZAntiDeadzone[device];
+                double sxsens = settings.SXSens[device];
+                double szsens = settings.SZSens[device];
                 int result = 0;
 
                 int gyroX = cState.Motion.accelX, gyroZ = cState.Motion.accelZ;
@@ -2216,7 +2617,7 @@ namespace DS4Windows
                         (int)Math.Min(128d, szsens * 128d * (absz / 128d));
                 }
 
-                int sxOutCurveMode = getSXOutCurveMode(device);
+                int sxOutCurveMode = settings.GetSxOutCurveMode(device);
                 if (sxOutCurveMode > 0)
                 {
                     double temp = dState.Motion.outputAccelX / 128.0;
@@ -2263,11 +2664,11 @@ namespace DS4Windows
                     else if (sxOutCurveMode == 6)
                     {
                         int signSA = Math.Sign(dState.Motion.outputAccelX);
-                        dState.Motion.outputAccelX = sxOutBezierCurveObj[device].arrayBezierLUT[Math.Min(Math.Abs(dState.Motion.outputAccelX), 128)] * signSA;
+                        dState.Motion.outputAccelX = settings.SxOutBezierCurveObj[device].arrayBezierLUT[Math.Min(Math.Abs(dState.Motion.outputAccelX), 128)] * signSA;
                     }
                 }
 
-                int szOutCurveMode = getSZOutCurveMode(device);
+                int szOutCurveMode = settings.GetSzOutCurveMode(device);
                 if (szOutCurveMode > 0 && dState.Motion.outputAccelZ != 0)
                 {
                     double temp = dState.Motion.outputAccelZ / 128.0;
@@ -2314,7 +2715,7 @@ namespace DS4Windows
                     else if (szOutCurveMode == 6)
                     {
                         int signSA = Math.Sign(dState.Motion.outputAccelZ);
-                        dState.Motion.outputAccelZ = szOutBezierCurveObj[device].arrayBezierLUT[Math.Min(Math.Abs(dState.Motion.outputAccelZ), 128)] * signSA;
+                        dState.Motion.outputAccelZ = settings.SzOutBezierCurveObj[device].arrayBezierLUT[Math.Min(Math.Abs(dState.Motion.outputAccelZ), 128)] * signSA;
                     }
                 }
             }
@@ -2322,28 +2723,28 @@ namespace DS4Windows
             return dState;
         }
 
-        public static DS4State ApplyStickCalibration(int device, DS4State state)
+        public static DS4State ApplyStickCalibration(int device, DS4State state, DS4Windows.DI.IProfileSettingsService settings)
         {
-            if (RightStickDriftXAxis[device] != 0)
+            if (settings.RightStickDriftXAxis[device] != 0)
             {
-                var translated = state.RX - RightStickDriftXAxis[device];
+                var translated = state.RX - settings.RightStickDriftXAxis[device];
                 state.RX = (byte)Math.Clamp(translated, 0, 255);
             }
-            if (RightStickDriftYAxis[device] != 0)
+            if (settings.RightStickDriftYAxis[device] != 0)
             {
-                var translated = state.RY - RightStickDriftYAxis[device];
+                var translated = state.RY - settings.RightStickDriftYAxis[device];
                 state.RY = (byte)Math.Clamp(translated, 0, 255);
             }
 
-            if (LeftStickDriftXAxis[device] != 0)
+            if (settings.LeftStickDriftXAxis[device] != 0)
             {
-                var translated = state.LX - LeftStickDriftXAxis[device];
+                var translated = state.LX - settings.LeftStickDriftXAxis[device];
                 state.LX = (byte)Math.Clamp(translated, 0, 255);
             }
 
-            if (LeftStickDriftYAxis[device] != 0)
+            if (settings.LeftStickDriftYAxis[device] != 0)
             {
-                var translated = state.LY - LeftStickDriftYAxis[device];
+                var translated = state.LY - settings.LeftStickDriftYAxis[device];
                 state.LY = (byte)Math.Clamp(translated, 0, 255);
             }
 
@@ -2402,11 +2803,21 @@ namespace DS4Windows
             Mouse tp, ControlService ctrl)
         {
             /* TODO: This method is slow sauce. Find ways to speed up action execution */
+            try { System.Threading.Interlocked.Increment(ref mappingEvalSinceLast); } catch { }
+            try
+            {
+                long nowTicks = DateTime.UtcNow.Ticks;
+                if (nowTicks - mappingLastSummaryUtcTicks > TimeSpan.FromSeconds(5).Ticks)
+                {
+                    long evals = System.Threading.Interlocked.Exchange(ref mappingEvalSinceLast, 0);
+                    long sets = System.Threading.Interlocked.Exchange(ref setBeingTriggeredCallsSinceLast, 0);
+                    mappingLastSummaryUtcTicks = nowTicks;
+                    AppLogger.LogDebug($"Mapping SUMMARY (5s): device={device} evaluations={evals} setBeingTriggeredCalls={sets}");
+                }
+            }
+            catch { }
             double tempMouseDeltaX = 0.0;
             double tempMouseDeltaY = 0.0;
-            //AbsMouseOutput absMouseOut = new AbsMouseOutput(0.5, 0.5);
-            ref AbsMouseOutput absMouseOut = ref absMouseOutputState[device];
-            absMouseOut.Dirty = false;
             int mouseDeltaX = 0;
             int mouseDeltaY = 0;
 
@@ -2419,7 +2830,7 @@ namespace DS4Windows
             //DS4StateFieldMapping outputfieldMapping = new DS4StateFieldMapping(cState, eState, tp);
 
             SyntheticState deviceState = Mapping.deviceState[device];
-            if (getProfileActionCount(device) > 0 || useTempProfile[device])
+            if (ctrl.ProfileActionProvider.GetProfileActionCount(device) > 0 || profileSettings.GetUseTempProfile(device))
                 MapCustomAction(device, cState, MappedState, eState, tp, ctrl, fieldMapping, outputfieldMapping);
             //if (ctrl.DS4Controllers[device] == null) return;
 
@@ -2433,8 +2844,8 @@ namespace DS4Windows
             //for (int settingIndex = 0, arlen = tempSettingsList.Count; settingIndex < arlen; settingIndex++)
 
             // Process LS
-            ControlSettingsGroup controlSetGroup = GetControlSettingsGroup(device);
-            StickOutputSetting stickSettings = Global.LSOutputSettings[device];
+            ControlSettingsGroup controlSetGroup = profileSettings.GetControlSettingsGroup(device);
+            StickOutputSetting stickSettings = profileSettings.LSOutputSettings[device];
             if (stickSettings.mode == StickMode.Controls)
             {
                 for (var settingEnum = controlSetGroup.LS.GetEnumerator(); settingEnum.MoveNext();)
@@ -2442,7 +2853,7 @@ namespace DS4Windows
                     DS4ControlSettings dcs = settingEnum.Current;
                     ProcessControlSettingAction(dcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
             }
             else
@@ -2470,7 +2881,7 @@ namespace DS4Windows
             }
 
             // Process RS
-            stickSettings = Global.RSOutputSettings[device];
+            stickSettings = profileSettings.RSOutputSettings[device];
             if (stickSettings.mode == StickMode.Controls)
             {
                 if (stickSettings.outputSettings.controlSettings.deltaAccelSettings.enabled)
@@ -2499,7 +2910,7 @@ namespace DS4Windows
                     DS4ControlSettings dcs = settingEnum.Current;
                     ProcessControlSettingAction(dcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
             }
             else
@@ -2527,13 +2938,13 @@ namespace DS4Windows
             }
 
             // Process L2
-            TriggerOutputSettings l2TriggerSettings = Global.L2OutputSettings[device];
+            TriggerOutputSettings l2TriggerSettings = profileSettings.L2OutputSettings[device];
             DS4ControlSettings dcsTemp = controlSetGroup.L2;
             if (l2TriggerSettings.twoStageMode == TwoStageTriggerMode.Disabled)
             {
                 ProcessControlSettingAction(dcsTemp, device, cState, MappedState, eState,
                     tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                    ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                    ref tempMouseDeltaY, ctrl);
             }
             else
             {
@@ -2561,7 +2972,7 @@ namespace DS4Windows
 
                     ProcessControlSettingAction(dcsTemp, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
                 else
                 {
@@ -2586,7 +2997,7 @@ namespace DS4Windows
 
                     ProcessControlSettingAction(l2FullPull, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 // Store active buttons state
@@ -2594,13 +3005,13 @@ namespace DS4Windows
             }
 
             // Process R2
-            TriggerOutputSettings r2TriggerSettings = Global.R2OutputSettings[device];
+            TriggerOutputSettings r2TriggerSettings = profileSettings.R2OutputSettings[device];
             dcsTemp = controlSetGroup.R2;
             if (r2TriggerSettings.twoStageMode == TwoStageTriggerMode.Disabled)
             {
                 ProcessControlSettingAction(dcsTemp, device, cState, MappedState, eState,
                     tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                    ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                    ref tempMouseDeltaY, ctrl);
             }
             else
             {
@@ -2628,7 +3039,7 @@ namespace DS4Windows
 
                     ProcessControlSettingAction(dcsTemp, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
                 else
                 {
@@ -2653,7 +3064,7 @@ namespace DS4Windows
 
                     ProcessControlSettingAction(r2FullPull, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 // Store active buttons state
@@ -2666,7 +3077,7 @@ namespace DS4Windows
                 DS4ControlSettings dcs = settingEnum.Current;
                 ProcessControlSettingAction(dcs, device, cState, MappedState, eState,
                     tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                    ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                    ref tempMouseDeltaY, ctrl);
             }
 
             // Process Extra Device specific buttons
@@ -2675,10 +3086,10 @@ namespace DS4Windows
                 DS4ControlSettings dcs = settingEnum.Current;
                 ProcessControlSettingAction(dcs, device, cState, MappedState, eState,
                     tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                    ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                    ref tempMouseDeltaY, ctrl);
             }
 
-            GyroOutMode imuOutMode = Global.GetGyroOutMode(device);
+            GyroOutMode imuOutMode = profileSettings.GetGyroOutMode(device);
             if (imuOutMode == GyroOutMode.DirectionalSwipe)
             {
                 DS4ControlSettings gyroSwipeXDcs = null;
@@ -2727,14 +3138,14 @@ namespace DS4Windows
                 {
                     ProcessControlSettingAction(previousGyroSwipeXDcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 if (gyroSwipeXDcs != null)
                 {
                     ProcessControlSettingAction(gyroSwipeXDcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 // Disable previous button before possibly activating current button
@@ -2742,14 +3153,14 @@ namespace DS4Windows
                 {
                     ProcessControlSettingAction(previousGyroSwipeYDcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
 
                 if (gyroSwipeYDcs != null)
                 {
                     ProcessControlSettingAction(gyroSwipeYDcs, device, cState, MappedState, eState,
                         tp, fieldMapping, outputfieldMapping, deviceState, ref tempMouseDeltaX,
-                        ref tempMouseDeltaY, ref absMouseOut, ctrl);
+                        ref tempMouseDeltaY, ctrl);
                 }
             }
 
@@ -2794,7 +3205,163 @@ namespace DS4Windows
                 }
             }
 
+            // --- Stage3: Synchronous Button SpecialAction handling ---
+            try
+            {
+                var profileActions = ctrl.ProfileActionProvider.GetProfileActionsRaw(device);
+                if (profileActions != null)
+                {
+                    // Maintain last-known trigger state to avoid logging the same "NOT active" repeatedly.
+                    // Key: "device:actionname". Static so state persists between map ticks.
+                    // Use a lock for simple thread-safety because MapCustomAction runs on mapping thread.
+                    if (lastButtonTriggerState == null)
+                        lastButtonTriggerState = new Dictionary<string, bool>();
+
+                    foreach (string actionname in profileActions)
+                    {
+                        SpecialAction sa = ctrl.ProfileActionProvider.GetProfileAction(device, actionname);
+                        if (sa == null) continue;
+                        if (sa.typeID != SpecialAction.ActionTypeId.Button) continue;
+
+                        string key = device + ":" + actionname;
+                        bool prevState = false;
+                        lock (lastButtonTriggerState)
+                        {
+                            if (!lastButtonTriggerState.TryGetValue(key, out prevState))
+                                lastButtonTriggerState[key] = false;
+                        }
+
+                        bool triggered = IsSpecialActionTriggered(sa, device, cState, eState, tp, fieldMapping);
+
+                        // Log only on state change (reduce noise) and avoid building strings when trace disabled
+                        if (AppLogger.IsTraceEnabled && triggered != prevState)
+                        {
+                            if (triggered)
+                                AppLogger.LogTrace($"Trigger detected for Button SA '{actionname}' on device {device}");
+                            else
+                                AppLogger.LogTrace($"Trigger no longer active for Button SA '{actionname}' on device {device}");
+                        }
+
+                        if (triggered)
+                        {
+                            if (int.TryParse(sa.details, out int btnVal))
+                            {
+                                X360Controls xboxControl = (X360Controls)btnVal;
+
+                                // rising-edge mapping/logging is handled by LogSpecialActionTrace
+
+                                if (xboxControl == X360Controls.TouchpadClick)
+                                {
+                                    outputfieldMapping.outputTouchButton = true;
+
+                                }
+                                else if (xboxControl >= X360Controls.LeftMouse && xboxControl <= X360Controls.WDOWN)
+                                {
+                                    // mouse-like outputs: increment currentClicks on deviceState
+                                    switch (xboxControl)
+                                    {
+                                        case X360Controls.LeftMouse:
+                                            deviceState.currentClicks.leftCount++;
+
+                                            break;
+                                        case X360Controls.RightMouse:
+                                            deviceState.currentClicks.rightCount++;
+
+                                            break;
+                                        case X360Controls.MiddleMouse:
+                                            deviceState.currentClicks.middleCount++;
+
+                                            break;
+                                        case X360Controls.FourthMouse:
+                                            deviceState.currentClicks.fourthCount++;
+
+                                            break;
+                                        case X360Controls.FifthMouse:
+                                            deviceState.currentClicks.fifthCount++;
+
+                                            break;
+                                        case X360Controls.WUP:
+                                            deviceState.currentClicks.wUpCount++;
+
+                                            break;
+                                        case X360Controls.WDOWN:
+                                            deviceState.currentClicks.wDownCount++;
+
+                                            break;
+                                    }
+                                }
+                                else
+                                {
+                                    if ((int)xboxControl < outputfieldMapping.buttons.Length && xboxControl != X360Controls.None)
+                                    {
+                                        outputfieldMapping.buttons[(int)xboxControl] = true;
+                                        // Log the setting only on rising edge to avoid per-poll noise
+
+                                    }
+                                }
+                                // Log the current output button combination for this SA trigger
+                                if (AppLogger.IsTraceEnabled)
+                                {
+                                    try
+                                    {
+                                        var parts = new List<string>();
+
+                                        if (outputfieldMapping.outputTouchButton)
+                                            parts.Add("TouchpadClick");
+
+                                        // mouse click counters
+                                        if (deviceState.currentClicks.leftCount > 0) parts.Add($"LeftMouse({deviceState.currentClicks.leftCount})");
+                                        if (deviceState.currentClicks.rightCount > 0) parts.Add($"RightMouse({deviceState.currentClicks.rightCount})");
+                                        if (deviceState.currentClicks.middleCount > 0) parts.Add($"MiddleMouse({deviceState.currentClicks.middleCount})");
+                                        if (deviceState.currentClicks.fourthCount > 0) parts.Add($"FourthMouse({deviceState.currentClicks.fourthCount})");
+                                        if (deviceState.currentClicks.fifthCount > 0) parts.Add($"FifthMouse({deviceState.currentClicks.fifthCount})");
+                                        if (deviceState.currentClicks.wUpCount > 0) parts.Add($"WUP({deviceState.currentClicks.wUpCount})");
+                                        if (deviceState.currentClicks.wDownCount > 0) parts.Add($"WDOWN({deviceState.currentClicks.wDownCount})");
+
+                                        // buttons array
+                                        for (int bi = 0; bi < outputfieldMapping.buttons.Length; bi++)
+                                        {
+                                            if (outputfieldMapping.buttons[bi])
+                                            {
+                                                var controlEnum = (X360Controls)bi;
+                                                parts.Add($"{controlEnum}({bi})");
+                                            }
+                                        }
+
+                                        string combo = parts.Count > 0 ? string.Join(", ", parts) : "<none>";
+                                        AppLogger.LogTrace($"SA '{actionname}' output combo: {combo}");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppLogger.LogTrace($"Failed to build output combo log for SA '{actionname}': {ex}");
+                                    }
+                                }
+                            }
+                        }
+
+                        // Centralized SA trace (rising-edge info and per-tick output combo)
+                        try
+                        {
+                            LogSpecialActionTrace(actionname, sa, device, triggered && !prevState, outputfieldMapping, Mapping.deviceState);
+                        }
+                        catch { }
+
+                        // update stored state
+                        lock (lastButtonTriggerState)
+                        {
+                            lastButtonTriggerState[key] = triggered;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"Synchronous Button SA handling error: {ex}", true);
+            }
+
             outputfieldMapping.PopulateState(MappedState);
+
+            // MappedState summary TRACE removed as requested.
 
             if (macroCount > 0)
             {
@@ -2826,7 +3393,7 @@ namespace DS4Windows
                 if (macroControl[25]) MappedState.OutputTouchButton = true;
             }
 
-            if (GetSASteeringWheelEmulationAxis(device) != SASteeringWheelEmulationAxisType.None)
+            if (ctrl.ProfileSettingsService.GetSASteeringWheelEmulationAxis(device) != SASteeringWheelEmulationAxisType.None)
             {
                 MappedState.SASteeringWheelEmulationUnit = Mapping.Scale360degreeGyroAxis(device, eState, ctrl);
             }
@@ -2996,74 +3563,16 @@ namespace DS4Windows
                 out mouseDeltaX, out mouseDeltaY);
             if (mouseDeltaX != 0 || mouseDeltaY != 0)
             {
-                outputKBMHandler.MoveRelativeMouse(mouseDeltaX, mouseDeltaY);
-            }
-
-            if (absMouseOut.Dirty ||
-                absMouseOut.previousDirty)
-            {
-                if (absMouseOut.Dirty)
-                {
-                    double outX = 0.0, outY = 0.0;
-                    //outX = absMouseOut.x;
-                    //outY = absMouseOut.y;
-                    if (absUseAllMonitors)
-                    {
-                        outX = absMouseOut.x;
-                        outY = absMouseOut.y;
-
-                        //double tempX = 0.0, tempY = 0.0;
-                        //Global.TranslateCoorToAbsDisplay(outX, outY,
-                        //    out tempX, out tempY);
-                        //Trace.WriteLine($"INX: {outX} | INY: {outY} | OUTX: {tempX} | OUTY: {tempY}");
-                    }
-                    else
-                    {
-                        outX = absMouseOut.x;
-                        outY = absMouseOut.y;
-
-                        double tempX = 0.0, tempY = 0.0;
-                        //Global.TranslateCoorToAbsDisplay(absMouseOut.x, absMouseOut.y,
-                        //    out outX, out outY);
-                        Global.TranslateCoorToAbsDisplay(absMouseOut.x, absMouseOut.y,
-                            out tempX, out tempY);
-                    }
-
-                    outX = Math.Clamp(outX, 0.0, 1.0);
-                    outY = Math.Clamp(outY, 0.0, 1.0);
-                    outputKBMHandler.MoveAbsoluteMouse(outX, outY);
-                }
-                else if (absMouseOut.previousDirty)
-                {
-                    ButtonAbsMouseInfo buttonAbsMouseInfo = ButtonAbsMouseInfos[device];
-                    if (buttonAbsMouseInfo.snapToCenter)
-                    {
-                        absMouseOut.CalculateDeadCoords(buttonAbsMouseInfo, out double releaseX,
-                            out double releaseY);
-
-                        if (!Global.absUseAllMonitors)
-                        {
-                            Global.TranslateCoorToAbsDisplay(releaseX, releaseY,
-                                out releaseX, out releaseY);
-                        }
-
-                        outputKBMHandler.MoveAbsoluteMouse(releaseX, releaseY);
-                    }
-                }
-
-                absMouseOut.previousDirty = absMouseOut.Dirty;
-                absMouseOut.Dirty = false;
-
-                absMouseOut.CalculateAngle();
+                VirtualKBM.MoveRelativeMouse(mouseDeltaX, mouseDeltaY);
             }
         }
 
         public static void TempMouseJoystick(int device, DS4State MappedState)
         {
-            GyroOutMode imuOutMode = Global.GetGyroOutMode(device);
+            GyroOutMode imuOutMode = profileSettings.GetGyroOutMode(device);
             if (imuOutMode == GyroOutMode.MouseJoystick)
             {
-                GyroMouseStickInfo msinfo = Global.GetGyroMouseStickInfo(device);
+                GyroMouseStickInfo msinfo = profileSettings.GetGyroMouseStickInfo(device);
                 if (msinfo.outputStick != GyroMouseStickInfo.OutputStick.None)
                 {
                     PostMapStickData mapStickData = mapStickActionData[device];
@@ -3129,6 +3638,280 @@ namespace DS4Windows
                     // Don't reset Mouse Joystick output coords here
                     //gyroTempX = gyroTempY = 128;
                 }
+            }
+        }
+
+        // Handle full device disconnect cleanup: release synthetic keys, clear queues and tasks,
+        // and remove any per-device runtime state. This consolidates the shutdown-like cleanup
+        // performed when the application exits so it can be used on disconnect as well.
+        public static void HandleDeviceDisconnect(int device)
+        {
+            try
+            {
+                // Do not call back into ActionManager.ClearDeviceState here (ActionManager
+                // now calls this method). Perform per-mapping cleanup locally below.
+
+                // Clear per-device synthetic state: send release for any remaining synthetic key presses
+                try
+                {
+                    if (deviceState != null && device >= 0 && device < deviceState.Length)
+                    {
+                        var ds = deviceState[device];
+                        if (ds?.keyPresses != null)
+                        {
+                            var keys = new List<ushort>(ds.keyPresses.Keys);
+                            foreach (var k in keys)
+                            {
+                                try
+                                {
+                                    uint native = 0;
+                                    ds.nativeKeyAlias?.TryGetValue(k, out native);
+                                    SyntheticDispatcher.SendRelease(device, k, native, false, null);
+                                }
+                                catch { }
+                            }
+                            try { ds.keyPresses.Clear(); } catch { }
+                            try { ds.nativeKeyAlias.Clear(); } catch { }
+                        }
+                    }
+                }
+                catch { }
+
+                // Clear custom mapping queue for device
+                try
+                {
+                    if (customMapQueue != null && device >= 0 && device < customMapQueue.Length)
+                    {
+                        lock (customMapQueue)
+                        {
+                            customMapQueue[device] = new Queue<ControlToXInput>();
+                        }
+                    }
+                }
+                catch { }
+
+                // Clear macro task queue entries for device
+                try
+                {
+                    if (macroTaskQueue != null && device >= 0 && device < macroTaskQueue.Length)
+                    {
+                        var dict = macroTaskQueue[device];
+                        if (dict != null)
+                        {
+                            try { dict.Clear(); } catch { }
+                        }
+                    }
+                }
+                catch { }
+
+                // Reset any simple runtime structures that could hold device state
+                try { if (deviceRuntime != null && device >= 0 && device < deviceRuntime.Length) deviceRuntime[device] = new DeviceRuntimeState(); } catch { }
+
+                // Finally ensure any per-device controllers are removed (defensive)
+                try { ClearKeyButtonControllersForDevice(device); } catch { }
+            }
+            catch { }
+        }
+
+        // Public wrapper so Action/KeyAction code can reuse Mapping's cached controllers.
+        public static DS4Windows.Actions.IActionController GetOrCreateKeyButtonControllerForAction(int device, SpecialAction sa)
+        {
+            // Wrap existing KeyButtonActionController in adapter implementing IActionController
+            var inner = GetOrCreateKeyButtonController(device, sa);
+            if (inner == null) return null;
+            return new DS4Windows.Actions.KeyButtonActionControllerAdapter(inner);
+        }
+
+        // Try to find a SpecialAction that maps to given logical key (used by synthetic sender paths).
+        private static SpecialAction FindSpecialActionForLogicalKey(ushort logicalKey)
+        {
+            try
+            {
+                if (!ActionRegistry.IsInitialized) return null;
+                foreach (var sa in ActionRegistry.AllActions())
+                {
+                    try
+                    {
+                        if (sa == null) continue;
+                        if (sa.typeID != SpecialAction.ActionTypeId.Key) continue;
+                        if (ushort.TryParse(sa.details, out ushort k) && k == logicalKey) return sa;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        // Helper: Dispatch SpecialAction trigger established via KeyButtonActionController if available.
+        // If a fallback action is provided it will be executed when no controller exists.
+        private static bool TryDispatchSATriggerEstablished(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM VirtualKBM, Action fallback = null)
+        {
+            try
+            {
+                // First, ask ActionManager to dispatch to an Action instance via generic TriggerContext.
+                // If it handled the trigger (returns true), the Action implementation will delegate to controllers
+                // as needed and we should avoid calling controllers directly to prevent double-dispatch.
+                bool handledByManager = false;
+                try
+                {
+                    if (action != null)
+                    {
+                        var ctx = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = action,
+                            Device = device,
+                            LogicalValue = logicalValue,
+                            NativeValue = nativeValue,
+                            UseScanCode = useScanCode,
+                            OutputHandler = VirtualKBM,
+                            IsEstablished = true
+                        };
+                        handledByManager = DispatchInputEdge(ctx);
+                    }
+                }
+                catch { }
+
+                if (handledByManager)
+                {
+                    return true;
+                }
+
+                var ctrl = GetOrCreateKeyButtonControllerForAction(device, action);
+                if (ctrl != null)
+                {
+                    // Try a final DispatchTrigger via TriggerContext before calling controller directly
+                    bool handledFinal = false;
+                    try
+                    {
+                        var ctxFinal = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = action,
+                            Device = device,
+                            LogicalValue = logicalValue,
+                            NativeValue = nativeValue,
+                            UseScanCode = useScanCode,
+                            OutputHandler = VirtualKBM,
+                            IsEstablished = true
+                        };
+                        handledFinal = DispatchInputEdge(ctxFinal);
+                    }
+                    catch { }
+
+                    if (!handledFinal)
+                    {
+                        try { ActionManager.DispatchTriggerEstablished(action, device, logicalValue, nativeValue, useScanCode, VirtualKBM); } catch { }
+                    }
+                    try
+                    {
+                        if (action != null && action.typeID == SpecialAction.ActionTypeId.Key)
+                        {
+                            AppLogger.LogDebug($"SpecialAction KEY synthetic-press delegated to KeyButtonActionController: name={action.name}, device={device}, key={logicalValue}");
+                        }
+                        else
+                        {
+                            AppLogger.LogDebug($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press delegated to KeyButtonActionController: name={(action != null ? action.name : "(null)")}, device={device}, value={logicalValue}");
+                        }
+                    }
+                    catch { }
+
+                    return true;
+                }
+
+                // No controller available; do not run fallback. Log and return false.
+                AppLogger.LogTrace($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch: no KeyButtonActionController available for device={device}, action={(action != null ? action.name : "(null)")} (fallback suppressed)");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} press dispatch failed: {ex}");
+                return false;
+            }
+        }
+
+        // Helper: Dispatch SpecialAction trigger release via KeyButtonActionController if available.
+        // If a fallback action is provided it will be executed when no controller exists.
+        private static bool TryDispatchSATriggerReleased(SpecialAction action, int device, ushort logicalValue, uint nativeValue, bool useScanCode, IVirtualKBM VirtualKBM, Action fallback = null)
+        {
+            try
+            {
+                // Ask ActionManager to dispatch release first (via TriggerContext). If an Action handled it,
+                // it will delegate to controllers as needed and we should avoid calling controllers directly.
+                bool handledByManager = false;
+                try
+                {
+                    if (action != null)
+                    {
+                        var ctx = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = action,
+                            Device = device,
+                            LogicalValue = logicalValue,
+                            NativeValue = nativeValue,
+                            UseScanCode = useScanCode,
+                            OutputHandler = VirtualKBM,
+                            IsEstablished = false
+                        };
+                        handledByManager = DispatchInputEdge(ctx);
+                    }
+                }
+                catch { }
+
+                if (handledByManager)
+                {
+                    return true;
+                }
+
+                var ctrl = GetOrCreateKeyButtonControllerForAction(device, action);
+                if (ctrl != null)
+                {
+                    bool handledFinal = false;
+                    try
+                    {
+                        var ctxFinal = new DS4Windows.TriggerContext
+                        {
+                            ActionDef = action,
+                            Device = device,
+                            LogicalValue = logicalValue,
+                            NativeValue = nativeValue,
+                            UseScanCode = useScanCode,
+                            OutputHandler = VirtualKBM,
+                            IsEstablished = false
+                        };
+                        handledFinal = DispatchInputEdge(ctxFinal);
+                    }
+                    catch { }
+
+                    if (!handledFinal)
+                    {
+                        try { ActionManager.DispatchTriggerReleased(action, device, logicalValue, nativeValue, useScanCode, VirtualKBM); } catch { }
+                    }
+                    try
+                    {
+                        if (action != null && action.typeID == SpecialAction.ActionTypeId.Key)
+                        {
+                            AppLogger.LogDebug($"SpecialAction KEY synthetic-release delegated to KeyButtonActionController: name={action.name}, device={device}, key={logicalValue}");
+                        }
+                        else
+                        {
+                            AppLogger.LogDebug($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release delegated to KeyButtonActionController: name={(action != null ? action.name : "(null)")}, device={device}, value={logicalValue}");
+                        }
+                    }
+                    catch { }
+
+                    return true;
+                }
+                else
+                {
+                    // No controller available; do not run fallback. Log and return false.
+                    AppLogger.LogTrace($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch: no KeyButtonActionController available for device={device}, action={(action != null ? action.name : "(null)")} (fallback suppressed)");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"SpecialAction {(action != null && action.typeID == SpecialAction.ActionTypeId.Button ? "BUTTON" : "KEY")} release dispatch failed: {ex}");
+                return false;
             }
         }
 
@@ -3215,7 +3998,7 @@ namespace DS4Windows
                     else if (triggerValue != 0 && !triggerData.outputActive)
                     {
                         bool outputActive = triggerData.checkTime +
-                            TimeSpan.FromMilliseconds(outputSettings.hipFireMS) + TimeSpan.FromMilliseconds(Global.DebouncingMs[device]) < DateTime.Now;
+                            TimeSpan.FromMilliseconds(outputSettings.hipFireMS) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device]) < DateTime.Now;
                         if (outputActive)
                         {
                             triggerData.outputActive = true;
@@ -3275,7 +4058,7 @@ namespace DS4Windows
                     }
                     else if (triggerValue != 0 && !triggerData.outputActive)
                     {
-                        bool outputActive = triggerData.checkTime + TimeSpan.FromMilliseconds(outputSettings.hipFireMS) + TimeSpan.FromMilliseconds(Global.DebouncingMs[device]) < DateTime.Now;
+                        bool outputActive = triggerData.checkTime + TimeSpan.FromMilliseconds(outputSettings.hipFireMS) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device]) < DateTime.Now;
                         if (outputActive)
                         {
                             triggerData.outputActive = true;
@@ -3476,7 +4259,7 @@ namespace DS4Windows
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ProcessControlSettingAction(DS4ControlSettings dcs, int device, DS4State cState, DS4State MappedState, DS4StateExposed eState,
             Mouse tp, DS4StateFieldMapping fieldMapping, DS4StateFieldMapping outputfieldMapping, SyntheticState deviceState, ref double tempMouseDeltaX, ref double tempMouseDeltaY,
-            ref AbsMouseOutput absMouseOut, ControlService ctrl)
+            ControlService ctrl)
         {
             // Check if this control press would trigger a Special Action
             // If so, suppress the normal mapping to prevent conflict
@@ -3554,7 +4337,7 @@ namespace DS4Windows
 
                         if (extras[7] == 1)
                         {
-                            ButtonMouseInfo tempMouseInfo = ButtonMouseInfos[device];
+                            ButtonMouseInfo tempMouseInfo = ctrl.ProfileSettingsService.ButtonMouseInfos[device];
                             if (tempMouseInfo.tempButtonSensitivity == -1)
                             {
                                 tempMouseInfo.tempButtonSensitivity = extras[8];
@@ -3568,7 +4351,7 @@ namespace DS4Windows
                 {
                     DS4LightBar.forcelight[device] = false;
                     DS4LightBar.forcedFlash[device] = 0;
-                    ButtonMouseInfo tempMouseInfo = ButtonMouseInfos[device];
+                    ButtonMouseInfo tempMouseInfo = ctrl.ProfileSettingsService.ButtonMouseInfos[device];
                     if (tempMouseInfo.tempButtonSensitivity != -1)
                     {
                         tempMouseInfo.SetActiveButtonSensitivity(tempMouseInfo.buttonSensitivity);
@@ -3657,34 +4440,17 @@ namespace DS4Windows
                 }
                 else if (actionType == DS4ControlSettings.ActionType.Key)
                 {
-                    ushort value = Convert.ToUInt16(action.actionKey);
-                    if (GetBoolActionMapping(device, dcs.control, cState, eState, tp, fieldMapping))
-                    {
-                        SyntheticState.KeyPresses kp;
-                        if (!deviceState.keyPresses.TryGetValue(value, out kp))
-                        {
-                            deviceState.keyPresses[value] = kp = new SyntheticState.KeyPresses();
-                            deviceState.nativeKeyAlias[value] = actionAlias;
-                        }
+                    ushort key = Convert.ToUInt16(action.actionKey);
+                    uint nativeKey = ctrl.ProfileSettingsService.OutputKBMMapping.GetRealEventKey(actionAlias != 0 ? actionAlias : (uint)key);
+                    bool isPressed = GetBoolActionMapping(device, dcs.control, cState, eState, tp, fieldMapping);
+                    bool useScan = keyType.HasFlag(DS4KeyType.ScanCode);
+                    bool isToggle = keyType.HasFlag(DS4KeyType.Toggle);
 
-                        if (keyType.HasFlag(DS4KeyType.ScanCode))
-                            kp.current.scanCodeCount++;
-                        else
-                            kp.current.vkCount++;
+                    // 合成SpecialActionを取得し、SpecialActionsタブと全く同じエッジディスパッチャに投入
+                    SpecialAction sa = FindSpecialActionForLogicalKey(key)
+                                       ?? GetOrCreateSyntheticKeyAction(device, (int)dcs.control, (uint)key, isToggle, useScan);
 
-                        if (keyType.HasFlag(DS4KeyType.Toggle))
-                        {
-                            if (!pressedonce[value])
-                            {
-                                kp.current.toggle = !kp.current.toggle;
-                                pressedonce[value] = true;
-                            }
-                            kp.current.toggleCount++;
-                        }
-                        kp.current.repeatCount++;
-                    }
-                    else
-                        pressedonce[value] = false;
+                    DispatchOrSetBeingTriggered(sa, device, isPressed, key, nativeKey, useScan, VirtualKBM);
 
                     // erase default mappings for things that are remapped
                     ResetToDefaultValue(dcs.control, MappedState, outputfieldMapping);
@@ -3711,7 +4477,7 @@ namespace DS4Windows
                     xboxControl = (X360Controls)action.actionBtn;
                     if (xboxControl >= X360Controls.LXNeg && xboxControl <= X360Controls.Start)
                     {
-                        DS4Controls tempDS4Control = reverseX360ButtonMapping[(int)xboxControl];
+                        DS4Controls tempDS4Control = ctrl.ProfileSettingsService.ReverseX360ButtonMapping[(int)xboxControl];
                         customMapQueue[device].Enqueue(new ControlToXInput(dcs.control, tempDS4Control));
                         //tempControlDict.Add(dcs.control, tempDS4Control);
                     }
@@ -3813,7 +4579,7 @@ namespace DS4Windows
                             default: break;
                         }
                     }
-                    else if (xboxControl >= X360Controls.MouseUp && xboxControl <= X360Controls.AbsMouseRight)
+                    else if (xboxControl >= X360Controls.MouseUp && xboxControl <= X360Controls.MouseRight)
                     {
                         switch (xboxControl)
                         {
@@ -3857,54 +4623,6 @@ namespace DS4Windows
 
                                     break;
                                 }
-                            case X360Controls.AbsMouseUp:
-                                {
-                                    double tempY = GetAbsMouseMapping(device, dcs.control, cState, eState,
-                                        fieldMapping, xboxControl, absMouseOut, ctrl, out bool transformed);
-                                    if (transformed && !absMouseOut.dirtyY)
-                                    {
-                                        absMouseOut.y = tempY;
-                                        absMouseOut.dirtyY = true;
-                                    }
-                                }
-
-                                break;
-                            case X360Controls.AbsMouseDown:
-                                {
-                                    double tempY = GetAbsMouseMapping(device, dcs.control, cState, eState,
-                                        fieldMapping, xboxControl, absMouseOut, ctrl, out bool transformed);
-                                    if (transformed && !absMouseOut.dirtyY)
-                                    {
-                                        absMouseOut.y = tempY;
-                                        absMouseOut.dirtyY = true;
-                                    }
-                                }
-
-                                break;
-                            case X360Controls.AbsMouseLeft:
-                                {
-                                    double tempX = GetAbsMouseMapping(device, dcs.control, cState, eState,
-                                        fieldMapping, xboxControl, absMouseOut, ctrl, out bool transformed);
-                                    if (transformed && !absMouseOut.dirtyX)
-                                    {
-                                        absMouseOut.x = tempX;
-                                        absMouseOut.dirtyX = true;
-                                    }
-                                }
-
-                                break;
-                            case X360Controls.AbsMouseRight:
-                                {
-                                    double tempX = GetAbsMouseMapping(device, dcs.control, cState, eState,
-                                        fieldMapping, xboxControl, absMouseOut, ctrl, out bool transformed);
-                                    if (transformed && !absMouseOut.dirtyX)
-                                    {
-                                        absMouseOut.x = tempX;
-                                        absMouseOut.dirtyX = true;
-                                    }
-                                }
-
-                                break;
 
                             default: break;
                         }
@@ -3914,16 +4632,16 @@ namespace DS4Windows
                     {
                         if (GetBoolActionMapping(device, dcs.control, cState, eState, tp, fieldMapping))
                         {
-                            if (!pressedonce[keyvalue])
+                            if (!GetIsToggledOn(keyvalue, null, device))
                             {
                                 deviceState.currentClicks.toggle = !deviceState.currentClicks.toggle;
-                                pressedonce[keyvalue] = true;
+                                // Do NOT set IsToggledOn here; Action implementation handles it.
                             }
                             deviceState.currentClicks.toggleCount++;
                         }
                         else
                         {
-                            pressedonce[keyvalue] = false;
+                            // Do NOT clear IsToggledOn here; Action implementation handles it.
                         }
                     }
 
@@ -3985,46 +4703,25 @@ namespace DS4Windows
                 }
         }
 
-        private static bool IfAxisIsNotModified(int device, bool shift, DS4Controls dc)
+        // 注: 呼び出し元のない private メソッド（Phase6-Step3-6a 時点で確認）。Global 参照だけ外し、削除は Phase7 の整理で判断する。
+        private static bool IfAxisIsNotModified(int device, bool shift, DS4Controls dc, DS4Windows.DI.IProfileSettingsService settings)
         {
-            return shift ? false : GetDS4CSetting(device, dc).actionType == DS4ControlSettings.ActionType.Default;
+            return shift ? false : settings.GetDS4CSetting(device, dc).actionType == DS4ControlSettings.ActionType.Default;
         }
 
-        /// <summary>
-        /// ★新規追加: actionDone配列を適切なサイズで初期化
-        /// Special Actions実行前に必ず呼び出す必要がある
-        /// </summary>
-        public static void InitializeActionDoneList()
+        // InitializeActionDoneList removed — ActionManager owns per-action state initialization.
+
+        // ログ用ヘルパー: スペシャルアクションのトリガー成立時に現在の beingTriggered エントリ数を出力
+        private static void LogActionDoneCountOnTrigger(int index, SpecialAction action, int device, ControlService ctrl, string context = "TRIGGER")
         {
-            lock (actionDoneLock)
+            try
             {
-                if (actionDoneInitialized)
-                {
-                    return; // 既に初期化済み
-                }
-
-                try
-                {
-                    var actions = GetActions();
-                    int totalActionCount = actions.Count;
-
-                    // actionDoneリストをクリアして適切なサイズで初期化
-                    actionDone.Clear();
-
-                    for (int i = 0; i < totalActionCount; i++)
-                    {
-                        actionDone.Add(new ActionState());
-                    }
-
-                    actionDoneInitialized = true;
-
-                    AppLogger.LogToGui($"ActionDone list initialized with {totalActionCount} entries", false);
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogToGui($"Failed to initialize actionDone list: {ex.Message}", true);
-                    actionDoneInitialized = false;
-                }
+                int count = ctrl?.SpecialActionRepository?.ActionList?.Count ?? 0;
+                DS4Windows.AppLogger.LogDebug($"SpecialAction {context}: device={device}, name={(action != null ? action.name : "(null)")}, index={index}, ActionEntries={count}");
+            }
+            catch
+            {
+                // ログは補助的な情報なので例外は無視
             }
         }
 
@@ -4034,77 +4731,13 @@ namespace DS4Windows
         /// 動作フロー：
         /// 1. 完了チェック：10msごとに初期化完了を確認
         /// 2. 完了確認時：スペシャルアクション実行のためループを抜ける
-        /// 3. 500msタイムアウト時：強制初期化を実行して先頭へループ
-        /// 4. 最大3回リトライ後：スペシャルアクション実行せず安全終了
         /// </summary>
-        private static async Task<bool> EnsureActionDoneInitialized()
+        private static Task<bool> EnsureActionDoneInitialized()
         {
-            const int maxRetries = 3;        // 最大3回リトライループ
-            const int maxWaitTimeMs = 500;   // 各回最大500ms待機
-            const int checkIntervalMs = 10;  // 10msごとに完了チェック
-
-            for (int retry = 0; retry < maxRetries; retry++)
-            {
-                // ★Step A: 完了チェック（ループ先頭での確認）
-                if (actionDoneInitialized)
-                {
-                    if (retry > 0)
-                        AppLogger.LogToGui($"ActionDone initialization confirmed on retry {retry}", false);
-                    return true; // ★完了確認→スペシャルアクション実行へ
-                }
-
-                if (retry == 0)
-                {
-                    AppLogger.LogToGui("Waiting for ActionDone list initialization to complete...", false);
-                }
-                else
-                {
-                    AppLogger.LogToGui($"ActionDone initialization retry {retry}/{maxRetries}...", false);
-                }
-
-                // ★Step B: 10msごとの完了チェック（最大1秒間）
-                int elapsedMs = 0;
-                while (elapsedMs < maxWaitTimeMs)
-                {
-                    lock (actionDoneLock)
-                    {
-                        if (actionDoneInitialized)
-                        {
-                            AppLogger.LogToGui($"ActionDone initialization completed after {elapsedMs}ms wait (retry {retry})", false);
-                            return true; // ★完了確認→スペシャルアクション実行へ
-                        }
-                    }
-
-                    await Task.Delay(checkIntervalMs); // 10ms待機
-                    elapsedMs += checkIntervalMs;
-                }
-
-                // ★Step C: 500msタイムアウト→強制初期化実行
-                AppLogger.LogToGui($"ActionDone initialization timeout ({maxWaitTimeMs}ms). Attempting forced initialization (retry {retry + 1}/{maxRetries})...", false);
-
-                try
-                {
-                    InitializeActionDoneList(); // 強制初期化実行
-
-                    if (actionDoneInitialized)
-                    {
-                        AppLogger.LogToGui($"Forced ActionDone initialization succeeded (retry {retry + 1})", false);
-                        // ★Step D: 先頭へループ（次の回で再度完了チェック）
-                    }
-                    else
-                    {
-                        AppLogger.LogToGui($"Forced ActionDone initialization failed (retry {retry + 1})", false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogToGui($"Failed to force ActionDone initialization (retry {retry + 1}): {ex.Message}", true);
-                }
-            }
-
-            // ★Step E: 3回リトライ完了→スペシャルアクション実行せず安全終了
-            AppLogger.LogToGui($"ActionDone initialization failed after {maxRetries} retries. Special Actions will be skipped for safety.", true);
-            return false;
+            // Compatibility: legacy callers expect an initialization wait mechanism.
+            // The new ActionManager-based model is ready at this point, so simply
+            // return success immediately to keep behavior safe during migration.
+            return Task.FromResult(true);
         }
 
         private static async void MapCustomAction(int device, DS4State cState, DS4State MappedState,
@@ -4122,7 +4755,7 @@ namespace DS4Windows
             if (!initializationSucceeded)
             {
                 // 3回リトライ失敗→スペシャルアクション実行せずに終了
-                AppLogger.LogToGui("ActionDone initialization failed after all retries. Skipping Special Actions for safety.", true);
+                AppLogger.LogToGui("BeingTriggered initialization failed after all retries. Skipping Special Actions for safety.", true);
                 return;
             }
 
@@ -4134,27 +4767,7 @@ namespace DS4Windows
                 // (for example due to data races with profile editing) is logged and doesn't
                 // bring down the process. MapCustomAction is an async void method, so
                 // unhandled exceptions would otherwise be fatal.
-                int actionDoneCount = actionDone.Count;
-                int totalActionCount = GetActions().Count;
-
-                // ★新規追加: サイズチェック（安全確認）
-                if (actionDoneCount != totalActionCount)
-                {
-                    // 想定外の状態：ログ出力して処理をスキップ
-                    // Rate-limit the log to avoid flooding UI/OS when this occurs
-                    try
-                    {
-                        var now = DateTime.UtcNow;
-                        if ((now - lastActionDoneMismatchLog) >= actionDoneMismatchLogInterval)
-                        {
-                            AppLogger.LogToGui($"ActionDone list size mismatch. Expected: {totalActionCount}, Actual: {actionDoneCount}", false);
-                            lastActionDoneMismatchLog = now;
-                        }
-                    }
-                    catch { }
-
-                    return;
-                }
+                int totalActionCount = ctrl.SpecialActionRepository.ActionList.Count;
 
                 DS4StateFieldMapping previousFieldMapping = null;
 
@@ -4162,7 +4775,30 @@ namespace DS4Windows
                 // while iterating (UI thread may modify Global.ProfileActions). Using an array
                 // prevents ArgumentOutOfRangeException / InvalidOperationException from
                 // crashing the async void mapping task.
-                string[] profileActions = getProfileActions(device)?.ToArray() ?? Array.Empty<string>();
+                string[] profileActions = ctrl.ProfileActionProvider.GetProfileActionsRaw(device)?.ToArray() ?? Array.Empty<string>();
+
+                // Issue8-1(3)是正: 抑制中のボタンのうち、実際に離されたものを解除する（デバイスにつき1回）。
+                // トリガー全体の成立/解除（triggeractivated）とは独立に、ボタン単位で判定する。
+                // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-3-Fix-Plan.md §2.3
+                try
+                {
+                    var currentlySuppressedSet = suppressedTriggerButtons[device];
+                    if (currentlySuppressedSet != null && currentlySuppressedSet.Count > 0)
+                    {
+                        // 列挙中の変更を避けるためコピーしてから判定する
+                        DS4Controls[] currentlySuppressed = new DS4Controls[currentlySuppressedSet.Count];
+                        currentlySuppressedSet.CopyTo(currentlySuppressed);
+                        for (int i = 0; i < currentlySuppressed.Length; i++)
+                        {
+                            DS4Controls suppressedControl = currentlySuppressed[i];
+                            if (!getBoolSpecialActionMapping(device, suppressedControl, cState, eState, tp, fieldMapping))
+                            {
+                                currentlySuppressedSet.Remove(suppressedControl);
+                            }
+                        }
+                    }
+                }
+                catch { }
 
                 for (int actionIndex = 0, profileListLen = profileActions.Length;
                      actionIndex < profileListLen; actionIndex++)
@@ -4171,12 +4807,12 @@ namespace DS4Windows
                     //SpecialAction action = GetAction(actionname);
                     //int index = GetActionIndexOf(actionname);
                     string actionname = profileActions[actionIndex];
-                    SpecialAction action = GetProfileAction(device, actionname);
-                    int index = GetProfileActionIndexOf(device, actionname);
+                    SpecialAction action = ctrl.ProfileActionProvider.GetProfileAction(device, actionname);
+                    int index = ctrl.ProfileActionProvider.GetProfileActionIndexOf(device, actionname);
 
                     // ★削除: 動的拡張処理を除去（事前初期化により不要）
                     // 安全チェックのみ実行
-                    if (index < 0 || index >= actionDoneCount)
+                    if (index < 0 || index >= totalActionCount)
                     {
                         // プロファイル読み込み時に一度だけログ出力済み。実行時はスキップのみ。
                         continue;
@@ -4191,7 +4827,7 @@ namespace DS4Windows
                     //If a key or button is assigned to the trigger, a key special action is used like
                     //a quick tap to use and hold to use the regular custom button/key
                     bool triggerToBeTapped = action.typeID == SpecialAction.ActionTypeId.None && action.trigger.Count == 1 &&
-                            (GetDS4CSetting(device, action.trigger[0])?.IsDefault ?? false);
+                            (ctrl.ProfileSettingsService.GetDS4CSetting(device, action.trigger[0])?.IsDefault ?? false);
                     if (!(action.typeID == SpecialAction.ActionTypeId.None || index < 0))
                     {
                         bool triggeractivated = true;
@@ -4216,7 +4852,7 @@ namespace DS4Windows
                                 if (nowAction[device] >= oldnowAction[device] + TimeSpan.FromSeconds(time))
                                     triggeractivated = true;
                             }
-                            else if (nowAction[device] < DateTime.UtcNow - TimeSpan.FromMilliseconds(100) + TimeSpan.FromMilliseconds(Global.DebouncingMs[device]))
+                            else if (nowAction[device] < DateTime.UtcNow - TimeSpan.FromMilliseconds(100) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device]))
                                 oldnowAction[device] = DateTime.UtcNow;
                         }
                         else if (triggerToBeTapped && oldnowKeyAct[device] == DateTime.MinValue)
@@ -4253,7 +4889,7 @@ namespace DS4Windows
                                 }
                             }
                             DateTime now = DateTime.UtcNow;
-                            if (!subtriggeractivated && now <= oldnowKeyAct[device] + TimeSpan.FromMilliseconds(250) + TimeSpan.FromMilliseconds(Global.DebouncingMs[device]))
+                            if (!subtriggeractivated && now <= oldnowKeyAct[device] + TimeSpan.FromMilliseconds(250) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device]))
                             {
                                 await Task.Delay(3); //if the button is assigned to the same key use a delay so the key down is the last action, not key up
                                 triggeractivated = true;
@@ -4282,6 +4918,12 @@ namespace DS4Windows
 
                         bool utriggeractivated = true;
                         int uTriggerCount = action.uTrigger.Count;
+                        // For Key-type SpecialActions, prefer single-trigger toggle mode.
+                        // Ignore any configured uTrigger/unload keys so toggling is handled by the same trigger key.
+                        if (action.typeID == SpecialAction.ActionTypeId.Key)
+                        {
+                            uTriggerCount = 0;
+                        }
                         if (action.typeID == SpecialAction.ActionTypeId.Key && uTriggerCount > 0)
                         {
                             //foreach (DS4Controls dc in action.uTrigger)
@@ -4298,8 +4940,65 @@ namespace DS4Windows
                         }
 
                         bool actionFound = false;
+                        // Trigger evaluation is frequent; avoid unconditional per-tick debug logging to prevent log flooding.
+
+                        // Issue8-1是正(1) + A案フォローアップ: 
+                        // トリガー未成立が連続して指定時間（FreshPressReleaseHoldMs = 80ms）継続して初めて
+                        // 「以後の成立イベントは正規のもの」としてアーム解除する（過渡期0クリアによる瞬間的OFFの誤解除を防止）。
+                        try
+                        {
+                            var freshPressArmState = ActionManager.GetStateFor(action, device);
+                            if (freshPressArmState != null)
+                            {
+                                if (!triggeractivated)
+                                {
+                                    // 未成立（OFF）の開始時刻を記録
+                                    if (freshPressArmState.UntriggeredTimestampTicks == 0)
+                                    {
+                                        freshPressArmState.UntriggeredTimestampTicks = Environment.TickCount64;
+                                    }
+                                    else if (Environment.TickCount64 - freshPressArmState.UntriggeredTimestampTicks >= ActionInstanceState.FreshPressReleaseHoldMs)
+                                    {
+                                        // 連続して80ms以上OFFが維持されたらガード解除
+                                        freshPressArmState.RequiresFreshPressAfterReset = false;
+                                    }
+                                }
+                                else
+                                {
+                                    // ボタンが押されている間（ON）はOFFタイマーをリセット
+                                    freshPressArmState.UntriggeredTimestampTicks = 0;
+                                }
+                            }
+                        }
+                        catch { }
+
                         if (triggeractivated)
                         {
+                            // Issue8-1(3)是正: トリガー成立中は、構成する全ボタンを抑制対象に加える。
+                            // 個々のボタンの解除はMapCustomAction冒頭の解除パス（§2.3）で、
+                            // トリガー全体の成立/解除とは独立にボタン単位で行われる。
+                            // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-3-Fix-Plan.md §2.2
+                            try
+                            {
+                                var suppressSet = suppressedTriggerButtons[device];
+                                if (suppressSet != null)
+                                {
+                                    for (int __si = 0, __salen = action.trigger.Count; __si < __salen; __si++)
+                                    {
+                                        suppressSet.Add(action.trigger[__si]);
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            // Issue8-3是正: 従来ここにあった「risingEdge = !GetBeingTriggered(...)」ベースの
+                            // 共通TRACEログ呼び出しは廃止した。MultiAction/XboxGameDVR型はBeingTriggeredを
+                            // trueに設定しないため、押下し続けている間ずっと「新規成立」と誤認してログが
+                            // 出続けるバグの原因になっていた（連射に見えた事象の正体）。
+                            // 対応として、ログ出力自体を「SpecialActionの実行が決定された、まさにその場所」
+                            // （各typeIDの分岐内、実行判定のif文の内側）に移動した。これにより、
+                            // ログ出力のためだけにBeingTriggeredの状態を判定する必要が無くなる。
+                            // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-RealDevice-Investigation-and-Fix-Report.md §7.4
                             for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
                             {
                                 DS4Controls dc = action.trigger[i];
@@ -4310,60 +5009,47 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!actionDone[index].dev[device])
+                                // Issue8-1是正(1)(2): プロファイル適用直後の押しっぱなし誤検知防止、
+                                // および同一アクションの実行中は新規実行を開始しない（仕様③④）。
+                                var programGateState = ActionManager.GetStateFor(action, device);
+                                bool programBlockedByFreshPress = programGateState != null && programGateState.RequiresFreshPressAfterReset;
+                                bool programBlockedByExecuting = programGateState != null && programGateState.IsExecuting;
+
+                                if (!GetBeingTriggered(index, action, device) && !programBlockedByFreshPress && !programBlockedByExecuting)
                                 {
-                                    actionDone[index].dev[device] = true;
-                                    if (!string.IsNullOrEmpty(action.extra))
+                                    // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
+                                    LogActionDoneCountOnTrigger(index, action, device, ctrl, "Program");
+
+                                    if (programGateState != null) programGateState.IsExecuting = true;
+                                    try
                                     {
-                                        int pos = action.extra.IndexOf("$hidden", StringComparison.OrdinalIgnoreCase);
-                                        if (pos >= 0)
+                                        // C5 / Phase1-D-2: ActionManager 経由（LaunchProcessAction）へのディスパッチ
+                                        bool handled = false;
+                                        try
                                         {
-                                            System.Diagnostics.Process specActionLaunchProc = new System.Diagnostics.Process();
-
-                                            // LaunchProgram specAction has $hidden argument to indicate that the child process window should be hidden (especially useful when launching .bat/.cmd batch files).
-                                            // Removes the first occurence of $hidden substring from extra argument because it was a special action modifier keyword
-                                            string cmdArgs = specActionLaunchProc.StartInfo.Arguments = action.extra.Remove(pos, 7);
-                                            string cmdExt = Path.GetExtension(action.details).ToLower();
-
-                                            if (cmdExt == ".bat" || cmdExt == ".cmd")
+                                            var ctx = new DS4Windows.TriggerContext
                                             {
-                                                // Launch batch script using the default command shell cmd (COMSPEC env variable)
-                                                specActionLaunchProc.StartInfo.FileName = System.Environment.GetEnvironmentVariable("COMSPEC");
-                                                specActionLaunchProc.StartInfo.Arguments = "/C \"" + action.details + "\" " + cmdArgs;
-                                            }
-                                            else
-                                            {
-                                                // Normal EXE executable app (action.details) with optional cmdline arguments (action.extra)
-                                                specActionLaunchProc.StartInfo.FileName = action.details;
-                                                specActionLaunchProc.StartInfo.Arguments = cmdArgs;
-                                            }
-
-                                            // Launch child process using hidden wnd option (the child process should probably do something and then close itself unless you want it to remain hidden in background)
-                                            specActionLaunchProc.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                                            specActionLaunchProc.StartInfo.CreateNoWindow = true;
-                                            specActionLaunchProc.StartInfo.UseShellExecute = true;
-                                            specActionLaunchProc.Start();
+                                                ActionDef = action,
+                                                Device = device,
+                                                IsEstablished = true
+                                            };
+                                            handled = DispatchInputEdge(ctx);
                                         }
-                                        else
+                                        catch { }
+
+                                        if (!handled)
                                         {
-                                            // No special process modifiers (ie. $hidden wnd keyword). Launch the child process using the default WinOS settings
-                                            using (Process temp = new Process())
-                                            {
-                                                temp.StartInfo.FileName = action.details;
-                                                temp.StartInfo.Arguments = action.extra;
-                                                temp.StartInfo.UseShellExecute = true;
-                                                temp.Start();
-                                            }
+                                            try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+
+                                            // フォールバック: DI未登録時も LaunchProcessAction に集約して安全に実行
+                                            new DS4Windows.Actions.LaunchProcessAction(action).Execute(null);
                                         }
                                     }
-                                    else
+                                    finally
                                     {
-                                        using (Process temp = new Process())
-                                        {
-                                            temp.StartInfo.FileName = action.details;
-                                            temp.StartInfo.UseShellExecute = true;
-                                            temp.Start();
-                                        }
+                                        if (programGateState != null) programGateState.IsExecuting = false;
                                     }
                                 }
                             }
@@ -4371,77 +5057,124 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (!actionDone[index].dev[device] && (!useTempProfile[device] || untriggeraction[device] == null || untriggeraction[device].typeID != SpecialAction.ActionTypeId.Profile))
-                                {
-                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
-                                    DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: actionDone={actionDone[index].dev[device]}, useTempProfile={useTempProfile[device]}");
-                                    
-                                    actionDone[index].dev[device] = true;
-                                    // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
-                                    if (action.uTrigger.Count > 0 || action.automaticUntrigger)
-                                    {
-                                        untriggeraction[device] = action;
-                                        untriggerindex[device] = index;
+                                // Issue8-1是正(1)(2): プロファイル適用直後の押しっぱなし誤検知防止、
+                                // および同一アクションの実行中は新規実行を開始しない（仕様③④）。
+                                // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-Trigger-Spec-Compliance-Analysis.md §3, §4
+                                var profileGateState = ActionManager.GetStateFor(action, device);
+                                bool profileBlockedByFreshPress = profileGateState != null && profileGateState.RequiresFreshPressAfterReset;
+                                bool profileBlockedByExecuting = profileGateState != null && profileGateState.IsExecuting;
 
-                                        // If the existing profile is a temp profile then store its name, because automaticUntrigger needs to know where to go back (empty name goes back to default regular profile)
-                                        untriggeraction[device].prevProfileName = (useTempProfile[device] ? tempprofilename[device] : string.Empty);
-                                    }
-                                    //foreach (DS4Controls dc in action.trigger)
-                                    for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
+                                if (!GetBeingTriggered(index, action, device) && !profileBlockedByFreshPress && !profileBlockedByExecuting && (!profileSettings.GetUseTempProfile(device) || deviceRuntime[device].UntriggerAction == null || deviceRuntime[device].UntriggerAction.typeID != SpecialAction.ActionTypeId.Profile))
+                                {
+                                    if (profileGateState != null) profileGateState.IsExecuting = true;
+                                    try
                                     {
-                                        DS4Controls dc = action.trigger[i];
-                                        DS4ControlSettings dcs = GetDS4CSetting(device, dc);
-                                        if (dcs.actionType != DS4ControlSettings.ActionType.Default)
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
+                                        DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: Triggered for device {device}, action={action.name}, target={action.details}");
+                                        DS4Windows.AppLogger.LogDebug($"SpecialAction PROFILE: beingTriggered={GetBeingTriggered(index, action, device)}, useTempProfile={profileSettings.GetUseTempProfile(device)}");
+
+                                        LogActionDoneCountOnTrigger(index, action, device, ctrl, "Profile");
+
+                                        // If Loadprofile special action doesn't have untrigger keys or automatic untrigger option is not set then don't set untrigger status. This way the new loaded profile allows yet another loadProfile action key event.
+                                        if (action.uTrigger.Count > 0 || action.automaticUntrigger)
                                         {
-                                            if (dcs.actionType == DS4ControlSettings.ActionType.Key)
+                                            deviceRuntime[device].UntriggerAction = action;
+                                            deviceRuntime[device].UntriggerIndex = index;
+
+                                            deviceRuntime[device].UntriggerAction.prevProfileWasTemporary = profileSettings.GetUseTempProfile(device);
+                                            deviceRuntime[device].UntriggerAction.prevProfileName = profileSettings.GetUseTempProfile(device)
+                                                ? profileSettings.GetTempProfileName(device)
+                                                : ctrl.ProfileRepository.ProfilePath[device];
+                                        }
+
+                                        for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
+                                        {
+                                            DS4Controls dc = action.trigger[i];
+                                            DS4ControlSettings dcs = ctrl.ProfileSettingsService.GetDS4CSetting(device, dc);
+                                            if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                                             {
-                                                uint tempKey = outputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
-                                                outputKBMHandler.PerformKeyRelease(tempKey);
-                                            }
-                                            else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
-                                            {
-                                                int[] keys = (int[])dcs.action.actionMacro;
-                                                for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
+                                                if (dcs.actionType == DS4ControlSettings.ActionType.Key)
                                                 {
-                                                    uint tempKey = outputKBMMapping.GetRealEventKey((uint)keys[j]);
-                                                    outputKBMHandler.PerformKeyRelease(tempKey);
+                                                    uint tempKey = ctrl.ProfileSettingsService.OutputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
+                                                    VirtualKBM.PerformKeyRelease(tempKey);
+                                                }
+                                                else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
+                                                {
+                                                    int[] keys = (int[])dcs.action.actionMacro;
+                                                    for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
+                                                    {
+                                                        uint tempKey = ctrl.ProfileSettingsService.OutputKBMMapping.GetRealEventKey((uint)keys[j]);
+                                                        VirtualKBM.PerformKeyRelease(tempKey);
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    DS4Device d = ctrl.DS4Controllers[device];
-                                    string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
-                                        (device + 1).ToString(), action.details, $"{d.Battery}");
-                                    bool display = Global.ProfileChangedNotification;
-
-                                    await Task.Run(() =>
-                                    {
-                                        d.HaltReportingRunAction(() =>
+                                        // C4-5: ActionManager 経由（ProfileSwitchAction / IProfileSwitcher）へのディスパッチを試行
+                                        // handled が true の場合は下の直接 ApplyProfile（フォールバック）をスキップし二重実行を防止
+                                        bool handled = false;
+                                        try
                                         {
-                                            // 共通メソッドを使用（ログ出力は1回のみ）
-                                            // スペシャルアクションは永続的なプロファイル切り替えなので isTemp=false
-                                            Global.ApplyProfile(device, action.details, false, true, ctrl,
-                                                DS4Windows.ProfileChangeSource.MappingAction, prolog, display);
-
-                                            if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
+                                            var ctx = new DS4Windows.TriggerContext
                                             {
-                                                // If the new profile has any actions with the same action key (controls) than this action (which doesn't have untrigger keys) then set status of those actions to wait for the release of the existing action key.
-                                                List<string> profileActionsNext = getProfileActions(device);
-                                                for (int actionIndexNext = 0, profileListLenNext = profileActionsNext.Count; actionIndexNext < profileListLenNext; actionIndexNext++)
+                                                ActionDef = action,
+                                                Device = device,
+                                                IsEstablished = true
+                                            };
+                                            handled = DispatchInputEdge(ctx);
+                                        }
+                                        catch { }
+
+                                        if (!handled)
+                                        {
+                                            try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+                                        }
+
+                                        if (!handled)
+                                        {
+                                            // フォールバック: DI未登録時は従来の直接 ApplyProfile 呼び出し
+                                            // TODO(Phase6-Step3-7, 決定K-1): IProfileApplicationService.ApplyProfile の既知の不具合K1
+                                            // （Phase6-Status.md §6.5: deviceIndex>=4 のスロットを拒否・戻り値を捨てて成功扱い・Halt を自身で行わない）が
+                                            // 是正されるまで、このフォールバックは `Global.ApplyProfile` のまま温存する（Phase6-Step3-Plan.md §2.4.3）。
+                                            // K1 是正後に、本ファイル冒頭で解決済みの静的フィールド `profileApplication`（IProfileApplicationService）の
+                                            // `ApplyProfile` 呼び出しへ置換予定。
+                                            DS4Device d = ctrl.DS4Controllers[device];
+                                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
+                                                (device + 1).ToString(), action.details, $"{d.Battery}");
+                                            bool display = profileSettings.ProfileChangedNotification;
+
+                                            await Task.Run(() =>
+                                            {
+                                                d.HaltReportingRunAction(() =>
                                                 {
-                                                    string actionnameNext = profileActionsNext[actionIndexNext];
-                                                    SpecialAction actionNext = GetProfileAction(device, actionnameNext);
-                                                    int indexNext = GetProfileActionIndexOf(device, actionnameNext);
+                                                    Global.ApplyProfile(device, action.details, action.IsTemporaryProfileAction, true, ctrl,
+                                                        DS4Windows.ProfileChangeSource.MappingAction, prolog);
 
-                                                    if (actionNext.controls == action.controls)
-                                                        actionDone[indexNext].dev[device] = true;
-                                                }
-                                            }
-                                        });
-                                    });
+                                                    if (action.uTrigger.Count == 0 && !action.automaticUntrigger)
+                                                    {
+                                                        IReadOnlyList<string> profileActionsNext = ctrl.ProfileActionProvider.GetProfileActionsRaw(device);
+                                                        for (int actionIndexNext = 0, profileListLenNext = profileActionsNext.Count; actionIndexNext < profileListLenNext; actionIndexNext++)
+                                                        {
+                                                            string actionnameNext = profileActionsNext[actionIndexNext];
+                                                            SpecialAction actionNext = ctrl.ProfileActionProvider.GetProfileAction(device, actionnameNext);
+                                                            int indexNext = ctrl.ProfileActionProvider.GetProfileActionIndexOf(device, actionnameNext);
 
-                                    return;
+                                                            if (actionNext != null && actionNext.controls == action.controls)
+                                                                DispatchOrSetBeingTriggered(actionNext, device, true);
+                                                        }
+                                                    }
+                                                });
+                                            });
+                                        }
+
+                                        return;
+                                    }
+                                    finally
+                                    {
+                                        if (profileGateState != null) profileGateState.IsExecuting = false;
+                                    }
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.Macro)
@@ -4450,18 +5183,39 @@ namespace DS4Windows
                                 if (!action.pressRelease)
                                 {
                                     // Macro run when trigger keys are pressed down (the default behaviour)
-                                    if (!actionDone[index].dev[device])
+                                    if (!GetBeingTriggered(index, action, device))
                                     {
-                                        DS4KeyType keyType = action.keyType;
-                                        actionDone[index].dev[device] = true;
-                                        /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
-                                        {
-                                            DS4Controls dc = action.trigger[i];
-                                            resetToDefaultValue2(dc, MappedState, outputfieldMapping);
-                                        }
-                                        */
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
 
-                                        PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, actionDone[index]);
+                                        LogActionDoneCountOnTrigger(index, action, device, ctrl, "Macro");
+
+                                        // C3-5: ActionManager 経由（MacroAction / IMacroPlayer）へのディスパッチを試行
+                                        // handled が true の場合は下の直接 PlayMacro（フォールバック）をスキップし二重実行を防止
+                                        bool handled = false;
+                                        try
+                                        {
+                                            var ctx = new DS4Windows.TriggerContext
+                                            {
+                                                ActionDef = action,
+                                                Device = device,
+                                                IsEstablished = true
+                                            };
+                                            handled = DispatchInputEdge(ctx);
+                                        }
+                                        catch { }
+
+                                        if (!handled)
+                                        {
+                                            try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+                                        }
+
+                                        if (!handled)
+                                        {
+                                            // フォールバック: DI未登録時は従来の直接 PlayMacro 呼び出し
+                                            DS4KeyType keyType = action.keyType;
+                                            PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, null);
+                                        }
                                     }
                                     else
                                     {
@@ -4471,58 +5225,194 @@ namespace DS4Windows
                                 }
                                 else
                                 {
-                                    // Macro is run when trigger keys are released (optional behaviour of macro special action))
+                                    // Macro is run when trigger keys are released (optional behaviour of macro special action)
                                     if (action.firstTouch)
                                     {
                                         action.firstTouch = false;
-                                        if (!actionDone[index].dev[device])
+                                        if (!GetBeingTriggered(index, action, device))
                                         {
-                                            DS4KeyType keyType = action.keyType;
-                                            actionDone[index].dev[device] = true;
-                                            /*for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
-                                            {
-                                                DS4Controls dc = action.trigger[i];
-                                                resetToDefaultValue2(dc, MappedState, outputfieldMapping);
-                                            }
-                                            */
+                                            // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                            try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
 
-                                            PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, null);
+                                            LogActionDoneCountOnTrigger(index, action, device, ctrl, "MacroRelease");
+
+                                            // C3-5: リリース時トリガーの DI ディスパッチ試行
+                                            bool handled = false;
+                                            try
+                                            {
+                                                var ctx = new DS4Windows.TriggerContext
+                                                {
+                                                    ActionDef = action,
+                                                    Device = device,
+                                                    IsEstablished = true
+                                                };
+                                                handled = DispatchInputEdge(ctx);
+                                            }
+                                            catch { }
+
+                                            if (!handled)
+                                            {
+                                                try { SetBeingTriggeredIf(-1, action, device, true); } catch { }
+                                            }
+
+                                            if (!handled)
+                                            {
+                                                DS4KeyType keyType = action.keyType;
+                                                PlayMacro(device, macroControl, String.Empty, action.macro, null, DS4Controls.None, keyType, action, null);
+                                            }
                                         }
                                     }
                                     else
                                         action.firstTouch = true;
                                 }
                             }
+                            else if (action.typeID == SpecialAction.ActionTypeId.Button)
+                            {
+                                actionFound = true;
+                                try
+                                {
+                                    // SpecialAction of type Button stores the X360Controls id in action.details
+                                    if (int.TryParse(action.details, out int btnVal))
+                                    {
+                                        X360Controls xboxControl = (X360Controls)btnVal;
+
+                                        // Touchpad click
+                                        if (xboxControl == X360Controls.TouchpadClick)
+                                        {
+                                            outputfieldMapping.outputTouchButton = true;
+                                        }
+                                        // Mouse-like outputs
+                                        else if (xboxControl >= X360Controls.LeftMouse && xboxControl <= X360Controls.WDOWN)
+                                        {
+                                            var sState = Mapping.deviceState[device];
+                                            switch (xboxControl)
+                                            {
+                                                case X360Controls.LeftMouse:
+                                                    sState.currentClicks.leftCount++;
+                                                    break;
+                                                case X360Controls.RightMouse:
+                                                    sState.currentClicks.rightCount++;
+                                                    break;
+                                                case X360Controls.MiddleMouse:
+                                                    sState.currentClicks.middleCount++;
+                                                    break;
+                                                case X360Controls.FourthMouse:
+                                                    sState.currentClicks.fourthCount++;
+                                                    break;
+                                                case X360Controls.FifthMouse:
+                                                    sState.currentClicks.fifthCount++;
+                                                    break;
+                                                case X360Controls.WUP:
+                                                    sState.currentClicks.wUpCount++;
+                                                    break;
+                                                case X360Controls.WDOWN:
+                                                    sState.currentClicks.wDownCount++;
+                                                    break;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            // Normal gamepad buttons (LB..Start, X/Y/A/B etc.)
+                                            if ((int)xboxControl < outputfieldMapping.buttons.Length && xboxControl != X360Controls.None)
+                                            {
+                                                try
+                                                {
+                                                    TryDispatchSATriggerEstablished(action, device, (ushort)btnVal, (uint)btnVal, false, VirtualKBM, () => outputfieldMapping.buttons[(int)xboxControl] = true);
+                                                }
+                                                catch
+                                                {
+                                                    outputfieldMapping.buttons[(int)xboxControl] = true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    AppLogger.LogToGui($"Button SpecialAction execution error: {ex}", true);
+                                }
+                            }
                             else if (action.typeID == SpecialAction.ActionTypeId.Key)
                             {
                                 actionFound = true;
+                                bool prevActionDone = GetBeingTriggered(index, action, device);
+                                if (!prevActionDone)
+                                    AppLogger.LogDebug($"SpecialAction KEY entry: name={action.name}, device={device}, uTriggerCount={uTriggerCount}, untriggerindex={deviceRuntime[device].UntriggerIndex}, beingTriggered={GetBeingTriggered(index, action, device)}");
 
-                                if (uTriggerCount == 0 || (uTriggerCount > 0 && untriggerindex[device] == -1 && !actionDone[index].dev[device]))
+                                if (uTriggerCount == 0 || (uTriggerCount > 0 && deviceRuntime[device].UntriggerIndex == -1 && !GetBeingTriggered(index, action, device)))
                                 {
-                                    actionDone[index].dev[device] = true;
-                                    untriggerindex[device] = index;
+                                    if (!prevActionDone)
+                                    {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
+                                        LogActionDoneCountOnTrigger(index, action, device, ctrl, "KeyTriggered");
+                                        try
+                                        {
+                                            string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
+                                            AppLogger.LogDebug($"SpecialAction KeyTriggered: device={device}, name={action.name}, trigger={triggerCombo}, index={index}");
+                                        }
+                                        catch { }
+                                    }
+                                    DispatchOrSetBeingTriggered(action, device, true);
+                                    // For Toggle-type SpecialAction keys we do NOT register an untriggerindex here
+                                    // because toggle off/on is driven by successive triggers, not by physical release.
+                                    if (!action.keyType.HasFlag(DS4KeyType.Toggle))
+                                        deviceRuntime[device].UntriggerIndex = index;
+                                    else
+                                        deviceRuntime[device].UntriggerIndex = -1;
+                                    // For Key actions we keep single-trigger toggle behavior only;
+                                    // do not register an untrigger action here.
                                     ushort key;
                                     ushort.TryParse(action.details, out key);
+                                    if (!prevActionDone)
+                                        AppLogger.LogDebug($"SpecialAction KEY triggered: name={action.name}, device={device}, key={key}");
                                     if (uTriggerCount == 0)
                                     {
                                         SyntheticState.KeyPresses kp;
                                         if (!deviceState[device].keyPresses.TryGetValue(key, out kp))
                                         {
                                             deviceState[device].keyPresses[key] = kp = new SyntheticState.KeyPresses();
-                                            deviceState[device].nativeKeyAlias[key] = (ushort)Global.outputKBMMapping.GetRealEventKey(key);
+                                            deviceState[device].nativeKeyAlias[key] = (ushort)ctrl.ProfileSettingsService.OutputKBMMapping.GetRealEventKey(key);
                                         }
 
-                                        if (action.keyType.HasFlag(DS4KeyType.ScanCode))
-                                            kp.current.scanCodeCount++;
-                                        else
-                                            kp.current.vkCount++;
 
+                                        // Delegate to ActionManager: Key-specific behavior (Toggle vs Press)
+                                        // is handled by the Action implementation (e.g., KeyAction).
+                                        try
+                                        {
+                                            uint nativeKeyToUse = deviceState[device].nativeKeyAlias[key];
+                                            bool useScan = action.keyType.HasFlag(DS4KeyType.ScanCode);
+                                            var ctxKey = new DS4Windows.TriggerContext
+                                            {
+                                                ActionDef = action,
+                                                Device = device,
+                                                LogicalValue = key,
+                                                NativeValue = nativeKeyToUse,
+                                                UseScanCode = useScan,
+                                                OutputHandler = VirtualKBM,
+                                                IsEstablished = true
+                                            };
+                                            ActionManager.DispatchTriggerEdge(ctxKey);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            AppLogger.LogTrace($"Mapping dispatch to ActionManager failed for Key action: {ex}");
+                                        }
+
+                                        // keep repeatCount for compatibility with existing logic
                                         kp.current.repeatCount++;
                                     }
                                     else if (action.keyType.HasFlag(DS4KeyType.ScanCode))
-                                        outputKBMHandler.PerformKeyPressAlt(key);
+                                    {
+                                        AppLogger.LogDebug($"SpecialAction KEY direct PerformKeyPressAlt: name={action.name}, device={device}, key={key}");
+                                        VirtualKBM.PerformKeyPressAlt(key);
+                                    }
                                     else
-                                        outputKBMHandler.PerformKeyPress(key);
+                                    {
+                                        AppLogger.LogDebug($"SpecialAction KEY direct PerformKeyPress: name={action.name}, device={device}, key={key}");
+                                        VirtualKBM.PerformKeyPress(key);
+                                    }
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.DisconnectBT)
@@ -4537,8 +5427,11 @@ namespace DS4Windows
                                     //bool exclusive = /*tempBool =*/ d.isExclusive();
                                     if (deviceConn == ConnectionType.BT)
                                     {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         d.DisconnectBT();
-                                        ReleaseActionKeys(action, device);
+                                        ReleaseActionKeys(action, device, ctrl.ProfileSettingsService);
                                         return;
                                     }
                                     else if (deviceConn == ConnectionType.SONYWA)
@@ -4554,7 +5447,7 @@ namespace DS4Windows
                                 string[] dets = action.details.Split('|');
                                 if (dets.Length == 1)
                                     dets = action.details.Split(',');
-                                if (bool.Parse(dets[1]) && !actionDone[index].dev[device])
+                                if (bool.Parse(dets[1]) && !GetBeingTriggered(index, action, device))
                                 {
                                     AppLogger.LogToTray("Controller " + (device + 1) + ": " +
                                         ctrl.GetDS4Battery(device), true);
@@ -4562,7 +5455,7 @@ namespace DS4Windows
                                 if (bool.Parse(dets[2]))
                                 {
                                     DS4Device d = ctrl.DS4Controllers[device];
-                                    if (!actionDone[index].dev[device])
+                                    if (!GetBeingTriggered(index, action, device))
                                     {
                                         lastColor[device] = d.LightBarColor;
                                         DS4LightBar.forcelight[device] = true;
@@ -4573,7 +5466,15 @@ namespace DS4Windows
                                     if (fadetimer[device] < 100)
                                         DS4LightBar.forcedColor[device] = getTransitionedColor(ref lastColor[device], ref trans, fadetimer[device] += 2);
                                 }
-                                actionDone[index].dev[device] = true;
+                                // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                if (!GetBeingTriggered(index, action, device))
+                                {
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+                                }
+
+                                LogActionDoneCountOnTrigger(index, action, device, ctrl, "BatteryCheck");
+                                LogActionDoneCountOnTrigger(index, action, device, ctrl, "WheelRecalibrate");
+                                DispatchOrSetBeingTriggered(action, device, true);
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.SASteeringWheelEmulationCalibrate)
                             {
@@ -4583,23 +5484,38 @@ namespace DS4Windows
                                 // If controller is not already in SASteeringWheelCalibration state then enable it now. If calibration is active then complete it (commit calibration values)
                                 if (d.WheelRecalibrateActiveState == 0 && DateTime.UtcNow > (action.firstTap + TimeSpan.FromMilliseconds(3000)))
                                 {
+                                    // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                     action.firstTap = DateTime.UtcNow;
                                     d.WheelRecalibrateActiveState = 1;  // Start calibration process
                                 }
                                 else if (d.WheelRecalibrateActiveState == 2 && DateTime.UtcNow > (action.firstTap + TimeSpan.FromMilliseconds(3000)))
                                 {
+                                    // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                     action.firstTap = DateTime.UtcNow;
                                     d.WheelRecalibrateActiveState = 3;  // Complete calibration process
                                 }
 
-                                actionDone[index].dev[device] = true;
+                                DispatchOrSetBeingTriggered(action, device, true);
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.GyroCalibrate)
                             {
                                 actionFound = true;
 
-                                if (!actionDone[index].dev[device])
+                                // Issue8-1是正(1): プロファイル適用直後の押しっぱなし誤検知防止（仕様④）。
+                                // 本アクションは瞬時に完了する同期処理のため、実行重複防止(2)ガードは付与しない
+                                // （§4.4のリスク検討: 重複実行しても実害がない種別と判断）。
+                                var gyroGateState = ActionManager.GetStateFor(action, device);
+                                bool gyroBlockedByFreshPress = gyroGateState != null && gyroGateState.RequiresFreshPressAfterReset;
+
+                                if (!GetBeingTriggered(index, action, device) && !gyroBlockedByFreshPress)
                                 {
+                                    // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                    try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                     var d = ctrl.DS4Controllers[device];
 
                                     d.SixAxis.ResetContinuousCalibration();
@@ -4609,16 +5525,75 @@ namespace DS4Windows
                                         tempDev?.SixAxis.ResetContinuousCalibration();
                                     }
 
-                                    actionDone[index].dev[device] = true;
+                                    LogActionDoneCountOnTrigger(index, action, device, ctrl, "GyroCalibrate");
+                                    DispatchOrSetBeingTriggered(action, device, true);
                                 }
                             }
                         }
                         else
                         {
+                            // Handle Key-type (no uTrigger) release here so Press-mode keys
+                            // receive an explicit release call via KeyButtonActionController.
+                            if (action.typeID == SpecialAction.ActionTypeId.Key)
+                            {
+                                // Only handle single-trigger Key special actions (no uTrigger entries)
+                                if (action.uTrigger.Count == 0 && GetBeingTriggered(index, action, device) && deviceRuntime[device].UntriggerIndex == index)
+                                {
+                                    actionFound = true;
+                                    DispatchOrSetBeingTriggered(action, device, false);
+                                    deviceRuntime[device].UntriggerIndex = -1;
+                                    LogActionDoneCountOnTrigger(index, action, device, ctrl, "KeyReleased");
+                                    try
+                                    {
+                                        string triggerCombo = action.trigger != null && action.trigger.Count > 0 ? string.Join("+", action.trigger.Select(dc => dc.ToString())) : "(none)";
+                                        string released = "(unknown)";
+                                        if (action.trigger != null)
+                                        {
+                                            for (int ti = 0; ti < action.trigger.Count; ti++)
+                                            {
+                                                var dc = action.trigger[ti];
+                                                if (!getBoolSpecialActionMapping(device, dc, cState, eState, tp, fieldMapping))
+                                                {
+                                                    released = dc.ToString();
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (released == "(unknown)" && action.uTrigger != null)
+                                        {
+                                            for (int ui = 0; ui < action.uTrigger.Count; ui++)
+                                            {
+                                                var udc = action.uTrigger[ui];
+                                                if (!getBoolSpecialActionMapping(device, udc, cState, eState, tp, fieldMapping))
+                                                {
+                                                    released = udc.ToString();
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        AppLogger.LogDebug($"SpecialAction KeyReleased: device={device}, name={action.name}, trigger={triggerCombo}, released={released}, index={index}");
+                                    }
+                                    catch { }
+                                    // (Duplicate KeyReleased logging removed — preserved single log above)
+                                    ushort key;
+                                    ushort.TryParse(action.details, out key);
+                                    try
+                                    {
+                                        uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
+                                        bool useScanRel = action.keyType.HasFlag(DS4KeyType.ScanCode);
+                                        TryDispatchSATriggerReleased(action, device, key, nativeKeyToUse, useScanRel, VirtualKBM);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        AppLogger.LogTrace($"SpecialAction KEY untrigger dispatch failed: {ex}");
+                                    }
+                                }
+                            }
+
                             if (action.typeID == SpecialAction.ActionTypeId.BatteryCheck)
                             {
                                 actionFound = true;
-                                if (actionDone[index].dev[device])
+                                if (GetBeingTriggered(index, action, device))
                                 {
                                     fadetimer[device] = 0;
                                     /*if (prevFadetimer[device] == fadetimer[device])
@@ -4629,7 +5604,7 @@ namespace DS4Windows
                                     else
                                         prevFadetimer[device] = fadetimer[device];*/
                                     DS4LightBar.forcelight[device] = false;
-                                    actionDone[index].dev[device] = false;
+                                    DispatchOrSetBeingTriggered(action, device, false);
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.DisconnectBT && action.pressRelease)
@@ -4642,8 +5617,8 @@ namespace DS4Windows
                                     if (d.isDS4Idle())
                                     {
                                         d.DisconnectDongle();
-                                        ReleaseActionKeys(action, device);
-                                        actionDone[index].dev[device] = false;
+                                        ReleaseActionKeys(action, device, ctrl.ProfileSettingsService);
+                                        DispatchOrSetBeingTriggered(action, device, false);
                                         action.pressRelease = false;
                                     }
                                 }
@@ -4654,9 +5629,14 @@ namespace DS4Windows
                             {
                                 // Ignore
                                 actionFound = true;
-                                actionDone[index].dev[device] = false;
+                                DispatchOrSetBeingTriggered(action, device, false);
                             }
                         }
+
+                        // NOTE: IsToggledOn lifecycle for SpecialAction Key (toggle) is now managed by the
+                        // Action implementation (KeyAction) via ActionManager.SetToggledOn.
+                        // Mapping must not clear per-action IsToggledOn here to avoid races with
+                        // the Action implementation and synthetic repeat flows.
 
                         if (!actionFound)
                         {
@@ -4664,16 +5644,47 @@ namespace DS4Windows
                             {
                                 actionFound = true;
 
-                                if (untriggerindex[device] > -1 && !actionDone[index].dev[device])
+                                if (deviceRuntime[device].UntriggerIndex > -1 && GetBeingTriggered(index, action, device))
                                 {
-                                    actionDone[index].dev[device] = true;
-                                    untriggerindex[device] = -1;
-                                    ushort key;
-                                    ushort.TryParse(action.details, out key);
-                                    if (action.keyType.HasFlag(DS4KeyType.ScanCode))
-                                        outputKBMHandler.PerformKeyReleaseAlt(key);
-                                    else
-                                        outputKBMHandler.PerformKeyRelease(key);
+                                    DispatchOrSetBeingTriggered(action, device, false);
+                                    deviceRuntime[device].UntriggerIndex = -1;
+                                    LogActionDoneCountOnTrigger(index, action, device, ctrl, "KeyReleased");
+                                    if (action.typeID == SpecialAction.ActionTypeId.Key)
+                                    {
+                                        ushort key;
+                                        ushort.TryParse(action.details, out key);
+                                        try
+                                        {
+                                            uint nativeKeyToUse = SyntheticDispatcher.ResolveNativeKey(key);
+                                            bool useScanRel = action.keyType.HasFlag(DS4KeyType.ScanCode);
+                                            TryDispatchSATriggerReleased(action, device, key, nativeKeyToUse, useScanRel, VirtualKBM);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            AppLogger.LogTrace($"PressActionController.OnTriggerOff failed: {ex}");
+                                        }
+                                    }
+                                    else if (action.typeID == SpecialAction.ActionTypeId.Button)
+                                    {
+                                        try
+                                        {
+                                            if (int.TryParse(action.details, out int btnVal2))
+                                            {
+                                                try
+                                                {
+                                                    TryDispatchSATriggerReleased(action, device, (ushort)btnVal2, (uint)btnVal2, false, VirtualKBM);
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    AppLogger.LogTrace($"SpecialAction BUTTON untrigger dispatch failed: {ex}");
+                                                }
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            AppLogger.LogTrace($"SpecialAction BUTTON untrigger dispatch failed: {ex}");
+                                        }
+                                    }
                                 }
                             }
                             else if (action.typeID == SpecialAction.ActionTypeId.XboxGameDVR || action.typeID == SpecialAction.ActionTypeId.MultiAction)
@@ -4711,7 +5722,7 @@ namespace DS4Windows
                                 {
                                     // pressed down
                                     action.pastTime = DateTime.UtcNow;
-                                    if (action.pastTime <= action.firstTap + TimeSpan.FromMilliseconds(150) + TimeSpan.FromMilliseconds(Global.DebouncingMs[device]))
+                                    if (action.pastTime <= action.firstTap + TimeSpan.FromMilliseconds(150) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device]))
                                     {
                                         action.tappedOnce = tappedOnce = false;
                                         action.secondtouchbegin = secondtouchbegin = true;
@@ -4736,7 +5747,7 @@ namespace DS4Windows
                                     {
                                         action.firstTouch = firstTouch = false;
                                         //firstTouch = false;
-                                        if (DateTime.UtcNow <= (action.pastTime + TimeSpan.FromMilliseconds(150) + TimeSpan.FromMilliseconds(Global.DebouncingMs[device])) && !tappedOnce)
+                                        if (DateTime.UtcNow <= (action.pastTime + TimeSpan.FromMilliseconds(150) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device])) && !tappedOnce)
                                         {
                                             action.tappedOnce = tappedOnce = true;
                                             //tappedOnce = true;
@@ -4766,17 +5777,22 @@ namespace DS4Windows
                                         }
                                     }
 
-                                    if ((DateTime.UtcNow - action.TimeofEnd) > TimeSpan.FromMilliseconds(150) + TimeSpan.FromMilliseconds(Global.DebouncingMs[device]))
+                                    if ((DateTime.UtcNow - action.TimeofEnd) > TimeSpan.FromMilliseconds(150) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device]))
                                     {
                                         if (macro != "")
+                                        {
+                                            // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                            try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                             PlayMacro(device, macroControl, macro, null, null, DS4Controls.None, DS4KeyType.None);
+                                        }
 
                                         tappedOnce = false;
                                         action.tappedOnce = false;
                                     }
                                     //if it fails the method resets, and tries again with a new tester value (gives tap a delay so tap and hold can work)
                                 }
-                                else if (firstTouch && (DateTime.UtcNow - action.pastTime) > TimeSpan.FromMilliseconds(500) + TimeSpan.FromMilliseconds(Global.DebouncingMs[device])) //helddown
+                                else if (firstTouch && (DateTime.UtcNow - action.pastTime) > TimeSpan.FromMilliseconds(500) + TimeSpan.FromMilliseconds(profileSettings.DebouncingMs[device])) //helddown
                                 {
                                     if (action.typeID == SpecialAction.ActionTypeId.MultiAction)
                                     {
@@ -4795,7 +5811,12 @@ namespace DS4Windows
                                     }
 
                                     if (macro != "")
+                                    {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         PlayMacro(device, macroControl, macro, null, null, DS4Controls.None, DS4KeyType.None);
+                                    }
 
                                     firstTouch = false;
                                     action.firstTouch = false;
@@ -4819,7 +5840,12 @@ namespace DS4Windows
                                     }
 
                                     if (macro != "")
+                                    {
+                                        // Issue8-3是正: 実行が決定されたこの場所でのみログ出力する（risingEdge判定不要）。
+                                        try { LogSpecialActionTrace(actionname, action, device, true, outputfieldMapping, Mapping.deviceState); } catch { }
+
                                         PlayMacro(device, macroControl, macro, null, null, DS4Controls.None, DS4KeyType.None);
+                                    }
 
                                     secondtouchbegin = false;
                                     action.secondtouchbegin = false;
@@ -4827,7 +5853,7 @@ namespace DS4Windows
                             }
                             else
                             {
-                                actionDone[index].dev[device] = false;
+                                DispatchOrSetBeingTriggered(action, device, false);
                             }
                         }
                     }
@@ -4845,11 +5871,13 @@ namespace DS4Windows
                 return;
             }
 
-            if (untriggeraction[device] != null)
+            if (deviceRuntime[device].UntriggerAction != null)
             {
-                SpecialAction action = untriggeraction[device];
-                int index = untriggerindex[device];
+                SpecialAction action = deviceRuntime[device].UntriggerAction;
+                int index = deviceRuntime[device].UntriggerIndex;
                 bool utriggeractivated;
+
+                AppLogger.LogDebug($"SpecialAction UNTRIGGER check: device={device}, untriggeraction={(action != null ? action.name : "null")}, untriggerindex={index}");
 
                 if (!action.automaticUntrigger)
                 {
@@ -4885,95 +5913,210 @@ namespace DS4Windows
 
                 if (utriggeractivated && action.typeID == SpecialAction.ActionTypeId.Profile)
                 {
-                    if ((action.controls == action.ucontrols && !actionDone[index].dev[device]) || //if trigger and end trigger are the same
+                    if ((action.controls == action.ucontrols && !GetBeingTriggered(index, action, device)) || //if trigger and end trigger are the same
                     action.controls != action.ucontrols)
                     {
-                        if (useTempProfile[device])
                         {
                             //foreach (DS4Controls dc in action.uTrigger)
                             for (int i = 0, arlen = action.uTrigger.Count; i < arlen; i++)
                             {
                                 DS4Controls dc = action.uTrigger[i];
-                                actionDone[index].dev[device] = true;
-                                DS4ControlSettings dcs = GetDS4CSetting(device, dc);
+                                LogActionDoneCountOnTrigger(index, action, device, ctrl, "UntriggerProfile");
+                                DispatchOrSetBeingTriggered(action, device, true);
+                                DS4ControlSettings dcs = ctrl.ProfileSettingsService.GetDS4CSetting(device, dc);
                                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                                 {
                                     if (dcs.actionType == DS4ControlSettings.ActionType.Key)
-                                        outputKBMHandler.PerformKeyRelease((ushort)dcs.action.actionKey);
+                                        VirtualKBM.PerformKeyRelease((ushort)dcs.action.actionKey);
                                     else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
                                     {
                                         int[] keys = dcs.action.actionMacro;
                                         for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
-                                            outputKBMHandler.PerformKeyRelease((ushort)keys[j]);
+                                            VirtualKBM.PerformKeyRelease((ushort)keys[j]);
                                     }
                                 }
                             }
 
-                            string profileName = untriggeraction[device].prevProfileName;
-                            DS4Device d = ctrl.DS4Controllers[device];
-                            string prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile,
-                                (device + 1).ToString(), (profileName == string.Empty ? ProfilePath[device] : profileName), $"{d.Battery}");
-
-                            try
-                            {
-                                bool display = Global.ProfileChangedNotification;
-                                string profToShow = (profileName == string.Empty ? ProfilePath[device] : profileName);
-                                bool isTempProf = (profileName != string.Empty);
-                                AppLogger.LogProfileChanged(device, profToShow, isTempProf, DS4Windows.ProfileChangeSource.MappingAction, prolog, DateTime.UtcNow, display);
-                            }
-                            catch { }
-
-                            untriggeraction[device] = null;
-
-                            if (profileName == string.Empty)
-                                LoadProfile(device, false, ctrl); // Previous profile was a regular default profile of a controller
-                            else
-                                LoadTempProfile(device, profileName, true, ctrl); // Previous profile was a temporary profile, so re-load it as a temp profile
+                            new DS4Windows.Actions.ProfileSwitchAction(action, device).Stop(null);
                         }
                     }
                 }
                 else
                 {
-                    actionDone[index].dev[device] = false;
+                    DispatchOrSetBeingTriggered(action, device, false);
                 }
+
+                // (moved) reset of toggled-on flag handled in main action loop
             }
         }
 
-        private static void ReleaseActionKeys(SpecialAction action, int device)
+        private static void ReleaseActionKeys(SpecialAction action, int device, DS4Windows.DI.IProfileSettingsService settings)
         {
             //foreach (DS4Controls dc in action.trigger)
             for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
             {
                 DS4Controls dc = action.trigger[i];
-                DS4ControlSettings dcs = GetDS4CSetting(device, dc);
+                DS4ControlSettings dcs = settings.GetDS4CSetting(device, dc);
                 if (dcs.actionType != DS4ControlSettings.ActionType.Default)
                 {
                     if (dcs.actionType == DS4ControlSettings.ActionType.Key)
                     {
-                        uint tempKey = outputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
-                        outputKBMHandler.PerformKeyRelease(tempKey);
+                        uint tempKey = settings.OutputKBMMapping.GetRealEventKey((uint)dcs.action.actionKey);
+                        VirtualKBM.PerformKeyRelease(tempKey);
                     }
                     else if (dcs.actionType == DS4ControlSettings.ActionType.Macro)
                     {
                         int[] keys = dcs.action.actionMacro;
                         for (int j = 0, keysLen = keys.Length; j < keysLen; j++)
                         {
-                            uint tempKey = outputKBMMapping.GetRealEventKey((uint)keys[j]);
-                            outputKBMHandler.PerformKeyRelease(tempKey);
+                            uint tempKey = settings.OutputKBMMapping.GetRealEventKey((uint)keys[j]);
+                            VirtualKBM.PerformKeyRelease(tempKey);
                         }
                     }
                 }
             }
         }
 
+        // 指定したキーに関連するランタイム上の合成状態を全デバイス分クリアする。
+        // 呼び出しタイミング: 保存直後など、当該キーの設定が変更された直後に呼ぶことで
+        // 古い合成キューや押下フラグが残るのを防止する。
+        public static void ResetRuntimeStateForKey(ushort key)
+        {
+            try
+            {
+                for (int d = 0; d < deviceState.Length; d++)
+                {
+                    // keyPresses から該当キーを削除
+                    if (deviceState[d].keyPresses.ContainsKey(key))
+                        deviceState[d].keyPresses.Remove(key);
+
+                    // native alias も削除
+                    if (deviceState[d].nativeKeyAlias.ContainsKey(key))
+                        deviceState[d].nativeKeyAlias.Remove(key);
+                }
+
+                // 押下済みフラグをクリア（ActionManager優先、legacy配列はフォールバック）
+                try { ActionManager.ClearToggledOnForKey(key); } catch { }
+                // Legacy `PressedOnce` removed; use ActionManager `IsToggledOn` to represent per-key toggled-on state.
+                // ActionManager.ClearToggledOnForKey already invoked above.
+
+                AppLogger.LogToGui($"Runtime state for key {key} cleared on all devices.", false);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"Failed to reset runtime key state for {key}: {ex.Message}", true);
+            }
+        }
+        /// <summary>
+        /// DI/IMacroPlayer 用のマクロ実行エントリーポイント
+        /// </summary>
+        /// <summary>
+        /// DI/IMacroPlayer 用のマクロ実行エントリーポイント
+        /// </summary>
+        internal static void PlayMacroDirect(int device, SpecialAction action)
+        {
+            if (device < 0 || device >= 4 || action == null) return;
+            PlayMacro(device, new bool[4], String.Empty, action.macro, null, DS4Controls.None, action.keyType, action, null);
+        }
+
+        /// <summary>
+        /// DI/IMacroPlayer 用のマクロ停止・キー解放エントリーポイント
+        /// </summary>
+        internal static void EndMacroDirect(int device)
+        {
+            if (device < 0 || device >= 4) return;
+            EndMacro(device, new bool[4], string.Empty, DS4Controls.None);
+        }
+
+        internal static string TakePendingRestoreProfileName(int device, out bool previousProfileWasTemporary)
+        {
+            previousProfileWasTemporary = false;
+            if (device < 0 || device >= deviceRuntime.Length)
+                return null;
+
+            if (deviceRuntime[device].UntriggerAction == null)
+                return null;
+
+            previousProfileWasTemporary = deviceRuntime[device].UntriggerAction.prevProfileWasTemporary;
+            string profileName = deviceRuntime[device].UntriggerAction.prevProfileName;
+            deviceRuntime[device].UntriggerAction = null;
+            return profileName;
+        }
+
+        /// <summary>
+        /// DI/IProfileSwitcher 用のプロファイル切り替えエントリーポイント
+        /// </summary>
+        internal static void ApplyProfileDirect(int device, SpecialAction action)
+        {
+            profileApplication?.ApplyFromAction(device, action);
+        }
+
+        /// <summary>
+        /// DI/IProfileSwitcher 用の一時プロファイル復帰エントリーポイント
+        /// </summary>
+        internal static void RestoreProfileDirect(int device)
+        {
+            profileApplication?.RestoreFromAction(device);
+        }
+
         // Play macro as a background task. Optionally the new macro play waits for completion of a previous macro execution (synchronized macro special action).
         // Macro steps are defined either as macrostr string value, macroLst list<int> object or as macroArr integer array. Only one of these should have a valid macro definition when this method is called.
         // If the macro definition is a macroStr string value then it will be converted as integer array on the fl. If steps are already defined as list or array of integers then there is no need to do type cast conversion.
-        private static void PlayMacro(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action = null, ActionState actionDoneState = null)
+        private static void PlayMacro(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action = null, ActionInstanceState actionDoneState = null)
         {
-            if (action != null && action.synchronized)
+            // If caller didn't provide per-action state, obtain it so we can check for running macro.
+            ActionInstanceState st = actionDoneState;
+            if (st == null && action != null)
             {
-                // Run special action macros in synchronized order (ie. FirstIn-FirstOut). The trigger control name string is the execution queue identifier (ie. each unique trigger combination has an own synchronization queue).
+                try { st = ActionManager.GetStateFor(action, device); } catch { st = null; }
+            }
+
+            // Startup guard: if a macro iteration is already running for this action/device,
+            // skip starting another macro and log the decision (DECISION=RUN/NORUN).
+            //
+            // 暫定対策: action != null（SpecialAction経由）は上記の ActionInstanceState.IsMacroRunning
+            // で判定されるが、action == null（Controls タブの直接マクロ割り当て）にはこれが効かない
+            // （st が常に null のため isRunning が常に false になる）。そのため、control 単位の
+            // macroDispatchInFlight で同様の二重実行防止を行う。SpecialAction 経由の呼び出しは
+            // 常に control == DS4Controls.None で呼ばれるため、この分岐には入らず影響しない。
+            // 詳細・恒久対応の申し送りは macroDispatchInFlight 宣言部のコメントを参照。
+            bool controlIndexValid = control != DS4Controls.None;
+            int controlDispatchIdx = controlIndexValid ? DS4ControltoInt(control) : -1;
+
+            try
+            {
+                bool actionRunning = st != null && st.IsMacroRunning;
+                bool controlDispatchInFlight = false;
+
+                if (controlIndexValid)
+                {
+                    lock (macroDispatchLock)
+                    {
+                        controlDispatchInFlight = macroDispatchInFlight[controlDispatchIdx];
+                        if (!controlDispatchInFlight)
+                        {
+                            macroDispatchInFlight[controlDispatchIdx] = true;
+                        }
+                    }
+                }
+
+                bool isRunning = actionRunning || controlDispatchInFlight;
+                string decision = isRunning ? "NORUN" : "RUN";
+                AppLogger.LogTrace($"PlayMacro START GUARD: action={action?.name} device={device} control={control} IsMacroRunning={actionRunning} ControlDispatchInFlight={controlDispatchInFlight} DECISION={decision}");
+                if (isRunning) return;
+            }
+            catch { }
+
+            // Note: do not use a task-wide "macro running" guard here. Per-iteration
+            // running state is represented by `IsMacroRunning` on the ActionInstanceState
+            // and `RepeatMacro` semantics rely on `BeingTriggered`. Allow PlayMacro to
+            // start; synchronization for repeat macros is handled via `macroTaskQueue`.
+            // For "Repeat while held" macros we must avoid overlapping executions.
+            // Treat repeat-macros as synchronized so a new run waits for previous to finish.
+            bool shouldSync = action != null && (action.synchronized || keyType.HasFlag(DS4KeyType.RepeatMacro));
+            if (shouldSync)
+            {
+                // Run special action macros in synchronized order (ie. FirstIn-First-Out). The trigger control name string is the execution queue identifier (ie. each unique trigger combination has an own synchronization queue).
                 if (!macroTaskQueue[device].TryGetValue(action.controls, out Task prevTask))
                     macroTaskQueue[device].Add(action.controls, (Task.Factory.StartNew(() => PlayMacroTask(device, macroControl, macroStr, macroLst, macroArr, control, keyType, action, actionDoneState))));
                 else
@@ -4986,8 +6129,13 @@ namespace DS4Windows
         }
 
         // Play through a macro. The macro steps are defined either as string, List or Array object (always only one of those parameters is set to a valid value)
-        private static void PlayMacroTask(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action, ActionState actionDoneState)
+        private static void PlayMacroTask(int device, bool[] macrocontrol, string macroStr, List<int> macroLst, int[] macroArr, DS4Controls control, DS4KeyType keyType, SpecialAction action, ActionInstanceState actionDoneState)
         {
+            // Ensure we have the per-action state from ActionManager if not provided by caller
+            if (actionDoneState == null && action != null)
+            {
+                try { actionDoneState = ActionManager.GetStateFor(action, device); } catch { }
+            }
             if (!String.IsNullOrEmpty(macroStr))
             {
                 string[] skeys;
@@ -4998,88 +6146,222 @@ namespace DS4Windows
                     macroArr[i] = int.Parse(skeys[i]);
             }
 
-            // macro.StartsWith("164/9/9/164") || macro.StartsWith("18/9/9/18")
-            if ((macroLst != null && macroLst.Count >= 4 && ((macroLst[0] == 164 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 164) || (macroLst[0] == 18 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 18)))
-              || (macroArr != null && macroArr.Length >= 4 && ((macroArr[0] == 164 && macroArr[1] == 9 && macroArr[2] == 9 && macroArr[3] == 164) || (macroArr[0] == 18 && macroArr[1] == 9 && macroArr[2] == 9 && macroArr[3] == 18)))
-            )
+            // Do not mark a task-wide "macro running" flag here. `IsMacroRunning` will
+            // be set/cleared per single macro iteration below.
+
+            try
             {
-                int wait;
-                if (macroLst != null)
-                    wait = macroLst[macroLst.Count - 1];
-                else
-                    wait = macroArr[macroArr.Length - 1];
+                try { AppLogger.LogTrace($"PlayMacroTask START: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)} keyType={keyType}"); } catch { }
 
-                if (wait <= 300 || wait > ushort.MaxValue)
-                    wait = 1000;
-                else
-                    wait -= 300;
-
-                AltTabSwapping(wait, device);
-                if (control != DS4Controls.None)
-                    macrodone[DS4ControltoInt(control)] = true;
-            }
-            else if (control == DS4Controls.None || !macrodone[DS4ControltoInt(control)])
-            {
-                int macroCodeValue;
-                bool[] keydown = new bool[512];
-
-                if (control != DS4Controls.None)
-                    macrodone[DS4ControltoInt(control)] = true;
-
-                // Play macro codes and simulate key down/up events (note! The same key may go through several up and down events during the same macro).
-                // If the return value is TRUE then this method should do a asynchronized delay (the usual Thread.Sleep doesnt work here because it would block the main gamepad reading thread).
-                if (macroLst != null)
+                // macro.StartsWith("164/9/9/164") || macro.StartsWith("18/9/9/18")
+                if ((macroLst != null && macroLst.Count >= 4 && ((macroLst[0] == 164 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 164) || (macroLst[0] == 18 && macroLst[1] == 9 && macroLst[2] == 9 && macroLst[3] == 18)))
+                  || (macroArr != null && macroArr.Length >= 4 && ((macroArr[0] == 164 && macroArr[1] == 9 && macroArr[2] == 9 && macroArr[3] == 164) || (macroArr[0] == 18 && macroArr[1] == 9 && macroArr[2] == 9 && macroArr[3] == 18)))
+                )
                 {
-                    for (int i = 0; i < macroLst.Count; i++)
-                    {
-                        macroCodeValue = macroLst[i];
-                        if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
-                            Task.Delay(macroCodeValue - 300).Wait();
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < macroArr.Length; i++)
-                    {
-                        macroCodeValue = macroArr[i];
-                        if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
-                            Task.Delay(macroCodeValue - 300).Wait();
-                    }
-                }
+                    int wait;
+                    if (macroLst != null)
+                        wait = macroLst[macroLst.Count - 1];
+                    else
+                        wait = macroArr[macroArr.Length - 1];
 
-                // The macro is finished. If any of the keys is still in down state then release a key state (ie. simulate key up event) unless special action specified to keep the last state as it is left in a macro
-                if (action == null || !action.keepKeyState)
-                {
-                    for (int i = 0, arlength = keydown.Length; i < arlength; i++)
-                    {
-                        if (keydown[i])
-                            PlayMacroCodeValue(device, macrocontrol, keyType, i, keydown);
-                    }
+                    if (wait <= 300 || wait > ushort.MaxValue)
+                        wait = 1000;
+                    else
+                        wait -= 300;
 
-                    // Reset lightbar back to a default value (if the macro modified the color) because keepKeyState macro option was not set
-                    DS4LightBar.forcedFlash[device] = 0;
-                    DS4LightBar.forcelight[device] = false;
-                }
-
-                // Commented out rumble reset. No need to zero out rumble after a macro because it may conflict with a game generated rumble events (ie. macro would stop a game generated rumble effect).
-                // If macro generates rumble effects then the macro can stop the rumble as a last step or wait for rumble watchdog timer to do it after few seconds.
-                //Program.rootHub.DS4Controllers[device].setRumble(0, 0);
-
-                if (keyType.HasFlag(DS4KeyType.HoldMacro))
-                {
-                    Task.Delay(50).Wait();
+                    AltTabSwapping(wait, device);
                     if (control != DS4Controls.None)
-                        macrodone[DS4ControltoInt(control)] = false;
+                        macrodone[DS4ControltoInt(control)] = true;
+                }
+                else if (control == DS4Controls.None || !macrodone[DS4ControltoInt(control)])
+                {
+                    int macroCodeValue;
+                    bool[] keydown = new bool[512];
+
+                    if (control != DS4Controls.None)
+                        macrodone[DS4ControltoInt(control)] = true;
+
+                    // Play macro codes and simulate key down/up events (note! The same key may go through several up and down events during the same macro).
+                    // If the return value is TRUE then this method should do a asynchronized delay (the usual Thread.Sleep doesnt work here because it would block the main gamepad reading thread).
+                    if (macroLst != null)
+                    {
+                        for (int i = 0; i < macroLst.Count; i++)
+                        {
+                            macroCodeValue = macroLst[i];
+                            if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                Task.Delay(macroCodeValue - 300).Wait();
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < macroArr.Length; i++)
+                        {
+                            macroCodeValue = macroArr[i];
+                            if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                Task.Delay(macroCodeValue - 300).Wait();
+                        }
+                    }
+
+                    // The macro is finished. If any of the keys is still in down state then release a key state (ie. simulate key up event) unless special action specified to keep the last state as it is left in a macro
+                    if (action == null || !action.keepKeyState)
+                    {
+                        for (int i = 0, arlength = keydown.Length; i < arlength; i++)
+                        {
+                            if (keydown[i])
+                                PlayMacroCodeValue(device, macrocontrol, keyType, i, keydown);
+                        }
+
+                        // Reset lightbar back to a default value (if the macro modified the color) because keepKeyState macro option was not set
+                        DS4LightBar.forcedFlash[device] = 0;
+                        DS4LightBar.forcelight[device] = false;
+                    }
+
+                    // Commented out rumble reset. No need to zero out rumble after a macro because it may conflict with a game generated rumble events (ie. macro would stop a game generated rumble effect).
+                    // If macro generates rumble effects then the macro can stop the rumble as a last step or wait for rumble watchdog timer to do it after few seconds.
+                    //Program.rootHub.DS4Controllers[device].setRumble(0, 0);
+
+                    if (keyType.HasFlag(DS4KeyType.HoldMacro))
+                    {
+                        Task.Delay(50).Wait();
+                        if (control != DS4Controls.None)
+                            macrodone[DS4ControltoInt(control)] = false;
+                    }
+                    // Per-macro-unit end handling: call EndMacro for this completed macro run
+                    try
+                    {
+                        // Clear iteration-running before end handling so logs show iteration completed
+                        if (actionDoneState != null)
+                        {
+                            try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                        }
+
+                        if (!String.IsNullOrEmpty(macroStr))
+                            EndMacro(device, macrocontrol, macroStr, control);
+                        else if (macroLst != null)
+                            EndMacro(device, macrocontrol, macroLst, control);
+                        else if (macroArr != null)
+                            EndMacro(device, macrocontrol, macroArr, control);
+                        try { AppLogger.LogTrace($"PlayMacroTask MACRO EXECUTE END: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)}"); } catch { }
+                    }
+                    catch { }
+
+                }
+
+                // Repeat-while-held handling: instead of re-dispatching a released edge (which may enqueue
+                // additional macro runs), perform repeat-in-place. After a macro run completes, check the
+                // per-action BeingTriggered flag; if it remains true (trigger still held), run the macro again.
+                // This avoids accumulating a queue of runs that would execute after physical release.
+                if (action != null && keyType.HasFlag(DS4KeyType.RepeatMacro) && actionDoneState != null)
+                {
+                    bool keepRunning = true;
+                    while (keepRunning)
+                    {
+                        bool curBeing = false;
+                        try { curBeing = ActionManager.IsBeingTriggered(action, device); keepRunning = curBeing; } catch { keepRunning = false; curBeing = false; }
+
+                        // Log the recheck result and the decision whether we'll rerun this macro
+                        try
+                        {
+                            string decision = keepRunning ? "RERUN" : "NORUN";
+                            AppLogger.LogTrace($"PlayMacroTask ITERATION CHECK: action={action?.name} device={device} IsMacroRunning={actionDoneState?.IsMacroRunning ?? false} IsBeingTriggered={curBeing} DECISION={decision}");
+                        }
+                        catch { }
+
+                        if (!keepRunning) break;
+
+                        // Mark iteration running for this inline repeat
+                        if (actionDoneState != null)
+                        {
+                            try { lock (actionDoneState) { actionDoneState.IsMacroRunning = true; } } catch { }
+                        }
+
+                        // Execute the macro sequence again inline
+                        bool[] keydown = new bool[512];
+                        if (macroLst != null)
+                        {
+                            for (int i = 0; i < macroLst.Count; i++)
+                            {
+                                int macroCodeValue = macroLst[i];
+                                if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                    Task.Delay(macroCodeValue - 300).Wait();
+                            }
+                        }
+                        else if (macroArr != null)
+                        {
+                            for (int i = 0; i < macroArr.Length; i++)
+                            {
+                                int macroCodeValue = macroArr[i];
+                                if (PlayMacroCodeValue(device, macrocontrol, keyType, macroCodeValue, keydown))
+                                    Task.Delay(macroCodeValue - 300).Wait();
+                            }
+                        }
+
+                        if (action == null || !action.keepKeyState)
+                        {
+                            for (int i = 0, arlength = keydown.Length; i < arlength; i++)
+                            {
+                                if (keydown[i])
+                                    PlayMacroCodeValue(device, macrocontrol, keyType, i, keydown);
+                            }
+
+                            DS4LightBar.forcedFlash[device] = 0;
+                            DS4LightBar.forcelight[device] = false;
+                        }
+
+                        if (keyType.HasFlag(DS4KeyType.HoldMacro))
+                        {
+                            Task.Delay(50).Wait();
+                            if (control != DS4Controls.None)
+                                macrodone[DS4ControltoInt(control)] = false;
+                        }
+                        // Per-macro-unit end handling for this iteration
+                        try
+                        {
+                            // Clear iteration-running so end/logging shows iteration completed
+                            if (actionDoneState != null)
+                            {
+                                try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                            }
+
+                            if (!String.IsNullOrEmpty(macroStr))
+                                EndMacro(device, macrocontrol, macroStr, control);
+                            else if (macroLst != null)
+                                EndMacro(device, macrocontrol, macroLst, control);
+                            else if (macroArr != null)
+                                EndMacro(device, macrocontrol, macroArr, control);
+                            try { AppLogger.LogTrace($"PlayMacroTask MACRO EXECUTE END: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)}"); } catch { }
+                        }
+                        catch { }
+
+                        // loop will check BeingTriggered again
+                    }
                 }
             }
+            finally
+            {
+                if (actionDoneState != null)
+                {
+                    try { lock (actionDoneState) { actionDoneState.IsMacroRunning = false; } } catch { }
+                }
 
-            // If a special action type of Macro has "Repeat while held" option and actionDoneState object is defined then reset the action back to "not done" status in order to re-fire it if the trigger key is still held down
-            if (actionDoneState != null && keyType.HasFlag(DS4KeyType.RepeatMacro))
-                actionDoneState.dev[device] = false;
+                // 暫定対策: PlayMacro の START GUARD で確保した control 単位の
+                // ディスパッチ中フラグを、このマクロ実行（1回の PlayMacroTask 呼び出し。
+                // HoldMacro/RepeatMacro の内部再実行ループも含む）の終了時に必ず解除する。
+                if (control != DS4Controls.None)
+                {
+                    try
+                    {
+                        lock (macroDispatchLock) { macroDispatchInFlight[DS4ControltoInt(control)] = false; }
+                    }
+                    catch { }
+                }
+            }
+            try { AppLogger.LogTrace($"PlayMacroTask END: action={action?.name} device={device} IsMacroRunning={(actionDoneState != null ? actionDoneState.IsMacroRunning : false)} IsBeingTriggered={(action != null ? ActionManager.IsBeingTriggered(action, device) : false)}"); } catch { }
         }
 
         private static bool PlayMacroCodeValue(int device, bool[] macrocontrol, DS4KeyType keyType, int macroCodeValue, bool[] keydown)
         {
+            // TODO(Phase6-Step3-6c, 決定P2): 非同期マクロ経路（別スレッド、ctrl を持たない連鎖）のため、Mapping の静的 profileSettings から読む。Phase7 の instance 化（コンストラクタ注入）で解消する。
             bool doDelayOnCaller = false;
             if (macroCodeValue >= 261 && macroCodeValue <= DS4ControlSettings.MAX_MACRO_VALUE)
             {
@@ -5103,18 +6385,41 @@ namespace DS4Windows
                     switch (macroCodeValue)
                     {
                         //anything above 255 is not a keyvalue
-                        case 256: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTDOWN); break;
-                        case 257: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTDOWN); break;
-                        case 258: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEDOWN); break;
-                        case 259: outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1); break;
-                        case 260: outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2); break;
+                        case 256:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseLeftDown");
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_LEFTDOWN);
+                            break;
+                        case 257:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseRightDown");
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_RIGHTDOWN);
+                            break;
+                        case 258:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseMiddleDown");
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_MIDDLEDOWN);
+                            break;
+                        case 259:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonDown btn=1");
+                            VirtualKBM.PerformMouseButtonEventAlt(profileSettings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 1);
+                            break;
+                        case 260:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonDown btn=2");
+                            VirtualKBM.PerformMouseButtonEventAlt(profileSettings.OutputKBMMapping.MOUSEEVENTF_XBUTTONDOWN, 2);
+                            break;
 
                         default:
-                            uint eventMacroCode = !outputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
-                                outputKBMMapping.GetRealEventKey((uint)macroCodeValue);
+                            uint eventMacroCode = !profileSettings.OutputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
+                                profileSettings.OutputKBMMapping.GetRealEventKey((uint)macroCodeValue);
 
-                            if (keyType.HasFlag(DS4KeyType.ScanCode)) outputKBMHandler.PerformKeyPressAlt(eventMacroCode);
-                            else outputKBMHandler.PerformKeyPress(eventMacroCode);
+                            if (keyType.HasFlag(DS4KeyType.ScanCode))
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyPressAlt native={eventMacroCode}");
+                                VirtualKBM.PerformKeyPressAlt(eventMacroCode);
+                            }
+                            else
+                            {
+                                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyPress native={eventMacroCode}");
+                                VirtualKBM.PerformKeyPress(eventMacroCode);
+                            }
                             break;
                     }
                     keydown[macroCodeValue] = true;
@@ -5124,18 +6429,47 @@ namespace DS4Windows
                     switch (macroCodeValue)
                     {
                         //anything above 255 is not a keyvalue
-                        case 256: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_LEFTUP); break;
-                        case 257: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_RIGHTUP); break;
-                        case 258: outputKBMHandler.PerformMouseButtonEvent(outputKBMMapping.MOUSEEVENTF_MIDDLEUP); break;
-                        case 259: outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1); break;
-                        case 260: outputKBMHandler.PerformMouseButtonEventAlt(outputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2); break;
+                        case 256:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseLeftUp");
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_LEFTUP);
+                            break;
+                        case 257:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseRightUp");
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_RIGHTUP);
+                            break;
+                        case 258:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseMiddleUp");
+                            VirtualKBM.PerformMouseButtonEvent(profileSettings.OutputKBMMapping.MOUSEEVENTF_MIDDLEUP);
+                            break;
+                        case 259:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonUp btn=1");
+                            VirtualKBM.PerformMouseButtonEventAlt(profileSettings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 1);
+                            break;
+                        case 260:
+                            AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=MouseXButtonUp btn=2");
+                            VirtualKBM.PerformMouseButtonEventAlt(profileSettings.OutputKBMMapping.MOUSEEVENTF_XBUTTONUP, 2);
+                            break;
 
                         default:
-                            uint eventMacroCode = !outputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
-                                outputKBMMapping.GetRealEventKey((uint)macroCodeValue);
+                            uint eventMacroCode = !profileSettings.OutputKBMMapping.macroKeyTranslate ? (uint)macroCodeValue :
+                                profileSettings.OutputKBMMapping.GetRealEventKey((uint)macroCodeValue);
 
-                            if (keyType.HasFlag(DS4KeyType.ScanCode)) outputKBMHandler.PerformKeyReleaseAlt(eventMacroCode);
-                            else outputKBMHandler.PerformKeyRelease(eventMacroCode);
+                            if (keyType.HasFlag(DS4KeyType.ScanCode))
+                            {
+                                long _nowTicksDbg = DateTime.UtcNow.Ticks;
+                                long _deltaSendDbg = 0; // inline macro release: lastSyntheticSend not tracked here
+                                AppLogger.LogTrace($"INLINE RELEASE TRACE device={device} macroCode={macroCodeValue} native={eventMacroCode} lastSendDeltaMs={_deltaSendDbg}");
+                                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyReleaseAlt native={eventMacroCode}");
+                                VirtualKBM.PerformKeyReleaseAlt(eventMacroCode);
+                            }
+                            else
+                            {
+                                long _nowTicksDbg = DateTime.UtcNow.Ticks;
+                                long _deltaSendDbg = 0;
+                                AppLogger.LogTrace($"INLINE RELEASE TRACE device={device} macroCode={macroCodeValue} native={eventMacroCode} lastSendDeltaMs={_deltaSendDbg}");
+                                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} macroCode={macroCodeValue} event=KeyRelease native={eventMacroCode}");
+                                VirtualKBM.PerformKeyRelease(eventMacroCode);
+                            }
                             break;
                     }
                     keydown[macroCodeValue] = false;
@@ -5163,11 +6497,18 @@ namespace DS4Windows
             else if (macroCodeValue >= 1000000)
             {
                 // Rumble event
-                DS4Device d = Program.rootHub.DS4Controllers[device];
+                DS4Device d = null;
+                try
+                {
+                    var accessor = DS4WinWPF.AppHost.GetService<DS4Windows.Services.IDeviceStateAccessor>();
+                    if (accessor != null) d = accessor.GetController(device);
+                }
+                catch { }
+                if (d == null) d = Program.rootHub?.DS4Controllers[device];
                 string r = macroCodeValue.ToString().Substring(1);
                 byte heavy = (byte)(int.Parse(r[0].ToString()) * 100 + int.Parse(r[1].ToString()) * 10 + int.Parse(r[2].ToString()));
                 byte light = (byte)(int.Parse(r[3].ToString()) * 100 + int.Parse(r[4].ToString()) * 10 + int.Parse(r[5].ToString()));
-                if (Global.InverseRumbleMotors[device])
+                if (profileSettings.InverseRumbleMotors[device])
                     d.setRumble(heavy, light);
                 else
                     d.setRumble(light, heavy);
@@ -5210,10 +6551,12 @@ namespace DS4Windows
 
         private static void AltTabSwapping(int wait, int device)
         {
+            // TODO(Phase6-Step3-6c, 決定P2): 非同期マクロ経路（別スレッド、ctrl を持たない連鎖）のため、Mapping の静的 profileSettings から読む。Phase7 の instance 化（コンストラクタ注入）で解消する。
             if (altTabDone)
             {
                 altTabDone = false;
-                outputKBMHandler.PerformKeyPress(outputKBMMapping.KEY_TAB);
+                AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyPress TAB");
+                VirtualKBM.PerformKeyPress(profileSettings.OutputKBMMapping.KEY_TAB);
             }
             else
             {
@@ -5221,19 +6564,24 @@ namespace DS4Windows
                 if (altTabNow >= oldAltTabNow + TimeSpan.FromMilliseconds(wait))
                 {
                     oldAltTabNow = altTabNow;
-                    outputKBMHandler.PerformKeyPress(outputKBMMapping.KEY_TAB);
-                    outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_TAB);
+                    AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyPress TAB");
+                    VirtualKBM.PerformKeyPress(profileSettings.OutputKBMMapping.KEY_TAB);
+                    AppLogger.LogDebug($"EVENT SENT [INLINE] device={device} event=AltTab KeyRelease TAB");
+                    VirtualKBM.PerformKeyRelease(profileSettings.OutputKBMMapping.KEY_TAB);
                 }
             }
         }
 
         private static void AltTabSwappingRelease()
         {
+            // TODO(Phase6-Step3-6c, 決定P2): 非同期マクロ経路（別スレッド、ctrl を持たない連鎖）のため、Mapping の静的 profileSettings から読む。Phase7 の instance 化（コンストラクタ注入）で解消する。
             if (altTabNow < DateTime.UtcNow - TimeSpan.FromMilliseconds(10)) //in case multiple controls are mapped to alt+tab
             {
                 altTabDone = true;
-                outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_TAB);
-                outputKBMHandler.PerformKeyRelease(outputKBMMapping.KEY_LALT);
+                AppLogger.LogDebug($"EVENT SENT [INLINE] event=AltTab KeyRelease TAB");
+                VirtualKBM.PerformKeyRelease(profileSettings.OutputKBMMapping.KEY_TAB);
+                AppLogger.LogDebug($"EVENT SENT [INLINE] event=AltTab KeyRelease LALT");
+                VirtualKBM.PerformKeyRelease(profileSettings.OutputKBMMapping.KEY_LALT);
                 altTabNow = DateTime.UtcNow;
                 oldAltTabNow = DateTime.UtcNow - TimeSpan.FromDays(1);
             }
@@ -5242,13 +6590,14 @@ namespace DS4Windows
         private static void GetMouseWheelMapping(int device, DS4Controls control, DS4State cState,
             DS4StateExposed eState, Mouse tp, DS4StateFieldMapping fieldMap, bool down)
         {
+            // TODO(Phase6-Step3-6b, 決定P2): ctrl を持たない経路のため、Mapping の静的 profileSettings から読む。Phase7 の instance 化（コンストラクタ注入）で解消する。
             DateTime now = DateTime.UtcNow;
             if (now >= oldnow + TimeSpan.FromMilliseconds(10) && !pressagain)
             {
                 oldnow = now;
                 byte value = GetByteMapping(device, control, cState, eState, tp, fieldMap);
-                int wheelDir = down ? Global.outputKBMMapping.WHEEL_TICK_DOWN :
-                    Global.outputKBMMapping.WHEEL_TICK_UP;
+                int wheelDir = down ? profileSettings.OutputKBMMapping.WHEEL_TICK_DOWN :
+                    profileSettings.OutputKBMMapping.WHEEL_TICK_UP;
                 //double ratio = value / 255.0;
                 double ratio = (1.0 - 0.05) * (value / 255.0) + 0.05;
 
@@ -5258,7 +6607,7 @@ namespace DS4Windows
                 if (stickWheel >= 1.0)
                 {
                     int wheelTravel = (int)stickWheel * wheelDir;
-                    outputKBMHandler.PerformMouseWheelEvent(wheelTravel, 0);
+                    VirtualKBM.PerformMouseWheelEvent(wheelTravel, 0);
                     stickWheelRemainder = stickWheel - (int)stickWheel;
                 }
                 else
@@ -5270,361 +6619,18 @@ namespace DS4Windows
             }
         }
 
-        private static double GetAbsMouseMapping(int device, DS4Controls control, DS4State cState, DS4StateExposed eState,
-            DS4StateFieldMapping fieldMapping, X360Controls outputControl, AbsMouseOutput absMouseOut, ControlService ctrl, out bool transformed)
-        {
-            double result = 0.5;
-            transformed = false;
-            int controlNum = (int)control;
-            bool positive = outputControl == X360Controls.AbsMouseDown || outputControl == X360Controls.AbsMouseRight;
-            bool vertical = outputControl == X360Controls.AbsMouseUp || outputControl == X360Controls.AbsMouseDown;
-            ButtonAbsMouseInfo buttonAbsMouseInfo = ButtonAbsMouseInfos[device];
-            bool calculateRadiusAnti = buttonAbsMouseInfo.antiRadius != 0.0;
-            double minOut = 0.5;
-            double midOut = 0.5;
-            double maxFullOut = 0.5;
-            double widthMid = 0.0;
-            double heightMid = 0.0;
-            double outputMid = 0.0;
-            double dirCenter = 0.0;
-            if (!vertical)
-            {
-                widthMid = buttonAbsMouseInfo.width / 2.0;
-                outputMid = widthMid;
-                dirCenter = buttonAbsMouseInfo.xcenter;
-
-                maxFullOut = positive ? dirCenter + widthMid : dirCenter - widthMid;
-                minOut = positive ? dirCenter - widthMid : dirCenter + widthMid;
-                midOut = dirCenter;
-                //maxFullOut = positive ? buttonAbsMouseInfo.maxX : buttonAbsMouseInfo.minX;
-                //minOut = buttonAbsMouseInfo.minX;
-                //midOut = ((buttonAbsMouseInfo.maxX - minOut) / 2.0) + minOut;
-            }
-            else
-            {
-                heightMid = buttonAbsMouseInfo.height / 2.0;
-                outputMid = heightMid;
-                dirCenter = buttonAbsMouseInfo.ycenter;
-
-                maxFullOut = positive ? dirCenter + heightMid : dirCenter - heightMid;
-                minOut = positive ? dirCenter - heightMid : dirCenter + heightMid;
-                midOut = dirCenter;
-
-                //maxFullOut = positive ? buttonAbsMouseInfo.maxY : buttonAbsMouseInfo.minY;
-                //minOut = buttonAbsMouseInfo.minY;
-                //midOut = ((buttonAbsMouseInfo.maxY - minOut) / 2.0) + minOut;
-            }
-
-            result = midOut;
-
-            DS4StateFieldMapping.ControlType controlType = DS4StateFieldMapping.mappedType[controlNum];
-            if (controlType == DS4StateFieldMapping.ControlType.AxisDir)
-            {
-                switch (control)
-                {
-                    case DS4Controls.LXNeg:
-                        {
-                            if (cState.LX < 128)
-                            {
-                                double diff = -(cState.LX - 128.0) / 127.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.LXUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                //Trace.WriteLine($"LXUNIT: {cState.LXUnit}");
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * (diff * -1.0) + buttonAbsMouseInfo.xcenter;
-                                transformed = true;
-                            }
-                            //else if (cState.LX == 128)
-                            //{
-                            //    double anti = 0.2 * cState.LXUnit;
-                            //    double diff = 0.0;
-                            //    diff = (1.0 - anti) * diff + anti;
-                            //    result = (maxFullOut - midOut) * diff + midOut;
-                            //}
-                        }
-
-                        break;
-                    case DS4Controls.LXPos:
-                        {
-                            if (cState.LX > 128)
-                            {
-                                double diff = (cState.LX - 128.0) / 128.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.LXUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                    //Trace.WriteLine($"ANTI: {anti} | DIFF : {diff}");
-                                }
-
-                                //Trace.WriteLine($"LXUNIT: {cState.LXUnit}");
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * diff + buttonAbsMouseInfo.xcenter;
-                                transformed = true;
-                            }
-                            //else if (cState.LX == 128)
-                            //{
-                            //    double anti = 0.2 * cState.LXUnit;
-                            //    double diff = 0.0;
-                            //    diff = (1.0 - anti) * diff + anti;
-                            //    result = (maxFullOut - midOut) * diff + midOut;
-                            //}
-                        }
-
-                        break;
-                    case DS4Controls.LYNeg:
-                        {
-                            if (cState.LY < 128)
-                            {
-                                double diff = -(cState.LY - 128.0) / 127.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.LYUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * (diff * -1.0) + buttonAbsMouseInfo.ycenter;
-                                //Trace.WriteLine($"RES: {result} | MAXFULL: {maxFullOut} | DIFF: {diff}");
-                                transformed = true;
-                            }
-                            //else
-                            //{
-                            //    double anti = 0.2 * cState.LYUnit;
-                            //    double diff = 0.0;
-                            //    diff = (1.0 - anti) * diff + anti;
-                            //    result = (maxFullOut - midOut) * diff + midOut;
-                            //}
-                        }
-
-                        break;
-                    case DS4Controls.LYPos:
-                        {
-                            if (cState.LY > 128)
-                            {
-                                double diff = (cState.LY - 128.0) / 128.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.LYUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * diff + buttonAbsMouseInfo.ycenter;
-                                transformed = true;
-                            }
-                            //else
-                            //{
-                            //    double anti = 0.2 * cState.LYUnit;
-                            //    double diff = 0.0;
-                            //    diff = (1.0 - anti) * diff + anti;
-                            //    result = (maxFullOut - midOut) * diff + midOut;
-                            //}
-                        }
-
-                        break;
-
-
-                    case DS4Controls.RXNeg:
-                        {
-                            if (cState.RX < 128)
-                            {
-                                double diff = -(cState.RX - 128.0) / 127.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.RXUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * (diff * -1.0) + buttonAbsMouseInfo.xcenter;
-                                transformed = true;
-                            }
-                        }
-
-                        break;
-                    case DS4Controls.RXPos:
-                        {
-                            if (cState.RX > 128)
-                            {
-                                double diff = (cState.RX - 128.0) / 128.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.RXUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * diff + buttonAbsMouseInfo.xcenter;
-                                transformed = true;
-                            }
-                        }
-
-                        break;
-                    case DS4Controls.RYNeg:
-                        {
-                            if (cState.RY < 128)
-                            {
-                                double diff = -(cState.RY - 128.0) / 127.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.RYUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * (diff * -1.0) + buttonAbsMouseInfo.ycenter;
-                                transformed = true;
-                            }
-                        }
-
-                        break;
-                    case DS4Controls.RYPos:
-                        {
-                            if (cState.RY > 128)
-                            {
-                                double diff = (cState.RY - 128.0) / 128.0;
-                                if (calculateRadiusAnti)
-                                {
-                                    double anti = buttonAbsMouseInfo.antiRadius * cState.RYUnit;
-                                    diff = (1.0 - anti) * diff + anti;
-                                }
-
-                                result = (maxFullOut - midOut) * diff + midOut;
-                                //result = outputMid * diff + buttonAbsMouseInfo.ycenter;
-                                transformed = true;
-                            }
-                        }
-
-                        break;
-
-                    default: break;
-                }
-            }
-            else if (controlType == DS4StateFieldMapping.ControlType.Button)
-            {
-                bool active = fieldMapping.buttons[controlNum];
-                double lowOut = 0.0;
-                if (calculateRadiusAnti)
-                {
-                    lowOut = (maxFullOut - midOut) * buttonAbsMouseInfo.antiRadius + midOut;
-                    //lowOut = outputMid * buttonAbsMouseInfo.antiRadius + dirCenter;
-                    //lowOut = buttonAbsMouseInfo.antiRadius;
-                }
-
-                result = active ? maxFullOut : lowOut;
-                //double diff = active ? (positive ? 1.0 : -1.0) :
-                //    (positive ? lowOut : -lowOut);
-
-                //result = outputMid * diff + dirCenter;
-                transformed = active;
-            }
-            else if (controlType == DS4StateFieldMapping.ControlType.Trigger)
-            {
-                byte trigger = fieldMapping.triggers[controlNum];
-                double diff = trigger / 255.0;
-                //double fullOutput = maxFullOut;
-                if (calculateRadiusAnti)
-                {
-                    double anti = buttonAbsMouseInfo.antiRadius;
-                    diff = (1.0 - anti) * diff + anti;
-                }
-
-                result = outputMid * (positive ? diff : -diff) + dirCenter;
-                transformed = trigger > 0;
-            }
-            else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
-            {
-                double fullOutput = maxFullOut;
-
-                switch (control)
-                {
-                    case DS4Controls.GyroXPos:
-                        {
-                            int gyroX = fieldMapping.gryodirs[controlNum];
-                            double diff = gyroX / 128.0;
-                            if (calculateRadiusAnti)
-                            {
-                                double anti = buttonAbsMouseInfo.antiRadius;
-                                diff = (1.0 - anti) * diff + anti;
-                            }
-
-                            result = (fullOutput - midOut) * diff + midOut;
-                            //result = outputMid * diff + buttonAbsMouseInfo.xcenter;
-                            transformed = gyroX > 0;
-                        }
-
-                        break;
-                    case DS4Controls.GyroXNeg:
-                        {
-                            int gyroX = fieldMapping.gryodirs[controlNum];
-                            double diff = -gyroX / 128.0;
-                            if (calculateRadiusAnti)
-                            {
-                                double anti = buttonAbsMouseInfo.antiRadius;
-                                diff = (1.0 - anti) * diff + anti;
-                            }
-
-                            result = (fullOutput - midOut) * diff + midOut;
-                            //result = outputMid * -diff + buttonAbsMouseInfo.xcenter;
-                            transformed = -gyroX > 0;
-                        }
-
-                        break;
-                    case DS4Controls.GyroZPos:
-                        {
-                            int gyroZ = fieldMapping.gryodirs[controlNum];
-                            double diff = gyroZ / 128.0;
-                            if (calculateRadiusAnti)
-                            {
-                                double anti = buttonAbsMouseInfo.antiRadius;
-                                diff = (1.0 - anti) * diff + anti;
-                            }
-                            result = (fullOutput - midOut) * diff + midOut;
-                            //result = outputMid * diff + buttonAbsMouseInfo.ycenter;
-                            transformed = gyroZ > 0;
-                        }
-
-                        break;
-                    case DS4Controls.GyroZNeg:
-                        {
-                            int gyroZ = fieldMapping.gryodirs[controlNum];
-                            double diff = -gyroZ / 128.0;
-                            if (calculateRadiusAnti)
-                            {
-                                double anti = buttonAbsMouseInfo.antiRadius;
-                                diff = (1.0 - anti) * diff + anti;
-                            }
-
-                            result = (fullOutput - midOut) * diff + midOut;
-                            //result = outputMid * -diff + buttonAbsMouseInfo.ycenter;
-                            transformed = -gyroZ > 0;
-                        }
-
-                        break;
-
-                    default: break;
-                }
-            }
-
-            return result;
-        }
-
         private static double getMouseMapping(int device, DS4Controls control, DS4State cState, DS4StateExposed eState,
             DS4StateFieldMapping fieldMapping, int mnum, ControlService ctrl)
         {
             int deadzoneL = 0;
             int deadzoneR = 0;
-            if (getLSDeadzone(device) == 0)
+            if (ctrl.ProfileSettingsService.LSModInfo[device].deadZone == 0)
                 deadzoneL = 3;
-            if (getRSDeadzone(device) == 0)
+            if (ctrl.ProfileSettingsService.RSModInfo[device].deadZone == 0)
                 deadzoneR = 3;
 
             double value = 0.0;
-            ButtonMouseInfo buttonMouseInfo = ButtonMouseInfos[device];
+            ButtonMouseInfo buttonMouseInfo = ctrl.ProfileSettingsService.ButtonMouseInfos[device];
             DeltaSettingsProcessorGroup deltaAccelProcessorGroup = deltaAccelProcessors[device];
             int speed = buttonMouseInfo.activeButtonSensitivity;
             const double root = 1.002;
@@ -5994,6 +7000,15 @@ namespace DS4Windows
         /// <param name="tp">Mouse object</param>
         /// <param name="fieldMap">DS4StateFieldMapping instance for current MapCustom run</param>
         /// <returns></returns>
+        // Phase6-Step3-6b（決定P2）: `Global.IsUsingSAForControls`（m_Config.gyroOutMode[i] == Controls）の置き換え。
+        // GetBoolMapping 系（呼び出し元が約50箇所で ctrl を持たない）から呼ばれるため、引数渡しは行わず、
+        // Mapping の静的 profileSettings（IProfileSettingsService.GyroOutputMode。同じ BackingStore の同じ配列）から読む。
+        // TODO(Phase7): Mapping の instance 化（コンストラクタ注入）で、この静的束縛ごと解消する（Phase6-Step3-Plan.md §3.4.1）。
+        private static bool IsUsingGyroForControls(int device)
+        {
+            return profileSettings.GyroOutputMode[device] == GyroOutMode.Controls;
+        }
+
         private static byte GetByteMapping(int device, DS4Controls control, DS4State cState, DS4StateExposed eState, Mouse tp,
             DS4StateFieldMapping fieldMap)
         {
@@ -6032,7 +7047,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
 
                 switch (control)
                 {
@@ -6157,14 +7172,15 @@ namespace DS4Windows
             }
             else if (control >= DS4Controls.GyroXPos && control <= DS4Controls.GyroZNeg)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
 
                 switch (control)
                 {
-                    case DS4Controls.GyroXPos: result = saControls ? SXSens[device] * -eState.AccelX > 67 : false; break;
-                    case DS4Controls.GyroXNeg: result = saControls ? SXSens[device] * -eState.AccelX < -67 : false; break;
-                    case DS4Controls.GyroZPos: result = saControls ? SZSens[device] * eState.AccelZ > 67 : false; break;
-                    case DS4Controls.GyroZNeg: result = saControls ? SZSens[device] * eState.AccelZ < -67 : false; break;
+                    // TODO(Phase6-Step3-6b, 決定P2): 呼び出し元が ctrl を持たないため静的 profileSettings から読む。Phase7 の instance 化で解消する。
+                    case DS4Controls.GyroXPos: result = saControls ? profileSettings.SXSens[device] * -eState.AccelX > 67 : false; break;
+                    case DS4Controls.GyroXNeg: result = saControls ? profileSettings.SXSens[device] * -eState.AccelX < -67 : false; break;
+                    case DS4Controls.GyroZPos: result = saControls ? profileSettings.SZSens[device] * eState.AccelZ > 67 : false; break;
+                    case DS4Controls.GyroZNeg: result = saControls ? profileSettings.SZSens[device] * eState.AccelZ < -67 : false; break;
                     default: break;
                 }
             }
@@ -6220,7 +7236,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
                 bool safeTest = false;
 
                 switch (control)
@@ -6315,36 +7331,15 @@ namespace DS4Windows
         private static bool CheckForSpecialActionSuppression(int device, DS4Controls control,
             DS4State cState, DS4StateExposed eState, Mouse tp, DS4StateFieldMapping fieldMap)
         {
-            List<string> profileActions = getProfileActions(device);
-
-            for (int actionIndex = 0, profileListLen = profileActions.Count; actionIndex < profileListLen; actionIndex++)
-            {
-                string actionname = profileActions[actionIndex];
-                SpecialAction action = GetProfileAction(device, actionname);
-
-                if (action == null || action.trigger == null) continue;
-
-                // Check if this control is part of the Special Action trigger
-                bool controlInTrigger = false;
-                for (int i = 0, arlen = action.trigger.Count; i < arlen; i++)
-                {
-                    if (action.trigger[i] == control)
-                    {
-                        controlInTrigger = true;
-                        break;
-                    }
-                }
-
-                if (!controlInTrigger) continue;
-
-                // Use the extracted trigger logic from MapCustomAction
-                if (IsSpecialActionTriggered(action, device, cState, eState, tp, fieldMap))
-                {
-                    return true; // Special Action would be triggered - suppress normal mapping
-                }
-            }
-
-            return false; // No Special Action triggered - allow normal mapping
+            // Issue8-1(3)是正: 「現在トリガーが成立しているか」（IsSpecialActionTriggeredの都度再計算）ではなく、
+            // 「このボタンが、いずれかのトリガー成立によりまだ抑制継続中か」を判定する。
+            // 判定に必要な状態は suppressedTriggerButtons（MapCustomAction内で更新）で管理される。
+            // これにより、トリガー成立中にPS等の一部ボタンだけ先に離されても、
+            // まだ押され続けているボタン（例: L2）自身の通常出力は、L2が実際に離されるまで抑制され続ける
+            // （旧実装は triggeractivated、すなわちいずれか1つでも離れた瞬間に抑制ごと解除されてしまっていた）。
+            // 詳細: docs-forDIMG/MadeByAgent/Phase5-Step14-Issue8-1-3-Fix-Plan.md §2.4
+            var suppressSet = suppressedTriggerButtons[device];
+            return suppressSet != null && suppressSet.Contains(control);
         }
 
         private static bool getBoolSpecialActionMapping(int device, DS4Controls control,
@@ -6385,7 +7380,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
                 bool safeTest = false;
 
                 switch (control)
@@ -6483,7 +7478,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
                 bool safeTest = false;
 
                 switch (control)
@@ -6590,7 +7585,7 @@ namespace DS4Windows
             }
             else if (controlType == DS4StateFieldMapping.ControlType.GyroDir)
             {
-                bool saControls = IsUsingSAForControls(device);
+                bool saControls = IsUsingGyroForControls(device);
 
                 switch (control)
                 {
@@ -6796,7 +7791,7 @@ namespace DS4Windows
 
                 // If any of the calibration points (center, left 90deg, right 90deg) are missing then reset back to default calibration values
                 if (((controller.wheelCalibratedAxisBitmask & DS4Device.WheelCalibrationPoint.All) == DS4Device.WheelCalibrationPoint.All))
-                    Global.SaveControllerConfigs(controller);
+                    ctrl.ProfileXmlStore.SaveControllerConfigsForDevice(controller);
                 else
                     controller.wheelCenterPoint.X = controller.wheelCenterPoint.Y = 0;
 
@@ -6876,7 +7871,7 @@ namespace DS4Windows
             {
                 // Re-calibration completed or cancelled. Set lightbar color back to normal color
                 DS4LightBar.forcedFlash[device] = 0;
-                DS4LightBar.forcedColor[device] = Global.getMainColor(device);
+                DS4LightBar.forcedColor[device] = profileSettings.GetMainColor(device);
                 DS4LightBar.forcelight[device] = false;
                 DS4LightBar.updateLightBar(controller, device);
             }
@@ -6970,7 +7965,7 @@ namespace DS4Windows
                 if (controller.wheelCenterPoint.IsEmpty)
                 {
                     // Run if no controller config exists or if an empty wheelCenterPoint is still being used
-                    if (!Global.LoadControllerConfigs(controller) || controller.wheelCenterPoint.IsEmpty)
+                    if (!ctrl.ProfileXmlStore.LoadControllerConfigsForDevice(controller) || controller.wheelCenterPoint.IsEmpty)
                     {
                         AppLogger.LogToGui($"Controller {1 + device} sixaxis steering wheel calibration data missing. It is recommended to run steering wheel calibration process by pressing SASteeringWheelEmulationCalibration special action key. Using estimated values until the controller is calibrated at least once.", false);
 
@@ -6990,12 +7985,12 @@ namespace DS4Windows
                     controller.wheelCircleCenterPointLeft.X = controller.wheelCenterPoint.X;
                     controller.wheelCircleCenterPointLeft.Y = controller.wheel90DegPointLeft.Y;
 
-                    AppLogger.LogToGui($"Controller {1 + device} steering wheel emulation calibration values. Center=({controller.wheelCenterPoint.X}, {controller.wheelCenterPoint.Y})  90L=({controller.wheel90DegPointLeft.X}, {controller.wheel90DegPointLeft.Y})  90R=({controller.wheel90DegPointRight.X}, {controller.wheel90DegPointRight.Y})  Range={Global.GetSASteeringWheelEmulationRange(device)}", false);
+                    AppLogger.LogToGui($"Controller {1 + device} steering wheel emulation calibration values. Center=({controller.wheelCenterPoint.X}, {controller.wheelCenterPoint.Y})  90L=({controller.wheel90DegPointLeft.X}, {controller.wheel90DegPointLeft.Y})  90R=({controller.wheel90DegPointRight.X}, {controller.wheel90DegPointRight.Y})  Range={profileSettings.GetSASteeringWheelEmulationRange(device)}", false);
                     controller.wheelPrevRecalibrateTime = DateTime.Now;
                 }
 
 
-                int maxRangeRight = Global.GetSASteeringWheelEmulationRange(device) / 2 * C_WHEEL_ANGLE_PRECISION;
+                int maxRangeRight = profileSettings.GetSASteeringWheelEmulationRange(device) / 2 * C_WHEEL_ANGLE_PRECISION;
                 int maxRangeLeft = -maxRangeRight;
 
                 //Console.WriteLine("Values {0} {1}", gyroAccelX, gyroAccelZ);
@@ -7003,7 +7998,7 @@ namespace DS4Windows
                 //gyroAccelX = (int)(wheel360FilterX.Filter(gyroAccelX, currentRate));
                 //gyroAccelZ = (int)(wheel360FilterZ.Filter(gyroAccelZ, currentRate));
 
-                int wheelFuzz = SAWheelFuzzValues[device];
+                int wheelFuzz = ctrl.ProfileSettingsService.SAWheelFuzzValues[device];
                 if (wheelFuzz != 0)
                 {
                     //int currentValueX = gyroAccelX;
@@ -7018,7 +8013,7 @@ namespace DS4Windows
 
                 // Apply deadzone (SA X-deadzone value). This code assumes that 20deg is the max deadzone anyone ever might wanna use (in practice effective deadzone
                 // is probably just few degrees by using SXDeadZone values 0.01...0.05)
-                double sxDead = getSXDeadzone(device);
+                double sxDead = ctrl.ProfileSettingsService.SXDeadzone[device];
                 if (sxDead > 0)
                 {
                     int sxDeadInt = Convert.ToInt32(20.0 * C_WHEEL_ANGLE_PRECISION * sxDead);
@@ -7077,7 +8072,7 @@ namespace DS4Windows
                 }
 
                 result = Mapping.ClampInt(maxRangeLeft, result, maxRangeRight);
-                if (WheelSmoothInfo[device].enabled)
+                if (ctrl.ProfileSettingsService.WheelSmoothInfo[device].enabled)
                 {
                     double currentRate = 1.0 / currentDeviceState.elapsedTime; // Need to express poll time in Hz
                     OneEuroFilter wheelFilter = wheelFilters[device];
@@ -7090,10 +8085,10 @@ namespace DS4Windows
                 //LogToGuiSACalibrationDebugMsg($"DBG gyro=({gyroAccelX}, {gyroAccelZ})  output=({exposedState.OutputAccelX}, {exposedState.OutputAccelZ})  PitRolYaw=({currentDeviceState.Motion.gyroPitch}, {currentDeviceState.Motion.gyroRoll}, {currentDeviceState.Motion.gyroYaw})  VelPitRolYaw=({currentDeviceState.Motion.angVelPitch}, {currentDeviceState.Motion.angVelRoll}, {currentDeviceState.Motion.angVelYaw})  angle={result / (1.0 * C_WHEEL_ANGLE_PRECISION)}  fullTurns={controller.wheelFullTurnCount}", false);
 
                 // Apply anti-deadzone (SA X-antideadzone value)
-                double sxAntiDead = getSXAntiDeadzone(device);
+                double sxAntiDead = ctrl.ProfileSettingsService.SXAntiDeadzone[device];
 
                 int outputAxisMax, outputAxisMin, outputAxisZero;
-                if (Global.OutContType[device] == OutContType.DS4)
+                if (profileSettings.OutContType[device] == OutContType.DS4)
                 {
                     // DS4 analog stick axis supports only 0...255 output value range (not the best one for steering wheel usage)
                     outputAxisMax = 255;
@@ -7108,7 +8103,7 @@ namespace DS4Windows
                     outputAxisZero = 0;
                 }
 
-                switch (Global.GetSASteeringWheelEmulationAxis(device))
+                switch (profileSettings.GetSASteeringWheelEmulationAxis(device))
                 {
                     case SASteeringWheelEmulationAxisType.LX:
                     case SASteeringWheelEmulationAxisType.LY:
@@ -7226,5 +8221,3 @@ namespace DS4Windows
         }
     }
 }
-
-

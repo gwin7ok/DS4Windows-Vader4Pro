@@ -34,11 +34,9 @@ namespace DS4Windows.DS4Control
         // (1 << 31). cannot express as uint as bit-shift op converts to int
         public const uint MODIFIER_ENHANCED = 2147483648;
 
-        private const double ABSOLUTE_MOUSE_COOR_MAX = 32767.0;
         private const int MAX_NORMAL_KEY_PRESSED = 6;
         private FakerInput fakerInput = null;
         private RelativeMouseReport mouseReport = new RelativeMouseReport();
-        private AbsoluteMouseReport absoluteMouseReport = new AbsoluteMouseReport();
         private KeyboardReport keyReport = new KeyboardReport();
         private KeyboardEnhancedReport mediaKeyReport = new KeyboardEnhancedReport();
 
@@ -49,7 +47,6 @@ namespace DS4Windows.DS4Control
         private bool syncKeyboard;
         private bool syncEnhancedKeyboard;
         private bool syncRelativeMouse;
-        private bool syncAbsoluteMouse;
 
         // Used to guard reports and attempt to keep methods thread safe
         private ReaderWriterLockSlim eventLock = new ReaderWriterLockSlim();
@@ -91,16 +88,13 @@ namespace DS4Windows.DS4Control
             syncRelativeMouse = true;
             //fakerInput.UpdateRelativeMouse(mouseReport);
 
-            absoluteMouseReport.Reset();
-            syncAbsoluteMouse = true;
-
-            foreach(KeyboardModifier mod in modifiers)
+            foreach (KeyboardModifier mod in modifiers)
             {
                 keyReport.KeyUp(mod);
             }
             modifiers.Clear();
 
-            foreach(KeyboardKey key in pressedKeys)
+            foreach (KeyboardKey key in pressedKeys)
             {
                 keyReport.KeyUp(key);
             }
@@ -135,22 +129,6 @@ namespace DS4Windows.DS4Control
 
             syncRelativeMouse = true;
             //fakerInput.UpdateRelativeMouse(mouseReport);
-
-            eventLock.ExitWriteLock();
-        }
-
-        /// <summary>
-        /// Move the mouse cursor to an absolute position on the virtual desktop
-        /// </summary>
-        /// <param name="x">X coordinate in range of [0.0, 1.0]. 0.0 for left. 1.0 for far right</param>
-        /// <param name="y">Y coordinate in range of [0.0, 1.0]. 0.0 for top. 1.0 for bottom</param>
-        public override void MoveAbsoluteMouse(double x, double y)
-        {
-            eventLock.EnterWriteLock();
-
-            absoluteMouseReport.MouseX = (ushort)(x * ABSOLUTE_MOUSE_COOR_MAX);
-            absoluteMouseReport.MouseY = (ushort)(y * ABSOLUTE_MOUSE_COOR_MAX);
-            syncAbsoluteMouse = true;
 
             eventLock.ExitWriteLock();
         }
@@ -420,13 +398,6 @@ namespace DS4Windows.DS4Control
                 fakerInput.UpdateRelativeMouse(mouseReport);
                 mouseReport.ResetMousePos();
                 syncRelativeMouse = false;
-            }
-
-            if (syncAbsoluteMouse)
-            {
-                fakerInput.UpdateAbsoluteMouse(absoluteMouseReport);
-                absoluteMouseReport.Reset();
-                syncAbsoluteMouse = false;
             }
 
             if (syncKeyboard)

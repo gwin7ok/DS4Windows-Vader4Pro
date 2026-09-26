@@ -17,35 +17,45 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
+using DS4Windows.DI;
+using DS4Windows.Services;
 
 namespace DS4Windows
 {
-    public class MouseCursor
+    public class MouseCursor : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         private readonly int deviceNumber;
         private DS4Device.GyroMouseSens gyroMouseSensSettings;
-        public MouseCursor(int deviceNum, DS4Device.GyroMouseSens gyroMouseSens)
+        // Phase6-Step4-2: Global 直参照を廃し、コンストラクタ注入（Pure DI、フォールバックなし）で受け取る
+        private readonly IProfileSettingsService _profileSettings;
+        private readonly IVirtualKBM _virtualKBM;
+
+        public MouseCursor(int deviceNum, DS4Device.GyroMouseSens gyroMouseSens,
+            IProfileSettingsService profileSettings, IVirtualKBM virtualKBM)
         {
+            _profileSettings = profileSettings ?? throw new ArgumentNullException(nameof(profileSettings));
+            _virtualKBM = virtualKBM ?? throw new ArgumentNullException(nameof(virtualKBM));
             deviceNumber = deviceNum;
             gyroMouseSensSettings = gyroMouseSens;
             filterPair.axis1Filter.MinCutoff = filterPair.axis2Filter.MinCutoff = GyroMouseInfo.DEFAULT_MINCUTOFF;
             filterPair.axis1Filter.Beta = filterPair.axis2Filter.Beta = GyroMouseInfo.DEFAULT_BETA;
-            Global.GyroMouseInfo[deviceNum].SetRefreshEvents(filterPair.axis1Filter);
-            Global.GyroMouseInfo[deviceNum].SetRefreshEvents(filterPair.axis2Filter);
+            _profileSettings.GyroMouseInfo[deviceNum].SetRefreshEvents(filterPair.axis1Filter);
+            _profileSettings.GyroMouseInfo[deviceNum].SetRefreshEvents(filterPair.axis2Filter);
         }
 
         public void ReplaceOneEuroFilterPair()
         {
-            Global.GyroMouseInfo[deviceNumber].RemoveRefreshEvents();
+            _profileSettings.GyroMouseInfo[deviceNumber].RemoveRefreshEvents();
             filterPair = new OneEuroFilterPair();
         }
 
         public void SetupLateOneEuroFilters()
         {
-            filterPair.axis1Filter.MinCutoff = filterPair.axis2Filter.MinCutoff = Global.GyroMouseInfo[deviceNumber].MinCutoff;
-            filterPair.axis1Filter.Beta = filterPair.axis2Filter.Beta = Global.GyroMouseInfo[deviceNumber].Beta;
-            Global.GyroMouseInfo[deviceNumber].SetRefreshEvents(filterPair.axis1Filter);
-            Global.GyroMouseInfo[deviceNumber].SetRefreshEvents(filterPair.axis2Filter);
+            filterPair.axis1Filter.MinCutoff = filterPair.axis2Filter.MinCutoff = _profileSettings.GyroMouseInfo[deviceNumber].MinCutoff;
+            filterPair.axis1Filter.Beta = filterPair.axis2Filter.Beta = _profileSettings.GyroMouseInfo[deviceNumber].Beta;
+            _profileSettings.GyroMouseInfo[deviceNumber].SetRefreshEvents(filterPair.axis1Filter);
+            _profileSettings.GyroMouseInfo[deviceNumber].SetRefreshEvents(filterPair.axis2Filter);
         }
 
         // Keep track of remainders when performing moves or we lose fractional parts.
@@ -82,17 +92,17 @@ namespace DS4Windows
         public virtual void sixaxisMoved(SixAxisEventArgs arg)
         {
             int deltaX = 0, deltaY = 0;
-            deltaX = Global.getGyroMouseHorizontalAxis(deviceNumber) == 0 ? arg.sixAxis.gyroYawFull :
+            deltaX = _profileSettings.GetGyroMouseHorizontalAxis(deviceNumber) == 0 ? arg.sixAxis.gyroYawFull :
                 arg.sixAxis.gyroRollFull;
             deltaY = -arg.sixAxis.gyroPitchFull;
             //tempDouble = arg.sixAxis.elapsed * 0.001 * 200.0; // Base default speed on 5 ms
             tempDouble = arg.sixAxis.elapsed * 200.0; // Base default speed on 5 ms
 
-            GyroMouseInfo tempInfo = Global.GyroMouseInfo[deviceNumber];
+            GyroMouseInfo tempInfo = _profileSettings.GyroMouseInfo[deviceNumber];
             gyroSmooth = tempInfo.enableSmoothing;
             double gyroSmoothWeight = 0.0;
 
-            coefficient = (Global.getGyroSensitivity(deviceNumber) * 0.01) * gyroMouseSensSettings.mouseCoefficient;
+            coefficient = (_profileSettings.GetGyroSensitivity(deviceNumber) * 0.01) * gyroMouseSensSettings.mouseCoefficient;
             double offset = gyroMouseSensSettings.mouseOffset;
             if (gyroSmooth)
             {
@@ -139,7 +149,7 @@ namespace DS4Windows
             double xMotion = deltaX != 0 ? coefficient * (deltaX * tempDouble)
                 + (normX * (offset * signX)) : 0;
 
-            verticalScale = Global.getGyroSensVerticalScale(deviceNumber) * 0.01;
+            verticalScale = _profileSettings.GetGyroSensVerticalScale(deviceNumber) * 0.01;
             double yMotion = deltaY != 0 ? (coefficient * verticalScale) * (deltaY * tempDouble)
                 + (normY * (offset * signY)) : 0;
 
@@ -248,7 +258,7 @@ namespace DS4Windows
                 }
             }
 
-            int gyroInvert = Global.getGyroInvert(deviceNumber);
+            int gyroInvert = _profileSettings.GetGyroInvert(deviceNumber);
             if ((gyroInvert & 0x02) == 2)
                 xAction *= -1;
 
@@ -256,7 +266,7 @@ namespace DS4Windows
                 yAction *= -1;
 
             if (yAction != 0 || xAction != 0)
-                Global.outputKBMHandler.MoveRelativeMouse(xAction, yAction);
+                _virtualKBM.MoveRelativeMouse(xAction, yAction);
 
             hDirection = xMotion > 0.0 ? Direction.Positive : xMotion < 0.0 ? Direction.Negative : Direction.Neutral;
             vDirection = yMotion > 0.0 ? Direction.Positive : yMotion < 0.0 ? Direction.Negative : Direction.Neutral;
@@ -270,7 +280,7 @@ namespace DS4Windows
             ySmoothBuffer[iIndex] = 0.0;
             smoothBufferTail = iIndex + 1;
 
-            GyroMouseInfo tempInfo = Global.GyroMouseInfo[deviceNumber];
+            GyroMouseInfo tempInfo = _profileSettings.GyroMouseInfo[deviceNumber];
             if (tempInfo.smoothingMethod == GyroMouseInfo.SmoothingMethod.OneEuro)
             {
                 double currentRate = 1.0 / arg.sixAxis.elapsed;
@@ -321,62 +331,9 @@ namespace DS4Windows
             TouchMoveCursor(deltaX, deltaY, disableInvert);
         }
 
-        public void TouchesMovedAbsolute(TouchpadEventArgs arg)
-        {
-            int touchesLen = arg.Touches.Length;
-            if (touchesLen != 1)
-                return;
-
-            int currentX = 0, currentY = 0;
-            if (touchesLen > 1)
-            {
-                currentX = arg.Touches[1].HwX;
-                currentY = arg.Touches[1].HwY;
-            }
-            else
-            {
-                currentX = arg.Touches[0].HwX;
-                currentY = arg.Touches[0].HwY;
-            }
-
-            TouchpadAbsMouseSettings absSettings = Global.TouchAbsMouse[deviceNumber];
-
-            int minX = (int)(DS4Touchpad.RES_HALFED_X - (absSettings.maxZoneX * 0.01 * DS4Touchpad.RES_HALFED_X));
-            int minY = (int)(DS4Touchpad.RES_HALFED_Y - (absSettings.maxZoneY * 0.01 * DS4Touchpad.RES_HALFED_Y));
-            int maxX = (int)(DS4Touchpad.RES_HALFED_X + (absSettings.maxZoneX * 0.01 * DS4Touchpad.RES_HALFED_X));
-            int maxY = (int)(DS4Touchpad.RES_HALFED_Y + (absSettings.maxZoneY * 0.01 * DS4Touchpad.RES_HALFED_Y));
-
-            double mX = (DS4Touchpad.RESOLUTION_X_MAX - 0) / (double)(maxX - minX);
-            double bX = minX * mX;
-            double mY = (DS4Touchpad.RESOLUTION_Y_MAX - 0) / (double)(maxY - minY);
-            double bY = minY * mY;
-
-            currentX = currentX > maxX ? maxX : (currentX < minX ? minX : currentX);
-            currentY = currentY > maxY ? maxY : (currentX < minY ? minY : currentY);
-
-            double absX = (currentX * mX - bX) / (double)DS4Touchpad.RESOLUTION_X_MAX;
-            double absY = (currentY * mY - bY) / (double)DS4Touchpad.RESOLUTION_Y_MAX;
-            //InputMethods.MoveAbsoluteMouse(absX, absY);
-
-            if (!Global.absUseAllMonitors)
-            {
-                Global.TranslateCoorToAbsDisplay(absX, absY, out absX, out absY);
-            }
-
-            absX = Math.Clamp(absX, 0.0, 1.0);
-            absY = Math.Clamp(absY, 0.0, 1.0);
-            Global.outputKBMHandler.MoveAbsoluteMouse(absX, absY);
-        }
-
-        public void TouchCenterAbsolute()
-        {
-            //InputMethods.MoveAbsoluteMouse(0.5, 0.5);
-            Global.outputKBMHandler.MoveAbsoluteMouse(0.5, 0.5);
-        }
-
         public void TouchMoveCursor(int dx, int dy, bool disableInvert = false)
         {
-            TouchpadRelMouseSettings relMouseSettings = Global.TouchRelMouse[deviceNumber];
+            TouchpadRelMouseSettings relMouseSettings = _profileSettings.TouchRelMouse[deviceNumber];
             if (relMouseSettings.rotation != 0.0)
             {
                 //double rotation = 5.0 * Math.PI / 180.0;
@@ -392,8 +349,8 @@ namespace DS4Windows
             double normY = Math.Abs(Math.Sin(tempAngle));
             int signX = Math.Sign(dx);
             int signY = Math.Sign(dy);
-            double coefficient = Global.getTouchSensitivity(deviceNumber) * 0.01;
-            bool jitterCompenstation = Global.getTouchpadJitterCompensation(deviceNumber);
+            double coefficient = _profileSettings.TouchSensitivity[deviceNumber] * 0.01;
+            bool jitterCompenstation = _profileSettings.TouchpadJitterCompensation[deviceNumber];
 
             double xMotion = dx != 0 ?
                 coefficient * dx + (normX * (TOUCHPAD_MOUSE_OFFSET * signX)) : 0.0;
@@ -468,7 +425,7 @@ namespace DS4Windows
 
             if (disableInvert == false)
             {
-                int touchpadInvert = tempInt = Global.getTouchpadInvert(deviceNumber);
+                int touchpadInvert = tempInt = _profileSettings.TouchpadInvert[deviceNumber];
                 if ((touchpadInvert & 0x02) == 2)
                     xAction *= -1;
 
@@ -477,7 +434,7 @@ namespace DS4Windows
             }
 
             if (yAction != 0 || xAction != 0)
-                Global.outputKBMHandler.MoveRelativeMouse(xAction, yAction);
+                _virtualKBM.MoveRelativeMouse(xAction, yAction);
 
             horizontalDirection = xMotion > 0.0 ? Direction.Positive : xMotion < 0.0 ? Direction.Negative : Direction.Neutral;
             verticalDirection = yMotion > 0.0 ? Direction.Positive : yMotion < 0.0 ? Direction.Negative : Direction.Neutral;

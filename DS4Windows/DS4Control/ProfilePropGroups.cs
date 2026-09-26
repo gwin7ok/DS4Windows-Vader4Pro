@@ -20,9 +20,83 @@ using System;
 using DS4Windows.StickModifiers;
 using DS4WinWPF.DS4Control;
 using Sensorit.Base;
+using DS4Windows.InputDevices;
 
 namespace DS4Windows
 {
+    // ==========================================
+    // パターン A: ProfileActions および Sensitivity
+    // ==========================================
+
+    public class ProfileActions
+    {
+        public const int MAX_ACTIONS = 6;
+        public string[] actions = new string[MAX_ACTIONS];
+        public string[] actionExtras = new string[MAX_ACTIONS];
+
+        public event EventHandler ActionsChanged;
+
+        public string GetAction(int index) => index >= 0 && index < MAX_ACTIONS ? actions[index] : string.Empty;
+
+        public void SetAction(int index, string value)
+        {
+            if (index < 0 || index >= MAX_ACTIONS) return;
+            if (actions[index] == value) return;
+            actions[index] = value;
+            ActionsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void Reset()
+        {
+            Array.Clear(actions, 0, actions.Length);
+            Array.Clear(actionExtras, 0, actionExtras.Length);
+            ActionsChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public class Sensitivity : ProfileSubSettingBase
+    {
+        private double _xSensitivity = 1.0;
+        private double _ySensitivity = 1.0;
+
+        public double XSensitivity
+        {
+            get => _xSensitivity;
+            set
+            {
+                if (Math.Abs(_xSensitivity - value) > 0.0001)
+                {
+                    _xSensitivity = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double YSensitivity
+        {
+            get => _ySensitivity;
+            set
+            {
+                if (Math.Abs(_ySensitivity - value) > 0.0001)
+                {
+                    _ySensitivity = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public void Reset()
+        {
+            _xSensitivity = 1.0;
+            _ySensitivity = 1.0;
+            RaiseAllPropertiesChanged();
+        }
+    }
+
+    // ==========================================
+    // パターン B: ネストされたサブ設定クラス群
+    // ==========================================
+
     public class SquareStickInfo
     {
         public const double DEFAULT_ROUNDNESS = 5.0;
@@ -60,24 +134,85 @@ namespace DS4Windows
         public const double DEFAULT_OUTER_BIND_DEAD = 75.0;
         public const bool DEFAULT_OUTER_BIND_INVERT = false;
 
-        public class AxisDeadZoneInfo
+        public class AxisDeadZoneInfo : ProfileSubSettingBase
         {
-            // DeadZone value from 0-127 (old bad convention)
-            public int deadZone = DEFAULT_DEADZONE;
-            public int antiDeadZone = DEFAULT_ANTIDEADZONE;
-            public int maxZone = DEFAULT_MAXZONE;
-            public double maxOutput = DEFAULT_MAXOUTPUT;
+            private int _deadZone;
+            private int _antiDeadZone;
+            private int _maxZone = 100;
+            private double _maxOutput = 100.0;
+
+            public int deadZone
+            {
+                get => _deadZone;
+                set
+                {
+                    if (_deadZone != value)
+                    {
+                        _deadZone = value;
+                        RaisePropertyChanged();
+                        RaisePropertyChanged(nameof(DeadZone));
+                    }
+                }
+            }
+
+            public int antiDeadZone
+            {
+                get => _antiDeadZone;
+                set
+                {
+                    if (_antiDeadZone != value)
+                    {
+                        _antiDeadZone = value;
+                        RaisePropertyChanged();
+                        RaisePropertyChanged(nameof(AntiDeadZone));
+                    }
+                }
+            }
+
+            public int maxZone
+            {
+                get => _maxZone;
+                set
+                {
+                    if (_maxZone != value)
+                    {
+                        _maxZone = value;
+                        RaisePropertyChanged();
+                        RaisePropertyChanged(nameof(MaxZone));
+                    }
+                }
+            }
+
+            public double maxOutput
+            {
+                get => _maxOutput;
+                set
+                {
+                    if (Math.Abs(_maxOutput - value) > 0.0001)
+                    {
+                        _maxOutput = value;
+                        RaisePropertyChanged();
+                        RaisePropertyChanged(nameof(MaxOutput));
+                    }
+                }
+            }
+
+            // PascalCase 互換プロパティ
+            public int DeadZone { get => deadZone; set => deadZone = value; }
+            public int AntiDeadZone { get => antiDeadZone; set => antiDeadZone = value; }
+            public int MaxZone { get => maxZone; set => maxZone = value; }
+            public double MaxOutput { get => maxOutput; set => maxOutput = value; }
 
             public void Reset()
             {
-                deadZone = DEFAULT_DEADZONE;
-                antiDeadZone = DEFAULT_ANTIDEADZONE;
-                maxZone = DEFAULT_MAXZONE;
-                maxOutput = DEFAULT_MAXOUTPUT;
+                _deadZone = 0;
+                _antiDeadZone = 0;
+                _maxZone = 100;
+                _maxOutput = 100.0;
+                RaiseAllPropertiesChanged();
             }
         }
 
-        // DeadZone value from 0-127 (old bad convention)
         public int deadZone;
         public int antiDeadZone;
         public int maxZone = DEFAULT_MAXZONE;
@@ -120,13 +255,33 @@ namespace DS4Windows
         public int timeout = DEFAULT_TIMEOUT;
     }
 
-    public class TriggerDeadZoneZInfo
+    public class TriggerDeadZoneZInfo : ProfileSubSettingBase
     {
+        // Default Dead Zone value
+        public const byte DEFAULT_DEADZONE = 0;
+        public const int DEFAULT_ANTIDEADZONE = 0;
+        // Default Max Zone value
         public const int DEFAULT_MAX_ZONE = 100;
+        // Default Max Output value
         public const double DEFAULT_MAX_OUTPUT = 100.0;
 
-        // Trigger deadzone is expressed in axis units (bad old convention)
-        public byte deadZone;
+        // ref / out で渡されるため public フィールドとして保持
+        public byte deadZone = DEFAULT_DEADZONE;
+        public int antiDeadZone = DEFAULT_ANTIDEADZONE;
+        public int maxZone = DEFAULT_MAX_ZONE;
+        public double maxOutput = DEFAULT_MAX_OUTPUT;
+
+        public delegate void DeadZoneChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
+        public event DeadZoneChangedHandler DeadZoneChanged;
+
+        public delegate void AntiDeadZoneChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
+        public event AntiDeadZoneChangedHandler AntiDeadZoneChanged;
+
+        public delegate void MaxZoneChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
+        public event MaxZoneChangedHandler MaxZoneChanged;
+
+        public delegate void MaxOutputChangedHandler(TriggerDeadZoneZInfo sender, EventArgs args);
+        public event MaxOutputChangedHandler MaxOutputChanged;
 
         public byte DeadZone
         {
@@ -136,12 +291,22 @@ namespace DS4Windows
                 if (deadZone == value) return;
                 deadZone = value;
                 DeadZoneChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
-        public event EventHandler DeadZoneChanged;
 
-        public int antiDeadZone;
-        public int maxZone = DEFAULT_MAX_ZONE;
+        public int AntiDeadZone
+        {
+            get => antiDeadZone;
+            set
+            {
+                if (antiDeadZone == value) return;
+                antiDeadZone = value;
+                AntiDeadZoneChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
+            }
+        }
+
         public int MaxZone
         {
             get => maxZone;
@@ -150,41 +315,43 @@ namespace DS4Windows
                 if (maxZone == value) return;
                 maxZone = value;
                 MaxZoneChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
-        public event EventHandler MaxZoneChanged;
-
-        public double maxOutput = DEFAULT_MAX_OUTPUT;
 
         public double MaxOutput
         {
             get => maxOutput;
             set
             {
-                if (maxOutput == value) return;
-                maxOutput = value;
-                MaxOutputChanged?.Invoke(this, EventArgs.Empty);
+                if (Math.Abs(maxOutput - value) > 0.0001)
+                {
+                    maxOutput = value;
+                    MaxOutputChanged?.Invoke(this, EventArgs.Empty);
+                    RaisePropertyChanged();
+                }
             }
         }
-        public event EventHandler MaxOutputChanged;
 
         public void Reset()
         {
-            deadZone = 0;
-            antiDeadZone = 0;
-            MaxZone = DEFAULT_MAX_ZONE;
-            MaxOutput = DEFAULT_MAX_OUTPUT;
+            deadZone = DEFAULT_DEADZONE;
+            antiDeadZone = DEFAULT_ANTIDEADZONE;
+            maxZone = DEFAULT_MAX_ZONE;
+            maxOutput = DEFAULT_MAX_OUTPUT;
+            RaiseAllPropertiesChanged();
         }
 
         public void ResetEvents()
         {
+            DeadZoneChanged = null;
+            AntiDeadZoneChanged = null;
             MaxZoneChanged = null;
             MaxOutputChanged = null;
-            DeadZoneChanged = null;
         }
     }
 
-    public class GyroMouseInfo
+    public class GyroMouseInfo : ProfileSubSettingBase
     {
         public enum SmoothingMethod : byte
         {
@@ -203,7 +370,6 @@ namespace DS4Windows
         public double smoothingWeight = 0.5;
         public SmoothingMethod smoothingMethod;
 
-
         public double minCutoff = DEFAULT_MINCUTOFF;
         public double beta = DEFAULT_BETA;
         public double minThreshold = DEFAULT_MIN_THRESHOLD;
@@ -219,6 +385,7 @@ namespace DS4Windows
                 if (minCutoff == value) return;
                 minCutoff = value;
                 MinCutoffChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event GyroMouseInfoEventHandler MinCutoffChanged;
@@ -231,6 +398,7 @@ namespace DS4Windows
                 if (beta == value) return;
                 beta = value;
                 BetaChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event GyroMouseInfoEventHandler BetaChanged;
@@ -242,6 +410,7 @@ namespace DS4Windows
             {
                 if (jitterCompensation == value) return;
                 jitterCompensation = value;
+                RaisePropertyChanged();
             }
         }
 
@@ -254,23 +423,27 @@ namespace DS4Windows
             smoothingWeight = 0.5;
             minThreshold = DEFAULT_MIN_THRESHOLD;
             jitterCompensation = JITTER_COMPENSATION_DEFAULT;
+            RaiseAllPropertiesChanged();
         }
 
         public void ResetSmoothing()
         {
             enableSmoothing = false;
             ResetSmoothingMethods();
+            RaisePropertyChanged(nameof(enableSmoothing));
         }
 
         public void ResetSmoothingMethods()
         {
             smoothingMethod = SmoothingMethod.None;
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public void DetermineSmoothMethod(string identier)
         {
             ResetSmoothingMethods();
             smoothingMethod = SmoothingMethodParse(identier);
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public static SmoothingMethod SmoothingMethodParse(string identifier)
@@ -288,7 +461,6 @@ namespace DS4Windows
                     result = SmoothingMethod.None;
                     break;
             }
-
             return result;
         }
 
@@ -303,21 +475,13 @@ namespace DS4Windows
             {
                 result = "weighted-average";
             }
-
             return result;
         }
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
 
         public void RemoveRefreshEvents()
@@ -327,7 +491,7 @@ namespace DS4Windows
         }
     }
 
-    public class GyroMouseStickInfo
+    public class GyroMouseStickInfo : ProfileSubSettingBase
     {
         public enum SmoothingMethod : byte
         {
@@ -372,7 +536,6 @@ namespace DS4Windows
         public int vertScale = DEFAULT_VERTICAL_SCALE;
         public bool maxOutputEnabled;
         public double maxOutput = DEFAULT_MAX_OUTPUT;
-        // Flags representing invert axis choices
         public uint inverted = DEFAULT_INVERTED;
         public bool useSmoothing;
         public double smoothWeight = SMOOTHING_WEIGHT_DEFAULT;
@@ -383,9 +546,7 @@ namespace DS4Windows
         public OutputStickAxes outputStickDir = DEFAULT_OUTPUT_STICK_AXES;
         public bool jitterCompensation = JITTER_COMPENSATION_DEFAULT;
 
-        public delegate void GyroMouseStickInfoEventHandler(GyroMouseStickInfo sender,
-            EventArgs args);
-
+        public delegate void GyroMouseStickInfoEventHandler(GyroMouseStickInfo sender, EventArgs args);
 
         public double MinCutoff
         {
@@ -395,6 +556,7 @@ namespace DS4Windows
                 if (minCutoff == value) return;
                 minCutoff = value;
                 MinCutoffChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event GyroMouseStickInfoEventHandler MinCutoffChanged;
@@ -407,6 +569,7 @@ namespace DS4Windows
                 if (beta == value) return;
                 beta = value;
                 BetaChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event GyroMouseStickInfoEventHandler BetaChanged;
@@ -418,6 +581,7 @@ namespace DS4Windows
             {
                 if (jitterCompensation == value) return;
                 jitterCompensation = value;
+                RaisePropertyChanged();
             }
         }
 
@@ -436,23 +600,27 @@ namespace DS4Windows
             useSmoothing = false;
             smoothWeight = SMOOTHING_WEIGHT_DEFAULT;
             jitterCompensation = JITTER_COMPENSATION_DEFAULT;
+            RaiseAllPropertiesChanged();
         }
 
         public void ResetSmoothing()
         {
             useSmoothing = false;
             ResetSmoothingMethods();
+            RaisePropertyChanged(nameof(useSmoothing));
         }
 
         public void ResetSmoothingMethods()
         {
             smoothingMethod = SmoothingMethod.None;
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public void DetermineSmoothMethod(string identier)
         {
             ResetSmoothingMethods();
             smoothingMethod = SmoothingMethodParse(identier);
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public static SmoothingMethod SmoothingMethodParse(string identifier)
@@ -470,7 +638,6 @@ namespace DS4Windows
                     result = SmoothingMethod.None;
                     break;
             }
-
             return result;
         }
 
@@ -485,24 +652,14 @@ namespace DS4Windows
                 case SmoothingMethod.OneEuro:
                     result = "one-euro";
                     break;
-                default:
-                    break;
             }
-
             return result;
         }
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
 
         public void RemoveRefreshEvents()
@@ -511,17 +668,8 @@ namespace DS4Windows
             MinCutoffChanged = null;
         }
 
-        public bool OutputHorizontal()
-        {
-            return outputStickDir == OutputStickAxes.XY ||
-                outputStickDir == OutputStickAxes.X;
-        }
-
-        public bool OutputVertical()
-        {
-            return outputStickDir == OutputStickAxes.XY ||
-                outputStickDir == OutputStickAxes.Y;
-        }
+        public bool OutputHorizontal() => outputStickDir == OutputStickAxes.XY || outputStickDir == OutputStickAxes.X;
+        public bool OutputVertical() => outputStickDir == OutputStickAxes.XY || outputStickDir == OutputStickAxes.Y;
     }
 
     public class GyroDirectionalSwipeInfo
@@ -533,7 +681,7 @@ namespace DS4Windows
         }
 
         public const string DEFAULT_TRIGGERS = "-1";
-        public const int DEFAULT_GYRO_DIR_SPEED = 80; // degrees per second
+        public const int DEFAULT_GYRO_DIR_SPEED = 80;
         public const bool DEFAULT_TRIGGER_COND = true;
         public const bool DEFAULT_TRIGGER_TURNS = true;
         public const XAxisSwipe DEFAULT_X_AXIS = XAxisSwipe.Yaw;
@@ -559,31 +707,92 @@ namespace DS4Windows
         }
     }
 
-    public class GyroControlsInfo
+    public class GyroControlsInfo : ProfileSubSettingBase
     {
         public const string DEFAULT_TRIGGERS = "-1";
         public const bool DEFAULT_TRIGGER_COND = true;
         public const bool DEFAULT_TRIGGER_TURNS = true;
         public const bool DEFAULT_TRIGGER_TOGGLE = false;
 
-        public string triggers = DEFAULT_TRIGGERS;
-        public bool triggerCond = DEFAULT_TRIGGER_COND;
-        public bool triggerTurns = DEFAULT_TRIGGER_TURNS;
-        public bool triggerToggle = DEFAULT_TRIGGER_TOGGLE;
+        private string _triggers = DEFAULT_TRIGGERS;
+        private bool _triggerCond = DEFAULT_TRIGGER_COND;
+        private bool _triggerTurns = DEFAULT_TRIGGER_TURNS;
+        private bool _triggerToggle = DEFAULT_TRIGGER_TOGGLE;
+
+        public string triggers
+        {
+            get => _triggers;
+            set
+            {
+                if (_triggers != value)
+                {
+                    _triggers = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(Triggers));
+                }
+            }
+        }
+
+        public bool triggerCond
+        {
+            get => _triggerCond;
+            set
+            {
+                if (_triggerCond != value)
+                {
+                    _triggerCond = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(TriggerCond));
+                }
+            }
+        }
+
+        public bool triggerTurns
+        {
+            get => _triggerTurns;
+            set
+            {
+                if (_triggerTurns != value)
+                {
+                    _triggerTurns = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(TriggerTurns));
+                }
+            }
+        }
+
+        public bool triggerToggle
+        {
+            get => _triggerToggle;
+            set
+            {
+                if (_triggerToggle != value)
+                {
+                    _triggerToggle = value;
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(TriggerToggle));
+                }
+            }
+        }
+
+        // PascalCase 互換プロパティ
+        public string Triggers { get => triggers; set => triggers = value; }
+        public bool TriggerCond { get => triggerCond; set => triggerCond = value; }
+        public bool TriggerTurns { get => triggerTurns; set => triggerTurns = value; }
+        public bool TriggerToggle { get => triggerToggle; set => triggerToggle = value; }
 
         public void Reset()
         {
-            triggers = DEFAULT_TRIGGERS;
-            triggerCond = DEFAULT_TRIGGER_COND;
-            triggerTurns = DEFAULT_TRIGGER_TURNS;
-            triggerToggle = DEFAULT_TRIGGER_TOGGLE;
+            _triggers = DEFAULT_TRIGGERS;
+            _triggerCond = DEFAULT_TRIGGER_COND;
+            _triggerTurns = DEFAULT_TRIGGER_TURNS;
+            _triggerToggle = DEFAULT_TRIGGER_TOGGLE;
+            RaiseAllPropertiesChanged();
         }
     }
 
     public class ButtonMouseInfo
     {
-        // 1.0 = 100%
-        //public const double MOUSESTICKANTIOFFSET = 0.0128;
         public const double MOUSESTICKANTIOFFSET = 0.008;
         public const int DEFAULT_BUTTON_SENS = 25;
         public const double DEFAULT_BUTTON_VERTICAL_SCALE = 1.0;
@@ -637,36 +846,6 @@ namespace DS4Windows
         }
     }
 
-    public class ButtonAbsMouseInfo
-    {
-        public const double WIDTH_DEFAULT = 1.0;
-        public const double HEIGHT_DEFAULT = 1.0;
-        public const double XCENTER_DEFAULT = 0.5;
-        public const double YCENTER_DEFAULT = 0.5;
-
-        public const bool SNAP_CENTER_DEFAULT = true;
-        public const double ANTI_RADIUS_DEFAULT = 0.0;
-
-        public double width = WIDTH_DEFAULT;
-        public double height = HEIGHT_DEFAULT;
-        public double xcenter = XCENTER_DEFAULT;
-        public double ycenter = YCENTER_DEFAULT;
-
-        public bool snapToCenter = SNAP_CENTER_DEFAULT;
-        public double antiRadius = ANTI_RADIUS_DEFAULT;
-
-        public void Reset()
-        {
-            width = WIDTH_DEFAULT;
-            height = HEIGHT_DEFAULT;
-            xcenter = XCENTER_DEFAULT;
-            ycenter = YCENTER_DEFAULT;
-
-            snapToCenter = SNAP_CENTER_DEFAULT;
-            antiRadius = ANTI_RADIUS_DEFAULT;
-        }
-    }
-
     public enum LightbarMode : uint
     {
         None,
@@ -688,7 +867,7 @@ namespace DS4Windows
         public DS4Color m_FlashLed;
         public double rainbow;
         public double maxRainbowSat = DEFAULT_MAX_RAINBOW_SAT;
-        public int flashAt; // Battery % when flashing occurs. <0 means disabled
+        public int flashAt;
         public byte flashType;
         public int chargingType;
     }
@@ -710,18 +889,6 @@ namespace DS4Windows
             }
         }
         public event EventHandler ModeChanged;
-
-        public LightbarSettingInfo()
-        {
-            /*ModeChanged += (sender, e) =>
-            {
-                if (mode != LightbarMode.DS4Win)
-                {
-                    ds4winSettings = null;
-                }
-            };
-            */
-        }
     }
 
     public class SteeringWheelSmoothingInfo
@@ -777,18 +944,10 @@ namespace DS4Windows
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
     }
-
 
     public class TouchpadRelMouseSettings
     {
@@ -806,25 +965,7 @@ namespace DS4Windows
         }
     }
 
-    public class TouchpadAbsMouseSettings
-    {
-        public const int DEFAULT_MAXZONE_X = 90;
-        public const int DEFAULT_MAXZONE_Y = 90;
-        public const bool DEFAULT_SNAP_CENTER = false;
-
-        public int maxZoneX = DEFAULT_MAXZONE_X;
-        public int maxZoneY = DEFAULT_MAXZONE_Y;
-        public bool snapToCenter = DEFAULT_SNAP_CENTER;
-
-        public void Reset()
-        {
-            maxZoneX = DEFAULT_MAXZONE_X;
-            maxZoneY = DEFAULT_MAXZONE_Y;
-            snapToCenter = DEFAULT_SNAP_CENTER;
-        }
-    }
-
-    public class TouchMouseStickInfo
+    public class TouchMouseStickInfo : ProfileSubSettingBase
     {
         public enum SmoothingMethod : byte
         {
@@ -847,19 +988,8 @@ namespace DS4Windows
             Y
         }
 
-        //public enum OutputCurve : ushort
-        //{
-        //    Linear,
-        //    EnhancedPrecision,
-        //    Quadratic,
-        //    Cubic,
-        //    EaseoutQuad,
-        //    EaseoutCubic,
-        //}
-
         public const double DEFAULT_MINCUTOFF = 0.8;
         public const double DEFAULT_BETA = 0.7;
-        //public const string DEFAULT_SMOOTH_TECHNIQUE = "one-euro";
         public const OutputStick DEFAULT_OUTPUT_STICK = OutputStick.RightStick;
         public const OutputStickAxes DEFAULT_OUTPUT_STICK_AXES = OutputStickAxes.XY;
         public const int DEFAULT_DEADZONE = 0;
@@ -867,7 +997,6 @@ namespace DS4Windows
         public const double ANTI_DEADZONE_DEFAULT = 0.40;
         public const bool TRACKBALL_MODE_DEFAULT = true;
         public const double TRACKBALL_FRICTION_DEFAULT = 10.0;
-        public const int TRACKBALL_INIT_FICTION = 10;
         public const StickOutCurve.Curve OUTPUT_CURVE_DEFAULT = StickOutCurve.Curve.Linear;
         public const double ANG_DEGREE_DEFAULT = 0.0;
         public const double ANG_RAD_DEFAULT = ANG_DEGREE_DEFAULT * Math.PI / 180.0;
@@ -883,9 +1012,7 @@ namespace DS4Windows
         public int vertScale = DEFAULT_VERT_SCALE;
         public bool maxOutputEnabled = DEFAULT_MAX_OUTPUT_ENABLED;
         public double maxOutput = DEFAULT_MAX_OUTPUT;
-        // Flags representing invert axis choices
         public uint inverted = DEFAULT_INVERTED;
-        //public bool useSmoothing;
         public SmoothingMethod smoothingMethod;
         public double minCutoff = DEFAULT_MINCUTOFF;
         public double beta = DEFAULT_BETA;
@@ -893,12 +1020,10 @@ namespace DS4Windows
         public OutputStickAxes outputStickDir = DEFAULT_OUTPUT_STICK_AXES;
         public bool trackballMode = TRACKBALL_MODE_DEFAULT;
         public double trackballFriction = TRACKBALL_FRICTION_DEFAULT;
-        //public double trackballAccel = 0.0;
         public StickOutCurve.Curve outputCurve;
         public double rotationRad = ANG_RAD_DEFAULT;
 
-        public delegate void TouchMouseStickInfoEventHandler(TouchMouseStickInfo sender,
-            EventArgs args);
+        public delegate void TouchMouseStickInfoEventHandler(TouchMouseStickInfo sender, EventArgs args);
 
         public double MinCutoff
         {
@@ -908,6 +1033,7 @@ namespace DS4Windows
                 if (minCutoff == value) return;
                 minCutoff = value;
                 MinCutoffChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event TouchMouseStickInfoEventHandler MinCutoffChanged;
@@ -920,6 +1046,7 @@ namespace DS4Windows
                 if (beta == value) return;
                 beta = value;
                 BetaChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event TouchMouseStickInfoEventHandler BetaChanged;
@@ -929,14 +1056,9 @@ namespace DS4Windows
             get => smoothingMethod != SmoothingMethod.None;
             set
             {
-                if (value)
-                {
-                    smoothingMethod = SmoothingMethod.OneEuro;
-                }
-                else
-                {
-                    smoothingMethod = SmoothingMethod.None;
-                }
+                if (value) smoothingMethod = SmoothingMethod.OneEuro;
+                else smoothingMethod = SmoothingMethod.None;
+                RaisePropertyChanged();
             }
         }
 
@@ -950,69 +1072,32 @@ namespace DS4Windows
             outputStickDir = DEFAULT_OUTPUT_STICK_AXES;
             trackballMode = TRACKBALL_MODE_DEFAULT;
             trackballFriction = TRACKBALL_FRICTION_DEFAULT;
-            //trackballAccel = TRACKBALL_RADIUS * trackballFriction / TRACKBALL_INERTIA;
             outputCurve = OUTPUT_CURVE_DEFAULT;
             rotationRad = ANG_RAD_DEFAULT;
 
             minCutoff = DEFAULT_MINCUTOFF;
             beta = DEFAULT_BETA;
             smoothingMethod = SmoothingMethod.None;
-            //useSmoothing = false;
             RemoveRefreshEvents();
+            RaiseAllPropertiesChanged();
         }
 
         public void ResetSmoothing()
         {
-            //useSmoothing = false;
             ResetSmoothingMethods();
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
 
         public void ResetSmoothingMethods()
         {
             smoothingMethod = SmoothingMethod.None;
+            RaisePropertyChanged(nameof(smoothingMethod));
         }
-
-        //public void DetermineSmoothMethod(string identier)
-        //{
-        //    ResetSmoothingMethods();
-
-        //    switch (identier)
-        //    {
-        //        case "one-euro":
-        //            smoothingMethod = SmoothingMethod.OneEuro;
-        //            break;
-        //        default:
-        //            smoothingMethod = SmoothingMethod.None;
-        //            break;
-        //    }
-        //}
-
-        //public string SmoothMethodIdentifier()
-        //{
-        //    string result = "none";
-        //    switch (smoothingMethod)
-        //    {
-        //        case SmoothingMethod.OneEuro:
-        //            result = "one-euro";
-        //            break;
-        //        default:
-        //            break;
-        //    }
-
-        //    return result;
-        //}
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
 
         public void RemoveRefreshEvents()
@@ -1021,17 +1106,8 @@ namespace DS4Windows
             MinCutoffChanged = null;
         }
 
-        public bool OutputHorizontal()
-        {
-            return outputStickDir == OutputStickAxes.XY ||
-                outputStickDir == OutputStickAxes.X;
-        }
-
-        public bool OutputVertical()
-        {
-            return outputStickDir == OutputStickAxes.XY ||
-                outputStickDir == OutputStickAxes.Y;
-        }
+        public bool OutputHorizontal() => outputStickDir == OutputStickAxes.XY || outputStickDir == OutputStickAxes.X;
+        public bool OutputVertical() => outputStickDir == OutputStickAxes.XY || outputStickDir == OutputStickAxes.Y;
     }
 
     public enum StickMode : uint
@@ -1057,10 +1133,10 @@ namespace DS4Windows
         HipFireExclusiveButtons,
     }
 
-    public class FlickStickSettings
+    public class FlickStickSettings : ProfileSubSettingBase
     {
         public const double DEFAULT_FLICK_THRESHOLD = 0.9;
-        public const double DEFAULT_FLICK_TIME = 0.1;  // In seconds
+        public const double DEFAULT_FLICK_TIME = 0.1;
         public const double DEFAULT_REAL_WORLD_CALIBRATION = 5.3;
         public const double DEFAULT_MIN_ANGLE_THRESHOLD = 0.0;
 
@@ -1068,15 +1144,66 @@ namespace DS4Windows
         public const double DEFAULT_BETA = 0.4;
 
         public double flickThreshold = DEFAULT_FLICK_THRESHOLD;
-        public double flickTime = DEFAULT_FLICK_TIME; // In seconds
+        public double flickTime = DEFAULT_FLICK_TIME;
         public double realWorldCalibration = DEFAULT_REAL_WORLD_CALIBRATION;
         public double minAngleThreshold = DEFAULT_MIN_ANGLE_THRESHOLD;
 
         public double minCutoff = DEFAULT_MINCUTOFF;
         public double beta = DEFAULT_BETA;
 
-        public delegate void FlickStickSettingsEventHandler(FlickStickSettings sender,
-           EventArgs args);
+        public delegate void FlickStickSettingsEventHandler(FlickStickSettings sender, EventArgs args);
+
+        public double FlickThreshold
+        {
+            get => flickThreshold;
+            set
+            {
+                if (Math.Abs(flickThreshold - value) > 0.0001)
+                {
+                    flickThreshold = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double FlickTime
+        {
+            get => flickTime;
+            set
+            {
+                if (Math.Abs(flickTime - value) > 0.0001)
+                {
+                    flickTime = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double RealWorldCalibration
+        {
+            get => realWorldCalibration;
+            set
+            {
+                if (Math.Abs(realWorldCalibration - value) > 0.0001)
+                {
+                    realWorldCalibration = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        public double MinAngleThreshold
+        {
+            get => minAngleThreshold;
+            set
+            {
+                if (Math.Abs(minAngleThreshold - value) > 0.0001)
+                {
+                    minAngleThreshold = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
 
         public double MinCutoff
         {
@@ -1086,6 +1213,7 @@ namespace DS4Windows
                 if (minCutoff == value) return;
                 minCutoff = value;
                 MinCutoffChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event FlickStickSettingsEventHandler MinCutoffChanged;
@@ -1098,6 +1226,7 @@ namespace DS4Windows
                 if (beta == value) return;
                 beta = value;
                 BetaChanged?.Invoke(this, EventArgs.Empty);
+                RaisePropertyChanged();
             }
         }
         public event FlickStickSettingsEventHandler BetaChanged;
@@ -1108,22 +1237,15 @@ namespace DS4Windows
             flickTime = DEFAULT_FLICK_TIME;
             realWorldCalibration = DEFAULT_REAL_WORLD_CALIBRATION;
             minAngleThreshold = DEFAULT_MIN_ANGLE_THRESHOLD;
-
             minCutoff = DEFAULT_MINCUTOFF;
             beta = DEFAULT_BETA;
+            RaiseAllPropertiesChanged();
         }
 
         public void SetRefreshEvents(OneEuroFilter euroFilter)
         {
-            BetaChanged += (sender, args) =>
-            {
-                euroFilter.Beta = beta;
-            };
-
-            MinCutoffChanged += (sender, args) =>
-            {
-                euroFilter.MinCutoff = minCutoff;
-            };
+            BetaChanged += (sender, args) => { euroFilter.Beta = beta; };
+            MinCutoffChanged += (sender, args) => { euroFilter.MinCutoff = minCutoff; };
         }
 
         public void RemoveRefreshEvents()
@@ -1168,7 +1290,6 @@ namespace DS4Windows
         public const int DEFAULT_HIP_TIME = 100;
         public const InputDevices.TriggerEffects DEFAULT_TRIGGER_EFFECT = InputDevices.TriggerEffects.None;
 
-        //public TriggerMode mode = TriggerMode.Normal;
         public TwoStageTriggerMode twoStageMode = DEFAULT_TRIG_MODE;
         public TwoStageTriggerMode TwoStageMode
         {
@@ -1196,16 +1317,11 @@ namespace DS4Windows
         }
         public event EventHandler TriggerEffectChanged;
 
-        public InputDevices.TriggerEffectSettings effectSettings =
-            new InputDevices.TriggerEffectSettings();
-        public ref InputDevices.TriggerEffectSettings TrigEffectSettings
-        {
-            get => ref effectSettings;
-        }
+        public InputDevices.TriggerEffectSettings effectSettings = new InputDevices.TriggerEffectSettings();
+        public ref InputDevices.TriggerEffectSettings TrigEffectSettings => ref effectSettings;
 
         public void ResetSettings()
         {
-            //mode = TriggerMode.Normal;
             twoStageMode = DEFAULT_TRIG_MODE;
             hipFireMS = DEFAULT_HIP_TIME;
             triggerEffect = DEFAULT_TRIGGER_EFFECT;
@@ -1217,6 +1333,143 @@ namespace DS4Windows
         {
             TwoStageModeChanged = null;
             TriggerEffectChanged = null;
+        }
+    }
+
+    public class RumbleSettings : ProfileSubSettingBase
+    {
+        public const bool DEFAULT_ENABLE_RUMBLE = true;
+        public const byte DEFAULT_RUMBLE_BOOST = 100;
+        public const int DEFAULT_AUTOSTOP_TIME = 0;
+        public const byte DEFAULT_RUMBLE_LIGHT = 50;
+        public const byte DEFAULT_RUMBLE_HEAVY = 50;
+        public const bool DEFAULT_ENABLE_RESCALE = false;
+        public const byte DEFAULT_HAPTIC_POWER = 100;
+
+        private bool enableRumble = DEFAULT_ENABLE_RUMBLE;
+        private byte rumbleBoost = DEFAULT_RUMBLE_BOOST;
+        private int rumbleAutostopTime = DEFAULT_AUTOSTOP_TIME;
+        private byte rumbleLight = DEFAULT_RUMBLE_LIGHT;
+        private byte rumbleHeavy = DEFAULT_RUMBLE_HEAVY;
+        private DualSenseDevice.RumbleEmulationMode emulationMode = DualSenseDevice.RumbleEmulationMode.Accurate;
+        private bool enableGenericRumbleRescale = DEFAULT_ENABLE_RESCALE;
+        private byte hapticPowerLevel = DEFAULT_HAPTIC_POWER;
+
+        public bool EnableRumble
+        {
+            get => enableRumble;
+            set
+            {
+                if (enableRumble == value) return;
+                enableRumble = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public byte RumbleBoost
+        {
+            get => rumbleBoost;
+            set
+            {
+                if (rumbleBoost == value) return;
+                rumbleBoost = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public int RumbleAutostopTime
+        {
+            get => rumbleAutostopTime;
+            set
+            {
+                if (rumbleAutostopTime == value) return;
+                rumbleAutostopTime = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public byte RumbleLight
+        {
+            get => rumbleLight;
+            set
+            {
+                if (rumbleLight == value) return;
+                rumbleLight = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public byte RumbleHeavy
+        {
+            get => rumbleHeavy;
+            set
+            {
+                if (rumbleHeavy == value) return;
+                rumbleHeavy = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public DualSenseDevice.RumbleEmulationMode EmulationMode
+        {
+            get => emulationMode;
+            set
+            {
+                if (emulationMode == value) return;
+                emulationMode = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public bool EnableGenericRumbleRescale
+        {
+            get => enableGenericRumbleRescale;
+            set
+            {
+                if (enableGenericRumbleRescale == value) return;
+                enableGenericRumbleRescale = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public byte HapticPowerLevel
+        {
+            get => hapticPowerLevel;
+            set
+            {
+                if (hapticPowerLevel == value) return;
+                hapticPowerLevel = value;
+                RaisePropertyChanged();
+                RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public event EventHandler RumbleSettingsChanged;
+
+        public void Reset()
+        {
+            enableRumble = DEFAULT_ENABLE_RUMBLE;
+            rumbleBoost = DEFAULT_RUMBLE_BOOST;
+            rumbleAutostopTime = DEFAULT_AUTOSTOP_TIME;
+            rumbleLight = DEFAULT_RUMBLE_LIGHT;
+            rumbleHeavy = DEFAULT_RUMBLE_HEAVY;
+            emulationMode = DualSenseDevice.RumbleEmulationMode.Accurate;
+            enableGenericRumbleRescale = DEFAULT_ENABLE_RESCALE;
+            hapticPowerLevel = DEFAULT_HAPTIC_POWER;
+            RaiseAllPropertiesChanged();
+            RumbleSettingsChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ResetEvents()
+        {
+            RumbleSettingsChanged = null;
         }
     }
 }

@@ -187,6 +187,7 @@ namespace DS4Windows
         //public event EventHandler<SixAxisEventArgs> SixAccelMoved = null;
         public event SixAxisHandler<SixAxisEventArgs> SixAccelMoved = null;
         private SixAxis sPrev = null, now = null;
+        private readonly DS4Windows.ControlService _controlService;
         private CalibData[] calibrationData = new CalibData[6] { new CalibData(), new CalibData(),
             new CalibData(), new CalibData(), new CalibData(), new CalibData()
         };
@@ -202,6 +203,11 @@ namespace DS4Windows
         private int gyro_offset_z = 0;
         private double gyro_accel_magnitude = 1.0f;
         private Stopwatch gyroAverageTimer = new Stopwatch();
+
+        public DS4SixAxis(DS4Windows.ControlService controlService = null)
+        {
+            _controlService = controlService ?? Program.rootHub;
+        }
 
         private class SimulatePitchRoll
         {
@@ -437,7 +443,7 @@ namespace DS4Windows
             int currentPitch = (short)((ushort)(gyro[1] << 8) | gyro[0]);
             int currentRoll = (short)((ushort)(gyro[5] << 8) | gyro[4]);
             int AccelX = (short)((ushort)(accel[1] << 8) | accel[0]);
-            int AccelY = (short)((ushort)(accel[3] << 8) | accel[2]);  
+            int AccelY = (short)((ushort)(accel[3] << 8) | accel[2]);
             int AccelZ = (short)((ushort)(accel[5] << 8) | accel[4]);
 
             //Console.WriteLine("AccelZ: {0}", AccelZ);
@@ -467,7 +473,7 @@ namespace DS4Windows
                 if (calibrationDone)
                     applyCalibs(ref currentYaw, ref currentPitch, ref currentRoll, ref AccelX, ref AccelY, ref AccelZ);
 
-                var triggerActive = App.rootHub.touchPad[device].IsGyroTriggerActive(GyroOutMode.Controls);
+                var triggerActive = _controlService.touchPad[device].IsGyroTriggerActive(GyroOutMode.Controls);
                 if (Global.UseDs3PitchRollSim && triggerActive)
                 {
                     _simulatePitchRoll.PushSample(AccelX, AccelY, AccelZ, state.totalMicroSec);

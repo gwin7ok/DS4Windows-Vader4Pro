@@ -54,11 +54,27 @@ namespace DS4WinWPF.DS4Forms
         private ColorPickerWindow colorDialog;
         private NonFormTimer ds4 = new NonFormTimer();
 
-        public RecordBox(int deviceNum, DS4Windows.DS4ControlSettings controlSettings, bool shift, bool showscan = true, bool repeatable = true)
-        {
-            InitializeComponent();
+        // Phase5-Step15-2-c: Program.rootHub直接参照を廃止し、他View/ViewModelと同じDIフォールバックパターンを導入する。
+        // 動作は完全に同一（フォールバック先が同じProgram.rootHubのため）で、実行時の挙動に変化はない。
+        private readonly DS4Windows.ControlService controlService;
 
-            recordBoxVM = new RecordBoxViewModel(deviceNum, controlSettings, shift, repeatable);
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: ライトバーのプレビューと記録中のタッチパッド Passthru で使う実機のスロット番号。-1 は実機なし。
+        /// 渡し忘れをコンパイルで検出するため必須引数とする（Phase6-Step7b-Plan.md 決定2）
+        /// </param>
+        public RecordBox(int deviceNum, DS4Windows.DS4ControlSettings controlSettings, bool shift, int targetDevice,
+            bool showscan = true, bool repeatable = true)
+        {
+            controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? DS4Windows.Program.rootHub;
+            InitializeComponent();
+            var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
+            if (vmFactory != null)
+                recordBoxVM = vmFactory.CreateRecordBoxViewModel(deviceNum, controlSettings, shift, repeatable, targetDevice);
+            else
+            {
+                DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=RecordBox, viewModel=RecordBoxViewModel");
+                recordBoxVM = new RecordBoxViewModel(deviceNum, controlSettings, shift, repeatable, targetDevice: targetDevice);
+            }
             mouseButtonsPanel.Visibility = Visibility.Hidden;
             extraConPanel.Visibility = Visibility.Hidden;
             macroModeCombo.IsEnabled = repeatable;
@@ -177,7 +193,7 @@ namespace DS4WinWPF.DS4Forms
             bool recording = recordBoxVM.Recording = !recordBoxVM.Recording;
             if (recording)
             {
-                DS4Windows.Program.rootHub.recordingMacro = true;
+                controlService.recordingMacro = true;
                 recordBtn.Content = "Stop";
                 if (recordBoxVM.MacroStepIndex == -1)
                 {
@@ -189,11 +205,12 @@ namespace DS4WinWPF.DS4Forms
                     recordBoxVM.AppendIndex = recordBoxVM.MacroStepIndex;
                 }
 
+                // 記録中は、4th/5th Mouse Button と Add Rumble/Change Lightbar Color の 4 つを同じ条件で表示する。
+                // 2026-09-26（ユーザー決定）: 以前は Add Rumble/Change Lightbar Color だけ Record Delays にチェックがある
+                // ときに限って表示していたが、その制限を撤廃した。Record Delays がオフの場合、開始と終了のステップの間に
+                // Wait が入らないため、必要に応じて記録後に Insert Wait やダブルクリックで待ち時間を調整する
                 mouseButtonsPanel.Visibility = Visibility.Visible;
-                if (recordBoxVM.RecordDelays)
-                {
-                    extraConPanel.Visibility = Visibility.Visible;
-                }
+                extraConPanel.Visibility = Visibility.Visible;
 
                 ds4.Start();
                 Enable_Controls(false);
@@ -202,7 +219,7 @@ namespace DS4WinWPF.DS4Forms
             }
             else
             {
-                DS4Windows.Program.rootHub.recordingMacro = false;
+                controlService.recordingMacro = false;
                 recordBoxVM.AppendIndex = -1;
                 ds4.Stop();
                 recordBtn.Content = "Record";

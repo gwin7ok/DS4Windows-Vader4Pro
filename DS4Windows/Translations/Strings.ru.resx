@@ -791,29 +791,8 @@
   <data name="ViGEm117MinNeeded" xml:space="preserve">
     <value>Работает только с ViGEmBus 1.17.333.0 и выше</value>
   </data>
-  <data name="AbsoluteMouse" xml:space="preserve">
-    <value>Мышь с абсолютным указанием положения</value>
-  </data>
-  <data name="AbsoluteMouseOptions" xml:space="preserve">
-    <value>Настройка мыши с абсолютным указанием положения</value>
-  </data>
   <data name="AntiRadius" xml:space="preserve">
     <value>Анти-радиус</value>
-  </data>
-  <data name="BindingWin.AbsMouse" xml:space="preserve">
-    <value>Мышь с абсолютным указанием положения</value>
-  </data>
-  <data name="BindingWin.AbsMouseDown" xml:space="preserve">
-    <value>Мышь с абсолютным указанием положения вниз</value>
-  </data>
-  <data name="BindingWin.AbsMouseLeft" xml:space="preserve">
-    <value>Мышь с абсолютным указанием положения влево</value>
-  </data>
-  <data name="BindingWin.AbsMouseRight" xml:space="preserve">
-    <value>Мышь с абсолютным указанием положения вправо</value>
-  </data>
-  <data name="BindingWin.AbsMouseUp" xml:space="preserve">
-    <value>Мышь с абсолютным указанием положения вверх</value>
   </data>
   <data name="BindingWin.ChangeLight" xml:space="preserve">
     <value>Изменить цвет</value>
@@ -916,9 +895,6 @@
   </data>
   <data name="LinkProfileId" xml:space="preserve">
     <value>Связать Профиль/ID</value>
-  </data>
-  <data name="MainWin.AbsDisplayMonitor" xml:space="preserve">
-    <value>Монитор</value>
   </data>
   <data name="MainWin.EnableServer" xml:space="preserve">
     <value>Включить сервер</value>

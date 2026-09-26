@@ -29,13 +29,13 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using DS4Windows;
+using DS4Windows.DI;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
-    public class ControllerListViewModel
+    public class ControllerListViewModel : IDisposable
     {
-        //private object _colLockobj = new object();
-        private ReaderWriterLockSlim _colListLocker = new ReaderWriterLockSlim();
+        private ReaderWriterLockSlim _colListLocker = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
         private ObservableCollection<CompositeDeviceModel> controllerCol =
             new ObservableCollection<CompositeDeviceModel>();
         private Dictionary<int, CompositeDeviceModel> controllerDict =
@@ -46,9 +46,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private ProfileList profileListHolder;
         private ControlService controlService;
+        private readonly IProfileSettingsService profileSettingsService;
+        private readonly IProfileRepository profileRepo;
+        private readonly IAppSettingsService appSettings;
         private int currentIndex;
         public int CurrentIndex { get => currentIndex; set => currentIndex = value; }
-        public CompositeDeviceModel CurrentItem {
+        public CompositeDeviceModel CurrentItem
+        {
             get
             {
                 if (currentIndex == -1) return null;
@@ -59,33 +63,34 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public Dictionary<int, CompositeDeviceModel> ControllerDict { get => controllerDict; set => controllerDict = value; }
 
-        //public ControllerListViewModel(Tester tester, ProfileList profileListHolder)
-        public ControllerListViewModel(ControlService service, ProfileList profileListHolder)
+        public ControllerListViewModel(ControlService service, ProfileList profileListHolder,
+            IProfileSettingsService profileSettingsService = null,
+            IProfileRepository profileRepo = null,
+            IAppSettingsService appSettings = null)
         {
             this.profileListHolder = profileListHolder;
             this.controlService = service;
+            this.profileSettingsService = profileSettingsService ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
+            this.profileRepo = profileRepo ?? DS4WinWPF.AppHost.GetService<IProfileRepository>() ?? Global.ProfileRepositoryInstance;
+            this.appSettings = appSettings ?? DS4WinWPF.AppHost.GetService<IAppSettingsService>();
             service.ServiceStarted += ControllersChanged;
             service.PreServiceStop += ClearControllerList;
             service.HotplugController += Service_HotplugController;
-            
+
             // Subscribe to SelectedProfile change event (スペシャルアクション対応)
-            Global.SelectedProfileChanged += Global_SelectedProfileChanged;
-            
-            //tester.StartControllers += ControllersChanged;
-            //tester.ControllersRemoved += ClearControllerList;
+            this.profileRepo.SelectedProfileChanged += Global_SelectedProfileChanged;
 
             int idx = 0;
             foreach (DS4Device currentDev in controlService.slotManager.ControllerColl)
             {
                 CompositeDeviceModel temp = new CompositeDeviceModel(currentDev,
-                    idx, Global.ProfilePath[idx], profileListHolder);
+                    idx, profileRepo.ProfilePath[idx], profileListHolder, profileSettingsService, profileRepo);
                 controllerCol.Add(temp);
                 controllerDict.Add(idx, temp);
                 currentDev.Removal += Controller_Removal;
                 idx++;
             }
 
-            //BindingOperations.EnableCollectionSynchronization(controllerCol, _colLockobj);
             BindingOperations.EnableCollectionSynchronization(controllerCol, _colListLocker,
                 ColLockCallback);
         }
@@ -112,14 +117,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private void Service_HotplugController(ControlService sender,
             DS4Device device, int index)
         {
-            // Engage write lock pre-maturely
             using (WriteLocker readLock = new WriteLocker(_colListLocker))
             {
-                // Look if device exists. Also, check if disconnect might be occurring
                 if (!controllerDict.ContainsKey(index) && !device.IsRemoving)
                 {
                     CompositeDeviceModel temp = new CompositeDeviceModel(device,
-                        index, Global.ProfilePath[index], profileListHolder);
+                        index, profileRepo.ProfilePath[index], profileListHolder, profileSettingsService, profileRepo);
                     controllerCol.Add(temp);
                     controllerDict.Add(index, temp);
 
@@ -131,21 +134,51 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private void ClearControllerList(object sender, EventArgs e)
         {
             _colListLocker.EnterReadLock();
-            foreach (CompositeDeviceModel temp in controllerCol)
+            try
             {
-                temp.Device.Removal -= Controller_Removal;
+                foreach (CompositeDeviceModel temp in controllerCol)
+                {
+                    temp.Device.Removal -= Controller_Removal;
+                }
             }
-            _colListLocker.ExitReadLock();
+            finally
+            {
+                _colListLocker.ExitReadLock();
+            }
 
             _colListLocker.EnterWriteLock();
-            controllerCol.Clear();
-            controllerDict.Clear();
-            _colListLocker.ExitWriteLock();
+            try
+            {
+                controllerCol.Clear();
+                controllerDict.Clear();
+            }
+            finally
+            {
+                _colListLocker.ExitWriteLock();
+            }
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                ClearControllerList(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"ControllerListViewModel.Dispose: ClearControllerList failed: {ex}", true);
+            }
+            finally
+            {
+                controlService.ServiceStarted -= ControllersChanged;
+                controlService.PreServiceStop -= ClearControllerList;
+                controlService.HotplugController -= Service_HotplugController;
+                profileRepo.SelectedProfileChanged -= Global_SelectedProfileChanged;
+            }
         }
 
         private void ControllersChanged(object sender, EventArgs e)
         {
-            //IEnumerable<DS4Device> devices = DS4Windows.DS4Devices.getDS4Controllers();
             using (ReadLocker locker = new ReadLocker(controlService.slotManager.CollectionLocker))
             {
                 foreach (DS4Device currentDev in controlService.slotManager.ControllerColl)
@@ -162,14 +195,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     }
                     _colListLocker.ExitReadLock();
 
-                    // Check for new device. Also, check if disconnect might be occurring
                     if (!found && !currentDev.IsRemoving)
                     {
-                        //int idx = controllerCol.Count;
                         _colListLocker.EnterWriteLock();
                         int idx = controlService.slotManager.ReverseControllerDict[currentDev];
                         CompositeDeviceModel temp = new CompositeDeviceModel(currentDev,
-                            idx, Global.ProfilePath[idx], profileListHolder);
+                            idx, profileRepo.ProfilePath[idx], profileListHolder, profileSettingsService, profileRepo);
                         controllerCol.Add(temp);
                         controllerDict.Add(idx, temp);
                         _colListLocker.ExitWriteLock();
@@ -202,9 +233,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 controllerDict.Remove(found.DevIndex);
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
-                    Global.Save();
+                    appSettings?.Save();
                 });
-                Global.linkedProfileCheck[found.DevIndex] = false;
+                profileSettingsService.SetLinkedProfileCheck(found.DevIndex, false);
                 _colListLocker.ExitWriteLock();
             }
         }
@@ -230,20 +261,24 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                         {
                             CompositeDeviceModel item = controllerDict[deviceIndex];
                             AppLogger.LogDebug($"Global_SelectedProfileChanged: Found controller item for device {deviceIndex}");
-                            
-                            // Update SelectedIndex to match the new profile
+
                             ProfileEntity newProfile = profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == profileName);
                             if (newProfile != null)
                             {
                                 int newIndex = profileListHolder.ProfileListCol.IndexOf(newProfile);
                                 AppLogger.LogDebug($"Global_SelectedProfileChanged: Profile '{profileName}' found at index {newIndex}, current SelectedIndex={item.SelectedIndex}");
-                                
+
                                 if (item.SelectedIndex != newIndex)
                                 {
-                                    // Suppress SelectedIndexChanged event to avoid triggering SelectProfCombo_SelectionChanged
+                                    // ★統合抑制フラグ: WPF ComboBox の SelectionChanged 完了まで確実に抑制状態を保持
                                     item.suppressSelectedIndexChanged = true;
                                     item.SelectedIndex = newIndex;
-                                    item.suppressSelectedIndexChanged = false;
+
+                                    System.Windows.Application.Current.Dispatcher.BeginInvoke((Action)(() =>
+                                    {
+                                        item.suppressSelectedIndexChanged = false;
+                                    }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+
                                     AppLogger.LogDebug($"Global_SelectedProfileChanged: Updated SelectedIndex to {newIndex}");
                                 }
                             }
@@ -251,15 +286,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                             {
                                 AppLogger.LogDebug($"Global_SelectedProfileChanged: Profile '{profileName}' not found in profile list");
                             }
-                            
-                            // Update backlight color to match the new profile
+
                             item.RaiseLightColorChanged();
                             AppLogger.LogDebug($"Global_SelectedProfileChanged: LightColorChanged event fired for device {deviceIndex}");
-                            
-                            // Note: RaiseLinkedProfileChanged() is not called here to avoid triggering
-                            // unnecessary UI updates. LinkedProfile should only be updated when explicitly
-                            // changed by the user or during controller reconnection.
-                            
                             AppLogger.LogDebug($"Global_SelectedProfileChanged: Completed successfully for device {deviceIndex}");
                         }
                         else
@@ -291,8 +320,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private ProfileList profileListHolder;
         private ProfileEntity selectedEntity;
         private int selectedIndex = -1;
-        internal bool suppressSelectedIndexChanged = false; // SelectedIndexChanged イベント抑制フラグ（Global_SelectedProfileChangedからアクセス可能）
+        internal bool suppressSelectedIndexChanged = false; // ★統合抑制フラグ（Global_SelectedProfileChangedからアクセス可能）
         private int devIndex;
+        private readonly IProfileSettingsService profileSettingsService;
+        private readonly IProfileRepository profileRepo;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -306,13 +337,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 DS4Color color;
-                if (Global.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed)
+                if (profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed)
                 {
-                    color = Global.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed; //Global.CustomColor[devIndex];
+                    color = profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed;
                 }
                 else
                 {
-                    color = Global.LightbarSettingsInfo[devIndex].ds4winSettings.m_Led;
+                    color = profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.m_Led;
                 }
                 return $"#FF{color.red.ToString("X2")}{color.green.ToString("X2")}{color.blue.ToString("X2")}";
             }
@@ -325,7 +356,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get
             {
                 DS4Color color;
-                color = Global.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed;
+                color = profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed;
                 return new Color() { R = color.red, G = color.green, B = color.blue, A = 255 };
             }
         }
@@ -347,11 +378,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (selectedIndex == value) return;
                 selectedIndex = value;
-                
-                // XAMLバインディング用のPropertyChangedイベントを発火
+
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedIndex)));
-                
-                // 互換性のため既存のSelectedIndexChangedイベントも維持（現在は未使用）
+
                 if (!suppressSelectedIndexChanged)
                 {
                     SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
@@ -376,7 +405,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 string imgName = (string)App.Current.FindResource("CancelImg");
                 string source = $"{Global.RESOURCES_PREFIX}/{imgName}";
-                switch(device.CurrentExclusiveStatus)
+                switch (device.CurrentExclusiveStatus)
                 {
                     case DS4Device.ExclusiveStatus.Exclusive:
                         imgName = (string)App.Current.FindResource("CheckedImg");
@@ -399,34 +428,32 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                return Global.linkedProfileCheck[devIndex];
+                return profileSettingsService.GetLinkedProfileCheck(devIndex);
             }
             set
             {
-                bool temp = Global.linkedProfileCheck[devIndex];
+                bool temp = profileSettingsService.GetLinkedProfileCheck(devIndex);
                 if (temp == value) return;
-                Global.linkedProfileCheck[devIndex] = value;
+                profileSettingsService.SetLinkedProfileCheck(devIndex, value);
                 SaveLinked(value);
             }
         }
         public event EventHandler LinkedProfileChanged;
 
-        // LinkedProfileチェックボックスのUI更新を強制する（再接続時など）
         public void RaiseLinkedProfileChanged()
         {
             LinkedProfileChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        // New properties for Selected Profile and Linked Profile
         public string SelectedProfileName
         {
-            get => Global.SelectedProfile[devIndex];
+            get => profileRepo.SelectedProfile[devIndex];
             set
             {
-                if (Global.SelectedProfile[devIndex] == value) return;
-                Global.SelectedProfile[devIndex] = value;
-                Global.ProfilePath[devIndex] = value;
-                Global.OlderProfilePath[devIndex] = value;
+                if (profileRepo.SelectedProfile[devIndex] == value) return;
+                profileRepo.SelectedProfile[devIndex] = value;
+                profileRepo.ProfilePath[devIndex] = value;
+                profileRepo.OlderProfilePath[devIndex] = value;
                 SelectedProfileChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -436,7 +463,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                string linkedProfileUI = Global.LinkedProfileUI[devIndex];
+                string linkedProfileUI = profileRepo.LinkedProfileUI[devIndex];
                 if (!string.IsNullOrEmpty(linkedProfileUI))
                 {
                     return profileListHolder.ProfileListCol.SingleOrDefault(x => x.Name == linkedProfileUI);
@@ -446,20 +473,19 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             set
             {
                 string newValue = value?.Name ?? string.Empty;
-                if (Global.LinkedProfileUI[devIndex] == newValue) return;
-                
-                Global.LinkedProfileUI[devIndex] = newValue;
-                
-                // Link ON時のみLinkedProfiles.xmlを更新
-                if (Global.linkedProfileCheck[devIndex] && device?.isValidSerial() == true)
+                if (profileRepo.LinkedProfileUI[devIndex] == newValue) return;
+
+                profileRepo.LinkedProfileUI[devIndex] = newValue;
+
+                if (profileSettingsService.GetLinkedProfileCheck(devIndex) && device?.isValidSerial() == true)
                 {
                     if (!string.IsNullOrEmpty(newValue))
                     {
-                        Global.changeLinkedProfile(device.getMacAddress(), newValue);
-                        Global.SaveLinkedProfiles();
+                        profileRepo.ChangeLinkedProfile(device.getMacAddress(), newValue);
+                        profileRepo.SaveLinkedProfiles();
                     }
                 }
-                
+
                 LinkedProfileNameChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -467,56 +493,53 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool LinkEnabled
         {
-            get => Global.linkedProfileCheck[devIndex];
+            get => profileSettingsService.GetLinkedProfileCheck(devIndex);
             set
             {
-                bool temp = Global.linkedProfileCheck[devIndex];
+                bool temp = profileSettingsService.GetLinkedProfileCheck(devIndex);
                 if (temp == value) return;
-                
+
                 AppLogger.LogDebug($"LinkEnabled setter: device={devIndex}, oldValue={temp}, newValue={value}");
-                Global.linkedProfileCheck[devIndex] = value;
-                
+                profileSettingsService.SetLinkedProfileCheck(devIndex, value);
+
                 if (value)
                 {
-                    // Link ON: Linked列の現在値を登録（空の場合は現在適用中のプロファイルを使用）
-                    string linkedValue = Global.LinkedProfileUI[devIndex];
+                    string linkedValue = profileRepo.LinkedProfileUI[devIndex];
                     if (string.IsNullOrEmpty(linkedValue))
                     {
-                        linkedValue = Global.SelectedProfile[devIndex];
+                        linkedValue = profileRepo.SelectedProfile[devIndex];
                         AppLogger.LogDebug($"LinkEnabled ON: LinkedProfileUI is empty, using SelectedProfile '{linkedValue}' for device {devIndex}");
-                        Global.LinkedProfileUI[devIndex] = linkedValue;
+                        profileRepo.LinkedProfileUI[devIndex] = linkedValue;
                     }
-                    
+
                     AppLogger.LogDebug($"LinkEnabled ON: Registering profile '{linkedValue}' for device {devIndex}");
-                    
+
                     if (!string.IsNullOrEmpty(linkedValue) && device?.isValidSerial() == true)
                     {
-                        Global.changeLinkedProfile(device.getMacAddress(), linkedValue);
-                        Global.SaveLinkedProfiles();
+                        profileRepo.ChangeLinkedProfile(device.getMacAddress(), linkedValue);
+                        profileRepo.SaveLinkedProfiles();
                         AppLogger.LogDebug($"LinkEnabled ON: Saved to LinkedProfiles.xml for MAC={device.getMacAddress()}");
                     }
                     else
                     {
                         AppLogger.LogDebug($"LinkEnabled ON: Could not save - linkedValue='{linkedValue}', validSerial={device?.isValidSerial()}");
                     }
-                    
+
                     LinkedProfileNameChanged?.Invoke(this, EventArgs.Empty);
                 }
                 else
                 {
-                    // Link OFF: LinkedProfiles.xmlから削除（LinkedProfileUIは保持）
                     AppLogger.LogDebug($"LinkEnabled OFF: Removing from LinkedProfiles.xml for device {devIndex}");
                     if (device?.isValidSerial() == true)
                     {
-                        Global.removeLinkedProfile(device.getMacAddress());
-                        Global.SaveLinkedProfiles();
+                        profileRepo.RemoveLinkedProfile(device.getMacAddress());
+                        profileRepo.SaveLinkedProfiles();
                         AppLogger.LogDebug($"LinkEnabled OFF: Removed from LinkedProfiles.xml for MAC={device.getMacAddress()}");
                     }
-                    
-                    // LinkedProfileUIは空にせず保持する（再チェック時に使用）
-                    AppLogger.LogDebug($"LinkEnabled OFF: Keeping LinkedProfileUI value '{Global.LinkedProfileUI[devIndex]}' for device {devIndex}");
+
+                    AppLogger.LogDebug($"LinkEnabled OFF: Keeping LinkedProfileUI value '{profileRepo.LinkedProfileUI[devIndex]}' for device {devIndex}");
                 }
-                
+
                 LinkedProfileChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -551,23 +574,20 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                string temp = Translations.Strings.SharedAccess;
-                switch(device.CurrentExclusiveStatus)
+                if (device.CurrentExclusiveStatus == DS4Device.ExclusiveStatus.Exclusive)
                 {
-                    case DS4Device.ExclusiveStatus.Exclusive:
-                        temp = Translations.Strings.ExclusiveAccess;
-                        break;
-                    case DS4Device.ExclusiveStatus.HidHideAffected:
-                        temp = Translations.Strings.HidHideAccess;
-                        break;
-                    case DS4Device.ExclusiveStatus.HidGuardAffected:
-                        temp = Translations.Strings.HidGuardianAccess;
-                        break;
-                    default:
-                        break;
+                    return Translations.Strings.ExclusiveAccess;
+                }
+                else if (device.CurrentExclusiveStatus == DS4Device.ExclusiveStatus.HidHideAffected)
+                {
+                    return Translations.Strings.HidHideAccess;
+                }
+                else if (device.CurrentExclusiveStatus == DS4Device.ExclusiveStatus.HidGuardAffected)
+                {
+                    return Translations.Strings.HidGuardianAccess;
                 }
 
-                return temp;
+                return Translations.Strings.SharedAccess;
             }
         }
 
@@ -580,13 +600,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public event CustomColorHandler RequestColorPicker;
 
         public CompositeDeviceModel(DS4Device device, int devIndex, string profile,
-            ProfileList collection)
+            ProfileList collection, IProfileSettingsService profileSettingsService = null,
+            IProfileRepository profileRepo = null)
         {
             this.device = device;
             device.BatteryChanged += (sender, e) => BatteryStateChanged?.Invoke(this, e);
             device.ChargingChanged += (sender, e) => BatteryStateChanged?.Invoke(this, e);
             device.MacAddressChanged += (sender, e) => IdTextChanged?.Invoke(this, e);
             this.devIndex = devIndex;
+            this.profileSettingsService = profileSettingsService ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
+            this.profileRepo = profileRepo ?? DS4WinWPF.AppHost.GetService<IProfileRepository>() ?? Global.ProfileRepositoryInstance;
             this.selectedProfile = profile;
             profileListHolder = collection;
             if (!string.IsNullOrEmpty(selectedProfile))
@@ -600,7 +623,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 HookEvents(true);
             }
 
-            useCustomColor = Global.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed;
+            useCustomColor = profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed;
         }
 
         public void HookEvents(bool state)
@@ -638,16 +661,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 {
                     if (device.isValidSerial())
                     {
-                        Global.changeLinkedProfile(device.getMacAddress(), Global.ProfilePath[devIndex]);
+                        profileRepo.ChangeLinkedProfile(device.getMacAddress(), profileRepo.ProfilePath[devIndex]);
                     }
                 }
                 else
                 {
-                    Global.removeLinkedProfile(device.getMacAddress());
-                    Global.ProfilePath[devIndex] = Global.OlderProfilePath[devIndex];
+                    profileRepo.RemoveLinkedProfile(device.getMacAddress());
+                    profileRepo.ProfilePath[devIndex] = profileRepo.OlderProfilePath[devIndex];
                 }
 
-                Global.SaveLinkedProfiles();
+                profileRepo.SaveLinkedProfiles();
             }
         }
 
@@ -665,7 +688,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             useCustomColor = false;
             RefreshLightContext();
-            Global.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed = false;
+            profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed = false;
             LightColorChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -673,7 +696,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             useCustomColor = true;
             RefreshLightContext();
-            Global.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed = true;
+            profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.useCustomLed = true;
             LightColorChanged?.Invoke(this, EventArgs.Empty);
             RequestColorPicker?.Invoke(this);
         }
@@ -686,7 +709,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public void UpdateCustomLightColor(Color color)
         {
-            Global.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed = new DS4Color() { red = color.R, green = color.G, blue = color.B };
+            profileSettingsService.LightbarSettingsInfo[devIndex].ds4winSettings.m_CustomLed = new DS4Color() { red = color.R, green = color.G, blue = color.B };
             LightColorChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -702,7 +725,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (device.ConnectionType == ConnectionType.BT)
                 {
-                    //device.StopUpdate();
                     device.queueEvent(() =>
                     {
                         device.DisconnectBT();

@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -30,6 +30,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using NonFormTimer = System.Timers.Timer;
 using DS4Windows;
 
@@ -66,6 +67,10 @@ namespace DS4WinWPF.DS4Forms
         private sbyte lsDriftY;
         private sbyte rsDriftX;
         private sbyte rsDriftY;
+
+        // タブ表示中の最大遅延記録用フィールド
+        private double maxLatency = 0.0;
+        private double maxProcDelay = 0.0;
 
         public double LsDeadX
         {
@@ -201,23 +206,41 @@ namespace DS4WinWPF.DS4Forms
         public event EventHandler RsDriftYChanged;
 
 
-        private LatencyWarnMode warnMode;
-        private LatencyWarnMode prevWarnMode;
         private DS4State baseState = new DS4State();
         private DS4State interState = new DS4State();
         private DS4StateExposed exposeState;
+        private Label outputDelayLabel; // XAMLコントロール参照キャッシュ
         private const int CANVAS_WIDTH = 130;
         private const int CANVAS_MIDPOINT = CANVAS_WIDTH / 2;
         private const double TRIG_LB_TRANSFORM_OFFSETY = 66.0;
 
+        // UI過剰描画・キュー滞留防止用のキャッシュフィールド
+        private bool isUiUpdating = false;
+        private int lastInLX = -1, lastInLY = -1, lastOutLX = -1, lastOutLY = -1;
+        private int lastInRX = -1, lastInRY = -1, lastOutRX = -1, lastOutRY = -1;
+        private int lastInL2 = -1, lastOutL2 = -1, lastInR2 = -1, lastOutR2 = -1;
+        private int lastAccelX = -999, lastAccelY = -999, lastAccelZ = -999;
+        private double lastOutAccelX = -999, lastOutAccelZ = -999;
+        private int lastGyroYaw = -99999, lastGyroPitch = -99999, lastGyroRoll = -99999;
+        private int lastTouchX = -1, lastTouchY = -1;
+        private int lastBattery = -1;
+        private int lastLatencyInt = -1;
+        private int lastProcDelayInt = -1;
+        private long lastCalibrating = -1;
+
+        // Phase5-Step15-2-b: Program.rootHub直接参照を廃止し、他View/ViewModelと同じDIフォールバックパターンを導入する。
+        // 動作は完全に同一（フォールバック先が同じProgram.rootHubのため）で、実行時の挙動に変化はない。
+        private readonly DS4Windows.ControlService controlService;
+
         public ControllerReadingsControl()
         {
+            controlService = DS4WinWPF.AppHost.GetService<DS4Windows.ControlService>() ?? Program.rootHub;
             InitializeComponent();
             inputContNum.Content = $"#{deviceNum + 1}";
             exposeState = new DS4StateExposed(baseState);
 
             readingTimer = new NonFormTimer();
-            readingTimer.Interval = 1000 / 60.0;
+            readingTimer.Interval = 66.0; // 約15fps (66ms): 診断用として十分滑らかかつCPU負荷を最小化
 
             LsDeadXChanged += ChangeLsDeadControls;
             LsDeadYChanged += ChangeLsDeadControls;
@@ -238,6 +261,21 @@ namespace DS4WinWPF.DS4Forms
             SixAxisDeadZChanged += ChangeSixAxisDeadControls;
 
             DeviceNumChanged += ControllerReadingsControl_DeviceNumChanged;
+
+            // タブ表示切り替え時の最大値リセットイベント登録
+            this.IsVisibleChanged += ControllerReadingsControl_IsVisibleChanged;
+        }
+
+        private void ControllerReadingsControl_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (this.IsVisible)
+            {
+                // タブが開かれた（表示された）タイミングで最大値をリセット
+                maxLatency = 0.0;
+                maxProcDelay = 0.0;
+                lastLatencyInt = -1;
+                lastProcDelayInt = -1;
+            }
         }
 
         private void ControllerReadingsControl_DeviceNumChanged(object sender, EventArgs e)
@@ -274,7 +312,7 @@ namespace DS4WinWPF.DS4Forms
             rsDeadEllipse.Width = rsDeadX * CANVAS_WIDTH;
             rsDeadEllipse.Height = rsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadX * CANVAS_WIDTH / 2.0));
-            Canvas.SetTop(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadY * CANVAS_WIDTH / 2.0));
+            Canvas.SetTop(rsDeadEllipse, CANVAS_MIDPOINT - (rsDeadX * CANVAS_WIDTH / 2.0));
         }
 
         private void ChangeLsDeadControls(object sender, EventArgs e)
@@ -282,7 +320,7 @@ namespace DS4WinWPF.DS4Forms
             lsDeadEllipse.Width = lsDeadX * CANVAS_WIDTH;
             lsDeadEllipse.Height = lsDeadY * CANVAS_WIDTH;
             Canvas.SetLeft(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadX * CANVAS_WIDTH / 2.0));
-            Canvas.SetTop(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadY * CANVAS_WIDTH / 2.0));
+            Canvas.SetTop(lsDeadEllipse, CANVAS_MIDPOINT - (lsDeadX * CANVAS_WIDTH / 2.0));
         }
 
         public void UseDevice(int index, int profileDevIdx)
@@ -294,10 +332,17 @@ namespace DS4WinWPF.DS4Forms
 
         public void EnableControl(bool state)
         {
+            // 多重登録防止のため、一旦イベントを解除してから制御
+            readingTimer.Elapsed -= ControllerReadingTimer_Elapsed;
+
             if (state)
             {
                 IsEnabled = true;
                 useTimer = true;
+                if (controlService != null)
+                {
+                    controlService.IsMeasuringProcessingDelay = true;
+                }
                 readingTimer.Elapsed += ControllerReadingTimer_Elapsed;
                 readingTimer.Start();
             }
@@ -305,8 +350,12 @@ namespace DS4WinWPF.DS4Forms
             {
                 IsEnabled = false;
                 useTimer = false;
-                readingTimer.Elapsed -= ControllerReadingTimer_Elapsed;
+                if (controlService != null)
+                {
+                    controlService.IsMeasuringProcessingDelay = false;
+                }
                 readingTimer.Stop();
+                isUiUpdating = false;
             }
         }
 
@@ -314,128 +363,58 @@ namespace DS4WinWPF.DS4Forms
         {
             readingTimer.Stop();
 
-            DS4Device ds = Program.rootHub.DS4Controllers[deviceNum];
-            if (ds != null)
+            // 前回のUI更新処理がまだ完了していない場合はスキップし、キューの滞留を防止
+            if (isUiUpdating)
             {
-                // Don't bother waiting for UI thread to grab references
-                //DS4StateExposed tmpexposeState = Program.rootHub.ExposedState[deviceNum];
-                DS4State tmpbaseState = Program.rootHub.getDS4State(deviceNum);
-                DS4State tmpinterState = Program.rootHub.getDS4StateTemp(deviceNum);
+                if (useTimer) readingTimer.Start();
+                return;
+            }
+
+            DS4Device ds = controlService?.DS4Controllers != null && deviceNum < controlService.DS4Controllers.Length
+                ? controlService.DS4Controllers[deviceNum]
+                : null;
+
+            if (ds != null && ds.IsAlive())
+            {
+                DS4State tmpbaseState = controlService.getDS4State(deviceNum);
+                DS4State tmpinterState = controlService.getDS4StateTemp(deviceNum);
                 long cntCalibrating = ds.SixAxis.CntCalibrating;
 
-                // Wait for controller to be in a wait period
-                ds.ReadWaitEv.Wait();
-                ds.ReadWaitEv.Reset();
-
-                // Make copy of current state values for UI thread
-                tmpbaseState.CopyTo(baseState);
-                tmpinterState.CopyTo(interState);
-
-                if (deviceNum != profileDeviceNum)
-                    Mapping.SetCurveAndDeadzone(profileDeviceNum, baseState, interState);
-
-                // Done with copying. Allow input thread to resume
-                ds.ReadWaitEv.Set();
-
-                Dispatcher.Invoke(() =>
+                // タイムアウト付き待機 (最大10ms) でブロッキングを防止
+                if (ds.ReadWaitEv.Wait(10))
                 {
-                    int x = baseState.LX;
-                    int y = baseState.LY;
-
-                    Canvas.SetLeft(lsValRec, x / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(lsValRec, y / 255.0 * CANVAS_WIDTH - 3);
-                    //bool mappedLS = interState.LX != x || interState.LY != y;
-                    //if (mappedLS)
-                    //{
-                    Canvas.SetLeft(lsMapValRec, interState.LX / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(lsMapValRec, interState.LY / 255.0 * CANVAS_WIDTH - 3);
-                    //}
-
-                    x = baseState.RX;
-                    y = baseState.RY;
-                    Canvas.SetLeft(rsValRec, x / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(rsValRec, y / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetLeft(rsMapValRec, interState.RX / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(rsMapValRec, interState.RY / 255.0 * CANVAS_WIDTH - 3);
-
-                    x = exposeState.getAccelX() + 127;
-                    y = exposeState.getAccelZ() + 127;
-                    Canvas.SetLeft(sixAxisValRec, x / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(sixAxisValRec, y / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetLeft(sixAxisMapValRec, Math.Min(Math.Max(interState.Motion.outputAccelX + 127.0, 0), 255.0) / 255.0 * CANVAS_WIDTH - 3);
-                    Canvas.SetTop(sixAxisMapValRec, Math.Min(Math.Max(interState.Motion.outputAccelZ + 127.0, 0), 255.0) / 255.0 * CANVAS_WIDTH - 3);
-
-                    l2Slider.Value = baseState.L2;
-                    l2ValLbTrans.Y = Math.Min(interState.L2, Math.Max(0, 255)) / 255.0 * -70.0 + TRIG_LB_TRANSFORM_OFFSETY;
-                    if (interState.L2 >= 255)
+                    try
                     {
-                        l2ValLbBrush.Color = Colors.Green;
+                        ds.ReadWaitEv.Reset();
+
+                        // 内部状態の高速メモリコピー
+                        tmpbaseState.CopyTo(baseState);
+                        tmpinterState.CopyTo(interState);
+
+                        if (deviceNum != profileDeviceNum)
+                            Mapping.SetCurveAndDeadzone(profileDeviceNum, baseState, interState, controlService.ProfileSettingsService);
                     }
-                    else if (interState.L2 == 0)
+                    finally
                     {
-                        l2ValLbBrush.Color = Colors.Red;
-                    }
-                    else
-                    {
-                        l2ValLbBrush.Color = Colors.Black;
+                        ds.ReadWaitEv.Set();
                     }
 
-                    r2Slider.Value = baseState.R2;
-                    r2ValLbTrans.Y = Math.Min(interState.R2, Math.Max(0, 255)) / 255.0 * -70.0 + TRIG_LB_TRANSFORM_OFFSETY;
-                    if (interState.R2 >= 255)
+                    isUiUpdating = true;
+
+                    // UIスレッドへのディスパッチを非同期・Background優先度にすることで、
+                    // マウスやWindowsの描画メッセージを最優先させ、OS全体の重さを解消
+                    Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
                     {
-                        r2ValLbBrush.Color = Colors.Green;
-                    }
-                    else if (interState.R2 == 0)
-                    {
-                        r2ValLbBrush.Color = Colors.Red;
-                    }
-                    else
-                    {
-                        r2ValLbBrush.Color = Colors.Black;
-                    }
-
-                    gyroYawSlider.Value = baseState.Motion.gyroYawFull;
-                    gyroPitchSlider.Value = baseState.Motion.gyroPitchFull;
-                    gyroRollSlider.Value = baseState.Motion.gyroRollFull;
-
-                    accelXSlider.Value = exposeState.getAccelX();
-                    accelYSlider.Value = exposeState.getAccelY();
-                    accelZSlider.Value = exposeState.getAccelZ();
-
-                    touchXValLb.Content = baseState.TrackPadTouch0.X;
-                    touchYValLb.Content = baseState.TrackPadTouch0.Y;
-
-                    double latency = ds.Latency;
-                    int warnInterval = ds.getWarnInterval();
-                    inputDelayLb.Content = string.Format(Properties.Resources.InputDelay,
-                        latency.ToString());
-
-                    if (latency > warnInterval)
-                    {
-                        warnMode = LatencyWarnMode.Warn;
-                        inpuDelayBackBrush.Color = Colors.Red;
-                        inpuDelayForeBrush.Color = Colors.White;
-                    }
-                    else if (latency > (warnInterval * 0.5))
-                    {
-                        warnMode = LatencyWarnMode.Caution;
-                        inpuDelayBackBrush.Color = Colors.Yellow;
-                        inpuDelayForeBrush.Color = Colors.Black;
-                    }
-                    else
-                    {
-                        warnMode = LatencyWarnMode.None;
-                        inpuDelayBackBrush.Color = Colors.Transparent;
-                        inpuDelayForeBrush.Color = SystemColors.WindowTextColor;
-                    }
-
-                    prevWarnMode = warnMode;
-
-                    batteryLvlLb.Content = $"{Translations.Strings.Battery}: {baseState.Battery}%";
-                    gyroCalEllipse.Visibility = cntCalibrating > 0 && ((cntCalibrating / 250) % 2 == 1) ? Visibility.Visible : Visibility.Hidden;
-                    UpdateCoordLabels(baseState, interState, exposeState);
-                });
+                        try
+                        {
+                            UpdateUiControls(ds, cntCalibrating);
+                        }
+                        finally
+                        {
+                            isUiUpdating = false;
+                        }
+                    }));
+                }
             }
 
             if (useTimer)
@@ -444,28 +423,212 @@ namespace DS4WinWPF.DS4Forms
             }
         }
 
-        private void UpdateCoordLabels(DS4State inState, DS4State mapState,
-            DS4StateExposed exposeState)
+        /// <summary>
+        /// 値が変化したコントロールのみをピンポイントで更新する差分描画処理
+        /// </summary>
+        private void UpdateUiControls(DS4Device ds, long cntCalibrating)
         {
-            lxInValLb.Content = inState.LX;
-            lxOutValLb.Content = mapState.LX;
-            lyInValLb.Content = inState.LY;
-            lyOutValLb.Content = mapState.LY;
+            int inLx = baseState.LX;
+            int inLy = baseState.LY;
+            int outLx = interState.LX;
+            int outLy = interState.LY;
 
-            rxInValLb.Content = inState.RX;
-            rxOutValLb.Content = mapState.RX;
-            ryInValLb.Content = inState.RY;
-            ryOutValLb.Content = mapState.RY;
+            // 左スティック Canvas & ラベル差分更新
+            if (inLx != lastInLX || inLy != lastInLY || outLx != lastOutLX || outLy != lastOutLY)
+            {
+                if (inLx != lastInLX || inLy != lastInLY)
+                {
+                    Canvas.SetLeft(lsValRec, inLx / 255.0 * CANVAS_WIDTH - 3);
+                    Canvas.SetTop(lsValRec, inLy / 255.0 * CANVAS_WIDTH - 3);
+                    lxInValLb.Content = inLx;
+                    lyInValLb.Content = inLy;
+                    lastInLX = inLx;
+                    lastInLY = inLy;
+                }
+                if (outLx != lastOutLX || outLy != lastOutLY)
+                {
+                    Canvas.SetLeft(lsMapValRec, outLx / 255.0 * CANVAS_WIDTH - 3);
+                    Canvas.SetTop(lsMapValRec, outLy / 255.0 * CANVAS_WIDTH - 3);
+                    lxOutValLb.Content = outLx;
+                    lyOutValLb.Content = outLy;
+                    lastOutLX = outLx;
+                    lastOutLY = outLy;
+                }
+            }
 
-            sixAxisXInValLb.Content = exposeState.AccelX;
-            sixAxisXOutValLb.Content = mapState.Motion.outputAccelX;
-            sixAxisZInValLb.Content = exposeState.AccelZ;
-            sixAxisZOutValLb.Content = mapState.Motion.outputAccelZ;
+            int inRx = baseState.RX;
+            int inRy = baseState.RY;
+            int outRx = interState.RX;
+            int outRy = interState.RY;
 
-            l2InValLb.Content = inState.L2;
-            l2OutValLb.Content = mapState.L2;
-            r2InValLb.Content = inState.R2;
-            r2OutValLb.Content = mapState.R2;
+            // 右スティック Canvas & ラベル差分更新
+            if (inRx != lastInRX || inRy != lastInRY || outRx != lastOutRX || outRy != lastOutRY)
+            {
+                if (inRx != lastInRX || inRy != lastInRY)
+                {
+                    Canvas.SetLeft(rsValRec, inRx / 255.0 * CANVAS_WIDTH - 3);
+                    Canvas.SetTop(rsValRec, inRy / 255.0 * CANVAS_WIDTH - 3);
+                    rxInValLb.Content = inRx;
+                    ryInValLb.Content = inRy;
+                    lastInRX = inRx;
+                    lastInRY = inRy;
+                }
+                if (outRx != lastOutRX || outRy != lastOutRY)
+                {
+                    Canvas.SetLeft(rsMapValRec, outRx / 255.0 * CANVAS_WIDTH - 3);
+                    Canvas.SetTop(rsMapValRec, outRy / 255.0 * CANVAS_WIDTH - 3);
+                    rxOutValLb.Content = outRx;
+                    ryOutValLb.Content = outRy;
+                    lastOutRX = outRx;
+                    lastOutLY = outRy;
+                }
+            }
+
+            // SixAxis / ジャイロ差分更新
+            int accelX = exposeState.getAccelX();
+            int accelY = exposeState.getAccelY();
+            int accelZ = exposeState.getAccelZ();
+            double outAccelX = interState.Motion.outputAccelX;
+            double outAccelZ = interState.Motion.outputAccelZ;
+
+            if (accelX != lastAccelX || accelZ != lastAccelZ || Math.Abs(outAccelX - lastOutAccelX) > 0.01 || Math.Abs(outAccelZ - lastOutAccelZ) > 0.01)
+            {
+                int posX = accelX + 127;
+                int posZ = accelZ + 127;
+                Canvas.SetLeft(sixAxisValRec, posX / 255.0 * CANVAS_WIDTH - 3);
+                Canvas.SetTop(sixAxisValRec, posZ / 255.0 * CANVAS_WIDTH - 3);
+                Canvas.SetLeft(sixAxisMapValRec, Math.Min(Math.Max(outAccelX + 127.0, 0), 255.0) / 255.0 * CANVAS_WIDTH - 3);
+                Canvas.SetTop(sixAxisMapValRec, Math.Min(Math.Max(outAccelZ + 127.0, 0), 255.0) / 255.0 * CANVAS_WIDTH - 3);
+
+                sixAxisXInValLb.Content = exposeState.AccelX;
+                sixAxisXOutValLb.Content = (int)outAccelX;
+                sixAxisZInValLb.Content = exposeState.AccelZ;
+                sixAxisZOutValLb.Content = (int)outAccelZ;
+
+                accelXSlider.Value = accelX;
+                accelYSlider.Value = accelY;
+                accelZSlider.Value = accelZ;
+
+                lastAccelX = accelX;
+                lastAccelY = accelY;
+                lastAccelZ = accelZ;
+                lastOutAccelX = outAccelX;
+                lastOutAccelZ = outAccelZ;
+            }
+
+            // L2 トリガー差分更新
+            int inL2 = baseState.L2;
+            int outL2 = interState.L2;
+            if (inL2 != lastInL2 || outL2 != lastOutL2)
+            {
+                l2Slider.Value = inL2;
+                l2ValLbTrans.Y = Math.Min(outL2, Math.Max(0, 255)) / 255.0 * -70.0 + TRIG_LB_TRANSFORM_OFFSETY;
+                l2ValLbBrush.Color = outL2 >= 255 ? Colors.Green : (outL2 == 0 ? Colors.Red : Colors.Black);
+                l2InValLb.Content = inL2;
+                l2OutValLb.Content = outL2;
+                lastInL2 = inL2;
+                lastOutL2 = outL2;
+            }
+
+            // R2 トリガー差分更新
+            int inR2 = baseState.R2;
+            int outR2 = interState.R2;
+            if (inR2 != lastInR2 || outR2 != lastOutR2)
+            {
+                r2Slider.Value = inR2;
+                r2ValLbTrans.Y = Math.Min(outR2, Math.Max(0, 255)) / 255.0 * -70.0 + TRIG_LB_TRANSFORM_OFFSETY;
+                r2ValLbBrush.Color = outR2 >= 255 ? Colors.Green : (outR2 == 0 ? Colors.Red : Colors.Black);
+                r2InValLb.Content = inR2;
+                r2OutValLb.Content = outR2;
+                lastInR2 = inR2;
+                lastOutR2 = outR2;
+            }
+
+            // ジャイロスライダー差分更新
+            int yaw = baseState.Motion.gyroYawFull;
+            int pitch = baseState.Motion.gyroPitchFull;
+            int roll = baseState.Motion.gyroRollFull;
+            if (yaw != lastGyroYaw || pitch != lastGyroPitch || roll != lastGyroRoll)
+            {
+                gyroYawSlider.Value = yaw;
+                gyroPitchSlider.Value = pitch;
+                gyroRollSlider.Value = roll;
+                lastGyroYaw = yaw;
+                lastGyroPitch = pitch;
+                lastGyroRoll = roll;
+            }
+
+            // タッチパッド差分更新
+            int touchX = baseState.TrackPadTouch0.X;
+            int touchY = baseState.TrackPadTouch0.Y;
+            if (touchX != lastTouchX || touchY != lastTouchY)
+            {
+                touchXValLb.Content = touchX;
+                touchYValLb.Content = touchY;
+                lastTouchX = touchX;
+                lastTouchY = touchY;
+            }
+
+            // 入力遅延 (最大値の更新と表示)
+            double latency = ds.Latency;
+            if (latency > maxLatency) maxLatency = latency;
+            int latencyInt = (int)(latency * 10);
+
+            if (latencyInt != lastLatencyInt || latency >= maxLatency)
+            {
+                int warnInterval = ds.getWarnInterval();
+
+                // 元のリソース（言語ファイル）による「入力遅延: XX ms」の文字列を取得し、それにMaxを付与する
+                string baseText = string.Format(Properties.Resources.InputDelay, latency.ToString("0.0"));
+                inputDelayLb.Content = $"{baseText} (Max: {maxLatency.ToString("0.0")} ms)";
+
+                if (latency > warnInterval)
+                {
+                    inpuDelayBackBrush.Color = Colors.Red;
+                    inpuDelayForeBrush.Color = Colors.White;
+                }
+                else if (latency > (warnInterval * 0.5))
+                {
+                    inpuDelayBackBrush.Color = Colors.Yellow;
+                    inpuDelayForeBrush.Color = Colors.Black;
+                }
+                else
+                {
+                    inpuDelayBackBrush.Color = Colors.Transparent;
+                    inpuDelayForeBrush.Color = SystemColors.WindowTextColor;
+                }
+                lastLatencyInt = latencyInt;
+            }
+
+            // バッテリー残量差分更新
+            int battery = baseState.Battery;
+            if (battery != lastBattery)
+            {
+                batteryLvlLb.Content = $"{Translations.Strings.Battery}: {battery}%";
+                lastBattery = battery;
+            }
+
+            // キャリブレーションインジケータ
+            if (cntCalibrating != lastCalibrating)
+            {
+                gyroCalEllipse.Visibility = cntCalibrating > 0 && ((cntCalibrating / 250) % 2 == 1) ? Visibility.Visible : Visibility.Hidden;
+                lastCalibrating = cntCalibrating;
+            }
+
+            // 出力遅延 (最大値の更新と表示)
+            double procDelay = controlService != null ? controlService.GetProcessingDelay(deviceNum) : 0.0;
+            if (procDelay > maxProcDelay) maxProcDelay = procDelay;
+            int procDelayInt = (int)(procDelay * 100);
+
+            if (procDelayInt != lastProcDelayInt || procDelay >= maxProcDelay)
+            {
+                outputDelayLabel ??= FindName("outputDelayLb") as Label;
+                if (outputDelayLabel != null)
+                {
+                    outputDelayLabel.Content = procDelay > 0.0 ? $"出力遅延: {procDelay:0.00} ms (Max: {maxProcDelay:0.00} ms)" : "出力遅延: -- ms";
+                }
+                lastProcDelayInt = procDelayInt;
+            }
         }
     }
 }

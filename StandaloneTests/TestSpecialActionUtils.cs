@@ -30,7 +30,7 @@ namespace StandaloneTests
         {
             string input = "  Action\t\n";
             string a = Util.NormalizeActionName(input);
-            string b = DS4Windows.ScpUtil.NormalizeActionName(input);
+            string b = Util.NormalizeActionName(input);
             Assert.AreEqual(a, b);
         }
     }

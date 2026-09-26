@@ -1,0 +1,169 @@
+using System;
+using System.Collections.Generic;
+using Xunit;
+using DS4Windows;
+using DS4Windows.DI;
+using DS4Windows.Services;
+using DS4WinWPF;
+
+namespace DS4WindowsTests
+{
+    public class AutoProfileServiceTests
+    {
+        public AutoProfileServiceTests()
+        {
+            var pathService = new PathService();
+            if (string.IsNullOrEmpty(Global.appdatapath))
+            {
+                Global.appdatapath = pathService.AppDataPath;
+            }
+        }
+
+        private class MockProcessInspector : IProcessInspector
+        {
+            public string ForegroundPath { get; set; } = string.Empty;
+            public string ForegroundTitle { get; set; } = string.Empty;
+            public bool ReturnSuccess { get; set; } = true;
+
+            public bool IsProcessRunning(string exePath) => false;
+
+            public bool GetForegroundProcessInfo(out string processPath, out string windowTitle)
+            {
+                processPath = ForegroundPath;
+                windowTitle = ForegroundTitle;
+                return ReturnSuccess;
+            }
+        }
+
+        private class MockProfileAppService : IProfileApplicationService
+        {
+            public List<ApplyCall> ApplyCalls { get; } = new();
+
+            public bool ApplyProfile(int deviceIndex, string profileName, bool isTemp = false,
+                bool launchProgram = false, ProfileChangeSource source = ProfileChangeSource.Manual,
+                string prolog = null)
+            {
+                ApplyCalls.Add(new ApplyCall(deviceIndex, profileName, isTemp, launchProgram, source, prolog));
+                return true;
+            }
+
+            public void ApplyFromAction(int deviceIndex, SpecialAction action) { }
+            public bool RestoreFromAction(int deviceIndex) => true;
+
+
+            public void ClearPendingRestore(int deviceIndex) { }
+        }
+
+        private record ApplyCall(int DeviceIndex, string ProfileName, bool IsTemp,
+            bool LaunchProgram, ProfileChangeSource Source, string Prolog);
+
+
+
+        [Fact]
+        public void CheckProfiles_WhenProcessInspectorReturnsFalse_DoesNotApply()
+        {
+            var mockInspector = new MockProcessInspector { ReturnSuccess = false };
+            var mockAppService = new MockProfileAppService();
+            var holder = new AutoProfileHolder();
+            var service = new AutoProfileService(holder, mockAppService, new ProfileSettingsService(), mockInspector);
+
+            service.CheckProfiles();
+
+            Assert.Empty(mockAppService.ApplyCalls);
+        }
+
+        [Fact]
+        public void CheckProfiles_MatchingRule_AppliesProfileWithAutoProfileSource()
+        {
+            var mockInspector = new MockProcessInspector
+            {
+                ForegroundPath = @"c:\games\testgame.exe",
+                ForegroundTitle = "test game window",
+                ReturnSuccess = true
+            };
+            var mockAppService = new MockProfileAppService();
+            var settings = new ProfileSettingsService();
+            var holder = new AutoProfileHolder();
+
+            var entity = new AutoProfileEntity(@"c:\games\testgame.exe", "test game window");
+            entity.ProfileNames[0] = "GameProfile";
+            holder.AutoProfileColl.Add(entity);
+
+            var service = new AutoProfileService(holder, mockAppService, settings, mockInspector);
+
+            service.CheckProfiles();
+
+            Assert.Single(mockAppService.ApplyCalls);
+            Assert.Equal(0, mockAppService.ApplyCalls[0].DeviceIndex);
+            Assert.Equal("GameProfile", mockAppService.ApplyCalls[0].ProfileName);
+            Assert.True(mockAppService.ApplyCalls[0].IsTemp);
+            Assert.Equal(ProfileChangeSource.AutoProfile, mockAppService.ApplyCalls[0].Source);
+        }
+
+        [Fact]
+        public void CheckProfiles_UnknownProcessAfterMatch_RevertsDefaultProfile()
+        {
+            var mockInspector = new MockProcessInspector
+            {
+                ForegroundPath = @"c:\games\testgame.exe",
+                ForegroundTitle = "test game window",
+                ReturnSuccess = true
+            };
+            var mockAppService = new MockProfileAppService();
+            var settings = new ProfileSettingsService();
+            var holder = new AutoProfileHolder();
+
+            var entity = new AutoProfileEntity(@"c:\games\testgame.exe", "test game window");
+            entity.ProfileNames[0] = "GameProfile";
+            holder.AutoProfileColl.Add(entity);
+
+            var service = new AutoProfileService(holder, mockAppService, settings, mockInspector);
+
+            // 1回目のチェック: ゲーム起動
+            service.CheckProfiles();
+            Assert.Single(mockAppService.ApplyCalls);
+
+            // 一時プロファイルが適用された状態をセット
+            settings.SetUseTempProfile(0, true);
+            settings.SetTempProfileName(0, "GameProfile");
+            Global.AutoProfileRevertDefaultProfile = true;
+
+            // 2回目のチェック: ゲーム終了・未知プロセス（デスクトップ等）
+            mockInspector.ForegroundPath = @"c:\windows\explorer.exe";
+            mockInspector.ForegroundTitle = "";
+            service.CheckProfiles();
+
+            // デフォルトプロファイルへの復帰（isTemp = false）が呼ばれていることを確認
+            Assert.Equal(2, mockAppService.ApplyCalls.Count);
+            Assert.Equal(0, mockAppService.ApplyCalls[1].DeviceIndex);
+            Assert.False(mockAppService.ApplyCalls[1].IsTemp);
+            Assert.Equal(ProfileChangeSource.AutoProfile, mockAppService.ApplyCalls[1].Source);
+        }
+
+        // Phase5-Step13-4で追加: Global.autoProfileSwitchNotifyChoiceへの薄い委譲であることを検証。
+        [Fact]
+        public void AutoProfileSwitchNotifyChoice_ShouldReadWriteSameEntityAsGlobal()
+        {
+            var holder = new AutoProfileHolder();
+            var settings = new ProfileSettingsService();
+            var mockInspector = new MockProcessInspector();
+            var mockAppService = new MockProfileAppService();
+            var service = new AutoProfileService(holder, mockAppService, settings, mockInspector);
+
+            var original = Global.autoProfileSwitchNotifyChoice;
+            try
+            {
+                var newValue = original == AutoProfileDisplayProfileSwitchChoices.LogAndNotification
+                    ? AutoProfileDisplayProfileSwitchChoices.None
+                    : AutoProfileDisplayProfileSwitchChoices.LogAndNotification;
+
+                service.AutoProfileSwitchNotifyChoice = newValue;
+                Assert.Equal(newValue, Global.autoProfileSwitchNotifyChoice);
+            }
+            finally
+            {
+                Global.autoProfileSwitchNotifyChoice = original;
+            }
+        }
+    }
+}

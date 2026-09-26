@@ -39,11 +39,15 @@ namespace DS4WinWPF.DS4Forms
     {
         public event EventHandler Saved;
 
-        public RecordBoxWindow(int deviceNum, DS4Windows.DS4ControlSettings settings, bool repeatable = true)
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: マクロ記録で使う実機のスロット番号。-1 は実機なし。
+        /// 渡し忘れをコンパイルで検出するため必須引数とする（Phase6-Step7b-Plan.md 決定2）
+        /// </param>
+        public RecordBoxWindow(int deviceNum, DS4Windows.DS4ControlSettings settings, int targetDevice, bool repeatable = true)
         {
             InitializeComponent();
 
-            RecordBox box = new RecordBox(deviceNum, settings, false, repeatable: repeatable);
+            RecordBox box = new RecordBox(deviceNum, settings, false, targetDevice, repeatable: repeatable);
             mainPanel.Children.Add(box);
 
             box.Save += RecordBox_Save;

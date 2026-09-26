@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -52,7 +52,7 @@ namespace DS4Windows
     public enum DS4KeyType : byte { None = 0, ScanCode = 1, Toggle = 2, Unbound = 4, Macro = 8, HoldMacro = 16, RepeatMacro = 32 }; // Increment by exponents of 2*, starting at 2^0
     public enum Ds3PadId : byte { None = 0xFF, One = 0x00, Two = 0x01, Three = 0x02, Four = 0x03, All = 0x04 };
     public enum DS4Controls : byte { None, LXNeg, LXPos, LYNeg, LYPos, RXNeg, RXPos, RYNeg, RYPos, L1, L2, L3, R1, R2, R3, Square, Triangle, Circle, Cross, DpadUp, DpadRight, DpadDown, DpadLeft, PS, TouchLeft, TouchUpper, TouchMulti, TouchRight, Share, Options, Mute, FnL, FnR, BLP, BRP, GyroXPos, GyroXNeg, GyroZPos, GyroZNeg, SwipeLeft, SwipeRight, SwipeUp, SwipeDown, L2FullPull, R2FullPull, GyroSwipeLeft, GyroSwipeRight, GyroSwipeUp, GyroSwipeDown, Capture, SideL, SideR, LSOuter, RSOuter, TouchStarted, TouchEnded };
-    public enum X360Controls : byte { None, LXNeg, LXPos, LYNeg, LYPos, RXNeg, RXPos, RYNeg, RYPos, LB, LT, LS, RB, RT, RS, X, Y, B, A, DpadUp, DpadRight, DpadDown, DpadLeft, Guide, Back, Start, TouchpadClick, LeftMouse, RightMouse, MiddleMouse, FourthMouse, FifthMouse, WUP, WDOWN, MouseUp, MouseDown, MouseLeft, MouseRight, AbsMouseUp, AbsMouseDown, AbsMouseLeft, AbsMouseRight, Unbound };
+    public enum X360Controls : byte { None, LXNeg, LXPos, LYNeg, LYPos, RXNeg, RXPos, RYNeg, RYPos, LB, LT, LS, RB, RT, RS, X, Y, B, A, DpadUp, DpadRight, DpadDown, DpadLeft, Guide, Back, Start, TouchpadClick, LeftMouse, RightMouse, MiddleMouse, FourthMouse, FifthMouse, WUP, WDOWN, MouseUp, MouseDown, MouseLeft, MouseRight, Unbound };
 
     public enum SASteeringWheelEmulationAxisType : byte { None = 0, LX, LY, RX, RY, L2R2, VJoy1X, VJoy1Y, VJoy1Z, VJoy2X, VJoy2Y, VJoy2Z };
     public enum OutContType : uint { None = 0, X360, DS4 }
@@ -73,7 +73,6 @@ namespace DS4Windows
         Mouse,
         Controls,
         MouseJoystick,
-        AbsoluteMouse,
         Passthru,
     }
 
@@ -706,14 +705,330 @@ namespace DS4Windows
         public static string appDataPpath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\DS4Windows";
         public static string localAppDataPpath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DS4Windows");
         public static bool runHotPlug = false;
-        public static string[] tempprofilename = new string[TEST_PROFILE_ITEM_COUNT] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
-        public static bool[] useTempProfile = new bool[TEST_PROFILE_ITEM_COUNT] { false, false, false, false, false, false, false, false, false };
-        public static bool[] tempprofileDistance = new bool[TEST_PROFILE_ITEM_COUNT] { false, false, false, false, false, false, false, false, false };
-        public static bool[] useDInputOnly = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
-        public static bool[] linkedProfileCheck = new bool[MAX_DS4_CONTROLLER_COUNT] { false, false, false, false, false, false, false, false };
-        public static bool[] touchpadActive = new bool[TEST_PROFILE_ITEM_COUNT] { true, true, true, true, true, true, true, true, true };
+        // =========================================================================
+        // Phase4-Step1: IProfileSettingsService DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        // Phase4-Step1: IProfileSettingsService DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        private static DS4Windows.DI.IProfileSettingsService profileSettingsService = null;
+        private static readonly DS4Windows.DI.IProfileSettingsService fallbackProfileSettingsService = new ProfileSettingsService();
 
-        // First connection detection methods
+        public static DS4Windows.DI.IProfileSettingsService ProfileSettingsServiceInstance
+        {
+            get
+            {
+                if (profileSettingsService != null)
+                    return profileSettingsService;
+
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileSettingsService>();
+                    if (service != null)
+                    {
+                        profileSettingsService = service;
+                        return profileSettingsService;
+                    }
+                }
+                catch
+                {
+                    // DIコンテナ未初期化時の安全なフォールバック
+                }
+
+                AppLogger.LogTrace("[Legacy] Global.ProfileSettingsServiceInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.ProfileSettingsServiceInstance: Fallback instance used", false, true);
+                return fallbackProfileSettingsService;
+            }
+            set => profileSettingsService = value;
+        }
+
+        // =========================================================================
+        // Phase5-Step2: IProfileXmlStore DI シム (Strangler Fig 移行用)
+        // Global.LoadProfile/SaveProfileのフォールバック(ProfileRepository経由)より前に
+        // 静的フィールド初期化される必要があるため、Phase4-Step2ブロックの直前に配置する。
+        // =========================================================================
+        private static DS4Windows.DI.IProfileXmlStore profileXmlStore = null;
+        private static readonly DS4Windows.DI.IProfileXmlStore fallbackProfileXmlStore = new ProfileXmlStore();
+
+        public static DS4Windows.DI.IProfileXmlStore ProfileXmlStoreInstance
+        {
+            get
+            {
+                if (profileXmlStore != null) return profileXmlStore;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileXmlStore>();
+                    if (service != null)
+                    {
+                        profileXmlStore = service;
+                        return profileXmlStore;
+                    }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.ProfileXmlStoreInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.ProfileXmlStoreInstance: Fallback instance used", false, true);
+                return fallbackProfileXmlStore;
+            }
+            set => profileXmlStore = value;
+        }
+
+        // =========================================================================
+        // Phase4-Step2: IProfileRepository DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        private static DS4Windows.DI.IProfileRepository profileRepository = null;
+        private static readonly DS4Windows.DI.IProfileRepository fallbackProfileRepository = new ProfileRepository(ProfileSettingsServiceInstance);
+
+        public static DS4Windows.DI.IProfileRepository ProfileRepositoryInstance
+        {
+            get
+            {
+                if (profileRepository != null) return profileRepository;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IProfileRepository>();
+                    if (service != null)
+                    {
+                        profileRepository = service;
+                        return profileRepository;
+                    }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.ProfileRepositoryInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.ProfileRepositoryInstance: Fallback instance used", false, true);
+                return fallbackProfileRepository;
+            }
+            set => profileRepository = value;
+        }
+
+        // =========================================================================
+        // Phase4-Step3: ISpecialActionRepository DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        private static DS4Windows.DI.ISpecialActionRepository specialActionRepository = null;
+        private static readonly DS4Windows.DI.ISpecialActionRepository fallbackSpecialActionRepository = new SpecialActionRepository();
+
+        public static DS4Windows.DI.ISpecialActionRepository SpecialActionRepositoryInstance
+        {
+            get
+            {
+                if (specialActionRepository != null) return specialActionRepository;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.ISpecialActionRepository>();
+                    if (service != null)
+                    {
+                        specialActionRepository = service;
+                        return specialActionRepository;
+                    }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.SpecialActionRepositoryInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.SpecialActionRepositoryInstance: Fallback instance used", false, true);
+                return fallbackSpecialActionRepository;
+            }
+            set => specialActionRepository = value;
+        }
+
+        // =========================================================================
+        // Phase4-Step4: IDeviceStateService & IOutputSlotService DI シム (Strangler Fig 移行用)
+        // =========================================================================
+        private static DS4Windows.DI.IDeviceStateService deviceStateService = null;
+        private static readonly DS4Windows.DI.IDeviceStateService fallbackDeviceStateService = new DeviceStateService();
+
+        public static DS4Windows.DI.IDeviceStateService DeviceStateServiceInstance
+        {
+            get
+            {
+                if (deviceStateService != null) return deviceStateService;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IDeviceStateService>();
+                    if (service != null)
+                    {
+                        deviceStateService = service;
+                        return deviceStateService;
+                    }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.DeviceStateServiceInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.DeviceStateServiceInstance: Fallback instance used", false, true);
+                return fallbackDeviceStateService;
+            }
+            set => deviceStateService = value;
+        }
+
+        private static DS4Windows.DI.IOutputSlotService outputSlotService = null;
+        private static readonly DS4Windows.DI.IOutputSlotService fallbackOutputSlotService = new OutputSlotService();
+
+        public static DS4Windows.DI.IOutputSlotService OutputSlotServiceInstance
+        {
+            get
+            {
+                if (outputSlotService != null) return outputSlotService;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IOutputSlotService>();
+                    if (service != null)
+                    {
+                        outputSlotService = service;
+                        return outputSlotService;
+                    }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.OutputSlotServiceInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.OutputSlotServiceInstance: Fallback instance used", false, true);
+                return fallbackOutputSlotService;
+            }
+            set => outputSlotService = value;
+        }
+
+        // =========================================================================
+        // Phase4-Step5: IPathService, IEnvironmentService, INotificationService DI シム
+        // =========================================================================
+        private static DS4Windows.DI.IPathService pathService = null;
+        private static readonly DS4Windows.DI.IPathService fallbackPathService = new PathService();
+
+        public static DS4Windows.DI.IPathService PathServiceInstance
+        {
+            get
+            {
+                if (pathService != null) return pathService;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IPathService>();
+                    if (service != null) { pathService = service; return pathService; }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.PathServiceInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.PathServiceInstance: Fallback instance used", false, true);
+                return fallbackPathService;
+            }
+            set => pathService = value;
+        }
+
+        private static DS4Windows.DI.IEnvironmentService environmentService = null;
+        private static readonly DS4Windows.DI.IEnvironmentService fallbackEnvironmentService = new EnvironmentService();
+
+        public static DS4Windows.DI.IEnvironmentService EnvironmentServiceInstance
+        {
+            get
+            {
+                if (environmentService != null) return environmentService;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IEnvironmentService>();
+                    if (service != null) { environmentService = service; return environmentService; }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.EnvironmentServiceInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.EnvironmentServiceInstance: Fallback instance used", false, true);
+                return fallbackEnvironmentService;
+            }
+            set => environmentService = value;
+        }
+
+        private static DS4Windows.DI.INotificationService notificationService = null;
+        private static readonly DS4Windows.DI.INotificationService fallbackNotificationService = new AppNotificationService();
+
+        public static DS4Windows.DI.INotificationService NotificationServiceInstance
+        {
+            get
+            {
+                if (notificationService != null) return notificationService;
+                try
+                {
+                    var service = DS4WinWPF.AppHost.GetService<DS4Windows.DI.INotificationService>();
+                    if (service != null) { notificationService = service; return notificationService; }
+                }
+                catch { }
+
+                AppLogger.LogTrace("[Legacy] Global.NotificationServiceInstance: Fallback instance used");
+                AppLogger.LogToGui("[Legacy] Global.NotificationServiceInstance: Fallback instance used", false, true);
+                return fallbackNotificationService;
+            }
+            set => notificationService = value;
+        }
+
+        public static string[] tempprofilename
+        {
+            get
+            {
+                return ProfileSettingsServiceInstance.TempProfileNameArray;
+            }
+            set
+            {
+                AppLogger.LogTrace("[Legacy] Global.tempprofilename setter accessed via static shim");
+                AppLogger.LogToGui("[Legacy] Global.tempprofilename setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.TempProfileNameArray = value;
+            }
+        }
+        public static bool[] useTempProfile
+        {
+            get
+            {
+                return ProfileSettingsServiceInstance.UseTempProfileArray;
+            }
+            set
+            {
+                AppLogger.LogTrace("[Legacy] Global.useTempProfile setter accessed via static shim");
+                AppLogger.LogToGui("[Legacy] Global.useTempProfile setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.UseTempProfileArray = value;
+            }
+        }
+        public static bool[] tempprofileDistance
+        {
+            get
+            {
+                return ProfileSettingsServiceInstance.TempProfileDistanceArray;
+            }
+            set
+            {
+                AppLogger.LogTrace("[Legacy] Global.tempprofileDistance setter accessed via static shim");
+                AppLogger.LogToGui("[Legacy] Global.tempprofileDistance setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.TempProfileDistanceArray = value;
+            }
+        }
+        public static bool[] useDInputOnly
+        {
+            get
+            {
+                return ProfileSettingsServiceInstance.UseDInputOnlyArray;
+            }
+            set
+            {
+                AppLogger.LogTrace("[Legacy] Global.useDInputOnly setter accessed via static shim");
+                AppLogger.LogToGui("[Legacy] Global.useDInputOnly setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.UseDInputOnlyArray = value;
+            }
+        }
+        public static bool[] linkedProfileCheck
+        {
+            get
+            {
+                return ProfileSettingsServiceInstance.LinkedProfileCheckArray;
+            }
+            set
+            {
+                AppLogger.LogTrace("[Legacy] Global.linkedProfileCheck setter accessed via static shim");
+                AppLogger.LogToGui("[Legacy] Global.linkedProfileCheck setter accessed via static shim", false, true);
+                ProfileSettingsServiceInstance.LinkedProfileCheckArray = value;
+            }
+        }
+        public static bool[] touchpadActive
+        {
+            get => ProfileSettingsServiceInstance.TouchpadActiveArray;
+            set
+            {
+                if (AppLogger.IsTraceEnabled)
+                    AppLogger.LogTrace("[Legacy] Global.touchpadActive setter accessed via static shim");
+                ProfileSettingsServiceInstance.TouchpadActiveArray = value;
+            }
+        }
         public static bool IsFirstConnection(int index)
         {
             return m_Config.firstConnectionAfterStartup[index];
@@ -732,10 +1047,10 @@ namespace DS4Windows
             }
         }
 
-    // (Removed) Previously used to hold pending removed invalid special actions
-    // collected by UI-time calls. This mechanism was refactored so that
-    // removal detection and logging happen at save/apply time; the array has
-    // therefore been removed to avoid dead code.
+        // (Removed) Previously used to hold pending removed invalid special actions
+        // collected by UI-time calls. This mechanism was refactored so that
+        // removal detection and logging happen at save/apply time; the array has
+        // therefore been removed to avoid dead code.
         // Used to hold device type desired from Profile Editor
         public static OutContType[] outDevTypeTemp = new OutContType[TEST_PROFILE_ITEM_COUNT] { DS4Windows.OutContType.X360, DS4Windows.OutContType.X360,
             DS4Windows.OutContType.X360, DS4Windows.OutContType.X360,
@@ -765,14 +1080,13 @@ namespace DS4Windows
         public static bool fakerInputInstalled = IsFakerInputInstalled();
         public const string BLANK_FAKERINPUT_VERSION = "0.0.0.0";
         public static string fakerInputVersion = FakerInputVersion();
-        public static Rect absDisplayBounds = new Rect(0, 0, 2, 2);
-        public static Rect fullDesktopBounds = new Rect(0, 0, 2, 2);
-        //public static Rect absDisplayBounds = new Rect(800, 0, 1024, 768);
-        //public static Rect fullDesktopBounds = new Rect(0, 0, 3840, 2160);
-        public static bool absUseAllMonitors = true;
 
         public static VirtualKBMBase outputKBMHandler = null;
-        public static VirtualKBMMapping outputKBMMapping = null;
+        public static VirtualKBMMapping outputKBMMapping
+        {
+            get => ProfileSettingsServiceInstance.OutputKBMMapping;
+            set => ProfileSettingsServiceInstance.OutputKBMMapping = value;
+        }
 
         public const int CONFIG_VERSION = 5;
         public const int APP_CONFIG_VERSION = 2;
@@ -898,10 +1212,6 @@ namespace DS4Windows
             [X360Controls.MouseDown] = "Mouse Down",
             [X360Controls.MouseLeft] = "Mouse Left",
             [X360Controls.MouseRight] = "Mouse Right",
-            [X360Controls.AbsMouseUp] = "Abs Mouse Up",
-            [X360Controls.AbsMouseDown] = "Abs Mouse Down",
-            [X360Controls.AbsMouseLeft] = "Abs Mouse Left",
-            [X360Controls.AbsMouseRight] = "Abs Mouse Right",
             [X360Controls.Unbound] = "Unbound",
             [X360Controls.None] = "Unassigned",
         };
@@ -945,10 +1255,6 @@ namespace DS4Windows
             [X360Controls.MouseDown] = "Mouse Down",
             [X360Controls.MouseLeft] = "Mouse Left",
             [X360Controls.MouseRight] = "Mouse Right",
-            [X360Controls.AbsMouseUp] = "Abs Mouse Up",
-            [X360Controls.AbsMouseDown] = "Abs Mouse Down",
-            [X360Controls.AbsMouseLeft] = "Abs Mouse Left",
-            [X360Controls.AbsMouseRight] = "Abs Mouse Right",
             [X360Controls.Unbound] = "Unbound",
         };
 
@@ -1789,8 +2095,8 @@ namespace DS4Windows
 
         public static bool ProfileChangedNotification
         {
-            get => m_Config.profileChangedNotification;
-            set => m_Config.profileChangedNotification = value;
+            get => ProfileSettingsServiceInstance.ProfileChangedNotification;
+            set => ProfileSettingsServiceInstance.ProfileChangedNotification = value;
         }
 
         public static bool DCBTatStop
@@ -1807,8 +2113,8 @@ namespace DS4Windows
 
         public static bool DS4Mapping
         {
-            set { m_Config.ds4Mapping = value; }
-            get { return m_Config.ds4Mapping; }
+            set { ProfileSettingsServiceInstance.DS4Mapping = value; }
+            get { return ProfileSettingsServiceInstance.DS4Mapping; }
         }
 
         public static bool QuickCharge
@@ -2095,23 +2401,18 @@ namespace DS4Windows
             }
         }
 
-        public static string AbsoluteDisplayEDID
-        {
-            get => m_Config.absDisplayEDID;
-            set => m_Config.absDisplayEDID = value;
-        }
+        public static sbyte[] RightStickDriftXAxis => ProfileSettingsServiceInstance.RightStickDriftXAxis;
+        public static sbyte[] RightStickDriftYAxis => ProfileSettingsServiceInstance.RightStickDriftYAxis;
+        public static sbyte[] LeftStickDriftXAxis => ProfileSettingsServiceInstance.LeftStickDriftXAxis;
+        public static sbyte[] LeftStickDriftYAxis => ProfileSettingsServiceInstance.LeftStickDriftYAxis;
 
-        public static sbyte[] RightStickDriftXAxis => m_Config.rightStickDriftXAxis;
-        public static sbyte[] RightStickDriftYAxis => m_Config.rightStickDriftYAxis;
-        public static sbyte[] LeftStickDriftXAxis => m_Config.leftStickDriftXAxis;
-        public static sbyte[] LeftStickDriftYAxis => m_Config.leftStickDriftYAxis;
+        public static bool[] InverseRumbleMotors => ProfileSettingsServiceInstance.InverseRumbleMotors;
 
-        public static bool[] InverseRumbleMotors => m_Config.inverseRumbleMotors;
-
-        public static int[] DebouncingMs => m_Config.debouncingMs;
+        public static int[] DebouncingMs => ProfileSettingsServiceInstance.DebouncingMs;
 
         public static void DebouncingMsHasChanged()
         {
+            ProfileSettingsServiceInstance.NotifyDebouncingMsChanged();
             DebouncingMsChanged.Invoke(typeof(Global), EventArgs.Empty);
         }
 
@@ -2119,61 +2420,49 @@ namespace DS4Windows
 
         public static bool UseDs3PitchRollSim
         {
-            get => m_Config.useDs3PitchRollSim;
-            set => m_Config.useDs3PitchRollSim = value;
+            get => ProfileSettingsServiceInstance.UseDs3PitchRollSim;
+            set => ProfileSettingsServiceInstance.UseDs3PitchRollSim = value;
         }
 
         // controller/profile specfic values
-        public static ButtonMouseInfo[] ButtonMouseInfos => m_Config.buttonMouseInfos;
-        public static ButtonAbsMouseInfo[] ButtonAbsMouseInfos => m_Config.buttonAbsMouseInfos;
+        public static ButtonMouseInfo[] ButtonMouseInfos => ProfileSettingsServiceInstance.ButtonMouseInfos;
 
-        public static byte[] RumbleBoost => m_Config.rumble;
+        public static byte[] RumbleBoost => ProfileSettingsServiceInstance.RumbleBoost;
         public static byte getRumbleBoost(int index)
         {
-            if (Program.rootHub.DS4Controllers[index] is DualSenseDevice)
-            {
-                if (!UseGenericRumbleStrRescaleForDualSenses[index])
-                {
-                    return 100;
-                }
-
-            }
-            return m_Config.rumble[index];
+            return ProfileSettingsServiceInstance.GetRumbleBoost(index);
         }
 
         public static void setRumbleAutostopTime(int index, int value)
         {
-            m_Config.rumbleAutostopTime[index] = value;
-
-            DS4Device tempDev = Program.rootHub.DS4Controllers[index];
-            if (tempDev != null && tempDev.isSynced())
-                tempDev.RumbleAutostopTime = value;
+            ProfileSettingsServiceInstance.SetRumbleAutostopTime(index, value);
         }
 
         public static int getRumbleAutostopTime(int index)
         {
-            return m_Config.rumbleAutostopTime[index];
+            return ProfileSettingsServiceInstance.GetRumbleAutostopTime(index);
         }
 
-        public static bool[] EnableTouchToggle => m_Config.enableTouchToggle;
+        public static bool[] EnableTouchToggle => ProfileSettingsServiceInstance.EnableTouchToggle;
         public static bool getEnableTouchToggle(int index)
         {
-            return m_Config.enableTouchToggle[index];
+            return ProfileSettingsServiceInstance.GetEnableTouchToggle(index);
         }
 
-        public static int[] IdleDisconnectTimeout => m_Config.idleDisconnectTimeout;
+        public static int[] IdleDisconnectTimeout => ProfileSettingsServiceInstance.IdleDisconnectTimeout;
         public static int getIdleDisconnectTimeout(int index)
         {
-            return m_Config.idleDisconnectTimeout[index];
+            return ProfileSettingsServiceInstance.GetIdleDisconnectTimeout(index);
         }
 
-        public static bool[] EnableOutputDataToDS4 => m_Config.enableOutputDataToDS4;
+        public static bool[] EnableOutputDataToDS4 => ProfileSettingsServiceInstance.EnableOutputDataToDS4;
         public static bool getEnableOutputDataToDS4(int index)
         {
-            return m_Config.enableOutputDataToDS4[index];
+            return ProfileSettingsServiceInstance.GetEnableOutputDataToDS4(index);
         }
 
-        public static byte[] TouchSensitivity => m_Config.touchSensitivity;
+        // Step10-2-A-3: タッチパッド関連の後方互換シム
+        public static byte[] TouchSensitivity => ProfileSettingsServiceInstance.TouchSensitivity;
         public static byte[] getTouchSensitivity()
         {
             return m_Config.touchSensitivity;
@@ -2190,16 +2479,16 @@ namespace DS4Windows
             return touchpadActive[index];
         }
 
-        public static LightbarSettingInfo[] LightbarSettingsInfo => m_Config.lightbarSettingInfo;
+        public static LightbarSettingInfo[] LightbarSettingsInfo => ProfileSettingsServiceInstance.LightbarSettingsInfo;
         public static LightbarSettingInfo getLightbarSettingsInfo(int index)
         {
-            return m_Config.lightbarSettingInfo[index];
+            return ProfileSettingsServiceInstance.GetLightbarSettingsInfo(index);
         }
 
-        public static bool[] DinputOnly => m_Config.dinputOnly;
+        public static bool[] DinputOnly => ProfileSettingsServiceInstance.DinputOnly;
         public static bool getDInputOnly(int index)
         {
-            return m_Config.dinputOnly[index];
+            return ProfileSettingsServiceInstance.GetDInputOnly(index);
         }
 
         public static int ProcessPriority
@@ -2208,245 +2497,243 @@ namespace DS4Windows
             set => m_Config.processPriority = value;
         }
 
-        public static bool[] StartTouchpadOff => m_Config.startTouchpadOff;
+        public static bool[] StartTouchpadOff => ProfileSettingsServiceInstance.StartTouchpadOff;
 
         public static bool IsUsingTouchpadForControls(int index)
         {
             return m_Config.touchOutMode[index] == TouchpadOutMode.Controls;
         }
 
-        public static TouchpadOutMode[] TouchOutMode = m_Config.touchOutMode;
+        public static TouchpadOutMode[] TouchOutMode => ProfileSettingsServiceInstance.TouchOutMode;
 
         public static bool IsUsingSAForControls(int index)
         {
             return m_Config.gyroOutMode[index] == GyroOutMode.Controls;
         }
 
-        public static string[] SATriggers => m_Config.sATriggers;
+        public static string[] SATriggers => ProfileSettingsServiceInstance.SATriggers;
         public static string getSATriggers(int index)
         {
-            return m_Config.sATriggers[index];
+            return ProfileSettingsServiceInstance.GetSATriggers(index);
         }
 
-        public static bool[] SATriggerCond => m_Config.sATriggerCond;
+        public static bool[] SATriggerCond => ProfileSettingsServiceInstance.SATriggerCond;
         public static bool getSATriggerCond(int index)
         {
-            return m_Config.sATriggerCond[index];
+            return ProfileSettingsServiceInstance.GetSATriggerCond(index);
         }
         public static void SetSaTriggerCond(int index, string text)
         {
-            m_Config.SetSaTriggerCond(index, text);
+            ProfileSettingsServiceInstance.SetSaTriggerCond(index, text);
         }
 
 
-        public static GyroOutMode[] GyroOutputMode => m_Config.gyroOutMode;
+        public static GyroOutMode[] GyroOutputMode => ProfileSettingsServiceInstance.GyroOutputMode;
         public static GyroOutMode GetGyroOutMode(int device)
         {
-            return m_Config.gyroOutMode[device];
+            return ProfileSettingsServiceInstance.GetGyroOutMode(device);
         }
 
-        public static string[] SAMousestickTriggers => m_Config.sAMouseStickTriggers;
+        public static string[] SAMousestickTriggers => ProfileSettingsServiceInstance.SAMousestickTriggers;
         public static string GetSAMouseStickTriggers(int device)
         {
-            return m_Config.sAMouseStickTriggers[device];
+            return ProfileSettingsServiceInstance.GetSAMouseStickTriggers(device);
         }
 
-        public static bool[] SAMouseStickTriggerCond => m_Config.sAMouseStickTriggerCond;
+        public static bool[] SAMouseStickTriggerCond => ProfileSettingsServiceInstance.SAMouseStickTriggerCond;
         public static bool GetSAMouseStickTriggerCond(int device)
         {
-            return m_Config.sAMouseStickTriggerCond[device];
+            return ProfileSettingsServiceInstance.GetSAMouseStickTriggerCond(device);
         }
         public static void SetSaMouseStickTriggerCond(int index, string text)
         {
-            m_Config.SetSaMouseStickTriggerCond(index, text);
+            ProfileSettingsServiceInstance.SetSaMouseStickTriggerCond(index, text);
         }
 
-        public static bool[] GyroMouseStickTriggerTurns = m_Config.gyroMouseStickTriggerTurns;
+        public static bool[] GyroMouseStickTriggerTurns => ProfileSettingsServiceInstance.GyroMouseStickTriggerTurns;
         public static bool GetGyroMouseStickTriggerTurns(int device)
         {
-            return m_Config.gyroMouseStickTriggerTurns[device];
+            return ProfileSettingsServiceInstance.GetGyroMouseStickTriggerTurns(device);
         }
 
-        public static int[] GyroMouseStickHorizontalAxis =>
-            m_Config.gyroMouseStickHorizontalAxis;
+        public static int[] GyroMouseStickHorizontalAxis => ProfileSettingsServiceInstance.GyroMouseStickHorizontalAxis;
         public static int getGyroMouseStickHorizontalAxis(int index)
         {
-            return m_Config.gyroMouseStickHorizontalAxis[index];
+            return ProfileSettingsServiceInstance.GetGyroMouseStickHorizontalAxis(index);
         }
 
-        public static GyroMouseStickInfo[] GyroMouseStickInf => m_Config.gyroMStickInfo;
+        public static GyroMouseStickInfo[] GyroMouseStickInf => ProfileSettingsServiceInstance.GyroMouseStickInf;
         public static GyroMouseStickInfo GetGyroMouseStickInfo(int device)
         {
-            return m_Config.gyroMStickInfo[device];
+            return ProfileSettingsServiceInstance.GetGyroMouseStickInfo(device);
         }
 
-        public static GyroDirectionalSwipeInfo[] GyroSwipeInf => m_Config.gyroSwipeInfo;
+        public static GyroDirectionalSwipeInfo[] GyroSwipeInf => ProfileSettingsServiceInstance.GyroSwipeInf;
         public static GyroDirectionalSwipeInfo GetGyroSwipeInfo(int device)
         {
-            return m_Config.gyroSwipeInfo[device];
+            return ProfileSettingsServiceInstance.GetGyroSwipeInfo(device);
         }
 
-        public static bool[] GyroMouseStickToggle => m_Config.gyroMouseStickToggle;
+        public static bool[] GyroMouseStickToggle => ProfileSettingsServiceInstance.GyroMouseStickToggle;
         public static void SetGyroMouseStickToggle(int index, bool value, ControlService control)
-            => m_Config.SetGyroMouseStickToggle(index, value, control);
+            => ProfileSettingsServiceInstance.SetGyroMouseStickToggle(index, value, control);
 
-        public static SASteeringWheelEmulationAxisType[] SASteeringWheelEmulationAxis => m_Config.sASteeringWheelEmulationAxis;
+        public static SASteeringWheelEmulationAxisType[] SASteeringWheelEmulationAxis => ProfileSettingsServiceInstance.SASteeringWheelEmulationAxis;
         public static SASteeringWheelEmulationAxisType GetSASteeringWheelEmulationAxis(int index)
         {
-            return m_Config.sASteeringWheelEmulationAxis[index];
+            return ProfileSettingsServiceInstance.GetSASteeringWheelEmulationAxis(index);
         }
 
-        public static int[] SASteeringWheelEmulationRange => m_Config.sASteeringWheelEmulationRange;
+        public static int[] SASteeringWheelEmulationRange => ProfileSettingsServiceInstance.SASteeringWheelEmulationRange;
         public static int GetSASteeringWheelEmulationRange(int index)
         {
-            return m_Config.sASteeringWheelEmulationRange[index];
+            return ProfileSettingsServiceInstance.GetSASteeringWheelEmulationRange(index);
         }
 
-        public static int[][] TouchDisInvertTriggers => m_Config.touchDisInvertTriggers;
+        public static int[][] TouchDisInvertTriggers => ProfileSettingsServiceInstance.TouchDisInvertTriggers;
         public static int[] getTouchDisInvertTriggers(int index)
         {
             return m_Config.touchDisInvertTriggers[index];
         }
 
-        public static int[] GyroSensitivity => m_Config.gyroSensitivity;
+        public static int[] GyroSensitivity => ProfileSettingsServiceInstance.GyroSensitivity;
         public static int getGyroSensitivity(int index)
         {
-            return m_Config.gyroSensitivity[index];
+            return ProfileSettingsServiceInstance.GetGyroSensitivity(index);
         }
 
-        public static int[] GyroSensVerticalScale => m_Config.gyroSensVerticalScale;
+        public static int[] GyroSensVerticalScale => ProfileSettingsServiceInstance.GyroSensVerticalScale;
         public static int getGyroSensVerticalScale(int index)
         {
-            return m_Config.gyroSensVerticalScale[index];
+            return ProfileSettingsServiceInstance.GetGyroSensVerticalScale(index);
         }
 
-        public static int[] GyroInvert => m_Config.gyroInvert;
+        public static int[] GyroInvert => ProfileSettingsServiceInstance.GyroInvert;
         public static int getGyroInvert(int index)
         {
-            return m_Config.gyroInvert[index];
+            return ProfileSettingsServiceInstance.GetGyroInvert(index);
         }
 
-        public static bool[] GyroTriggerTurns => m_Config.gyroTriggerTurns;
+        public static bool[] GyroTriggerTurns => ProfileSettingsServiceInstance.GyroTriggerTurns;
         public static bool getGyroTriggerTurns(int index)
         {
-            return m_Config.gyroTriggerTurns[index];
+            return ProfileSettingsServiceInstance.GetGyroTriggerTurns(index);
         }
 
-        public static int[] GyroMouseHorizontalAxis => m_Config.gyroMouseHorizontalAxis;
+        public static int[] GyroMouseHorizontalAxis => ProfileSettingsServiceInstance.GyroMouseHorizontalAxis;
         public static int getGyroMouseHorizontalAxis(int index)
         {
-            return m_Config.gyroMouseHorizontalAxis[index];
+            return ProfileSettingsServiceInstance.GetGyroMouseHorizontalAxis(index);
         }
 
-        public static int[] GyroMouseDeadZone => m_Config.gyroMouseDZ;
+        public static int[] GyroMouseDeadZone => ProfileSettingsServiceInstance.GyroMouseDeadZone;
         public static int GetGyroMouseDeadZone(int index)
         {
-            return m_Config.gyroMouseDZ[index];
+            return ProfileSettingsServiceInstance.GetGyroMouseDeadZone(index);
         }
 
         public static void SetGyroMouseDeadZone(int index, int value, ControlService control)
         {
-            m_Config.SetGyroMouseDZ(index, value, control);
+            ProfileSettingsServiceInstance.SetGyroMouseDeadZone(index, value, control);
         }
 
-        public static bool[] GyroMouseToggle => m_Config.gyroMouseToggle;
+        public static bool[] GyroMouseToggle => ProfileSettingsServiceInstance.GyroMouseToggle;
         public static void SetGyroMouseToggle(int index, bool value, ControlService control)
-            => m_Config.SetGyroMouseToggle(index, value, control);
+            => ProfileSettingsServiceInstance.SetGyroMouseToggle(index, value, control);
 
         public static void SetGyroControlsToggle(int index, bool value, ControlService control)
-            => m_Config.SetGyroControlsToggle(index, value, control);
+            => ProfileSettingsServiceInstance.SetGyroControlsToggle(index, value, control);
 
-        public static GyroMouseInfo[] GyroMouseInfo => m_Config.gyroMouseInfo;
+        public static GyroMouseInfo[] GyroMouseInfo => ProfileSettingsServiceInstance.GyroMouseInfo;
 
-        public static GyroControlsInfo[] GyroControlsInf => m_Config.gyroControlsInf;
+        public static GyroControlsInfo[] GyroControlsInf => ProfileSettingsServiceInstance.GyroControlsInf;
         public static GyroControlsInfo GetGyroControlsInfo(int index)
         {
-            return m_Config.gyroControlsInf[index];
+            return ProfileSettingsServiceInstance.GetGyroControlsInfo(index);
         }
 
-        public static SteeringWheelSmoothingInfo[] WheelSmoothInfo => m_Config.wheelSmoothInfo;
-        public static int[] SAWheelFuzzValues => m_Config.saWheelFuzzValues;
+        public static SteeringWheelSmoothingInfo[] WheelSmoothInfo => ProfileSettingsServiceInstance.WheelSmoothInfo;
+        public static int[] SAWheelFuzzValues => ProfileSettingsServiceInstance.SAWheelFuzzValues;
 
         //public static DS4Color[] MainColor => m_Config.m_Leds;
         public static ref DS4Color getMainColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_Led;
+            return ref ProfileSettingsServiceInstance.GetMainColor(index);
             //return ref m_Config.m_Leds[index];
         }
 
         //public static DS4Color[] LowColor => m_Config.m_LowLeds;
         public static ref DS4Color getLowColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_LowLed;
+            return ref ProfileSettingsServiceInstance.GetLowColor(index);
             //return ref m_Config.m_LowLeds[index];
         }
 
         //public static DS4Color[] ChargingColor => m_Config.m_ChargingLeds;
         public static ref DS4Color getChargingColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_ChargingLed;
+            return ref ProfileSettingsServiceInstance.GetChargingColor(index);
             //return ref m_Config.m_ChargingLeds[index];
         }
 
         //public static DS4Color[] CustomColor => m_Config.m_CustomLeds;
         public static ref DS4Color getCustomColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_CustomLed;
+            return ref ProfileSettingsServiceInstance.GetCustomColor(index);
             //return ref m_Config.m_CustomLeds[index];
         }
 
         //public static bool[] UseCustomLed => m_Config.useCustomLeds;
         public static bool getUseCustomLed(int index)
         {
-            return m_Config.lightbarSettingInfo[index].ds4winSettings.useCustomLed;
+            return ProfileSettingsServiceInstance.GetUseCustomLed(index);
             //return m_Config.useCustomLeds[index];
         }
 
         //public static DS4Color[] FlashColor => m_Config.m_FlashLeds;
         public static ref DS4Color getFlashColor(int index)
         {
-            return ref m_Config.lightbarSettingInfo[index].ds4winSettings.m_FlashLed;
+            return ref ProfileSettingsServiceInstance.GetFlashColor(index);
             //return ref m_Config.m_FlashLeds[index];
         }
 
-        public static byte[] TapSensitivity => m_Config.tapSensitivity;
+        public static byte[] TapSensitivity => ProfileSettingsServiceInstance.TapSensitivity;
         public static byte getTapSensitivity(int index)
         {
             return m_Config.tapSensitivity[index];
         }
 
-        public static bool[] DoubleTap => m_Config.doubleTap;
+        public static bool[] DoubleTap => ProfileSettingsServiceInstance.DoubleTap;
         public static bool getDoubleTap(int index)
         {
-            return m_Config.doubleTap[index];
+            return ProfileSettingsServiceInstance.GetDoubleTap(index);
         }
 
-        public static int[] ScrollSensitivity => m_Config.scrollSensitivity;
+        public static int[] ScrollSensitivity => ProfileSettingsServiceInstance.ScrollSensitivity;
         public static int[] getScrollSensitivity()
         {
-            return m_Config.scrollSensitivity;
+            return ProfileSettingsServiceInstance.GetScrollSensitivity();
         }
         public static int getScrollSensitivity(int index)
         {
-            return m_Config.scrollSensitivity[index];
+            return ProfileSettingsServiceInstance.GetScrollSensitivity(index);
         }
 
-        public static bool[] LowerRCOn => m_Config.lowerRCOn;
-        public static bool[] TouchClickPassthru => m_Config.touchClickPassthru;
-        public static TouchButtonActivationMode[] TouchpadButtonMode => m_Config.touchpadButtonMode;
-        public static bool[] TouchpadJitterCompensation => m_Config.touchpadJitterCompensation;
+        public static bool[] LowerRCOn => ProfileSettingsServiceInstance.LowerRCOn;
+        public static bool[] TouchClickPassthru => ProfileSettingsServiceInstance.TouchClickPassthru;
+        public static TouchButtonActivationMode[] TouchpadButtonMode => ProfileSettingsServiceInstance.TouchpadButtonMode;
+        public static bool[] TouchpadJitterCompensation => ProfileSettingsServiceInstance.TouchpadJitterCompensation;
         public static bool getTouchpadJitterCompensation(int index)
         {
             return m_Config.touchpadJitterCompensation[index];
         }
 
-        public static int[] TouchpadInvert => m_Config.touchpadInvert;
+        public static int[] TouchpadInvert => ProfileSettingsServiceInstance.TouchpadInvert;
         public static int getTouchpadInvert(int index)
         {
             return m_Config.touchpadInvert[index];
         }
 
-        public static TriggerDeadZoneZInfo[] L2ModInfo => m_Config.l2ModInfo;
         public static TriggerDeadZoneZInfo GetL2ModInfo(int index)
         {
             return m_Config.l2ModInfo[index];
@@ -2459,7 +2746,6 @@ namespace DS4Windows
             //return m_Config.l2Deadzone[index];
         }
 
-        public static TriggerDeadZoneZInfo[] R2ModInfo => m_Config.r2ModInfo;
         public static TriggerDeadZoneZInfo GetR2ModInfo(int index)
         {
             return m_Config.r2ModInfo[index];
@@ -2472,16 +2758,16 @@ namespace DS4Windows
             //return m_Config.r2Deadzone[index];
         }
 
-        public static double[] SXDeadzone => m_Config.SXDeadzone;
+        public static double[] SXDeadzone => ProfileSettingsServiceInstance.SXDeadzone;
         public static double getSXDeadzone(int index)
         {
-            return m_Config.SXDeadzone[index];
+            return ProfileSettingsServiceInstance.SXDeadzone[index];
         }
 
-        public static double[] SZDeadzone => m_Config.SZDeadzone;
+        public static double[] SZDeadzone => ProfileSettingsServiceInstance.SZDeadzone;
         public static double getSZDeadzone(int index)
         {
-            return m_Config.SZDeadzone[index];
+            return ProfileSettingsServiceInstance.SZDeadzone[index];
         }
 
         //public static int[] LSDeadzone => m_Config.LSDeadzone;
@@ -2512,13 +2798,13 @@ namespace DS4Windows
             //return m_Config.RSAntiDeadzone[index];
         }
 
-        public static StickDeadZoneInfo[] LSModInfo => m_Config.lsModInfo;
+        public static StickDeadZoneInfo[] LSModInfo => ProfileSettingsServiceInstance.LSModInfo;
         public static StickDeadZoneInfo GetLSDeadInfo(int index)
         {
             return m_Config.lsModInfo[index];
         }
 
-        public static StickDeadZoneInfo[] RSModInfo => m_Config.rsModInfo;
+        public static StickDeadZoneInfo[] RSModInfo => ProfileSettingsServiceInstance.RSModInfo;
         public static StickDeadZoneInfo GetRSDeadInfo(int index)
         {
             return m_Config.rsModInfo[index];
@@ -2550,16 +2836,16 @@ namespace DS4Windows
             //return m_Config.RSMaxzone[index];
         }
 
-        public static double[] SXMaxzone => m_Config.SXMaxzone;
+        public static double[] SXMaxzone => ProfileSettingsServiceInstance.SXMaxzone;
         public static double getSXMaxzone(int index)
         {
-            return m_Config.SXMaxzone[index];
+            return ProfileSettingsServiceInstance.SXMaxzone[index];
         }
 
-        public static double[] SZMaxzone => m_Config.SZMaxzone;
+        public static double[] SZMaxzone => ProfileSettingsServiceInstance.SZMaxzone;
         public static double getSZMaxzone(int index)
         {
-            return m_Config.SZMaxzone[index];
+            return ProfileSettingsServiceInstance.SZMaxzone[index];
         }
 
         //public static int[] L2AntiDeadzone => m_Config.l2AntiDeadzone;
@@ -2590,7 +2876,7 @@ namespace DS4Windows
             //return m_Config.r2Maxzone[index];
         }
 
-        public static double[] LSRotation => m_Config.LSRotation;
+        public static double[] LSRotation => ProfileSettingsServiceInstance.LSRotation;
         /// <summary>
         /// Return profile LS Rotation setting (radians)
         /// </summary>
@@ -2601,7 +2887,7 @@ namespace DS4Windows
             return m_Config.LSRotation[index];
         }
 
-        public static double[] RSRotation => m_Config.RSRotation;
+        public static double[] RSRotation => ProfileSettingsServiceInstance.RSRotation;
         /// <summary>
         /// Return profile LS Rotation setting (radians)
         /// </summary>
@@ -2612,164 +2898,177 @@ namespace DS4Windows
             return m_Config.RSRotation[index];
         }
 
-        public static double[] L2Sens => m_Config.l2Sens;
         public static double getL2Sens(int index)
         {
             return m_Config.l2Sens[index];
         }
 
-        public static double[] R2Sens => m_Config.r2Sens;
         public static double getR2Sens(int index)
         {
             return m_Config.r2Sens[index];
         }
 
-        public static double[] SXSens => m_Config.SXSens;
+        public static double[] SXSens => ProfileSettingsServiceInstance.SXSens;
         public static double getSXSens(int index)
         {
-            return m_Config.SXSens[index];
+            return ProfileSettingsServiceInstance.SXSens[index];
         }
 
-        public static double[] SZSens => m_Config.SZSens;
+        public static double[] SZSens => ProfileSettingsServiceInstance.SZSens;
         public static double getSZSens(int index)
         {
-            return m_Config.SZSens[index];
+            return ProfileSettingsServiceInstance.SZSens[index];
         }
 
-        public static double[] LSSens => m_Config.LSSens;
+        public static double[] LSSens => ProfileSettingsServiceInstance.LSSens;
         public static double getLSSens(int index)
         {
             return m_Config.LSSens[index];
         }
 
-        public static double[] RSSens => m_Config.RSSens;
+        public static double[] RSSens => ProfileSettingsServiceInstance.RSSens;
         public static double getRSSens(int index)
         {
             return m_Config.RSSens[index];
         }
 
-        public static int[] BTPollRate => m_Config.btPollRate;
+        public static int[] BTPollRate => ProfileSettingsServiceInstance.BTPollRate;
         public static int getBTPollRate(int index)
         {
-            return m_Config.btPollRate[index];
+            return ProfileSettingsServiceInstance.GetBTPollRate(index);
         }
 
         // Start of DualSense specific profile settings
         //
         public static DualSenseDevice.RumbleEmulationMode[] DualSenseRumbleEmulationMode
         {
-            get => m_Config.dualSenseRumbleEmulationMode;
-            set => m_Config.dualSenseRumbleEmulationMode = value;
+            get => ProfileSettingsServiceInstance.DualSenseRumbleEmulationMode;
+            set => ProfileSettingsServiceInstance.DualSenseRumbleEmulationMode = value;
         }
 
         public static bool[] UseGenericRumbleStrRescaleForDualSenses
         {
-            get => m_Config.useGenericRumbleRescaleForDualSenses;
-            set => m_Config.useGenericRumbleRescaleForDualSenses = value;
+            get => ProfileSettingsServiceInstance.UseGenericRumbleStrRescaleForDualSenses;
+            set => ProfileSettingsServiceInstance.UseGenericRumbleStrRescaleForDualSenses = value;
         }
 
         public static byte[] DualSenseHapticPowerLevel
         {
-            get => m_Config.dualSenseHapticPowerLevel;
-            set => m_Config.dualSenseHapticPowerLevel = value;
+            get => ProfileSettingsServiceInstance.DualSenseHapticPowerLevel;
+            set => ProfileSettingsServiceInstance.DualSenseHapticPowerLevel = value;
         }
         //
         // End of DualSense specific profile settings
 
-        public static SquareStickInfo[] SquStickInfo => m_Config.squStickInfo;
+        public static SquareStickInfo[] SquStickInfo => ProfileSettingsServiceInstance.SquStickInfo;
         public static SquareStickInfo GetSquareStickInfo(int device)
         {
             return m_Config.squStickInfo[device];
         }
 
-        public static StickAntiSnapbackInfo[] LSAntiSnapbackInfo => m_Config.lsAntiSnapbackInfo;
+        public static StickAntiSnapbackInfo[] LSAntiSnapbackInfo => ProfileSettingsServiceInstance.LSAntiSnapbackInfo;
         public static StickAntiSnapbackInfo GetLSAntiSnapbackInfo(int device)
         {
             return m_Config.lsAntiSnapbackInfo[device];
         }
 
-        public static StickAntiSnapbackInfo[] RSAntiSnapbackInfo => m_Config.rsAntiSnapbackInfo;
+        public static StickAntiSnapbackInfo[] RSAntiSnapbackInfo => ProfileSettingsServiceInstance.RSAntiSnapbackInfo;
         public static StickAntiSnapbackInfo GetRSAntiSnapbackInfo(int device)
         {
             return m_Config.rsAntiSnapbackInfo[device];
         }
 
-        public static StickOutputSetting[] LSOutputSettings => m_Config.lsOutputSettings;
-        public static StickOutputSetting[] RSOutputSettings => m_Config.rsOutputSettings;
-
-        public static TriggerOutputSettings[] L2OutputSettings => m_Config.l2OutputSettings;
-        public static TriggerOutputSettings[] R2OutputSettings => m_Config.r2OutputSettings;
+        public static StickOutputSetting[] LSOutputSettings => ProfileSettingsServiceInstance.LSOutputSettings;
+        public static StickOutputSetting[] RSOutputSettings => ProfileSettingsServiceInstance.RSOutputSettings;
 
         public static void setLsOutCurveMode(int index, int value)
         {
-            m_Config.setLsOutCurveMode(index, value);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[Legacy] Global.setLsOutCurveMode: accessed via static shim");
+            ProfileSettingsServiceInstance.SetLsOutCurveMode(index, value);
         }
         public static int getLsOutCurveMode(int index)
         {
-            return m_Config.getLsOutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetLsOutCurveMode(index);
         }
-        public static BezierCurve[] lsOutBezierCurveObj => m_Config.lsOutBezierCurveObj;
+        public static BezierCurve[] lsOutBezierCurveObj => ProfileSettingsServiceInstance.LsOutBezierCurveObj;
 
         public static void setRsOutCurveMode(int index, int value)
         {
-            m_Config.setRsOutCurveMode(index, value);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[Legacy] Global.setRsOutCurveMode: accessed via static shim");
+            ProfileSettingsServiceInstance.SetRsOutCurveMode(index, value);
         }
         public static int getRsOutCurveMode(int index)
         {
-            return m_Config.getRsOutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetRsOutCurveMode(index);
         }
-        public static BezierCurve[] rsOutBezierCurveObj => m_Config.rsOutBezierCurveObj;
+        public static BezierCurve[] rsOutBezierCurveObj => ProfileSettingsServiceInstance.RsOutBezierCurveObj;
+
+        // Step10-2-A-2: トリガー(L2/R2)関連の後方互換シム
+        public static TriggerDeadZoneZInfo[] L2ModInfo => ProfileSettingsServiceInstance.L2ModInfo;
+        public static TriggerDeadZoneZInfo[] R2ModInfo => ProfileSettingsServiceInstance.R2ModInfo;
+        public static double[] L2Sens => ProfileSettingsServiceInstance.L2Sens;
+        public static double[] R2Sens => ProfileSettingsServiceInstance.R2Sens;
+        public static TriggerOutputSettings[] L2OutputSettings => ProfileSettingsServiceInstance.L2OutputSettings;
+        public static TriggerOutputSettings[] R2OutputSettings => ProfileSettingsServiceInstance.R2OutputSettings;
+        public static BezierCurve[] l2OutBezierCurveObj => ProfileSettingsServiceInstance.L2OutBezierCurveObj;
+        public static BezierCurve[] r2OutBezierCurveObj => ProfileSettingsServiceInstance.R2OutBezierCurveObj;
+        public static bool[] OutputVirtualTriggerButton => ProfileSettingsServiceInstance.OutputVirtualTriggerButton;
+        public static DS4TriggerOutputMode[] OutputDS4TriggerMode => ProfileSettingsServiceInstance.OutputDS4TriggerMode;
 
         public static void setL2OutCurveMode(int index, int value)
         {
-            m_Config.setL2OutCurveMode(index, value);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[Legacy] Global.setL2OutCurveMode: accessed via static shim");
+            ProfileSettingsServiceInstance.SetL2OutCurveMode(index, value);
         }
         public static int getL2OutCurveMode(int index)
         {
-            return m_Config.getL2OutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetL2OutCurveMode(index);
         }
-        public static BezierCurve[] l2OutBezierCurveObj => m_Config.l2OutBezierCurveObj;
 
         public static void setR2OutCurveMode(int index, int value)
         {
-            m_Config.setR2OutCurveMode(index, value);
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[Legacy] Global.setR2OutCurveMode: accessed via static shim");
+            ProfileSettingsServiceInstance.SetR2OutCurveMode(index, value);
         }
         public static int getR2OutCurveMode(int index)
         {
-            return m_Config.getR2OutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetR2OutCurveMode(index);
         }
-        public static BezierCurve[] r2OutBezierCurveObj => m_Config.r2OutBezierCurveObj;
 
         public static void setSXOutCurveMode(int index, int value)
         {
-            m_Config.setSXOutCurveMode(index, value);
+            ProfileSettingsServiceInstance.SetSxOutCurveMode(index, value);
         }
         public static int getSXOutCurveMode(int index)
         {
-            return m_Config.getSXOutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetSxOutCurveMode(index);
         }
-        public static BezierCurve[] sxOutBezierCurveObj => m_Config.sxOutBezierCurveObj;
+        public static BezierCurve[] sxOutBezierCurveObj => ProfileSettingsServiceInstance.SxOutBezierCurveObj;
 
         public static void setSZOutCurveMode(int index, int value)
         {
-            m_Config.setSZOutCurveMode(index, value);
+            ProfileSettingsServiceInstance.SetSzOutCurveMode(index, value);
         }
         public static int getSZOutCurveMode(int index)
         {
-            return m_Config.getSZOutCurveMode(index);
+            return ProfileSettingsServiceInstance.GetSzOutCurveMode(index);
         }
-        public static BezierCurve[] szOutBezierCurveObj => m_Config.szOutBezierCurveObj;
+        public static BezierCurve[] szOutBezierCurveObj => ProfileSettingsServiceInstance.SzOutBezierCurveObj;
 
-        public static bool[] TrackballMode => m_Config.trackballMode;
+        public static bool[] TrackballMode => ProfileSettingsServiceInstance.TrackballMode;
         public static bool getTrackballMode(int index)
         {
-            return m_Config.trackballMode[index];
+            return ProfileSettingsServiceInstance.GetTrackballMode(index);
         }
 
-        public static double[] TrackballFriction => m_Config.trackballFriction;
+        public static double[] TrackballFriction => ProfileSettingsServiceInstance.TrackballFriction;
         public static double getTrackballFriction(int index)
         {
-            return m_Config.trackballFriction[index];
+            return ProfileSettingsServiceInstance.GetTrackballFriction(index);
         }
 
         //public static bool[] TouchStickTrackballMode => m_Config.touchStickTrackballMode;
@@ -2784,26 +3083,23 @@ namespace DS4Windows
         //    return m_Config.touchStickTrackballFriction[index];
         //}
 
-        public static TouchMouseStickInfo[] TouchMouseStickInf => m_Config.touchMStickInfo;
+        public static TouchMouseStickInfo[] TouchMouseStickInf => ProfileSettingsServiceInstance.TouchMouseStickInf;
         public static TouchMouseStickInfo GetTouchMouseStickInfo(int device)
         {
             return m_Config.touchMStickInfo[device];
         }
 
-        public static TouchpadAbsMouseSettings[] TouchAbsMouse => m_Config.touchpadAbsMouse;
-        public static TouchpadRelMouseSettings[] TouchRelMouse => m_Config.touchpadRelMouse;
+        public static TouchpadRelMouseSettings[] TouchRelMouse => ProfileSettingsServiceInstance.TouchRelMouse;
 
         public static ControlServiceDeviceOptions DeviceOptions => m_Config.deviceOptions;
 
         public static OutContType[] OutContType => m_Config.outputDevType;
-        public static bool[] OutputVirtualTriggerButton => m_Config.outputVirtualTriggerButtons;
-        public static DS4TriggerOutputMode[] OutputDS4TriggerMode => m_Config.outputDS4TriggerMode;
         public static DS4TriggerOutputMode GetOutputDS4TriggerMode(int index)
         {
             return m_Config.outputDS4TriggerMode[index];
         }
 
-        public static string[] LaunchProgram => m_Config.launchProgram;
+        public static string[] LaunchProgram => ProfileSettingsServiceInstance.LaunchProgram;
         public static string[] ProfilePath => m_Config.profilePath;
         public static string[] OlderProfilePath => m_Config.olderProfilePath;
         public static string[] SelectedProfile => m_Config.selectedProfile;
@@ -2816,6 +3112,47 @@ namespace DS4Windows
         public static void RaiseSelectedProfileChanged(int deviceIndex, string profileName)
         {
             SelectedProfileChanged?.Invoke(null, new SelectedProfileChangedEventArgs(deviceIndex, profileName));
+        }
+
+
+        #region Profile Application Unified Gateway
+
+        /// <summary>
+        /// 指定したコントローラースロットに対してプロファイルを安全に適用する共通窓口メソッド。
+        /// 手動選択・保存時ホットリロード・スペシャルアクション・自動プロファイル・接続時・Rename時等の全適用経路を一本化します。
+        /// 設定（Global.ProfileChangedNotification）に従い、同一の独自ウィンドウデスクトップ通知を一元制御します。
+        /// （Phase5-Step14 フェーズDにて、判定基準を Global.Notifications から ProfileChangedNotification に暫定是正済み。
+        /// フェーズGにて IProfileApplicationService への完全委譲に置き換え予定）
+        /// </summary>
+        public static bool ApplyProfileToSlot(int slotIndex, string profileName, ProfileChangeSource source)
+        {
+            if (slotIndex < 0 || slotIndex >= ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(profileName))
+                return false;
+
+            // 接続中のデバイス情報をもとにログメッセージを組み立てる
+            string prolog = string.Empty;
+            try
+            {
+                prolog = string.Format(DS4WinWPF.Properties.Resources.UsingProfile, (slotIndex + 1).ToString(), profileName, "");
+            }
+            catch { }
+
+            // ★通知設定の有効・無効を一元反映（Phase5-Step14 フェーズD暫定是正: 契機5統合に伴い、
+            //   従来 Global.Notifications を使用していたが、これは「通知を表示」というシステム通知の
+            //   重大度設定であり、プロファイル切替通知専用の設定ではない。正しくは
+            //   「Display profile switch notification」チェックボックス（ProfileChangedNotification）
+            //   を基準とすべきであり、本フェーズで契機5（ControlService.cs）を本メソッド経由に統合するにあたり
+            //   従来の契機5の正しい判定基準を退行させないため暫定是正した。
+            //   TODO: フェーズG（Phase5-Step14-ProfileSync-And-ApplyUnified-Plan.md §4.7）にて、
+            //   本メソッド自体を IProfileApplicationService.ApplyProfile への委譲に書き換え、
+            //   本行は削除される予定（案①）。
+
+            // 引数仕様: (deviceIndex, profileName, isTemp: false, launchProgram: false, service, source, prolog,)
+            // 内部の ApplyProfile 呼び出しから display 引数を削除
+            return ApplyProfile(slotIndex, profileName, false, false, Program.rootHub, source, null);
         }
 
         /// <summary>
@@ -2831,15 +3168,15 @@ namespace DS4Windows
         /// <param name="displayNotification">通知を表示するか</param>
         /// <returns>プロファイル読み込み成功したか</returns>
         public static bool ApplyProfile(int device, string profileName, bool isTemp, bool launchProgram,
-            ControlService control, ProfileChangeSource source, string prolog = null, bool displayNotification = true)
+                    ControlService control, ProfileChangeSource source = ProfileChangeSource.Unknown, string prolog = null)
         {
             // Debug: ApplyProfile呼び出しログ
             string stackTrace = new System.Diagnostics.StackTrace(1, true).ToString();
             AppLogger.LogDebug($"ApplyProfile CALLED: device={device}, profile={profileName}, isTemp={isTemp}, source={source}");
             AppLogger.LogTrace($"ApplyProfile CallStack:\n{stackTrace}");
-            
+
             bool result;
-            
+
             // プロファイル読み込み
             if (isTemp)
             {
@@ -2855,51 +3192,7 @@ namespace DS4Windows
             }
 
             if (result)
-            {
-                AppLogger.LogDebug($"ApplyProfile: Profile loaded successfully. Updating state...");
-                
-                // SelectedProfile を更新（UI表示用）
-                SelectedProfile[device] = profileName;
-                
-                // 通常プロファイルの場合のみ OlderProfilePath を更新
-                // 一時プロファイル（Auto Profile、スペシャルアクション）の場合は
-                // デフォルトプロファイルを保持するため更新しない
-                if (!isTemp)
-                {
-                    OlderProfilePath[device] = profileName;
-                    AppLogger.LogDebug($"ApplyProfile: OlderProfilePath updated to '{profileName}'");
-                }
-                else
-                {
-                    AppLogger.LogDebug($"ApplyProfile: OlderProfilePath NOT updated (isTemp=true). Current value: '{OlderProfilePath[device]}'");
-                }
-
-                // ログ出力（ここで1回のみ）
-                if (prolog == null)
-                {
-                    // デバイス情報からプロローグを生成
-                    DS4Device ds4Device = control.DS4Controllers[device];
-                    string battery = ds4Device != null ? $"{ds4Device.Battery}" : "N/A";
-                    prolog = $"Controller {device + 1} is now using Profile \"{profileName}\" (Battery: {battery}%)";
-                }
-
-                // プロファイル切り替えメッセージを出力
-                AppLogger.LogToGui(prolog, false);
-
-                AppLogger.LogDebug($"ApplyProfile: Calling LogProfileChanged...");
-                try
-                {
-                    AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow, displayNotification);
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.LogError($"[ApplyProfile] Failed to log profile change: {ex.Message}");
-                }
-
-                // UI更新通知
-                AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");
-                RaiseSelectedProfileChanged(device, profileName);
-            }
+                CompleteProfileApplication(device, profileName, isTemp, control, source, prolog);
             else
             {
                 AppLogger.LogDebug($"ApplyProfile: Profile load FAILED for '{profileName}'");
@@ -2907,6 +3200,106 @@ namespace DS4Windows
 
             AppLogger.LogDebug($"ApplyProfile COMPLETED: device={device}, profile={profileName}, result={result}");
             return result;
+        }
+        #endregion
+        internal static void CompleteProfileApplication(int device, string profileName, bool isTemp,
+            ControlService control, ProfileChangeSource source, string prolog)
+        {
+            AppLogger.LogDebug($"ApplyProfile: Profile loaded successfully. Updating state...");
+            SelectedProfile[device] = profileName;
+
+            if (!isTemp)
+            {
+                OlderProfilePath[device] = profileName;
+                AppLogger.LogDebug($"ApplyProfile: OlderProfilePath updated to '{profileName}'");
+            }
+            else
+            {
+                AppLogger.LogDebug($"ApplyProfile: OlderProfilePath NOT updated (isTemp=true). Current value: '{OlderProfilePath[device]}'");
+            }
+
+            if (prolog == null)
+            {
+                DS4Device ds4Device = control.DS4Controllers[device];
+                string battery = ds4Device != null ? $"{ds4Device.Battery}" : "N/A";
+                prolog = $"Controller {device + 1} is now using Profile \"{profileName}\" (Battery: {battery}%)";
+            }
+
+            AppLogger.LogToGui(prolog, false);
+            AppLogger.LogDebug($"ApplyProfile: Calling LogProfileChanged...");
+            try
+            {
+                AppLogger.LogProfileChanged(device, profileName, isTemp, source, prolog, DateTime.UtcNow);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogError($"[ApplyProfile] Failed to log profile change: {ex.Message}");
+            }
+
+            AppLogger.LogDebug($"ApplyProfile: Raising SelectedProfileChanged event");
+            RaiseSelectedProfileChanged(device, profileName);
+
+            try
+            {
+                try { DS4Windows.ActionManager.ClearAllEntries(); } catch { }
+                AppLogger.LogDebug($"ApplyProfile: Cleared ActionManager global entries to force re-creation of Action instances for new profile");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ApplyProfile: Failed to clear ActionManager entries: {ex}");
+            }
+
+            try
+            {
+                DS4Windows.Mapping.ClearKeyButtonControllersForDevice(device);
+                try { DS4Windows.ActionManager.ClearDeviceState(device); } catch { }
+                AppLogger.LogDebug($"ApplyProfile: Cleared per-device SpecialAction controllers and ActionManager state for device {device}");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ApplyProfile: Failed to clear per-device controllers: {ex}");
+            }
+
+            try { DS4Windows.ActionManager.PreallocateForProfileApply(device); } catch { }
+
+            try
+            {
+                bool foundToggle = false;
+                bool foundPress = false;
+                var profileActionNames = getProfileActions(device);
+                if (profileActionNames != null)
+                {
+                    foreach (var actionName in profileActionNames)
+                    {
+                        try
+                        {
+                            var sa = GetProfileAction(device, actionName);
+                            if (sa == null) continue;
+                            if (sa.typeID == SpecialAction.ActionTypeId.Key || sa.typeID == SpecialAction.ActionTypeId.Button)
+                            {
+                                if (sa.KeyButtonSwitchMode.HasValue)
+                                {
+                                    if (sa.KeyButtonSwitchMode.Value == SpecialAction.KeyButtonSwitchModeEnum.Toggle) foundToggle = true; else foundPress = true;
+                                }
+                                else
+                                {
+                                    bool isToggle = false;
+                                    try { isToggle = sa.keyType.HasFlag(DS4KeyType.Toggle); } catch { }
+                                    if (isToggle) foundToggle = true; else foundPress = true;
+                                }
+                            }
+                        }
+                        catch { }
+                        if (foundToggle && foundPress) break;
+                    }
+                }
+
+                AppLogger.LogDebug("ApplyProfile: Controller activation handled per-SpecialAction SwitchMode");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"ApplyProfile: Controller activation check failed: {ex}");
+            }
         }
 
         public static List<string>[] ProfileActions => m_Config.profileActions;
@@ -2945,9 +3338,9 @@ namespace DS4Windows
         public static string GetDS4Extra(int deviceNum, string buttonName, bool shift) => m_Config.GetDS4Extra(deviceNum, buttonName, shift);
         public static int GetDS4STrigger(int deviceNum, string buttonName) => m_Config.GetDS4STrigger(deviceNum, buttonName);
         public static int GetDS4STrigger(int deviceNum, DS4Controls control) => m_Config.GetDS4STrigger(deviceNum, control);
-        public static List<DS4ControlSettings> getDS4CSettings(int device) => m_Config.ds4settings[device];
-        public static DS4ControlSettings GetDS4CSetting(int deviceNum, string control) => m_Config.GetDS4CSetting(deviceNum, control);
-        public static DS4ControlSettings GetDS4CSetting(int deviceNum, DS4Controls control) => m_Config.GetDS4CSetting(deviceNum, control);
+        public static List<DS4ControlSettings> getDS4CSettings(int device) => ProfileSettingsServiceInstance.GetDS4CSettings(device);
+        public static DS4ControlSettings GetDS4CSetting(int deviceNum, string control) => ProfileSettingsServiceInstance.GetDS4CSetting(deviceNum, control);
+        public static DS4ControlSettings GetDS4CSetting(int deviceNum, DS4Controls control) => ProfileSettingsServiceInstance.GetDS4CSetting(deviceNum, control);
         public static ControlSettingsGroup GetControlSettingsGroup(int deviceNum) => m_Config.ds4controlSettings[deviceNum];
         public static bool HasCustomActions(int deviceNum) => m_Config.HasCustomActions(deviceNum);
         public static bool HasCustomExtras(int deviceNum) => m_Config.HasCustomExtras(deviceNum);
@@ -2969,47 +3362,102 @@ namespace DS4Windows
             // the window where MapCustomAction can observe an inconsistent size.
             try
             {
-                lock (Mapping.actionDoneLock)
-                {
-                    Mapping.actionDoneInitialized = false;
-                }
+                try { ActionManager.ClearAllEntries(); } catch { }
             }
             catch { }
 
             m_Config.SaveActionNew(name, controls, mode, details, edit, delayTime, extras);
             //m_Config.SaveAction(name, controls, mode, details, edit, extras);
             //m_Config.SaveActions();
-            Mapping.InitializeActionDoneList();
+
+            // Reload actions from file and verify counts to avoid duplicated in-memory entries.
+            ReloadActionsAndVerify("SaveAction");
+
+            // If saving a Key-type SpecialAction (mode==4), clear runtime state related to that key only.
+            try
+            {
+                if (mode == 4)
+                {
+                    if (ushort.TryParse(details, out ushort savedKey))
+                    {
+                        Mapping.ResetRuntimeStateForKey(savedKey);
+                    }
+                }
+            }
+            catch { }
         }
 
         public static void SaveActions()
         {
             try
             {
-                lock (Mapping.actionDoneLock)
-                {
-                    Mapping.actionDoneInitialized = false;
-                }
+                try { ActionManager.ClearAllEntries(); } catch { }
             }
             catch { }
 
             m_Config.SaveActions();
-            Mapping.InitializeActionDoneList();
+
+            // After saving, reload to ensure in-memory list matches file contents.
+            ReloadActionsAndVerify("SaveActions");
         }
 
         public static void RemoveAction(string name)
         {
             try
             {
-                lock (Mapping.actionDoneLock)
-                {
-                    Mapping.actionDoneInitialized = false;
-                }
+                try { ActionManager.ClearAllEntries(); } catch { }
             }
             catch { }
 
             m_Config.RemoveAction(name);
-            Mapping.InitializeActionDoneList();
+
+            // After removal, reload to ensure consistency between file and memory.
+            ReloadActionsAndVerify("RemoveAction");
+        }
+
+        // Reload Actions.xml into the backing store and verify that the in-memory
+        // `actions` count matches the number of <Action> elements in the file.
+        private static void ReloadActionsAndVerify(string caller)
+        {
+            try
+            {
+                // Attempt to reload from the canonical file
+                bool loaded = m_Config.LoadActions();
+
+                int memCount = m_Config.actions?.Count ?? 0;
+                int fileCount = -1;
+                try
+                {
+                    XmlDocument xd = new XmlDocument();
+                    xd.Load(m_Config.m_Actions);
+                    XmlNodeList nodes = xd.SelectNodes("/Actions/Action");
+                    fileCount = nodes?.Count ?? 0;
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.LogToGui($"Could not count Actions.xml entries: {ex.Message}", false);
+                }
+
+                if (fileCount >= 0)
+                {
+                    if (memCount != fileCount)
+                    {
+                        AppLogger.LogToGui($"Warning: action count mismatch after {caller}: memory={memCount} file={fileCount}", true);
+                    }
+                    else
+                    {
+                        AppLogger.LogToGui($"Action list reloaded ({memCount} entries) after {caller}.", false);
+                    }
+                }
+                else
+                {
+                    AppLogger.LogToGui($"Action list reloaded ({memCount} entries) after {caller}. (file count unknown)", false);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogToGui($"Error reloading Actions.xml after {caller}: {ex.Message}", true);
+            }
         }
 
         public static bool LoadActions() => m_Config.LoadActions();
@@ -3116,16 +3564,26 @@ namespace DS4Windows
         }
 
         //public static bool Load() => m_Config.Load();
-        public static bool Load() => m_Config.Load();
+        public static bool Load()
+        {
+            var appSettings = DS4WinWPF.AppHost.GetService<DI.IAppSettingsService>();
+            if (appSettings != null)
+            {
+                return appSettings.Load();
+            }
+
+            return m_Config.Load();
+        }
 
         public static bool LoadProfile(int device, bool launchprogram, ControlService control,
             bool xinputChange = true, bool postLoad = true)
         {
             Global.loggedInvalidActions.Clear();
-            bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
-            //bool result = m_Config.LoadProfile(device, launchprogram, control, "", xinputChange, postLoad);
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            // Phase5-Step2: XML実体I/OをIProfileXmlStore経由に変更。
+            // 内部実装は引き続きBackingStore.LoadProfileへ委譲するため挙動は変更しない。
+            bool result = ProfileXmlStoreInstance.LoadProfileXml(device, launchprogram, control, "", xinputChange, postLoad);
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
 
             return result;
@@ -3139,8 +3597,8 @@ namespace DS4Windows
             //bool result = m_Config.LoadProfile(device, launchprogram, control, Path.Combine(appdatapath, "Profiles", $"{name}.xml"));
             if (result)
             {
-                tempprofilename[device] = name;
-                useTempProfile[device] = true;
+                ProfileSettingsServiceInstance.SetTempProfileName(device, name);
+                ProfileSettingsServiceInstance.SetUseTempProfile(device, true);
                 tempprofileDistance[device] = name.ToLower().Contains("distance");
             }
 
@@ -3154,8 +3612,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3166,8 +3624,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3178,8 +3636,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3190,8 +3648,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3202,8 +3660,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3214,8 +3672,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3226,8 +3684,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3238,8 +3696,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3250,8 +3708,8 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
@@ -3262,19 +3720,27 @@ namespace DS4Windows
             m_Config.EstablishDefaultSpecialActions(device);
             m_Config.CacheExtraProfileInfo(device);
 
-            tempprofilename[device] = string.Empty;
-            useTempProfile[device] = false;
+            ProfileSettingsServiceInstance.SetTempProfileName(device, string.Empty);
+            ProfileSettingsServiceInstance.SetUseTempProfile(device, false);
             tempprofileDistance[device] = false;
         }
 
         public static bool Save()
         {
+            var appSettings = DS4WinWPF.AppHost.GetService<DI.IAppSettingsService>();
+            if (appSettings != null)
+            {
+                return appSettings.Save();
+            }
+
             return m_Config.Save();
         }
 
-        public static void SaveProfile(int device, string proName)
+        public static bool SaveProfile(int device, string proName)
         {
-            m_Config.SaveProfile(device, proName);
+            // Phase5-Step2: XML実体I/OをIProfileXmlStore経由に変更し、保存成否(bool)を
+            // 呼び出し元へ伝播する(従来はvoidで成否を握りつぶしていた)。
+            return ProfileXmlStoreInstance.SaveProfileXml(device, proName);
         }
 
         public static void SaveAsProfile(int device, string propath)
@@ -3413,6 +3879,19 @@ namespace DS4Windows
         public static void InitOutputKBMHandler(string identifier)
         {
             outputKBMHandler = VirtualKBMFactory.DetermineHandler(identifier);
+            // For testing: disable fake key repeat to isolate whether repeated synthetic sends
+            // are due to fakeKeyRepeat logic. Re-enable or remove this for normal builds.
+            if (outputKBMHandler != null)
+            {
+                try
+                {
+                    AppLogger.LogDebug($"Output KBM handler fakeKeyRepeat={outputKBMHandler.fakeKeyRepeat} for {outputKBMHandler.GetIdentifier()}");
+                }
+                catch (Exception)
+                {
+                    // ignore - defensive in case handler implementation restricts setting
+                }
+            }
         }
 
         public static void InitOutputKBMMapping(string identifier)
@@ -3459,129 +3938,13 @@ namespace DS4Windows
                 m_Config.ds4controlSettings[deviceNum].EstablishExtraButtons(devButtons);
             }
         }
-
-        public static void TranslateCoorToAbsDisplay(double inX, double inY,
-            out double outX, out double outY)
-        {
-            //outX = outY = 0.0;
-            //int topLeftX = (int)absDisplayBounds.Left;
-            //double testLeft = 0.0;
-            //double testRight = 0.0;
-            //double testTop = 0.0;
-            //double testBottom = 0.0;
-
-            double widthRatio = (absDisplayBounds.Left + absDisplayBounds.Right) / fullDesktopBounds.Width;
-            double heightRatio = (absDisplayBounds.Top + absDisplayBounds.Bottom) / fullDesktopBounds.Height;
-            double bX = absDisplayBounds.Left / fullDesktopBounds.Width;
-            double bY = absDisplayBounds.Top / fullDesktopBounds.Height;
-
-            outX = widthRatio * inX + bX;
-            outY = heightRatio * inY + bY;
-            //outX = (absDisplayBounds.TopRight.X - absDisplayBounds.TopLeft.X) * inX + absDisplayBounds.TopLeft.X;
-            //outY = (absDisplayBounds.BottomRight.Y - absDisplayBounds.TopLeft.Y) * inY + absDisplayBounds.TopLeft.Y;
-        }
-
-        public static void PrepareAbsMonitorBounds(string edid)
-        {
-            bool foundMonitor = false;
-            DISPLAY_DEVICE display = new DISPLAY_DEVICE();
-            if (!string.IsNullOrEmpty(edid))
-            {
-                foundMonitor = FindMonitorByEDID(edid, out display);
-            }
-
-            if (foundMonitor)
-            {
-                // Grab resolution of monitor and full desktop range.
-                // Establish abs region bounds
-                absUseAllMonitors = false;
-                fullDesktopBounds = SystemInformation.VirtualScreen;
-                List<Screen> tempScreens = Screen.AllScreens.ToList();
-                foreach (Screen tempScreen in tempScreens)
-                {
-                    if (tempScreen.DeviceName == display.DeviceName)
-                    {
-                        absDisplayBounds = tempScreen.Bounds;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                // Grab resolution of full desktop range.
-                // Establish abs region bounds
-                absUseAllMonitors = true;
-                fullDesktopBounds = SystemInformation.VirtualScreen;
-                absDisplayBounds = fullDesktopBounds;
-            }
-        }
-
-        public static bool FindMonitorByEDID(string edid, out DISPLAY_DEVICE display)
-        {
-            DISPLAY_DEVICE d = new DISPLAY_DEVICE();
-            d.cb = Marshal.SizeOf(d);
-            bool foundMonitor = false;
-            try
-            {
-                for (uint id = 0;
-                    EnumDisplayDevicesW(null, id, ref d, 0); id++)
-                {
-                    if (d.StateFlags.HasFlag(DisplayDeviceStateFlags.AttachedToDesktop))
-                    {
-                        EnumDisplayDevicesW(d.DeviceName, id, ref d,
-                            EDD_GET_DEVICE_INTERFACE_NAME);
-                        if (d.DeviceID == edid)
-                        {
-                            foundMonitor = true;
-                            break;
-                        }
-                    }
-
-                    d.cb = Marshal.SizeOf(d);
-                }
-            }
-            catch (Exception)
-            {
-            }
-
-            display = foundMonitor ? d : new DISPLAY_DEVICE();
-            return foundMonitor;
-        }
-
-        public static IEnumerable<DISPLAY_DEVICE> GrabCurrentMonitors()
-        {
-            List<DISPLAY_DEVICE> result = new List<DISPLAY_DEVICE>();
-
-            DISPLAY_DEVICE d = new DISPLAY_DEVICE();
-            d.cb = Marshal.SizeOf(d);
-            try
-            {
-                for (uint id = 0;
-                    EnumDisplayDevicesW(null, id, ref d, 0); id++)
-                {
-                    if (d.StateFlags.HasFlag(DisplayDeviceStateFlags.AttachedToDesktop))
-                    {
-                        EnumDisplayDevicesW(d.DeviceName, id, ref d,
-                            EDD_GET_DEVICE_INTERFACE_NAME);
-                        result.Add(d);
-                    }
-
-                    d.cb = Marshal.SizeOf(d);
-                }
-            }
-            catch (Exception)
-            {
-            }
-
-            return result;
-        }
     }
 
     public class Changelog
     {
-    // Use the GitHub REST API /repos/ path so the app queries releases for the correct repo
-    public const string GITHUB_RELEASES_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases";
-    public const string GITHUB_LATEST_RELEASE_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest";
+        // Use the GitHub REST API /repos/ path so the app queries releases for the correct repo
+        public const string GITHUB_RELEASES_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases";
+        public const string GITHUB_LATEST_RELEASE_API_URI = "https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest";
 
         private static bool? _newerVersionAvailable = null;
         private static Version _latestVersion;
@@ -3719,7 +4082,8 @@ namespace DS4Windows
         }
     }
 
-    public class BackingStore{
+    public class BackingStore
+    {
         /// <summary>
         /// profileActions[device]の内容からprofileActionDict等を再構築する（LoadProfileNewの該当部分をpublic化）
         /// </summary>
@@ -3740,52 +4104,52 @@ namespace DS4Windows
             }
         }
 
-    // ProfileEditor layout fields (DTOと統合)
-    public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_LEFT_WIDTH;
-    public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_RIGHT_WIDTH;
-    public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_NAME_COL_WIDTH;
-    public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_TRIGGER_COL_WIDTH;
-    public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_DETAIL_COL_WIDTH;
-    // Active 列はプロファイルに永続化しない列幅の初期値
-    public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_ACTIVE_COL_WIDTH;
-    // SpecialActionDeleteColWidth 定数削除
+        // ProfileEditor layout fields (DTOと統合)
+        public const int DEFAULT_PROFILE_EDITOR_LEFT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_LEFT_WIDTH;
+        public const int DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH = WindowLayoutDefaults.PROFILE_EDITOR_RIGHT_WIDTH;
+        public const int DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_NAME_COL_WIDTH;
+        public const int DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+        public const int DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_DETAIL_COL_WIDTH;
+        // Active 列はプロファイルに永続化しない列幅の初期値
+        public const int DEFAULT_SPECIAL_ACTION_ACTIVE_COL_WIDTH = WindowLayoutDefaults.SPECIAL_ACTION_ACTIVE_COL_WIDTH;
+        // SpecialActionDeleteColWidth 定数削除
 
-    // Controller tab column widths
-    public const int DEFAULT_CONTROLLER_INDEX_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_INDEX_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_ID_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_STATUS_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EXCLUSIVE_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_BATTERY_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_SELECTPROFILE_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EDIT_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINKED_PROFILE_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINK_PROF_ID_COL_WIDTH;
-    public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+        // Controller tab column widths
+        public const int DEFAULT_CONTROLLER_INDEX_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_INDEX_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_ID_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_STATUS_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_STATUS_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EXCLUSIVE_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_BATTERY_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_BATTERY_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_SELECTPROFILE_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_EDIT_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_EDIT_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_LINK_PROF_ID_COL_WIDTH;
+        public const int DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH = WindowLayoutDefaults.CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
-    // Log settings
-    public const int DEFAULT_LOG_MAX_ARCHIVE_FILES = 50;
-    public const string DEFAULT_LOG_MIN_LEVEL = "Info";
+        // Log settings
+        public const int DEFAULT_LOG_MAX_ARCHIVE_FILES = 50;
+        public const string DEFAULT_LOG_MIN_LEVEL = "Info";
 
-    public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
-    public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
-    public int specialActionNameColWidth = DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
-    public int specialActionTriggerColWidth = DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
-    public int specialActionDetailColWidth = DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
-    // SpecialActionDeleteColWidth フィールド削除
+        public int profileEditorLeftWidth = DEFAULT_PROFILE_EDITOR_LEFT_WIDTH;
+        public int profileEditorRightWidth = DEFAULT_PROFILE_EDITOR_RIGHT_WIDTH;
+        public int specialActionNameColWidth = DEFAULT_SPECIAL_ACTION_NAME_COL_WIDTH;
+        public int specialActionTriggerColWidth = DEFAULT_SPECIAL_ACTION_TRIGGER_COL_WIDTH;
+        public int specialActionDetailColWidth = DEFAULT_SPECIAL_ACTION_DETAIL_COL_WIDTH;
+        // SpecialActionDeleteColWidth フィールド削除
 
-    public int controllerIndexColWidth = DEFAULT_CONTROLLER_INDEX_COL_WIDTH;
-    public int controllerIdColWidth = DEFAULT_CONTROLLER_ID_COL_WIDTH;
-    public int controllerStatusColWidth = DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
-    public int controllerExclusiveColWidth = DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
-    public int controllerBatteryColWidth = DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
-    public int controllerSelectProfileColWidth = DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
-    public int controllerEditColWidth = DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
-    public int controllerLinkedProfileColWidth = DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
-    public int controllerLinkProfIdColWidth = DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
-    public int controllerCustomColorColWidth = DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
+        public int controllerIndexColWidth = DEFAULT_CONTROLLER_INDEX_COL_WIDTH;
+        public int controllerIdColWidth = DEFAULT_CONTROLLER_ID_COL_WIDTH;
+        public int controllerStatusColWidth = DEFAULT_CONTROLLER_STATUS_COL_WIDTH;
+        public int controllerExclusiveColWidth = DEFAULT_CONTROLLER_EXCLUSIVE_COL_WIDTH;
+        public int controllerBatteryColWidth = DEFAULT_CONTROLLER_BATTERY_COL_WIDTH;
+        public int controllerSelectProfileColWidth = DEFAULT_CONTROLLER_SELECTPROFILE_COL_WIDTH;
+        public int controllerEditColWidth = DEFAULT_CONTROLLER_EDIT_COL_WIDTH;
+        public int controllerLinkedProfileColWidth = DEFAULT_CONTROLLER_LINKED_PROFILE_COL_WIDTH;
+        public int controllerLinkProfIdColWidth = DEFAULT_CONTROLLER_LINK_PROF_ID_COL_WIDTH;
+        public int controllerCustomColorColWidth = DEFAULT_CONTROLLER_CUSTOMCOLOR_COL_WIDTH;
 
-    public int logMaxArchiveFiles = DEFAULT_LOG_MAX_ARCHIVE_FILES;
-    public string logMinLevel = DEFAULT_LOG_MIN_LEVEL;
+        public int logMaxArchiveFiles = DEFAULT_LOG_MAX_ARCHIVE_FILES;
+        public string logMinLevel = DEFAULT_LOG_MIN_LEVEL;
 
         public const double DEFAULT_UDP_SMOOTH_MINCUTOFF = 0.4;
         public const double DEFAULT_UDP_SMOOTH_BETA = 0.2;
@@ -3835,13 +4199,6 @@ namespace DS4Windows
             new ButtonMouseInfo(), new ButtonMouseInfo(), new ButtonMouseInfo(),
             new ButtonMouseInfo(), new ButtonMouseInfo(), new ButtonMouseInfo(),
             new ButtonMouseInfo(), new ButtonMouseInfo(), new ButtonMouseInfo(),
-        };
-
-        public ButtonAbsMouseInfo[] buttonAbsMouseInfos = new ButtonAbsMouseInfo[Global.TEST_PROFILE_ITEM_COUNT]
-        {
-            new ButtonAbsMouseInfo(), new ButtonAbsMouseInfo(), new ButtonAbsMouseInfo(),
-            new ButtonAbsMouseInfo(), new ButtonAbsMouseInfo(), new ButtonAbsMouseInfo(),
-            new ButtonAbsMouseInfo(), new ButtonAbsMouseInfo(), new ButtonAbsMouseInfo(),
         };
 
         public bool[] enableTouchToggle = new bool[Global.TEST_PROFILE_ITEM_COUNT]
@@ -4150,6 +4507,16 @@ namespace DS4Windows
             new GyroControlsInfo(), new GyroControlsInfo(), new GyroControlsInfo(),
             new GyroControlsInfo(), new GyroControlsInfo(), new GyroControlsInfo(),
         };
+
+        public RumbleSettings[] rumbleSettings = new RumbleSettings[Global.TEST_PROFILE_ITEM_COUNT]
+                {
+            new RumbleSettings(), new RumbleSettings(),
+            new RumbleSettings(), new RumbleSettings(),
+            new RumbleSettings(), new RumbleSettings(),
+            new RumbleSettings(), new RumbleSettings(),
+            new RumbleSettings(),
+                };
+
         public string[] sATriggers = new string[Global.TEST_PROFILE_ITEM_COUNT]
         { BackingStore.DEFAULT_SA_TRIGGERS, BackingStore.DEFAULT_SA_TRIGGERS, BackingStore.DEFAULT_SA_TRIGGERS,
           BackingStore.DEFAULT_SA_TRIGGERS, BackingStore.DEFAULT_SA_TRIGGERS, BackingStore.DEFAULT_SA_TRIGGERS,
@@ -4202,17 +4569,17 @@ namespace DS4Windows
           new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER }, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER}, new int[1] { DEFAULT_TOUCH_DIS_INVERT_TRIGGER } };
         public Boolean useExclusiveMode = false; // Re-enable Ex Mode
 
-    public const int DEFAULT_FORM_WIDTH = WindowLayoutDefaults.MAIN_WINDOW_WIDTH;
-    public int formWidth = DEFAULT_FORM_WIDTH;
+        public const int DEFAULT_FORM_WIDTH = WindowLayoutDefaults.MAIN_WINDOW_WIDTH;
+        public int formWidth = DEFAULT_FORM_WIDTH;
 
-    public const int DEFAULT_FORM_HEIGHT = WindowLayoutDefaults.MAIN_WINDOW_HEIGHT;
-    public int formHeight = DEFAULT_FORM_HEIGHT;
+        public const int DEFAULT_FORM_HEIGHT = WindowLayoutDefaults.MAIN_WINDOW_HEIGHT;
+        public int formHeight = DEFAULT_FORM_HEIGHT;
 
-    public const int DEFAULT_FORM_LOCATION_X = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_X;
-    public int formLocationX = DEFAULT_FORM_LOCATION_X;
+        public const int DEFAULT_FORM_LOCATION_X = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_X;
+        public int formLocationX = DEFAULT_FORM_LOCATION_X;
 
-    public const int DEFAULT_FORM_LOCATION_Y = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_Y;
-    public int formLocationY = DEFAULT_FORM_LOCATION_Y;
+        public const int DEFAULT_FORM_LOCATION_Y = WindowLayoutDefaults.MAIN_WINDOW_LOCATION_Y;
+        public int formLocationY = DEFAULT_FORM_LOCATION_Y;
 
         public Boolean startMinimized = false;
         public Boolean minToTaskbar = false;
@@ -4294,7 +4661,6 @@ namespace DS4Windows
         public string customSteamFolder;
         public AppThemeChoice useCurrentTheme;
         public string fakeExeFileName = string.Empty;
-        public string absDisplayEDID = string.Empty;
 
         public sbyte[] leftStickDriftXAxis = new sbyte[Global.TEST_PROFILE_ITEM_COUNT]
         {
@@ -4381,8 +4747,6 @@ namespace DS4Windows
             new TouchMouseStickInfo(),
         };
 
-        public TouchpadAbsMouseSettings[] touchpadAbsMouse = new TouchpadAbsMouseSettings[Global.TEST_PROFILE_ITEM_COUNT] { new TouchpadAbsMouseSettings(), new TouchpadAbsMouseSettings(), new TouchpadAbsMouseSettings(),
-            new TouchpadAbsMouseSettings(),new TouchpadAbsMouseSettings(),new TouchpadAbsMouseSettings(),new TouchpadAbsMouseSettings(),new TouchpadAbsMouseSettings(),new TouchpadAbsMouseSettings() };
         public TouchpadRelMouseSettings[] touchpadRelMouse = new TouchpadRelMouseSettings[Global.TEST_PROFILE_ITEM_COUNT] { new TouchpadRelMouseSettings(), new TouchpadRelMouseSettings(), new TouchpadRelMouseSettings(), new TouchpadRelMouseSettings(),
             new TouchpadRelMouseSettings(), new TouchpadRelMouseSettings(), new TouchpadRelMouseSettings(), new TouchpadRelMouseSettings(), new TouchpadRelMouseSettings() };
 
@@ -4437,29 +4801,39 @@ namespace DS4Windows
 
                 ds4controlSettings[i] = new ControlSettingsGroup(ds4settings[i]);
 
+                // RumbleSettings の変更を生配列 rumble / rumbleAutostopTime に連動させる
+                int slot = i;
+                rumbleSettings[slot].RumbleSettingsChanged += (sender, e) =>
+                {
+                    if (rumble != null && slot < rumble.Length)
+                        rumble[slot] = rumbleSettings[slot].RumbleBoost;
+                    if (rumbleAutostopTime != null && slot < rumbleAutostopTime.Length)
+                        rumbleAutostopTime[slot] = rumbleSettings[slot].RumbleAutostopTime;
+                };
+
                 EstablishDefaultSpecialActions(i);
                 CacheExtraProfileInfo(i);
             }
 
             SetupDefaultColors();
         }
-
         public void EstablishDefaultSpecialActions(int idx)
         {
-            profileActions[idx] = new List<string>();
-            
-            // Find first DisconnectBT action by name (ascending order)
-            var disconnectAction = actions
-                .Where(a => a.typeID == SpecialAction.ActionTypeId.DisconnectBT)
-                .OrderBy(a => a.name, StringComparer.CurrentCultureIgnoreCase)
-                .FirstOrDefault();
-            
-            if (disconnectAction != null)
+            // Do not overwrite an existing profileActions list. Only seed a default
+            // when the list is missing (null). This ensures we only add the default
+            // Disconnect action for truly new/unspecified profiles and won't force-enable
+            // it for existing profiles on startup.
+            if (profileActions[idx] != null)
             {
-                profileActions[idx].Add(disconnectAction.name);
+                profileActionCount[idx] = profileActions[idx].Count;
+                return;
             }
-            
-            profileActionCount[idx] = profileActions[idx].Count;
+
+            // Initialize to an empty list for unspecified profiles but do NOT
+            // automatically add any Disconnect action. That behavior caused
+            // unwanted enabling of Disconnect for profiles that simply had no
+            // explicit action configuration.
+            profileActions[idx] = new List<string>();
         }
 
         public void CacheProfileCustomsFlags(int device)
@@ -4468,10 +4842,8 @@ namespace DS4Windows
             containsCustomAction[device] = customAct = HasCustomActions(device);
             containsCustomExtras[device] = HasCustomExtras(device);
 
-            if (!customAct)
             {
                 customAct = gyroOutMode[device] == GyroOutMode.MouseJoystick;
-                customAct = customAct || sASteeringWheelEmulationAxis[device] >= SASteeringWheelEmulationAxisType.VJoy1X;
                 customAct = customAct || lsOutputSettings[device].mode != StickMode.Controls;
                 customAct = customAct || rsOutputSettings[device].mode != StickMode.Controls;
                 containsCustomAction[device] = customAct;
@@ -4545,8 +4917,8 @@ namespace DS4Windows
                         else
                         {
                             // Determine the profile name actually in use for this device (temporary or regular)
-                            profName = (Global.useTempProfile != null && device >= 0 && device < Global.useTempProfile.Length && Global.useTempProfile[device])
-                                ? (Global.tempprofilename != null && device >= 0 && device < Global.tempprofilename.Length ? Global.tempprofilename[device] : string.Empty)
+                            profName = (Global.ProfileSettingsServiceInstance.GetUseTempProfile(device))
+                                ? Global.ProfileSettingsServiceInstance.GetTempProfileName(device)
                                 : (profilePath != null && device >= 0 && device < profilePath.Length ? profilePath[device] : string.Empty);
                         }
 
@@ -5073,14 +5445,12 @@ namespace DS4Windows
                 XmlNode xmlGyroSwipeDelayTime = m_Xdoc.CreateNode(XmlNodeType.Element, "DelayTime", null); xmlGyroSwipeDelayTime.InnerText = gyroSwipeInfo[device].delayTime.ToString(); xmlGyroSwipeSettingsElement.AppendChild(xmlGyroSwipeDelayTime);
                 rootElement.AppendChild(xmlGyroSwipeSettingsElement);
 
-                // Ensure profileActions list exists and contains the Disconnect Controller
+                // Ensure profileActions list exists. Do NOT auto-add "Disconnect Controller"
+                // here — respect the stored list so users can intentionally disable
+                // the Bluetooth-disconnect special action for an existing profile.
                 if (profileActions[device] == null)
                 {
                     profileActions[device] = new List<string>();
-                }
-                if (!profileActions[device].Contains("Disconnect Controller"))
-                {
-                    profileActions[device].Add("Disconnect Controller");
                 }
                 XmlNode xmlProfileActions = m_Xdoc.CreateNode(XmlNodeType.Element, "ProfileActions", null);
                 xmlProfileActions.InnerText = string.Join("/", profileActions[device]); rootElement.AppendChild(xmlProfileActions);
@@ -5153,12 +5523,6 @@ namespace DS4Windows
                 XmlNode xmlTouchRelMouseRotation = m_Xdoc.CreateNode(XmlNodeType.Element, "TouchRelMouseRotation", null); xmlTouchRelMouseRotation.InnerText = Convert.ToInt32(touchpadRelMouse[device].rotation * 180.0 / Math.PI).ToString(); rootElement.AppendChild(xmlTouchRelMouseRotation);
                 XmlNode xmlTouchRelMouseMinThreshold = m_Xdoc.CreateNode(XmlNodeType.Element, "TouchRelMouseMinThreshold", null); xmlTouchRelMouseMinThreshold.InnerText = touchpadRelMouse[device].minThreshold.ToString(); rootElement.AppendChild(xmlTouchRelMouseMinThreshold);
 
-                XmlElement xmlTouchAbsMouseGroupEl = m_Xdoc.CreateElement("TouchpadAbsMouseSettings");
-                XmlElement xmlTouchAbsMouseMaxZoneX = m_Xdoc.CreateElement("MaxZoneX"); xmlTouchAbsMouseMaxZoneX.InnerText = touchpadAbsMouse[device].maxZoneX.ToString(); xmlTouchAbsMouseGroupEl.AppendChild(xmlTouchAbsMouseMaxZoneX);
-                XmlElement xmlTouchAbsMouseMaxZoneY = m_Xdoc.CreateElement("MaxZoneY"); xmlTouchAbsMouseMaxZoneY.InnerText = touchpadAbsMouse[device].maxZoneY.ToString(); xmlTouchAbsMouseGroupEl.AppendChild(xmlTouchAbsMouseMaxZoneY);
-                XmlElement xmlTouchAbsMouseSnapCenter = m_Xdoc.CreateElement("SnapToCenter"); xmlTouchAbsMouseSnapCenter.InnerText = touchpadAbsMouse[device].snapToCenter.ToString(); xmlTouchAbsMouseGroupEl.AppendChild(xmlTouchAbsMouseSnapCenter);
-                rootElement.AppendChild(xmlTouchAbsMouseGroupEl);
-
                 // Isolate as a group. More readable for this???
                 //if (false)
                 {
@@ -5182,20 +5546,6 @@ namespace DS4Windows
                     XmlElement xmlTouchMouseStickSmoothBeta = m_Xdoc.CreateElement("SmoothingBeta"); xmlTouchMouseStickSmoothBeta.InnerText = touchMStickInfo[device].beta.ToString(); xmlTouchMouseStickSmoothSettingsEl.AppendChild(xmlTouchMouseStickSmoothBeta);
                     xmlTouchMouseStickGroupEl.AppendChild(xmlTouchMouseStickSmoothSettingsEl);
                     rootElement.AppendChild(xmlTouchMouseStickGroupEl);
-                }
-
-                // Isolate as a group. More readable for this???
-                //if (false)
-                {
-                    XmlElement xmlBtnAbsMouseEl = m_Xdoc.CreateElement("AbsMouseRegionSettings");
-                    XmlElement xmlBtnAbsMouseWidth = m_Xdoc.CreateElement("AbsWidth"); xmlBtnAbsMouseWidth.InnerText = buttonAbsMouseInfos[device].width.ToString(); xmlBtnAbsMouseEl.AppendChild(xmlBtnAbsMouseWidth);
-                    XmlElement xmlBtnAbsMouseHeight = m_Xdoc.CreateElement("AbsHeight"); xmlBtnAbsMouseHeight.InnerText = buttonAbsMouseInfos[device].height.ToString(); xmlBtnAbsMouseEl.AppendChild(xmlBtnAbsMouseHeight);
-                    XmlElement xmlBtnAbsMouseXCenter = m_Xdoc.CreateElement("AbsXCenter"); xmlBtnAbsMouseXCenter.InnerText = buttonAbsMouseInfos[device].xcenter.ToString(); xmlBtnAbsMouseEl.AppendChild(xmlBtnAbsMouseXCenter);
-                    XmlElement xmlBtnAbsMouseYCenter = m_Xdoc.CreateElement("AbsYCenter"); xmlBtnAbsMouseYCenter.InnerText = buttonAbsMouseInfos[device].ycenter.ToString(); xmlBtnAbsMouseEl.AppendChild(xmlBtnAbsMouseYCenter);
-                    XmlElement xmlBtnAbsMouseAntiRadius = m_Xdoc.CreateElement("AntiRadius"); xmlBtnAbsMouseAntiRadius.InnerText = buttonAbsMouseInfos[device].antiRadius.ToString(); xmlBtnAbsMouseEl.AppendChild(xmlBtnAbsMouseAntiRadius);
-                    XmlElement xmlBtnAbsMouseSnapCenter = m_Xdoc.CreateElement("SnapToCenter"); xmlBtnAbsMouseSnapCenter.InnerText = buttonAbsMouseInfos[device].snapToCenter.ToString(); xmlBtnAbsMouseEl.AppendChild(xmlBtnAbsMouseSnapCenter);
-
-                    rootElement.AppendChild(xmlBtnAbsMouseEl);
                 }
 
                 XmlNode xmlTouchButtonMode = m_Xdoc.CreateNode(XmlNodeType.Element, "TouchpadButtonMode", null); xmlTouchButtonMode.InnerText = touchpadButtonMode[device].ToString(); rootElement.AppendChild(xmlTouchButtonMode);
@@ -5589,10 +5939,6 @@ namespace DS4Windows
                 case "Mouse Down": return X360Controls.MouseDown;
                 case "Mouse Left": return X360Controls.MouseLeft;
                 case "Mouse Right": return X360Controls.MouseRight;
-                case "Abs Mouse Up": return X360Controls.AbsMouseUp;
-                case "Abs Mouse Down": return X360Controls.AbsMouseDown;
-                case "Abs Mouse Left": return X360Controls.AbsMouseLeft;
-                case "Abs Mouse Right": return X360Controls.AbsMouseRight;
                 case "Unbound": return X360Controls.Unbound;
             }
 
@@ -5644,10 +5990,6 @@ namespace DS4Windows
                 case X360Controls.MouseDown: return "Mouse Down";
                 case X360Controls.MouseLeft: return "Mouse Left";
                 case X360Controls.MouseRight: return "Mouse Right";
-                case X360Controls.AbsMouseUp: return "Abs Mouse Up";
-                case X360Controls.AbsMouseDown: return "Abs Mouse Down";
-                case X360Controls.AbsMouseLeft: return "Abs Mouse Left";
-                case X360Controls.AbsMouseRight: return "Abs Mouse Right";
                 case X360Controls.Unbound: return "Unbound";
             }
 
@@ -5657,8 +5999,8 @@ namespace DS4Windows
 
 
 
-    public bool LoadProfile(int device, bool launchprogram, ControlService control,
-            string propath = "", bool xinputChange = true, bool postLoad = true)
+        public bool LoadProfile(int device, bool launchprogram, ControlService control,
+                string propath = "", bool xinputChange = true, bool postLoad = true)
         {
             bool Loaded = true;
             Dictionary<DS4Controls, DS4KeyType> customMapKeyTypes = new Dictionary<DS4Controls, DS4KeyType>();
@@ -6567,21 +6909,36 @@ namespace DS4Windows
                 if (launchprogram == true && launchProgram[device] != string.Empty)
                 {
                     string programPath = launchProgram[device];
-                    System.Diagnostics.Process[] localAll = System.Diagnostics.Process.GetProcesses();
                     bool procFound = false;
-                    for (int procInd = 0, procsLen = localAll.Length; !procFound && procInd < procsLen; procInd++)
+                    bool handled = false;
+                    try
                     {
-                        try
+                        var inspector = DS4WinWPF.AppHost.GetService<DS4Windows.Services.IProcessInspector>();
+                        if (inspector != null)
                         {
-                            string temp = localAll[procInd].MainModule.FileName;
-                            if (temp == programPath)
-                            {
-                                procFound = true;
-                            }
+                            procFound = inspector.IsProcessRunning(programPath);
+                            handled = true;
                         }
-                        // Ignore any process for which this information
-                        // is not exposed
-                        catch { }
+                    }
+                    catch { }
+
+                    if (!handled)
+                    {
+                        System.Diagnostics.Process[] localAll = System.Diagnostics.Process.GetProcesses();
+                        for (int procInd = 0, procsLen = localAll.Length; !procFound && procInd < procsLen; procInd++)
+                        {
+                            try
+                            {
+                                string temp = localAll[procInd].MainModule.FileName;
+                                if (temp == programPath)
+                                {
+                                    procFound = true;
+                                }
+                            }
+                            // Ignore any process for which this information
+                            // is not exposed
+                            catch { }
+                        }
                     }
 
                     if (!procFound)
@@ -7426,43 +7783,6 @@ namespace DS4Windows
                 catch { touchpadRelMouse[device].minThreshold = TouchpadRelMouseSettings.DEFAULT_MIN_THRESHOLD; missingSetting = true; }
 
 
-                bool touchpadAbsMouseGroup = false;
-                XmlNode touchpadAbsMouseElement =
-                    m_Xdoc.SelectSingleNode("/" + rootname + "/TouchpadAbsMouseSettings");
-                touchpadAbsMouseGroup = touchpadAbsMouseElement != null;
-
-                if (touchpadAbsMouseGroup)
-                {
-                    try
-                    {
-                        Item = touchpadAbsMouseElement.SelectSingleNode("MaxZoneX");
-                        int.TryParse(Item.InnerText, out int temp);
-                        touchpadAbsMouse[device].maxZoneX = temp;
-                    }
-                    catch { touchpadAbsMouse[device].maxZoneX = TouchpadAbsMouseSettings.DEFAULT_MAXZONE_X; missingSetting = true; }
-
-                    try
-                    {
-                        Item = touchpadAbsMouseElement.SelectSingleNode("MaxZoneY");
-                        int.TryParse(Item.InnerText, out int temp);
-                        touchpadAbsMouse[device].maxZoneY = temp;
-                    }
-                    catch { touchpadAbsMouse[device].maxZoneY = TouchpadAbsMouseSettings.DEFAULT_MAXZONE_Y; missingSetting = true; }
-
-                    try
-                    {
-                        Item = touchpadAbsMouseElement.SelectSingleNode("SnapToCenter");
-                        bool.TryParse(Item.InnerText, out bool temp);
-                        touchpadAbsMouse[device].snapToCenter = temp;
-                    }
-                    catch { touchpadAbsMouse[device].snapToCenter = TouchpadAbsMouseSettings.DEFAULT_SNAP_CENTER; missingSetting = true; }
-                }
-                else
-                {
-                    missingSetting = true;
-                }
-
-
                 bool touchMStickGroup = false;
                 XmlNode xmlTouchMStickSmoothingElement =
                     m_Xdoc.SelectSingleNode("/" + rootname + "/TouchpadMouseStick");
@@ -7663,73 +7983,6 @@ namespace DS4Windows
                     }
                 }
                 catch { touchpadButtonMode[device] = TouchButtonActivationMode.Click; missingSetting = true; }
-
-                bool absMouseGroup = false;
-                XmlNode xmlAbsMouseElement =
-                    m_Xdoc.SelectSingleNode($"/{rootname}/AbsMouseRegionSettings");
-                absMouseGroup = xmlAbsMouseElement != null;
-                if (absMouseGroup && xmlAbsMouseElement.HasChildNodes)
-                {
-                    try
-                    {
-                        Item = xmlAbsMouseElement.SelectSingleNode("AbsWidth");
-                        if (double.TryParse(Item?.InnerText ?? "", out double temp))
-                        {
-                            buttonAbsMouseInfos[device].width = Math.Clamp(temp, 0.0, 1.0);
-                        }
-                    }
-                    catch { }
-
-                    try
-                    {
-                        Item = xmlAbsMouseElement.SelectSingleNode("AbsHeight");
-                        if (double.TryParse(Item?.InnerText ?? "", out double temp))
-                        {
-                            buttonAbsMouseInfos[device].height = Math.Clamp(temp, 0.0, 1.0);
-                        }
-                    }
-                    catch { }
-
-                    try
-                    {
-                        Item = xmlAbsMouseElement.SelectSingleNode("AbsXCenter");
-                        if (double.TryParse(Item?.InnerText ?? "", out double temp))
-                        {
-                            buttonAbsMouseInfos[device].xcenter = Math.Clamp(temp, 0.0, 1.0);
-                        }
-                    }
-                    catch { }
-
-                    try
-                    {
-                        Item = xmlAbsMouseElement.SelectSingleNode("AbsYCenter");
-                        if (double.TryParse(Item?.InnerText ?? "", out double temp))
-                        {
-                            buttonAbsMouseInfos[device].ycenter = Math.Clamp(temp, 0.0, 1.0);
-                        }
-                    }
-                    catch { }
-
-                    try
-                    {
-                        Item = xmlAbsMouseElement.SelectSingleNode("AntiRadius");
-                        if (double.TryParse(Item?.InnerText ?? "", out double temp))
-                        {
-                            buttonAbsMouseInfos[device].antiRadius = Math.Clamp(temp, 0.0, 1.0);
-                        }
-                    }
-                    catch { }
-
-                    try
-                    {
-                        Item = xmlAbsMouseElement.SelectSingleNode("SnapToCenter");
-                        if (bool.TryParse(Item?.InnerText ?? "", out bool temp))
-                        {
-                            buttonAbsMouseInfos[device].snapToCenter = temp;
-                        }
-                    }
-                    catch { }
-                }
 
                 try { Item = m_Xdoc.SelectSingleNode("/" + rootname + "/OutputContDevice"); outputDevType[device] = OutContDeviceId(Item.InnerText); }
                 catch { outputDevType[device] = OutContType.X360; missingSetting = true; }
@@ -8060,7 +8313,7 @@ namespace DS4Windows
 
         // Legacy Load implementation (formerly LoadOld) will be the canonical Load method below.
 
-    public bool Load()
+        public bool Load()
         {
             bool Loaded = true;
             bool missingSetting = false;
@@ -8113,7 +8366,6 @@ namespace DS4Windows
                     if (dtoLoaded)
                     {
                         // Post processing same as legacy path
-                        Global.PrepareAbsMonitorBounds(absDisplayEDID);
                         Loaded = true;
                         return Loaded;
                     }
@@ -8255,9 +8507,12 @@ namespace DS4Windows
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/CloseMinimizes"); Boolean.TryParse(Item.InnerText, out closeMini); }
                     catch { missingSetting = true; }
-                      try { Item = m_Xdoc.SelectSingleNode("/Profile/UseLang"); useLang = Item.InnerText; 
-                          AppLogger.LogDebug($"ScpUtil: loaded UseLang='{useLang}' from profile (appdatapath={Global.appdatapath})"); }
-                      catch { missingSetting = true; }
+                    try
+                    {
+                        Item = m_Xdoc.SelectSingleNode("/Profile/UseLang"); useLang = Item.InnerText;
+                        AppLogger.LogDebug($"ScpUtil: loaded UseLang='{useLang}' from profile (appdatapath={Global.appdatapath})");
+                    }
+                    catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/DownloadLang"); Boolean.TryParse(Item.InnerText, out downloadLang); }
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/FlashWhenLate"); Boolean.TryParse(Item.InnerText, out flashWhenLate); }
@@ -8357,14 +8612,6 @@ namespace DS4Windows
                     catch { missingSetting = true; }
                     try { Item = m_Xdoc.SelectSingleNode("/Profile/AutoProfileRevertDefaultProfile"); Boolean.TryParse(Item.InnerText, out autoProfileRevertDefaultProfile); }
                     catch { missingSetting = true; }
-
-                    try
-                    {
-                        Item = m_Xdoc.SelectSingleNode("/Profile/AbsRegionDisplay");
-                        absDisplayEDID = Item?.InnerText ?? string.Empty;
-                    }
-                    catch { }
-
 
                     XmlNode xmlDeviceOptions = m_Xdoc.SelectSingleNode("/Profile/DeviceOptions");
                     if (xmlDeviceOptions != null)
@@ -8470,8 +8717,6 @@ namespace DS4Windows
 
             if (Loaded)
             {
-                Global.PrepareAbsMonitorBounds(absDisplayEDID);
-
                 string custom_exe_name_path = Path.Combine(Global.exedirpath, Global.CUSTOM_EXE_CONFIG_FILENAME);
                 bool fakeExeFileExists = File.Exists(custom_exe_name_path);
                 if (fakeExeFileExists)
@@ -8506,20 +8751,20 @@ namespace DS4Windows
                         Indent = true,
                     });
 
-                    // Write header comments
-                    xmlWriter.WriteComment(String.Format(" Profile Configuration Data. {0} ", DateTime.Now));
-                    xmlWriter.WriteWhitespace("\r\n");
-                    xmlWriter.WriteWhitespace("\r\n");
+                // Write header comments
+                xmlWriter.WriteComment(String.Format(" Profile Configuration Data. {0} ", DateTime.Now));
+                xmlWriter.WriteWhitespace("\r\n");
+                xmlWriter.WriteWhitespace("\r\n");
 
-                    // Serialize DTO with root <Profile>
-                    AppSettingsDTO dto = new AppSettingsDTO();
-                    dto.MapFrom(this);
-                    serializer.Serialize(xmlWriter, dto,
-                        new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
-                    xmlWriter.Flush();
-                    xmlWriter.Close();
+                // Serialize DTO with root <Profile>
+                AppSettingsDTO dto = new AppSettingsDTO();
+                dto.MapFrom(this);
+                serializer.Serialize(xmlWriter, dto,
+                    new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty }));
+                xmlWriter.Flush();
+                xmlWriter.Close();
 
-                    testStr = strWriter.ToString();
+                testStr = strWriter.ToString();
             }
 
             try
@@ -8611,7 +8856,7 @@ namespace DS4Windows
             for (int i = 0; i < Global.MAX_DS4_CONTROLLER_COUNT; i++)
             {
                 string contTagName = $"Controller{i + 1}";
-                XmlNode xmlControllerNode = m_Xdoc.CreateNode(XmlNodeType.Element, contTagName, null); xmlControllerNode.InnerText = !Global.linkedProfileCheck[i] ? profilePath[i] : olderProfilePath[i];
+                XmlNode xmlControllerNode = m_Xdoc.CreateNode(XmlNodeType.Element, contTagName, null); xmlControllerNode.InnerText = !Global.ProfileSettingsServiceInstance.GetLinkedProfileCheck(i) ? profilePath[i] : olderProfilePath[i];
                 if (!string.IsNullOrEmpty(xmlControllerNode.InnerText))
                 {
                     rootElement.AppendChild(xmlControllerNode);
@@ -8707,13 +8952,6 @@ namespace DS4Windows
 
             m_Xdoc.AppendChild(rootElement);
 
-            if (!string.IsNullOrEmpty(absDisplayEDID))
-            {
-                XmlElement xmlAbsMonitorEDID = m_Xdoc.CreateElement("AbsRegionDisplay", null);
-                xmlAbsMonitorEDID.InnerText = absDisplayEDID;
-                rootElement.AppendChild(xmlAbsMonitorEDID);
-            }
-
             try
             {
                 m_Xdoc.Save(m_Profile);
@@ -8774,7 +9012,7 @@ namespace DS4Windows
                 throw new ArgumentOutOfRangeException();
             }
 
-            return !Global.linkedProfileCheck[index] ?
+            return !Global.ProfileSettingsServiceInstance.GetLinkedProfileCheck(index) ?
                 profilePath[index] : olderProfilePath[index];
         }
 
@@ -8918,6 +9156,10 @@ namespace DS4Windows
                 case 4:
                     tempAction = new SpecialAction(name, controls, "Key", details, extras: extras);
                     break;
+                case 10:
+                    // Button mapping for SpecialAction
+                    tempAction = new SpecialAction(name, controls, "Button", details, extras: extras);
+                    break;
                 case 5:
                     tempAction = new SpecialAction(name, controls, "DisconnectBT", details, delayTime);
                     break;
@@ -9007,9 +9249,15 @@ namespace DS4Windows
                     if (!string.IsNullOrEmpty(extras))
                     {
                         string[] exts = extras.Split('\n');
-                        el.AppendChild(m_Xdoc.CreateElement("UnloadTrigger")).InnerText = exts[1];
-                        el.AppendChild(m_Xdoc.CreateElement("UnloadStyle")).InnerText = exts[0];
+                        el.AppendChild(m_Xdoc.CreateElement("UnloadTrigger")).InnerText = exts.Length > 1 ? exts[1] : string.Empty;
+                        // New element name: SwitchMode. Values: "Press" or "Toggle". Keep compatibility with older UnloadStyle.
+                        el.AppendChild(m_Xdoc.CreateElement("SwitchMode")).InnerText = exts.Length > 0 ? exts[0] : string.Empty;
                     }
+                    break;
+                case 10:
+                    // Button mapping
+                    el.AppendChild(m_Xdoc.CreateElement("Type")).InnerText = "Button";
+                    el.AppendChild(m_Xdoc.CreateElement("Details")).InnerText = details;
                     break;
                 case 5:
                     el.AppendChild(m_Xdoc.CreateElement("Type")).InnerText = "DisconnectBT";
@@ -9069,7 +9317,7 @@ namespace DS4Windows
             bool loaded = true;
 
             actions.Clear();
-            Mapping.actionDone.Clear();
+            try { ActionManager.ClearAllEntries(); } catch { }
 
             //string configFile = Path.Combine(Global.appdatapath, "Actions.xml");
             if (!File.Exists(m_Actions))
@@ -9077,10 +9325,25 @@ namespace DS4Windows
                 actions.Add(new SpecialAction("Disconnect Controller", "PS/Options", "DisconnectBT", "0"));
                 loaded = SaveActions();
 
-                // ★新規追加: デフォルトアクション用のactionDone初期化
+                // Reset runtime synthetic state and ActionManager entries after creating defaults
                 if (loaded)
                 {
-                    Mapping.InitializeActionDoneList();
+                    try
+                    {
+                        try { ActionManager.ClearAllEntries(); } catch { }
+                        Mapping.globalState = new DS4Windows.Mapping.SyntheticState();
+                        for (int d = 0; d < Mapping.deviceState.Length; d++)
+                        {
+                            Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
+                        }
+                        try { ActionManager.ClearAllToggledOn(); } catch { }
+                        if (Mapping.macrodone != null)
+                        {
+                            for (int i = 0; i < Mapping.macrodone.Length; i++) Mapping.macrodone[i] = false;
+                        }
+                        AppLogger.LogToGui("Runtime synthetic state reset after Actions load", false);
+                    }
+                    catch { }
                 }
 
                 return loaded;
@@ -9104,10 +9367,25 @@ namespace DS4Windows
                 loaded = false;
             }
 
-            // ★新規追加: XMLからの読み込み完了後にactionDone初期化
+            // After loading actions, clear ActionManager entries and reset runtime state
             if (loaded)
             {
-                Mapping.InitializeActionDoneList();
+                try
+                {
+                    try { ActionManager.ClearAllEntries(); } catch { }
+                    Mapping.globalState = new DS4Windows.Mapping.SyntheticState();
+                    for (int d = 0; d < Mapping.deviceState.Length; d++)
+                    {
+                        Mapping.deviceState[d] = new DS4Windows.Mapping.SyntheticState();
+                    }
+                    try { ActionManager.ClearAllToggledOn(); } catch { }
+                    if (Mapping.macrodone != null)
+                    {
+                        for (int i = 0; i < Mapping.macrodone.Length; i++) Mapping.macrodone[i] = false;
+                    }
+                    AppLogger.LogToGui("Runtime synthetic state reset after Actions load", false);
+                }
+                catch { }
             }
 
             return loaded;
@@ -9854,7 +10132,6 @@ namespace DS4Windows
         private void ResetProfile(int device)
         {
             buttonMouseInfos[device].Reset();
-            buttonAbsMouseInfos[device].Reset();
             gyroControlsInf[device].Reset();
 
             enableTouchToggle[device] = DEFAULT_TOUCH_TOGGLE;
@@ -9979,7 +10256,6 @@ namespace DS4Windows
             setSZOutCurveMode(device, 0);
             trackballMode[device] = DEFAULT_TRACKBALL_MODE;
             trackballFriction[device] = DEFAULT_TRACKBALL_FRICTION;
-            touchpadAbsMouse[device].Reset();
             touchpadRelMouse[device].Reset();
             touchMStickInfo[device].Reset();
             touchpadButtonMode[device] = TouchButtonActivationMode.Click;
@@ -10625,7 +10901,9 @@ namespace DS4Windows
 
     public class SpecialAction
     {
-        public enum ActionTypeId { None, Key, Program, Profile, Macro, DisconnectBT, BatteryCheck, MultiAction, XboxGameDVR, SASteeringWheelEmulationCalibrate, GyroCalibrate }
+        public enum ActionTypeId { None, Key, Program, Profile, Macro, DisconnectBT, BatteryCheck, MultiAction, XboxGameDVR, SASteeringWheelEmulationCalibrate, GyroCalibrate, Button }
+
+        public enum KeyButtonSwitchModeEnum { Press, Toggle }
 
         public string name;
         public List<DS4Controls> trigger = new List<DS4Controls>();
@@ -10638,6 +10916,8 @@ namespace DS4Windows
         public string ucontrols;
         public double delayTime = 0;
         public string extra;
+        // null when not applicable (type != Key && type != Button) or not set
+        public KeyButtonSwitchModeEnum? KeyButtonSwitchMode = null;
         public bool pressRelease = false;
         public DS4KeyType keyType;
         public bool tappedOnce = false;
@@ -10648,8 +10928,13 @@ namespace DS4Windows
         public DateTime TimeofEnd;
         public bool automaticUntrigger = false;
         public string prevProfileName;  // Name of the previous profile where automaticUntrigger would jump back to (could be regular or temporary profile. Empty name is the same as regular profile)
+        public bool prevProfileWasTemporary;
         public bool synchronized = false; // If the same trigger has both "key down" and "key released" macros then run those synchronized if this attribute is TRUE (ie. key down macro fully completed before running the key release macro)
         public bool keepKeyState = false; // By default special action type "Macro" resets all keys used in the macro back to default "key up" state after completing the macro even when the macro itself doesn't do it explicitly. If this is TRUE then key states are NOT reset automatically (macro is expected to do it or to leave a key to down state on purpose)
+
+        public bool IsTemporaryProfileAction =>
+            typeID == ActionTypeId.Profile &&
+            (automaticUntrigger || (uTrigger != null && uTrigger.Count > 0));
 
         public SpecialAction(string name, string controls, string type, string details, double delay = 0, string extras = "")
         {
@@ -10670,19 +10955,22 @@ namespace DS4Windows
                 {
                     extra = extras;
                     string[] exts = extras.Split('\n');
-                    pressRelease = exts[0] == "Release";
-                    HashSet<string> knownUnloadStyles = new HashSet<string>()
+                    // exts[0] is the SwitchMode value (new). Expected values: "Press" or "Toggle".
+                    string switchMode = exts.Length > 0 ? exts[0] : string.Empty;
+                    if (!string.IsNullOrEmpty(switchMode))
                     {
-                        "Press", "Release",
-                    };
-
-                    if (!string.IsNullOrEmpty(exts[0]) &&
-                        knownUnloadStyles.Contains(exts[0]))
-                    {
-                        keyType |= DS4KeyType.Toggle;
+                        if (switchMode.Equals("Toggle", StringComparison.OrdinalIgnoreCase))
+                        {
+                            KeyButtonSwitchMode = KeyButtonSwitchModeEnum.Toggle;
+                            keyType |= DS4KeyType.Toggle;
+                        }
+                        else if (switchMode.Equals("Press", StringComparison.OrdinalIgnoreCase))
+                        {
+                            KeyButtonSwitchMode = KeyButtonSwitchModeEnum.Press;
+                        }
                     }
 
-                    if (!string.IsNullOrEmpty(exts[1]))
+                    if (exts.Length > 1 && !string.IsNullOrEmpty(exts[1]))
                     {
                         this.ucontrols = exts[1];
                         string[] uctrls = exts[1].Split('/');
@@ -10693,6 +10981,25 @@ namespace DS4Windows
 
                 if (details.Contains("Scan Code"))
                     keyType |= DS4KeyType.ScanCode;
+            }
+            else if (type == "Button")
+            {
+                typeID = ActionTypeId.Button;
+                this.details = details; // store button id as details
+                // Button may also carry SwitchMode in extras first line
+                if (!string.IsNullOrEmpty(extras))
+                {
+                    extra = extras;
+                    string[] exts = extras.Split('\n');
+                    string switchMode = exts.Length > 0 ? exts[0] : string.Empty;
+                    if (!string.IsNullOrEmpty(switchMode))
+                    {
+                        if (switchMode.Equals("Toggle", StringComparison.OrdinalIgnoreCase))
+                            KeyButtonSwitchMode = KeyButtonSwitchModeEnum.Toggle;
+                        else if (switchMode.Equals("Press", StringComparison.OrdinalIgnoreCase))
+                            KeyButtonSwitchMode = KeyButtonSwitchModeEnum.Press;
+                    }
+                }
             }
             else if (type == "Program")
             {
@@ -10870,3 +11177,4 @@ namespace DS4Windows
         }
     }
 }
+

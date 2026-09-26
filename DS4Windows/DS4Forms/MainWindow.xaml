@@ -302,7 +302,7 @@
                             </ComboBox>
                         </StackPanel>
                         <CheckBox Content="{lex:Loc ProfileSwitchNotification}" IsChecked="{Binding ProfileChangedNotification}"
-                                  Visibility="{Binding IsProfileChangedCheckVisible}" Margin="16 0 0 10"/>
+                                  Margin="16 0 0 10"/>
                         <CheckBox Content="{lex:Loc DisconnectFromBtWhenStopping}" Margin="{StaticResource spaceMargin}"
                               IsChecked="{Binding DisconnectBTStop}" />
                         <StackPanel Orientation="Horizontal" Margin="{StaticResource spaceMargin}">
@@ -433,13 +433,6 @@
                         <StackPanel Orientation="Horizontal" Margin="{StaticResource spaceMargin}">
                             <Label Content="{lex:Loc ProcessPriority}" ContentStringFormat="{}{0}:"/>
                             <ComboBox x:Name="ProcessPriorityComboBox" Margin="10,0,0,0" SelectedIndex="{Binding ProcessPriorityIndex}" SelectionChanged="ProcessPriorityComboBox_OnSelectionChanged" />
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="{StaticResource spaceMargin}">
-                            <Label Content="{lex:Loc MainWin.AbsDisplayMonitor}" ContentStringFormat="{}{0}:" />
-                            <ComboBox ItemsSource="{Binding AbsMonitorChoices}" DisplayMemberPath="DisplayItemString" SelectedValuePath="EDID"
-                                      SelectedValue="{Binding AbsMonitorSettingEDID}" Margin="10,0,0,0">
-                            </ComboBox>
                         </StackPanel>
 
                         <GroupBox Header="{lex:Loc Utils}" BorderThickness="2" Margin="{StaticResource spaceMargin}"

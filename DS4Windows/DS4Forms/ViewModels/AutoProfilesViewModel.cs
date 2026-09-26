@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 using System;
 using System.Collections.Generic;
@@ -45,9 +46,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private int selectedIndex = -1;
         private ProgramItem selectedItem;
         private HashSet<string> existingapps;
+        private readonly IAppSettingsService _appSettings;
+        private readonly IAutoProfileService _autoProfileService;
+        private readonly ControlService _controlService;
 
         public ObservableCollection<ProgramItem> ProgramColl { get => programColl; }
-        
+
         public AutoProfileHolder AutoProfileHolder { get => autoProfileHolder; }
 
         public int SelectedIndex { get => selectedIndex; set => selectedIndex = value; }
@@ -72,8 +76,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool RevertDefaultProfileOnUnknown
         {
-            get => Global.AutoProfileRevertDefaultProfile;
-            set => Global.AutoProfileRevertDefaultProfile = value;
+            get => _appSettings?.AutoProfileRevertDefaultProfile ?? Global.AutoProfileRevertDefaultProfile;
+            set
+            {
+                if (_appSettings != null) _appSettings.AutoProfileRevertDefaultProfile = value;
+                else Global.AutoProfileRevertDefaultProfile = value;
+            }
         }
 
         public bool UsingExpandedControllers
@@ -94,16 +102,26 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public AutoProfileDisplayProfileSwitchChoices ProfileSwitchChoice
         {
-            get => Global.autoProfileSwitchNotifyChoice;
-            set => Global.autoProfileSwitchNotifyChoice = value;
+            get => _autoProfileService?.AutoProfileSwitchNotifyChoice ?? Global.autoProfileSwitchNotifyChoice;
+            set
+            {
+                if (_autoProfileService != null) _autoProfileService.AutoProfileSwitchNotifyChoice = value;
+                else Global.autoProfileSwitchNotifyChoice = value;
+            }
         }
 
-        public AutoProfilesViewModel(AutoProfileHolder autoProfileHolder, ProfileList profileList)
+        public AutoProfilesViewModel(AutoProfileHolder autoProfileHolder, ProfileList profileList,
+            IAppSettingsService appSettings = null,
+            IAutoProfileService autoProfileService = null,
+            ControlService controlService = null)
         {
             programColl = new ObservableCollection<ProgramItem>();
             existingapps = new HashSet<string>();
             this.autoProfileHolder = autoProfileHolder;
             this.profileList = profileList;
+            _appSettings = appSettings ?? DS4WinWPF.AppHost.GetService<IAppSettingsService>();
+            _autoProfileService = autoProfileService ?? DS4WinWPF.AppHost.GetService<IAutoProfileService>();
+            _controlService = controlService ?? Program.rootHub;
             PopulateCurrentEntries();
 
             BindingOperations.EnableCollectionSynchronization(programColl, _colLockobj);
@@ -111,7 +129,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void PopulateCurrentEntries()
         {
-            foreach(AutoProfileEntity entry in autoProfileHolder.AutoProfileColl)
+            foreach (AutoProfileEntity entry in autoProfileHolder.AutoProfileColl)
             {
                 ProgramItem item = new ProgramItem(entry.Path, entry);
 
@@ -183,7 +201,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             lnkpaths.AddRange(Directory.GetFiles(path, "*.lnk", SearchOption.AllDirectories));
             lnkpaths.AddRange(Directory.GetFiles(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu) + "\\Programs", "*.lnk", SearchOption.AllDirectories));
             List<string> exepaths = new List<string>();
-            foreach(string link in lnkpaths)
+            foreach (string link in lnkpaths)
             {
                 string target = GetTargetPath(link);
                 exepaths.Add(target);
@@ -419,7 +437,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 autoProfileHolder.AutoProfileColl.Move(oldIdx, oldIdx - 1);
             }
             else if (moveDirection == 1 && oldIdx >= 0 && oldIdx < programColl.Count - 1 && oldIdx < autoProfileHolder.AutoProfileColl.Count - 1)
-            {    
+            {
                 programColl.Move(oldIdx, oldIdx + 1);
                 autoProfileHolder.AutoProfileColl.Move(oldIdx, oldIdx + 1);
             }
@@ -428,12 +446,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             return itemMoved;
         }
-        
+
         public void AddExeToHIDHideWhenSaving(ProgramItem autoProf, bool addExe)
         {
             if (autoProf.Path.Substring((autoProf.Path.Length) - 4, 4) == ".exe") //Filter out autoprofiles that do not lead to EXEs.
             {
-                App.rootHub.CheckHidHidePresence(autoProf.Path, autoProf.Filename, addExe);
+                _controlService?.CheckHidHidePresence(autoProf.Path, autoProf.Filename, addExe);
             }
         }
     }
@@ -449,7 +467,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private ImageSource exeicon;
         private bool turnoff;
 
-        public string Path { get => path;
+        public string Path
+        {
+            get => path;
             set
             {
                 if (path == value) return;
@@ -461,7 +481,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
         }
 
-        public string Title { get => title;
+        public string Title
+        {
+            get => title;
             set
             {
                 if (title == value) return;
@@ -494,7 +516,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public event EventHandler MatchedAutoProfileChanged;
         //public delegate void AutoProfileHandler(ProgramItem sender, bool added);
         //public event AutoProfileHandler AutoProfileAction;
-        public string Filename { get => filename;  }
+        public string Filename { get => filename; }
         public ImageSource Exeicon { get => exeicon; }
 
         public bool Turnoff

@@ -1,8 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<TargetFramework>net8.0-windows</TargetFramework>
+<TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
 		<UseWPF>true</UseWPF>
 		<Platforms>x64</Platforms>
 		<!-- Force build Platform to x64 to avoid AnyCPU/AnyCPU temporary wpftmp projects
@@ -39,7 +39,9 @@
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 
-		
+		<!-- Source Generator の生成コードをディスクに出力して IDE に認識させる -->
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -78,14 +80,27 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="BezierCurveEditor\build.js">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
 		<Content Include="BezierCurveEditor\index.html">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
 
+	<Target Name="UpdateLatestBuildSummary" AfterTargets="Build">
+		<!-- Write local build timestamp into build_timestamp.txt in output folder -->
+		<PropertyGroup>
+			<BuildTimestamp>$([System.DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss'))</BuildTimestamp>
+		</PropertyGroup>
+		<WriteLinesToFile File="$(OutDir)build_timestamp.txt" Lines="$(BuildTimestamp)" Overwrite="true" Encoding="UTF-8" />
+	</Target>
+
+
+  <ItemGroup>
+    <Compile Remove="Resources\**" />
+    <EmbeddedResource Remove="Resources\**" />
+    <None Remove="Resources\**" />
+    <Page Remove="Resources\**" />
+  </ItemGroup>
+  
 	<ItemGroup>
 		<PackageReference Include="bloomtom.HttpProgress" Version="2.3.2" />
 		<PackageReference Include="DotNetProjects.Extended.Wpf.Toolkit" Version="5.0.106" />
@@ -341,6 +356,9 @@
 		<EmbeddedResource Update="Translations\Strings.fi.resx">
 			<DependentUpon>Strings.resx</DependentUpon>
 		</EmbeddedResource>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
 		<EmbeddedResource Update="Translations\Strings.fr.resx">
 			<DependentUpon>Strings.resx</DependentUpon>
 		</EmbeddedResource>
@@ -421,13 +439,6 @@
 		</Reference>
 	</ItemGroup>
 
-	<Target Name="IgnoreCsErrors" AfterTargets="Build">
-	  <Message Text="Ignoring errors from .cs files" Importance="high" />
-	  <ItemGroup>
-	    <Compile Remove="**/*.cs" />
-	  </ItemGroup>
-	</Target>
-
 	<!-- Ensure generated editorconfig used by IDE includes our project-level suppressions
 	     This appends suppression lines to the GeneratedMSBuildEditorConfig.editorconfig
 	     after MSBuild writes it, so OmniSharp/Roslyn will see the same suppressions
@@ -450,4 +461,11 @@
 	  </ItemGroup>
 	  <WriteLinesToFile File="$(GeneratedMSBuildEditorConfigFile)" Lines="@(_MergedLines)" Overwrite="true" Encoding="utf-8" />
 	</Target>
+
+	<ItemGroup>
+		<!-- CsWin32 の設定ファイルを AdditionalFiles として登録 -->
+		<AdditionalFiles Include="NativeMethods.json" />
+		<!-- もし NativeMethods.txt がある場合はこちらも追加 -->
+		<AdditionalFiles Include="NativeMethods.txt" Condition="Exists('NativeMethods.txt')" />
+	</ItemGroup>
 </Project>

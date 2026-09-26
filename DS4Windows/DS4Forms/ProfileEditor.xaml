@@ -65,10 +65,10 @@
         <!-- 上部ボタン類 -->
         <StackPanel Grid.Row="0" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,4,0,10">
             <TextBlock Text="{lex:BLoc Profile, StringFormat='{}{0}:'}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <TextBox x:Name="profileNameTxt" Text="" Width="160" VerticalContentAlignment="Center" />
+            <TextBox x:Name="profileNameTxt" Text="" Width="160" VerticalContentAlignment="Center" InputMethod.IsInputMethodEnabled="True" InputMethod.PreferredImeState="Off" />
             <Button x:Name="saveBtn" Content="{lex:Loc SaveProfile}" Margin="10,0,0,0" Click="SaveBtn_Click" />
             <Button x:Name="cancelBtn" Content="{lex:Loc Cancel}" Margin="10,0,0,0" Click="CancelBtn_Click" />
-            <Button x:Name="applyBtn" Content="{lex:Loc Apply}" Margin="10,0,0,0" Click="ApplyBtn_Click" IsEnabled="False" />
+            <Button x:Name="applyBtn" Content="{lex:Loc Apply}" Margin="10,0,0,0" Click="ApplyBtn_Click" />
             <Button x:Name="presetBtn" Content="Select Preset" Margin="10,0,0,0" Click="PresetBtn_Click" />
             <CheckBox x:Name="keepSizeCheckBox" Margin="10,0,0,0" IsChecked="{Binding Keepsize, Mode=TwoWay}" Click="KeepSizeCheckBox_Click" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Margin="0" VerticalAlignment="Center">
@@ -389,7 +389,8 @@
                                                         </Grid.RowDefinitions>
 
                                                         <Label Content="{lex:Loc DeadZone}" ContentStringFormat="{}{0}:" Grid.Row="0" Grid.Column="0" />
-                                                        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding LSDeadZone,UpdateSourceTrigger=LostFocus}" FormatString="F2" MinWidth="50" Grid.Row="0" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
+                                                        <!-- 2026-09-26: UpdateSourceTrigger=LostFocus を撤廃（Six Axis の Dead Zone と同じく即時に設定へ書き込み、Controller Readings の円を即時に更新する。Phase6-Step7b-Plan.md の範囲外の追加修正） -->
+                                                        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding LSDeadZone}" FormatString="F2" MinWidth="50" Grid.Row="0" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
                                                    Margin="{StaticResource spaceMargin}" />
 
                                                         <Label Content="{lex:Loc MaxZone}" ContentStringFormat="{}{0}:" Grid.Row="1" Grid.Column="0" />
@@ -698,7 +699,8 @@
                                                         </Grid.RowDefinitions>
 
                                                         <Label Content="{lex:Loc DeadZone}" ContentStringFormat="{}{0}:" Grid.Row="0" Grid.Column="0" />
-                                                        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding RSDeadZone,UpdateSourceTrigger=LostFocus}" FormatString="F2" MinWidth="50" Grid.Row="0" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
+                                                        <!-- 2026-09-26: UpdateSourceTrigger=LostFocus を撤廃（LS と同じ。Phase6-Step7b-Plan.md の範囲外の追加修正） -->
+                                                        <xctk:DoubleUpDown d:IsHidden="True" Value="{Binding RSDeadZone}" FormatString="F2" MinWidth="50" Grid.Row="0" Grid.Column="1" Maximum="1.0" Minimum="0.0" Increment="0.1"
                                                    Margin="{StaticResource spaceMargin}" />
 
                                                         <Label Content="{lex:Loc MaxZone}" ContentStringFormat="{}{0}:" Grid.Row="1" Grid.Column="0" />
@@ -1364,7 +1366,6 @@
                                 <ComboBoxItem Content="{lex:Loc Mouse}" />
                                 <ComboBoxItem Content="{lex:Loc Controls}" />
                                 <ComboBoxItem Content="{lex:Loc MouseJoystick}" />
-                                <ComboBoxItem Content="{lex:Loc AbsoluteMouse}" />
                                 <ComboBoxItem Content="{lex:Loc Passthru}" />
                             </ComboBox>
                         </StackPanel>
@@ -1437,7 +1438,7 @@
                                         <CheckBox Content="Trackball" IsChecked="{Binding TouchTrackball}" VerticalAlignment="Center" ToolTip="{lex:Loc TouchpadTrackballEnableTooltip}" />
                                         <Label Content="Friction:" Padding="0" Margin="20,0,5,0" VerticalAlignment="Center"/>
                                         <xctk:DoubleUpDown x:Name="frictionUD" d:IsHidden="True" MinWidth="80" IsEnabled="{Binding TouchTrackball}" Minimum="0.1" Maximum="20.0"
-                                                               Value="{Binding TouchTrackballFriction,FallbackValue='10'}" ValueChanged="FrictionUD_ValueChanged"
+                                                               Value="{Binding TouchTrackballFriction,FallbackValue='10'}"
                                                        ToolTip="{lex:Loc TouchpadTrackballFrictionTooltip}"
                                                        Margin="8,0,0,0" />
                                     </StackPanel>
@@ -1632,27 +1633,6 @@
                                 </StackPanel>
                             </TabItem>
 
-                            <TabItem Header="{lex:Loc AbsoluteMouse}" Visibility="Collapsed">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="{StaticResource spaceMargin}">
-                                        <Label Content="Max Zone X:" />
-                                        <xctk:IntegerUpDown d:IsHidden="True" MinWidth="80" Height="20" Minimum="0" Maximum="100" Value="{Binding TouchAbsMouseMaxZoneX}" Margin="8,0,0,0" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="{StaticResource spaceMargin}">
-                                        <Label Content="Max Zone Y:" />
-                                        <xctk:IntegerUpDown d:IsHidden="True" MinWidth="80" Height="20" Minimum="0" Maximum="100" Value="{Binding TouchAbsMouseMaxZoneY}" Margin="8,0,0,0" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="{StaticResource spaceMargin}">
-                                        <Label Content="Snap To Center on Release:" />
-                                        <CheckBox IsChecked="{Binding TouchAbsMouseSnapCenter}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal" Margin="{StaticResource spaceMargin}">
-                                        <ContentControl x:Name="touchContentControl3" MinWidth="400" HorizontalAlignment="Left" Margin="5,0,0,0" />
-                                    </StackPanel>
-                                    <!--<local:TouchButtonUserControl x:Name="touchBtnControl3" MinWidth="400" Margin="0,8,0,0" />-->
-                                </StackPanel>
-                            </TabItem>
                             <TabItem Header="{lex:Loc Passthru}" Visibility="Collapsed">
                                 <StackPanel>
                                     <TextBlock Foreground="Red" Visibility="{Binding UsingMinViGEm173333, Mode=OneWay, Converter={StaticResource InvertBoolToVisibilityConverter}}"
@@ -2304,59 +2284,6 @@
                                 <ComboBoxItem Content="62 Hz (16 ms)" />
                             </ComboBox>
                         </StackPanel>
-
-                        <GroupBox Header="{lex:Loc AbsoluteMouseOptions}" Margin="0,8,0,0">
-                            <StackPanel Orientation="Vertical">
-                                <Expander IsExpanded="False" Header="Settings">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition />
-                                            <ColumnDefinition />
-                                        </Grid.ColumnDefinitions>
-
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition />
-                                            <RowDefinition />
-                                            <RowDefinition />
-                                            <RowDefinition />
-                                            <RowDefinition />
-                                            <RowDefinition />
-                                        </Grid.RowDefinitions>
-
-                                        <Label Content="{lex:Loc Width}" ContentStringFormat="{}{0}:" Grid.Row="0" Grid.Column="0" />
-                                        <xctk:DoubleUpDown d:IsHidden="True" FormatString="F2" Value="{Binding AbsWidth}"
-                                            MinWidth="100" Minimum="0.0" Maximum="1.0" Increment="0.05"
-                                            Margin="{StaticResource spaceMargin}" Grid.Row="0" Grid.Column="1" />
-
-                                        <Label Content="{lex:Loc Height}" ContentStringFormat="{}{0}:" Grid.Row="1" Grid.Column="0" />
-                                        <xctk:DoubleUpDown d:IsHidden="True" FormatString="F2" Value="{Binding AbsHeight}"
-                                            MinWidth="100" Minimum="0.0" Maximum="1.0" Increment="0.05"
-                                            Margin="{StaticResource spaceMargin}" Grid.Row="1" Grid.Column="1" />
-
-                                        <Label Content="{lex:Loc XCenter}" ContentStringFormat="{}{0}:" Grid.Row="2" Grid.Column="0" />
-                                        <xctk:DoubleUpDown d:IsHidden="True" FormatString="F2" Value="{Binding AbsXCenter}"
-                                            MinWidth="100" Minimum="0.0" Maximum="1.0" Increment="0.05"
-                                            Margin="{StaticResource spaceMargin}" Grid.Row="2" Grid.Column="1" />
-
-                                        <Label Content="{lex:Loc YCenter}" ContentStringFormat="{}{0}:" Grid.Row="3" Grid.Column="0" />
-                                        <xctk:DoubleUpDown d:IsHidden="True" FormatString="F2" Value="{Binding AbsYCenter}"
-                                            MinWidth="100" Minimum="0.0" Maximum="1.0" Increment="0.05"
-                                            Margin="{StaticResource spaceMargin}" Grid.Row="3" Grid.Column="1" />
-
-                                        <Label Content="{lex:Loc AntiRadius}" ContentStringFormat="{}{0}:" Grid.Row="4" Grid.Column="0" />
-                                        <DockPanel Grid.Row="4" Grid.Column="1">
-                                            <TextBlock Text="%" DockPanel.Dock="Right" Margin="{StaticResource spaceMargin}" VerticalAlignment="Center" />
-                                            <xctk:DoubleUpDown d:IsHidden="True" FormatString="F2" Value="{Binding AbsAntiRadius}"
-                                                MinWidth="100" Minimum="0.0" Maximum="1.0" Increment="0.05"
-                                                Margin="{StaticResource spaceMargin}" />
-                                        </DockPanel>
-
-                                        <Label Content="{lex:Loc SnapToCenter}" ContentStringFormat="{}{0}:" Grid.Row="5" Grid.Column="0" />
-                                        <CheckBox IsChecked="{Binding AbsSnapCenter}" MinWidth="50" Grid.Row="5" Grid.Column="1" />
-                                    </Grid>
-                                </Expander>
-                            </StackPanel>
-                        </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
 

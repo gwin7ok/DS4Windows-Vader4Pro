@@ -28,6 +28,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using DS4Windows;
+using DS4Windows.DI;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
@@ -66,7 +67,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private ObservableCollection<MacroStepItem> macroSteps =
             new ObservableCollection<MacroStepItem>();
         public ObservableCollection<MacroStepItem> MacroSteps { get => macroSteps; }
-        
+
         private int macroStepIndex;
         public int MacroStepIndex
         {
@@ -107,10 +108,34 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         /// Needed to revert output control to Touchpad later
         /// </summary>
         private TouchpadOutMode oldTouchpadMode = TouchpadOutMode.None;
+        /// <summary>
+        /// Phase6-Step7b: 記録中の Passthru を実機（targetDevice）に設定したか。設定した場合だけ元に戻す
+        /// </summary>
+        private bool touchpadModeOverridden;
+        private readonly IProfileSettingsService profileSettingsService;
+        private readonly ControlService controlService;
 
+        // Phase6-Step7b: 設定の読み書き先（DeviceNum＝編集スロット）とは別に、ライトバーのプレビューと
+        // 記録中のタッチパッド Passthru で実際に使うコントローラーのスロット番号を持つ。-1 は「実機なし」。
+        // 詳細は docs-forDIMG/MadeByAgent/Phase6-Step7b-Plan.md §2.1
+        private readonly int targetDevice;
+        public int TargetDevice { get => targetDevice; }
 
-        public RecordBoxViewModel(int deviceNum, DS4ControlSettings controlSettings, bool shift, bool repeatable = true)
+        /// <summary>
+        /// 実機（targetDevice）が指定され、かつ有効なコントローラースロットの範囲内であるか。
+        /// </summary>
+        private bool HasTargetDevice =>
+            targetDevice >= 0 && targetDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
+        public RecordBoxViewModel(int deviceNum, DS4ControlSettings controlSettings, bool shift, bool repeatable = true,
+            IProfileSettingsService profileSettingsService = null,
+            ControlService controlService = null,
+            int targetDevice = -1)
         {
+            this.targetDevice = targetDevice;
+            this.profileSettingsService = profileSettingsService ?? DS4WinWPF.AppHost.GetService<IProfileSettingsService>() ?? Global.ProfileSettingsServiceInstance;
+            this.controlService = controlService ?? Program.rootHub;
+
             if (keydownOverrides == null)
             {
                 CreateKeyDownOverrides();
@@ -149,7 +174,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             this.repeatable = repeatable;
 
             BindingOperations.EnableCollectionSynchronization(macroSteps, _colLockobj);
-            
+
             // By default RECORD button appends new steps. User must select (click) an existing step to insert new steps in front of the selected step
             this.MacroStepIndex = -1;
 
@@ -157,8 +182,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             // Temporarily use Passthru mode for Touchpad. Store old TouchOutMode.
             // Don't conflict Touchpad Click with default output Mouse button controls
-            oldTouchpadMode = Global.TouchOutMode[deviceNum];
-            Global.TouchOutMode[deviceNum] = TouchpadOutMode.Passthru;
+            // Phase6-Step7b: 対象は実機（targetDevice）のタッチパッド。編集スロットの設定は変えない。
+            // 実機なし（-1）の場合は何もしない
+            if (HasTargetDevice)
+            {
+                oldTouchpadMode = this.profileSettingsService.TouchOutMode[targetDevice];
+                this.profileSettingsService.TouchOutMode[targetDevice] = TouchpadOutMode.Passthru;
+                touchpadModeOverridden = true;
+            }
         }
 
         private void CreateKeyDownOverrides()
@@ -183,7 +214,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             MacroParser macroParser = new MacroParser(macro);
             macroParser.LoadMacro();
-            foreach(MacroStep step in macroParser.MacroSteps)
+            foreach (MacroStep step in macroParser.MacroSteps)
             {
                 MacroStepItem item = new MacroStepItem(step);
                 macroSteps.Add(item);
@@ -194,7 +225,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             int[] outmac = new int[macroSteps.Count];
             int index = 0;
-            foreach(MacroStepItem step in macroSteps)
+            foreach (MacroStepItem step in macroSteps)
             {
                 outmac[index] = step.Step.Value;
                 index++;
@@ -207,7 +238,11 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 settings.keyType = DS4KeyType.Macro;
                 if (macroModeIndex == 1)
                 {
+                    // When user selects "Repeat while held" in the macro editor,
+                    // preserve both HoldMacro and RepeatMacro flags so the
+                    // SpecialAction editor's Repeat checkbox stays in sync.
                     settings.keyType |= DS4KeyType.HoldMacro;
+                    settings.keyType |= DS4KeyType.RepeatMacro;
                 }
                 if (useScanCode)
                 {
@@ -222,6 +257,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 if (macroModeIndex == 1)
                 {
                     settings.shiftKeyType |= DS4KeyType.HoldMacro;
+                    settings.shiftKeyType |= DS4KeyType.RepeatMacro;
                 }
                 if (useScanCode)
                 {
@@ -349,45 +385,46 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             macroSteps.Insert(index, item);
         }
 
+        // Phase6-Step7b: ライトバー強制色のプレビューは、編集スロット（DeviceNum）ではなく実機（targetDevice）に対して行う
         public void StartForcedColor(Color color)
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
                 DS4Color dcolor = new DS4Color() { red = color.R, green = color.G, blue = color.B };
-                DS4LightBar.forcedColor[deviceNum] = dcolor;
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = true;
+                DS4LightBar.forcedColor[targetDevice] = dcolor;
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = true;
             }
         }
 
         public void EndForcedColor()
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
-                DS4LightBar.forcedColor[deviceNum] = new DS4Color(0, 0, 0);
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = false;
+                DS4LightBar.forcedColor[targetDevice] = new DS4Color(0, 0, 0);
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = false;
             }
         }
 
         public void UpdateForcedColor(Color color)
         {
-            if (deviceNum < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
                 DS4Color dcolor = new DS4Color() { red = color.R, green = color.G, blue = color.B };
-                DS4LightBar.forcedColor[deviceNum] = dcolor;
-                DS4LightBar.forcedFlash[deviceNum] = 0;
-                DS4LightBar.forcelight[deviceNum] = true;
+                DS4LightBar.forcedColor[targetDevice] = dcolor;
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = true;
             }
         }
 
         public void ProcessDS4Tick()
         {
-            if (Program.rootHub.DS4Controllers[0] != null)
+            if (controlService.DS4Controllers[0] != null)
             {
-                DS4Device dev = Program.rootHub.DS4Controllers[0];
+                DS4Device dev = controlService.DS4Controllers[0];
                 DS4State cState = dev.getCurrentStateRef();
-                DS4Windows.Mouse tp = Program.rootHub.touchPad[0];
+                DS4Windows.Mouse tp = controlService.touchPad[0];
                 for (DS4Controls dc = DS4Controls.LXNeg; dc < DS4Controls.Mute; dc++)
                 {
                     int macroValue = Global.macroDS4Values[dc];
@@ -424,7 +461,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         /// </summary>
         public void RevertControlsSettings()
         {
-            Global.TouchOutMode[deviceNum] = oldTouchpadMode;
+            // Phase6-Step7b: コンストラクタで実機（targetDevice）に Passthru を設定した場合だけ元に戻す。
+            // Save と Cancel の両方から呼ばれ得るため、2 回目以降は何もしない
+            if (touchpadModeOverridden)
+            {
+                profileSettingsService.TouchOutMode[targetDevice] = oldTouchpadMode;
+                touchpadModeOverridden = false;
+            }
             oldTouchpadMode = TouchpadOutMode.None;
         }
     }
@@ -526,7 +569,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public void UpdateLightbarValue(Color color)
         {
-            step.Value = 1000000000 + (color.R*1000000)+(color.G*1000)+color.B;
+            step.Value = 1000000000 + (color.R * 1000000) + (color.G * 1000) + color.B;
         }
 
         public Color LightbarColorValue()
