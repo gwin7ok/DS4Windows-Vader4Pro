@@ -19,7 +19,7 @@
 | **Step 5** | OutputSlotService 孤立配列撤廃・UDP診断是正 | `OutputSlotService.cs` 等 | UDP診断1行＋孤立配列系 | **完了（2026-09-24）** | `Phase6-Step5-Plan.md`、`Phase6-Step5-Completion-Report.md` | Step5-0〜5-3 完了（実機確認は Step11 へ先送り） |
 | **Step 6** | 出力切替UI表示追従・未接続API整理 | `ProfileEditor.xaml.cs`, `OutputSlotService.cs` 等 | 台帳再作成（2026-09-24、方針確定） | **完了（2026-09-24）** | `Phase6-Step6-Plan.md`、`Phase6-Step6-Completion-Report.md` | Step6-0〜6-3 完了 |
 | **Step 7** | `App.xaml.cs` Post-Host DI化 | `App.xaml.cs` | 39件（温存15。2026-09-24 再集計） | **完了（2026-09-25）** | `Phase6-Step7-Plan.md`、`Phase6-Step7-Completion-Report.md` | Step7-0〜7-5 完了（実機確認の3項目は Step11 へ先送り） |
-| **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 計画書作成・承認待ち（2026-09-24新設） | `Phase6-Step7b-Plan.md` | 未着手（Step7 の後・Step8 の前） |
+| **Step 7b** | プロファイル編集の即時反映廃止（保存・適用時に一括反映） | `ProfileEditor.xaml.cs`, `MainWindow.xaml.cs`, `ProfileSettingsViewModel.cs` | 編集スロット固定＋`targetDevice`導入 | 着手前再確認完了・決定1〜7 確定（2026-09-26、すべて推奨案）。次は Step7b-1 | `Phase6-Step7b-Plan.md` | 実装未着手（Step7 の後・Step8 の前） |
 | **Step 8** | `ProfileEditor` 段階的MVVM移設 | `ProfileEditor.xaml.cs` 等 | 60箇所 | 計画確定・承認待ち | `Phase6-Step8-Plan.md` | 未着手 (PR-1〜5) |
 | **Step 9** | 主要4大ViewModel Pure DI化 | `SettingsVM`, `MainWindowVM` 等 | 79箇所 | 計画確定・承認待ち | `Phase6-Step9-Plan.md` | 未着手 (PR-1〜6) |
 | **Step 10**| 小型UI/ViewModel ドメイン別DI化| 小型View 11, 小型VM 12 等 | 72箇所 | 計画確定・承認待ち | `Phase6-Step10-Plan.md` | 未着手 (PR-1〜4) |
@@ -190,8 +190,8 @@
 
 ---
 
-### Phase6-Step7b: プロファイル編集画面の即時反映廃止（保存・適用時に一括反映）【計画書作成・承認待ち】
-- **進捗率**: **0%（未着手・計画書作成済み）**
+### Phase6-Step7b: プロファイル編集画面の即時反映廃止（保存・適用時に一括反映）【着手前再確認完了・決定確定】
+- **進捗率**: **0%（実装未着手）。着手前再確認（2026-09-26、HEAD `360cb75b`）完了: 台帳を再作成し、旧調査で漏れていた実機に触れる機能（マクロ記録画面のライトバー色プレビューと記録中のタッチパッド Passthru、スペシャルアクションのバッテリー確認の色プレビュー）を追加。呼出元 0 件の `ProfileEditor.DeviceNum` を §2.4 で調査。決定1〜7 はユーザーによりすべて推奨案で確定（2026-09-26: A［サブ画面まで付け替え］／P1［画面は必須引数、VM・ファクトリは省略可能］／M1［モデル図 03・04 に追記］／I1［左右反転は編集中の値］／D1［`DeviceNum` 削除］／L1［確認用ログ追加］／H1［即時フック 8 件を削除］）。マイクロステップは 7b-1〜7b-4 に改訂（挙動を変えない下準備を先に行う）。詳細は `Phase6-Step7b-Plan.md` §1A・§2A・§3**
 - **新設の経緯**: Step4 の実機確認で、Edit ボタン経由の編集が接続中のコントローラーへ即時反映される既存仕様の問題（K4-3）が判明。ユーザー決定（2026-09-24）: 編集中のリアルタイム確認は廃止（機能削除の承認）、ライトバー色プレビューとランブルテストは `targetDevice` に対して残す、独立 Step として Step8 の前に実施。
 - **方針**: 編集画面は常に作業スロット（`TEST_PROFILE_INDEX`）へ読み書きし、接続中のコントローラーは別引数 `targetDevice` として渡す。適用・保存時の一括反映は既存の `ApplyProfileToSlot`／`SyncProfileListAndControllers` を使う。
 - **見積り**: 約 1.5〜2 日（7b-0 調査 → 7b-1 編集スロット固定 → 7b-2 コントローラー機能の付け替え → 7b-3 保存・適用・キャンセル → 7b-4 テスト・文書・実機確認）。
