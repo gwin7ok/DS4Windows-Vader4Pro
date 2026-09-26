@@ -22,11 +22,11 @@ namespace DS4Windows
             _actionRepo = actionRepo ?? DS4WinWPF.AppHost.GetService<ISpecialActionRepository>();
         }
 
-        public ProfileSettingsViewModel CreateProfileSettingsViewModel(int device)
+        public ProfileSettingsViewModel CreateProfileSettingsViewModel(int device, int targetDevice = -1)
         {
             if (AppLogger.IsTraceEnabled)
-                AppLogger.LogTrace($"[DI] ViewModelFactory: Created ProfileSettingsViewModel for Device {device}");
-            return new ProfileSettingsViewModel(device, _profileSettings);
+                AppLogger.LogTrace($"[DI] ViewModelFactory: Created ProfileSettingsViewModel for Device {device}, targetDevice {targetDevice}");
+            return new ProfileSettingsViewModel(device, _profileSettings, targetDevice: targetDevice);
         }
 
         public RecordBoxViewModel CreateRecordBoxViewModel(int device, DS4ControlSettings controlSettings, bool recordMacro = true, bool extraHold = false)

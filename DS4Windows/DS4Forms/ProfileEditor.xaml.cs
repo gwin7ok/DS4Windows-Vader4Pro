@@ -285,13 +285,17 @@ namespace DS4WinWPF.DS4Forms
 
             deviceNum = device;
             emptyColorGB.Visibility = Visibility.Collapsed;
+            // TODO(Phase6-Step7b-3): 暫定値。Step7b-1 の時点では編集スロットがまだ device のため、
+            // 実機（targetDevice）は「device がコントローラースロットならそれ、そうでなければ実機なし（-1）」とし、
+            // 従来と同じ判定結果にする。Step7b-3 で MainWindow から渡される targetDevice に置き換える
+            int interimTargetDevice = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : -1;
             var vmFactory = DS4WinWPF.AppHost.GetService<DS4Windows.DI.IViewModelFactory>();
             if (vmFactory != null)
-                profileSettingsVM = vmFactory.CreateProfileSettingsViewModel(device);
+                profileSettingsVM = vmFactory.CreateProfileSettingsViewModel(device, interimTargetDevice);
             else
             {
                 DS4Windows.AppLogger.LogTrace("[Legacy] ViewModel fallback: screen=ProfileEditor, viewModel=ProfileSettingsViewModel");
-                profileSettingsVM = new ProfileSettingsViewModel(device);
+                profileSettingsVM = new ProfileSettingsViewModel(device, targetDevice: interimTargetDevice);
             }
             picBoxHover.Visibility = Visibility.Hidden;
             picBoxHover2.Visibility = Visibility.Hidden;

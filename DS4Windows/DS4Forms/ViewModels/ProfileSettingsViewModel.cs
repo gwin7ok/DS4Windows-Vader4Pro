@@ -60,6 +60,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private int funcDevNum;
         public int FuncDevNum { get => funcDevNum; }
 
+        // Phase6-Step7b: 設定の読み書き先（Device＝編集スロット）とは別に、ランブルテスト・ライトバーの
+        // プレビュー・校正などで実際に使うコントローラーのスロット番号を持つ。-1 は「実機なし」
+        // （プロファイル一覧から開いた場合）。詳細は docs-forDIMG/MadeByAgent/Phase6-Step7b-Plan.md §2.1
+        private readonly int targetDevice;
+        public int TargetDevice { get => targetDevice; }
+
         private ImageBrush lightbarImgBrush = new ImageBrush();
         private SolidColorBrush lightbarColBrush = new SolidColorBrush();
 
@@ -2877,14 +2883,18 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public ProfileSettingsViewModel(int device, IProfileSettingsService profileSettings = null,
             ControlService controlService = null,
             IOutputSlotService outputSlotService = null,
-            IProfileRepository profileRepo = null)
+            IProfileRepository profileRepo = null,
+            int targetDevice = -1)
         {
             this.device = device;
+            this.targetDevice = targetDevice;
             this.profileSettings = profileSettings ?? Global.ProfileSettingsServiceInstance;
             this.controlService = controlService ?? Program.rootHub;
             this.outputSlotService = outputSlotService ?? DS4WinWPF.AppHost.GetService<IOutputSlotService>() ?? Global.OutputSlotServiceInstance;
             this.profileRepo = profileRepo ?? DS4WinWPF.AppHost.GetService<IProfileRepository>() ?? Global.ProfileRepositoryInstance;
-            funcDevNum = device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT ? device : 0;
+            // Phase6-Step7b: 実機を使う機能（ランブルテスト、校正、入力ハイライト等）の対象。
+            // 実機なし（-1）の場合は、プロファイル一覧から開いたときの従来動作（コントローラー0）を維持する
+            funcDevNum = HasTargetDevice ? targetDevice : 0;
 
             tempControllerIndex = ControllerTypeIndex;
 
@@ -3124,35 +3134,43 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             LowColorBStringChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// 実機（targetDevice）が指定され、かつ有効なコントローラースロットの範囲内であるか。
+        /// Phase6-Step7b: ライトバーのプレビュー等、実機に触れる処理はこの判定を使う（編集スロット Device ではない）。
+        /// </summary>
+        private bool HasTargetDevice =>
+            targetDevice >= 0 && targetDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT;
+
+        // Phase6-Step7b: ライトバー強制色のプレビューは、編集スロット（Device）ではなく実機（targetDevice）に対して行う
         public void UpdateForcedColor(System.Windows.Media.Color color)
         {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
                 DS4Color dcolor = new DS4Color() { red = color.R, green = color.G, blue = color.B };
-                DS4LightBar.forcedColor[device] = dcolor;
-                DS4LightBar.forcedFlash[device] = 0;
-                DS4LightBar.forcelight[device] = true;
+                DS4LightBar.forcedColor[targetDevice] = dcolor;
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = true;
             }
         }
 
         public void StartForcedColor(System.Windows.Media.Color color)
         {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
                 DS4Color dcolor = new DS4Color() { red = color.R, green = color.G, blue = color.B };
-                DS4LightBar.forcedColor[device] = dcolor;
-                DS4LightBar.forcedFlash[device] = 0;
-                DS4LightBar.forcelight[device] = true;
+                DS4LightBar.forcedColor[targetDevice] = dcolor;
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = true;
             }
         }
 
         public void EndForcedColor()
         {
-            if (device < ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            if (HasTargetDevice)
             {
-                DS4LightBar.forcedColor[device] = new DS4Color(0, 0, 0);
-                DS4LightBar.forcedFlash[device] = 0;
-                DS4LightBar.forcelight[device] = false;
+                DS4LightBar.forcedColor[targetDevice] = new DS4Color(0, 0, 0);
+                DS4LightBar.forcedFlash[targetDevice] = 0;
+                DS4LightBar.forcelight[targetDevice] = false;
             }
         }
 

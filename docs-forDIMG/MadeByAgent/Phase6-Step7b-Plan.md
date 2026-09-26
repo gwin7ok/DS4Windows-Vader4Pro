@@ -2,7 +2,7 @@
 
 作成日: 2026-09-24  
 改訂日: 2026-09-26（着手前再確認。現行コード［HEAD `360cb75b`］との突き合わせ、台帳の再作成、決定事項の追加、マイクロステップと実機確認項目の改訂。同日、決定1〜7 を確定）  
-状態: 計画書作成済み、Step7b-0（事前調査）完了（2026-09-24）、着手前再確認完了（2026-09-26）、**決定1〜7 確定（2026-09-26、すべて推奨案）。次は Step7b-1**（実装未着手）  
+状態: 計画書作成済み、Step7b-0（事前調査）完了（2026-09-24）、着手前再確認完了（2026-09-26）、決定1〜7 確定（2026-09-26、すべて推奨案）、**Step7b-1 実装済み（2026-09-26、ユーザーのビルド・テスト確認待ち）**  
 対象ブランチ: `For-DI-migration-work`  
 位置づけ: Step7（`App.xaml.cs` Post-Host DI化）と Step8（`ProfileEditor.xaml.cs` の段階的MVVM移設）の間に挿入する独立ステップ。  
 上位計画書: `docs-forDIMG/MadeByAgent/Phase6-Plan.md`  
@@ -306,7 +306,7 @@ Step4 の実機確認中に、次の問題が見つかった。
 - **結果6（プロファイル名）**: 既存プロファイルの編集では `profileNameTxt.IsEnabled = false`（`ProfileEditor.xaml.cs:1110`）。名前は変わらない。
 - **追加の発見（設計への影響）**: `ProfileSettingsViewModel` は `IViewModelFactory.CreateProfileSettingsViewModel(int device)`（`DI/IViewModelFactory.cs:11`、実装 `ViewModelFactory.cs:25`、テスト `PatternCViewModelTests.cs:86`）経由で生成される。`targetDevice` を渡すため、この契約に引数を追加する（決定2・3）。
 
-### Step7b-1: `ProfileSettingsViewModel` と `IViewModelFactory` の拡張（挙動の変化なし）
+### Step7b-1: `ProfileSettingsViewModel` と `IViewModelFactory` の拡張（挙動の変化なし）【実装済み（2026-09-26）、ビルド・テスト確認待ち】
 - **変更**:
   - `ProfileSettingsViewModel`: コンストラクタの末尾に `int targetDevice = -1` を追加。`TargetDevice` プロパティを追加。`FuncDevNum = targetDevice >= 0 ? targetDevice : 0`。ライトバー強制色 3 メソッド（C4）を `targetDevice` に付け替え。
   - `IViewModelFactory.CreateProfileSettingsViewModel(int device, int targetDevice = -1)` と `ViewModelFactory`（`[DI]` Trace ログに `targetDevice` を付け足す。決定6）。
@@ -316,6 +316,14 @@ Step4 の実機確認中に、次の問題が見つかった。
   - `ProfileSettingsViewModelTargetDeviceTests`（新規）: `targetDevice` を渡したとき `FuncDevNum`・`TargetDevice` がその値になること、−1 のとき `FuncDevNum` が 0 になること。ライトバー強制色が、`targetDevice >= 0` のとき `DS4LightBar.forcedColor／forcedFlash／forcelight[targetDevice]` だけを変え、−1 のときは何も変えないこと（`DS4LightBar` の静的配列はテストの前後で保存・復元する。§6.4-1）。編集スロット（`device`）に 8 を渡しても `targetDevice` の添字が使われること。
   - `PatternCViewModelTests`（更新）: ファクトリに `targetDevice` を渡したとき、生成された VM の `TargetDevice` に届くこと（実際の DI ホストから解決したファクトリで確認する。K7-1 の教訓）。
 - **実機確認**: 不要（挙動の変化なし）。念のため、Edit ボタン経由でライトバー色のプレビューとランブルテストが従来どおり動くことを見てもよい。
+- **実装結果（2026-09-26）**:
+  - `ProfileSettingsViewModel.cs`: 読み取り専用フィールド `targetDevice` と `TargetDevice` プロパティ、private の判定 `HasTargetDevice`（`targetDevice >= 0 && targetDevice < ControlService.CURRENT_DS4_CONTROLLER_LIMIT`。範囲外の添字で `DS4LightBar` の配列（長さ 8）に触れないよう、上限も判定する）を追加。コンストラクタの末尾に `int targetDevice = -1` を追加し、`FuncDevNum = HasTargetDevice ? targetDevice : 0` に変更。`UpdateForcedColor`／`StartForcedColor`／`EndForcedColor` の判定と添字を `targetDevice` に変更。即時フック（C3）は未変更（7b-3 で削除）。
+  - `IViewModelFactory.CreateProfileSettingsViewModel(int device, int targetDevice = -1)`（XML コメントで両引数の意味を記載）、`ViewModelFactory` は `targetDevice` を VM へ渡し、`[DI]` Trace ログの末尾に `, targetDevice {targetDevice}` を付け足した（決定6）。
+  - `ProfileEditor.xaml.cs` のコンストラクタ: ファクトリ生成とレガシー生成の 2 箇所へ、暫定値 `interimTargetDevice = device < CURRENT_DS4_CONTROLLER_LIMIT ? device : -1` を渡す（7b-3 で置き換える旨の TODO 付き）。
+  - **挙動の同一性**: Edit ボタン経由（`device`＝コントローラー番号）は `targetDevice = device` となり、`FuncDevNum` とライトバーの対象は従来と同じ。一覧経由（`device`＝8）は `targetDevice = −1` となり、`FuncDevNum = 0`、ライトバーのプレビューなしで従来と同じ。
+  - **テスト**: `ProfileSettingsViewModelTargetDeviceTests.cs`（新規、6 件。編集スロットと `targetDevice` の分離、−1 と省略時のコントローラー0へのフォールバック、範囲外の値を「実機なし」として扱うこと、強制色が `targetDevice` にだけ効くこと、−1 では何もしないこと。`DS4LightBar` の静的配列と `Global.outDevTypeTemp[8]` を保存・復元し、`Global.ProfileSettingsServiceInstance` は差し替えない）。`PatternCViewModelTests.cs`（既存テストに省略時 −1 の確認を追加し、実際の DI ホストから解決したファクトリで `targetDevice` が届くことを確認するテストを 1 件追加）。
+  - モデル図・`ServiceRegistration.cs` は未変更（モデル図は 7b-4 で更新）。テスト用の `IViewModelFactory` のモックは存在しない（§1A.2 D3）。
+  - **未検証事項**: この環境では `dotnet build`／`dotnet test` を実行していない。ユーザー側でビルド・テストビルド・テスト実行を確認する。
 
 ### Step7b-2: サブ画面への `targetDevice` の受け渡し（挙動の変化なし）
 - **前提**: 決定1＝A（サブ画面まですべて付け替え）、決定2＝P1（画面は必須引数、VM・ファクトリは省略可能）。

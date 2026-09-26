@@ -85,6 +85,37 @@ namespace DS4WindowsTests
 
             var vm = factory.CreateProfileSettingsViewModel(0);
             Assert.NotNull(vm);
+            // targetDevice を省略した場合は「実機なし」（Phase6-Step7b-1）
+            Assert.Equal(-1, vm.TargetDevice);
+        }
+
+        /// <summary>
+        /// Phase6-Step7b-1: 実際の DI ホストから解決したファクトリ経由でも、targetDevice が ViewModel に届き、
+        /// 編集スロット（device）と別に保持されること。テスト用に new したファクトリではなく、
+        /// アプリと同じ AppHost.GetService の経路で確認する（Phase6-Status.md K7-1 の教訓）。
+        /// </summary>
+        [Fact]
+        public void ViewModelFactory_PassesTargetDevice_ToProfileSettingsViewModel()
+        {
+            DS4WinWPF.AppHost.CreateHost();
+
+            var factory = DS4WinWPF.AppHost.GetService<IViewModelFactory>();
+            Assert.NotNull(factory);
+
+            OutContType savedOutDevTypeTemp = Global.outDevTypeTemp[Global.TEST_PROFILE_INDEX];
+            try
+            {
+                // CURRENT_DS4_CONTROLLER_LIMIT は 4 または 8 のため、どちらでも範囲内の 1 を使う
+                var vm = factory.CreateProfileSettingsViewModel(Global.TEST_PROFILE_INDEX, 1);
+                Assert.NotNull(vm);
+                Assert.Equal(Global.TEST_PROFILE_INDEX, vm.Device);
+                Assert.Equal(1, vm.TargetDevice);
+                Assert.Equal(1, vm.FuncDevNum);
+            }
+            finally
+            {
+                Global.outDevTypeTemp[Global.TEST_PROFILE_INDEX] = savedOutDevTypeTemp;
+            }
         }
 
         [Fact]
