@@ -41,23 +41,23 @@ namespace DS4Windows
             { 0, 0 }     // use on 100%. 0 is for "charging" OR anything sufficiently-"charged"
         };
 
-        static double[] counters = new double[Global.MAX_DS4_CONTROLLER_COUNT] { 0, 0, 0, 0, 0, 0, 0, 0 };
-        public static Stopwatch[] fadewatches = new Stopwatch[Global.MAX_DS4_CONTROLLER_COUNT]
+        static double[] counters = new double[ControllerLimits.MaxControllerCount] { 0, 0, 0, 0, 0, 0, 0, 0 };
+        public static Stopwatch[] fadewatches = new Stopwatch[ControllerLimits.MaxControllerCount]
         {
             new Stopwatch(), new Stopwatch(), new Stopwatch(), new Stopwatch(),
             new Stopwatch(), new Stopwatch(), new Stopwatch(), new Stopwatch(),
         };
 
-        static bool[] fadedirection = new bool[Global.MAX_DS4_CONTROLLER_COUNT] { false, false, false, false, false, false, false, false };
-        static DateTime[] oldnow = new DateTime[Global.MAX_DS4_CONTROLLER_COUNT]
+        static bool[] fadedirection = new bool[ControllerLimits.MaxControllerCount] { false, false, false, false, false, false, false, false };
+        static DateTime[] oldnow = new DateTime[ControllerLimits.MaxControllerCount]
         {
             DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow,
             DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow, DateTime.UtcNow,
         };
 
-        public static bool[] forcelight = new bool[Global.MAX_DS4_CONTROLLER_COUNT] { false, false, false, false, false, false, false, false };
-        public static DS4Color[] forcedColor = new DS4Color[Global.MAX_DS4_CONTROLLER_COUNT];
-        public static byte[] forcedFlash = new byte[Global.MAX_DS4_CONTROLLER_COUNT];
+        public static bool[] forcelight = new bool[ControllerLimits.MaxControllerCount] { false, false, false, false, false, false, false, false };
+        public static DS4Color[] forcedColor = new DS4Color[ControllerLimits.MaxControllerCount];
+        public static byte[] forcedFlash = new byte[ControllerLimits.MaxControllerCount];
         internal const int PULSE_FLASH_DURATION = 2000;
         internal const double PULSE_FLASH_SEGMENTS = PULSE_FLASH_DURATION / 40;
         internal const int PULSE_CHARGING_DURATION = 4000;
@@ -118,7 +118,7 @@ namespace DS4Windows
                     {
                         ref DS4Color fullColor = ref lightModeInfo.m_Led; //ref getMainColor(deviceNum);
                         ref DS4Color lowColor = ref lightModeInfo.m_LowLed; //ref getLowColor(deviceNum);
-                        color = getTransitionedColor(ref lowColor, ref fullColor, device.getBattery());
+                        color = ColorUtil.getTransitionedColor(ref lowColor, ref fullColor, device.getBattery());
                     }
                     else
                     {
@@ -178,7 +178,7 @@ namespace DS4Windows
                         }
 
                         DS4Color tempCol = new DS4Color(0, 0, 0);
-                        color = getTransitionedColor(ref color, ref tempCol, ratio);
+                        color = ColorUtil.getTransitionedColor(ref color, ref tempCol, ratio);
                     }
                 }
 
@@ -194,13 +194,13 @@ namespace DS4Windows
                     if (ratio >= 50.0 && ratio < 100.0)
                     {
                         DS4Color emptyCol = new DS4Color(0, 0, 0);
-                        color = getTransitionedColor(ref color, ref emptyCol,
+                        color = ColorUtil.getTransitionedColor(ref color, ref emptyCol,
                             (uint)(-100.0 * (elapsed = 0.02 * (ratio - 50.0)) * (elapsed - 2.0)));
                     }
                     else if (ratio >= 100.0)
                     {
                         DS4Color emptyCol = new DS4Color(0, 0, 0);
-                        color = getTransitionedColor(ref color, ref emptyCol, 100.0);
+                        color = ColorUtil.getTransitionedColor(ref color, ref emptyCol, 100.0);
                     }
                         
                 }
@@ -257,7 +257,7 @@ namespace DS4Windows
                             }
 
                             DS4Color emptyCol = new DS4Color(0, 0, 0);
-                            color = getTransitionedColor(ref color, ref emptyCol, ratio);
+                            color = ColorUtil.getTransitionedColor(ref color, ref emptyCol, ratio);
                             break;
                         }
                         case 2:
@@ -306,15 +306,15 @@ namespace DS4Windows
                     {
                         DS4Color maxCol = new DS4Color(max, max, 0);
                         DS4Color redCol = new DS4Color(255, 0, 0);
-                        color = getTransitionedColor(ref maxCol, ref redCol, rumble);
+                        color = ColorUtil.getTransitionedColor(ref maxCol, ref redCol, rumble);
                     }
                     else
                     {
                         DS4Color maxCol = new DS4Color(max, max, 0);
                         DS4Color redCol = new DS4Color(255, 0, 0);
-                        DS4Color tempCol = getTransitionedColor(ref maxCol,
+                        DS4Color tempCol = ColorUtil.getTransitionedColor(ref maxCol,
                             ref redCol, 39.6078f);
-                        color = getTransitionedColor(ref color, ref tempCol,
+                        color = ColorUtil.getTransitionedColor(ref color, ref tempCol,
                             device.getLeftHeavySlowRumble());
                     }
                 }

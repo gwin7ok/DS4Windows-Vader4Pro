@@ -23,6 +23,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 
 namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
@@ -53,8 +54,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
         public ProfileList ProfileList { get => profileList; }
         public bool NormalTrigger { get => normalTrigger; set => normalTrigger = value; }
 
-        public LoadProfileViewModel(ProfileList profileList)
+        public LoadProfileViewModel(ProfileList profileList, ISpecialActionRepository specialActionRepository)
         {
+            this.specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
             this.profileList = profileList;
 
             ProfileIndexChanged += LoadProfileViewModel_ProfileIndexChanged;
@@ -76,6 +78,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             UnloadEnabledChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        // Phase6-Step10-3-2: Global.SaveAction の置換先（必須引数）
+        private readonly ISpecialActionRepository specialActionRepository;
+
         public void SaveAction(SpecialAction action, bool edit = false)
         {
             if (profileIndex > 0)
@@ -86,7 +91,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
                     action.ucontrols = string.Empty;
                 }
 
-                Global.SaveAction(action.name, action.controls, 3, profilename, edit,
+                specialActionRepository.SaveAction(action.name, action.controls, 3, profilename, edit,
                     extras: action.ucontrols +
                     (autoUntrigger ? (action.ucontrols.Length > 0 ? "/" : "") + "AutomaticUntrigger" : ""));
             }

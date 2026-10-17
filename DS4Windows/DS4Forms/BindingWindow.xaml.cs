@@ -48,26 +48,46 @@ namespace DS4WinWPF.DS4Forms
         private Dictionary<DS4Windows.X360Controls, Button> mouseBtnMap =
             new Dictionary<DS4Windows.X360Controls, Button>();
         private BindingWindowViewModel bindingVM;
+        private readonly DS4Windows.ControlService controlService;
+        // Phase6-Step10-2-4b: Global.defaultButtonMapping／InverseRumbleMotors の置換先（必須引数）
+        private readonly DS4Windows.DI.IProfileSettingsService profileSettingsService;
+        // Phase6-Step10-2-4a: RecordBox の生成を窓口へ依頼する（必須引数）
+        private readonly DS4Windows.DI.IEditorWindowFactory editorWindowFactory;
         private Button highlightBtn;
         private ExposeMode expose;
 
         public enum ExposeMode : uint
         {
             Full,
+            ForPressToggle,
             Keyboard,
         }
 
-        public BindingWindow(int deviceNum, DS4Windows.DS4ControlSettings settings,
+        /// <param name="deviceNum">設定を読み書きするスロット（プロファイル編集画面では編集用の作業スロット）</param>
+        /// <param name="settings">編集対象のボタン設定</param>
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: ランブルテスト・ライトバーのプレビュー・マクロ記録で使う実機のスロット番号。-1 は実機なし。
+        /// 渡し忘れをコンパイルで検出するため必須引数とする（Phase6-Step7b-Plan.md 決定2）
+        /// </param>
+        public BindingWindow(int deviceNum, DS4Windows.DS4ControlSettings settings, int targetDevice,
+            DS4Windows.DI.IEditorWindowFactory editorWindowFactory,
+            DS4Windows.DI.IProfileSettingsService profileSettingsService,
+            DS4Windows.DI.IOutputSlotService outputSlotService,
+            DS4Windows.ControlService controlService,
             ExposeMode expose = ExposeMode.Full)
         {
+            this.editorWindowFactory = editorWindowFactory ?? throw new ArgumentNullException(nameof(editorWindowFactory));
             InitializeComponent();
 
+            this.profileSettingsService = profileSettingsService ?? throw new ArgumentNullException(nameof(profileSettingsService));
+
+            this.controlService = controlService ?? throw new ArgumentNullException(nameof(controlService));
             this.expose = expose;
-            bindingVM = new BindingWindowViewModel(deviceNum, settings);
+            bindingVM = new BindingWindowViewModel(deviceNum, settings, profileSettingsService, outputSlotService, targetDevice);
 
             if (settings.control != DS4Windows.DS4Controls.None)
             {
-                Title = $"Select action for {DS4Windows.Global.ds4inputNames[settings.control]}";
+                Title = $"Select action for {DS4Windows.DS4ControlNames.ds4inputNames[settings.control]}";
             }
             else
             {
@@ -78,8 +98,9 @@ namespace DS4WinWPF.DS4Forms
             highlightImg.Visibility = Visibility.Hidden;
             highlightLb.Visibility = Visibility.Hidden;
 
-            if (expose == ExposeMode.Full)
+            if (expose == ExposeMode.Full || expose == ExposeMode.ForPressToggle)
             {
+                // Initialize controller/button bindings for full and press/toggle modes
                 InitButtonBindings();
             }
 
@@ -97,9 +118,23 @@ namespace DS4WinWPF.DS4Forms
                 regBindRadio.IsChecked = !bindingVM.ShowShift;
                 shiftBindRadio.IsChecked = bindingVM.ShowShift;
             }
-            else
+            else if (expose == ExposeMode.ForPressToggle)
             {
-                //topGrid.Visibility = Visibility.Collapsed;
+                // For Press/Toggle selection: show keyboard, mouse and controller areas,
+                // but hide auxiliary UI panels (mode panel, record macro and extras).
+                modePanel.Visibility = Visibility.Collapsed;
+                recordMacroBtn.Visibility = Visibility.Collapsed;
+                extrasSidePanel.Visibility = Visibility.Collapsed;
+                // Keep main layout size but reduce right-hand grid column for extras
+                try
+                {
+                    mainBindGrid.ColumnDefinitions[2].Width = new GridLength(0);
+                }
+                catch { }
+            }
+            else if (expose == ExposeMode.Keyboard)
+            {
+                // Legacy Keyboard-only mode: hide many UI elements to present a compact view
                 topGrid.ColumnDefinitions.RemoveAt(3);
                 keyMouseTopTxt.Visibility = Visibility.Collapsed;
                 macroOnLb.Visibility = Visibility.Collapsed;
@@ -107,8 +142,11 @@ namespace DS4WinWPF.DS4Forms
                 mouseCanvas.Visibility = Visibility.Collapsed;
                 bottomPanel.Visibility = Visibility.Collapsed;
                 extrasSidePanel.Visibility = Visibility.Collapsed;
-                mouseGridColumn.Width = new GridLength(0);
-                //otherKeysMouseGrid.Columns = 2;
+                try
+                {
+                    mainBindGrid.ColumnDefinitions[2].Width = new GridLength(0);
+                }
+                catch { }
                 Width = 950;
                 Height = 300;
             }
@@ -142,12 +180,12 @@ namespace DS4WinWPF.DS4Forms
             if (bindingVM.Using360Mode)
             {
                 DS4Windows.X360Controls xboxcontrol = associatedBindings[button].control;
-                result = DS4Windows.Global.xboxDefaultNames[xboxcontrol];
+                result = DS4Windows.X360ControlTables.xboxDefaultNames[xboxcontrol];
             }
             else
             {
                 DS4Windows.X360Controls xboxcontrol = associatedBindings[button].control;
-                result = DS4Windows.Global.ds4DefaultNames[xboxcontrol];
+                result = DS4Windows.X360ControlTables.ds4DefaultNames[xboxcontrol];
             }
 
             return result;
@@ -176,7 +214,7 @@ namespace DS4WinWPF.DS4Forms
         private void OutputButtonBtn_Click(object sender, RoutedEventArgs e)
         {
             OutBinding binding = bindingVM.ActionBinding;
-            DS4Windows.X360Controls defaultControl = DS4Windows.Global.defaultButtonMapping[(int)binding.input];
+            DS4Windows.X360Controls defaultControl = profileSettingsService.GetDefaultButtonMapping()[(int)binding.input];
             Button button = sender as Button;
             if (associatedBindings.TryGetValue(button, out BindAssociation bind))
             {
@@ -220,7 +258,7 @@ namespace DS4WinWPF.DS4Forms
             OutBinding binding = bindingVM.ActionBinding;
             if (binding.outputType == OutBinding.OutType.Default)
             {
-                DS4Windows.X360Controls defaultBind = DS4Windows.Global.defaultButtonMapping[(int)binding.input];
+                DS4Windows.X360Controls defaultBind = profileSettingsService.GetDefaultButtonMapping()[(int)binding.input];
                 if (!OutBinding.IsMouseRange(defaultBind))
                 {
                     if (conBtnMap.TryGetValue(defaultBind, out Button tempBtn))
@@ -409,23 +447,6 @@ namespace DS4WinWPF.DS4Forms
             associatedBindings.Add(mouseWheelDBtn,
                 new BindAssociation() { outputType = BindAssociation.OutType.Button, control = DS4Windows.X360Controls.WDOWN });
             mouseWheelDBtn.Click += OutputButtonBtn_Click;
-
-
-            associatedBindings.Add(absMouseUpBindBtn,
-                new BindAssociation() { outputType = BindAssociation.OutType.Button, control = DS4Windows.X360Controls.AbsMouseUp });
-            absMouseUpBindBtn.Click += OutputButtonBtn_Click;
-
-            associatedBindings.Add(absMouseDownBindBtn,
-                new BindAssociation() { outputType = BindAssociation.OutType.Button, control = DS4Windows.X360Controls.AbsMouseDown });
-            absMouseDownBindBtn.Click += OutputButtonBtn_Click;
-
-            associatedBindings.Add(absMouseLeftBindBtn,
-                new BindAssociation() { outputType = BindAssociation.OutType.Button, control = DS4Windows.X360Controls.AbsMouseLeft });
-            absMouseLeftBindBtn.Click += OutputButtonBtn_Click;
-
-            associatedBindings.Add(absMouseRightBindBtn,
-                new BindAssociation() { outputType = BindAssociation.OutType.Button, control = DS4Windows.X360Controls.AbsMouseRight });
-            absMouseRightBindBtn.Click += OutputButtonBtn_Click;
         }
 
         private void InitKeyBindings()
@@ -774,7 +795,7 @@ namespace DS4WinWPF.DS4Forms
         {
             ImageSourceConverter sourceConverter = new ImageSourceConverter();
             ImageSource temp = sourceConverter.
-                ConvertFromString($"{DS4Windows.Global.ASSEMBLY_RESOURCE_PREFIX}component/Resources/{App.Current.FindResource("DS4ConfigImg")}") as ImageSource;
+                ConvertFromString($"{ResourcePaths.AssemblyResourcePrefix}component/Resources/{App.Current.FindResource("DS4ConfigImg")}") as ImageSource;
             conImageBrush.ImageSource = temp;
 
             Canvas.SetLeft(aBtn, 442); Canvas.SetTop(aBtn, 148);
@@ -851,16 +872,17 @@ namespace DS4WinWPF.DS4Forms
 
         private void TestRumbleBtn_Click(object sender, RoutedEventArgs e)
         {
-            int deviceNum = bindingVM.DeviceNum;
-            if (deviceNum < DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
+            // Phase6-Step7b: 振動させるのは実機（targetDevice）。モーターの左右反転は、編集中の設定
+            // （編集スロット DeviceNum）の値を読む（Phase6-Step7b-Plan.md 決定4 と同じ考え方）
+            if (bindingVM.HasTargetDevice)
             {
-                DS4Windows.DS4Device d = App.rootHub.DS4Controllers[deviceNum];
+                DS4Windows.DS4Device d = controlService.DS4Controllers[bindingVM.TargetDevice];
                 if (d != null)
                 {
                     if (!bindingVM.RumbleActive)
                     {
                         bindingVM.RumbleActive = true;
-                        if (Global.InverseRumbleMotors[deviceNum])
+                        if (profileSettingsService.InverseRumbleMotors[bindingVM.DeviceNum])
                             d.setRumble((byte)Math.Min(255, bindingVM.ActionBinding.HeavyRumble),
                                 (byte)Math.Min(255, bindingVM.ActionBinding.LightRumble));
                         else
@@ -903,7 +925,7 @@ namespace DS4WinWPF.DS4Forms
             if (!actBind.shiftBind)
             {
                 actBind.outputType = OutBinding.OutType.Default;
-                actBind.control = DS4Windows.Global.defaultButtonMapping[(int)actBind.input];
+                actBind.control = profileSettingsService.GetDefaultButtonMapping()[(int)actBind.input];
             }
             else
             {
@@ -923,8 +945,8 @@ namespace DS4WinWPF.DS4Forms
 
         private void RecordMacroBtn_Click(object sender, RoutedEventArgs e)
         {
-            RecordBox box = new RecordBox(bindingVM.DeviceNum, bindingVM.Settings,
-                bindingVM.ActionBinding.IsShift());
+            RecordBox box = editorWindowFactory.CreateRecordBox(bindingVM.DeviceNum, bindingVM.Settings,
+                bindingVM.ActionBinding.IsShift(), bindingVM.TargetDevice);
             box.Visibility = Visibility.Visible;
             mapBindingPanel.Visibility = Visibility.Collapsed;
             extrasSidePanel.Visibility = Visibility.Collapsed;
@@ -970,30 +992,6 @@ namespace DS4WinWPF.DS4Forms
             bindingVM.WriteBinds();
 
             UnregisterDataContext();
-        }
-    }
-
-    public class BindingWinResourcePaths
-    {
-        public string Xbox360MapPNG { get => $"{DS4Windows.Global.RESOURCES_PREFIX}/360 map.png"; }
-        public string Xbox360HighlightPNG { get => $"{DS4Windows.Global.RESOURCES_PREFIX}/360 highlight.png"; }
-        public string MousePNG { get => $"{DS4Windows.Global.RESOURCES_PREFIX}/mouse.png"; }
-    }
-
-    [ValueConversion(typeof(int), typeof(bool))]
-    public class IntToBoolConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is null) return DependencyProperty.UnsetValue;
-            var casted = (bool)value;
-            return casted ? 1 : 0;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is null) return DependencyProperty.UnsetValue;
-            return (int)value == 1;
         }
     }
 }

@@ -24,12 +24,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 
 namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
 {
-    public class MacroViewModel : NotifyDataErrorBase
+    public class MacroViewModel : NotifyDataErrorBase, System.ComponentModel.INotifyPropertyChanged
     {
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
         private bool useScanCode;
         private bool runTriggerRelease;
         private bool syncRun;
@@ -38,17 +41,18 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
         private List<int> macro = new List<int>(1);
         private string macrostring;
 
-        public bool UseScanCode { get => useScanCode; set => useScanCode = value; }
-        public bool RunTriggerRelease { get => runTriggerRelease; set => runTriggerRelease = value; }
-        public bool SyncRun { get => syncRun; set => syncRun = value; }
-        public bool KeepKeyState { get => keepKeyState; set => keepKeyState = value; }
-        public bool RepeatHeld { get => repeatHeld; set => repeatHeld = value; }
-        public List<int> Macro { get => macro; set => macro = value; }
+        public bool UseScanCode { get => useScanCode; set { useScanCode = value; OnPropertyChanged(nameof(UseScanCode)); } }
+        public bool RunTriggerRelease { get => runTriggerRelease; set { runTriggerRelease = value; OnPropertyChanged(nameof(RunTriggerRelease)); } }
+        public bool SyncRun { get => syncRun; set { syncRun = value; OnPropertyChanged(nameof(SyncRun)); } }
+        public bool KeepKeyState { get => keepKeyState; set { keepKeyState = value; OnPropertyChanged(nameof(KeepKeyState)); } }
+        public bool RepeatHeld { get => repeatHeld; set { repeatHeld = value; OnPropertyChanged(nameof(RepeatHeld)); } }
+        public List<int> Macro { get => macro; set { macro = value; OnPropertyChanged(nameof(Macro)); } }
         public string Macrostring { get => macrostring;
             set
             {
                 macrostring = value;
                 MacrostringChanged?.Invoke(this, EventArgs.Empty);
+                OnPropertyChanged(nameof(Macrostring));
             }
         }
 
@@ -68,7 +72,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             runTriggerRelease = action.pressRelease;
             syncRun = action.synchronized;
             keepKeyState = action.keepKeyState;
-            repeatHeld = action.keyType.HasFlag(DS4KeyType.RepeatMacro);
+            // Treat either RepeatMacro or HoldMacro as "repeat while held" for compatibility
+            repeatHeld = action.keyType.HasFlag(DS4KeyType.RepeatMacro) || action.keyType.HasFlag(DS4KeyType.HoldMacro);
         }
 
         public DS4ControlSettings PrepareSettings()
@@ -79,10 +84,25 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             settings.keyType = DS4KeyType.Macro;
             if (repeatHeld)
             {
+                // Keep both RepeatMacro and HoldMacro flags in settings so
+                // macro editor (RecordBox) and special-action editor stay in sync.
                 settings.keyType |= DS4KeyType.RepeatMacro;
+                settings.keyType |= DS4KeyType.HoldMacro;
+            }
+            if (useScanCode)
+            {
+                settings.keyType |= DS4KeyType.ScanCode;
             }
 
             return settings;
+        }
+
+        // Phase6-Step10-3-2: Global.SaveAction の置換先（必須引数）
+        private readonly ISpecialActionRepository specialActionRepository;
+
+        public MacroViewModel(ISpecialActionRepository specialActionRepository)
+        {
+            this.specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
         }
 
         public void SaveAction(SpecialAction action, bool edit = false)
@@ -93,7 +113,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             extrasList.Add(syncRun ? "Sync" : null);
             extrasList.Add(keepKeyState ? "KeepKeyState" : null);
             extrasList.Add(repeatHeld ? "Repeat" : null);
-            Global.SaveAction(action.name, action.controls, 1, string.Join("/", macro), edit,
+            specialActionRepository.SaveAction(action.name, action.controls, 1, string.Join("/", macro), edit,
                 extras: string.Join("/", extrasList.Where(s => !string.IsNullOrEmpty(s))));
         }
 

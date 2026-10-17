@@ -26,7 +26,7 @@ public class ScpUtilIntegrationTests
 
             var bs = new BackingStore();
             bs.m_Profile = tempPath;
-            bool loaded = bs.Load();
+            bool loaded = new DS4Windows.Services.AppSettingsXmlSerializer(bs, new DS4Windows.PathService(), new DS4Windows.EnvironmentService()).Load();
             Assert.IsTrue(loaded, "Initial Load failed");
 
             Assert.AreEqual(760, bs.profileEditorLeftWidth);
@@ -43,13 +43,13 @@ public class ScpUtilIntegrationTests
             bs.specialActionTriggerColWidth = 22;
             bs.specialActionDetailColWidth = 33;
 
-            bool saved = bs.Save();
+            bool saved = new DS4Windows.Services.AppSettingsXmlSerializer(bs, new DS4Windows.PathService(), new DS4Windows.EnvironmentService()).Save();
             Assert.IsTrue(saved, "Save failed");
 
             // Load into a new instance
             var bs2 = new BackingStore();
             bs2.m_Profile = tempPath;
-            bool loaded2 = bs2.Load();
+            bool loaded2 = new DS4Windows.Services.AppSettingsXmlSerializer(bs2, new DS4Windows.PathService(), new DS4Windows.EnvironmentService()).Load();
             Assert.IsTrue(loaded2, "Reload failed");
 
             Assert.AreEqual(123, bs2.profileEditorLeftWidth);

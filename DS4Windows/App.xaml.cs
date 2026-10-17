@@ -27,12 +27,16 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using WPFLocalizeExtension.Engine;
 using DS4Windows;
+using DS4Windows.DI;
+using DS4Windows.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DS4WinWPF
 {
@@ -60,7 +64,6 @@ namespace DS4WinWPF
         }
 
         private Thread controlThread;
-        public static DS4Windows.ControlService rootHub;
         public static HttpClient requestClient;
         private bool skipSave;
         private bool runShutdown;
@@ -70,7 +73,33 @@ namespace DS4WinWPF
         private const string SingleAppComEventName = "{a52b5b20-d9ee-4f32-8518-307fa14aa0c6}";
         private EventWaitHandle threadComEvent = null;
         private Timer collectTimer;
-    public static LoggerHolder logHolder;
+        public static LoggerHolder logHolder;
+
+        // Phase6-Step7（決定1＝A）: Post-Host（明示的なホスト構築と CreateControlService の後）で使う DI サービス。
+        // App は WPF の Application でコンストラクタ注入できないため、Composition Root として
+        // InitializePostHostServices() で一度だけ解決して保持する。Pre-Host 領域（ホスト構築より前）では null。
+        private IAppSettingsService _appSettingsService;
+        private IPathService _pathService;
+        private IEnvironmentService _environmentService;
+        private IProfileRepository _profileRepository;
+        private ISpecialActionRepository _specialActionRepository;
+        private IAppearanceSettingsService _appearanceSettingsService;
+        private IDeviceStateService _deviceStateService;
+        private IOutputSlotService _outputSlotService;
+        // Phase7-Step5 W4: 旧 AppHost.GetService／ServiceProviderHolder の直接呼び出しの置き換え先（InitializePostHostServices で解決）
+        private DS4Windows.Services.LogSettingsApplierProxy _logSettingsApplierProxy;
+        private DS4Windows.Actions.IControllerRegistry _controllerRegistry;
+
+        // Phase7-Step5 W2（Q1＝A）: 旧 Program.rootHub。ControlService は CreateControlService の別スレッドで解決して代入し、
+        // 呼び出し元がスレッドの終了を待ってから読む（以降は LoggerHolder の生成、起動後の処理、未処理例外の処理、終了処理が使う）。
+        // 別スレッド（未処理例外、セッション終了）からも読まれるため volatile にする。
+        private volatile DS4Windows.ControlService _controlService;
+
+        // Phase7-Step4 W4（D3＝S1）: コンテナの構築より前に作るブートストラップのサービス。Pre-Host の起動処理（保存場所の決定、
+        // ViGEmBus 情報の取得）で使い、CreateHost に渡して、コンテナへ同じインスタンスを登録する。
+        // 状態は PathService／EnvironmentService の static（プロセス全体で 1 つ）のため、どのインスタンスでも同じ値を見る。
+        private DS4Windows.PathService _bootstrapPathService;
+        private DS4Windows.EnvironmentService _bootstrapEnvironmentService;
 
         private MemoryMappedFile ipcClassNameMMF = null; // MemoryMappedFile for inter-process communication used to hold className of DS4Form window
         private MemoryMappedFile ipcResultDataMMF = null; // MemoryMappedFile for inter-process communication used to exchange string result data between cmdline client process and the background running DS4Windows app
@@ -104,6 +133,11 @@ namespace DS4WinWPF
                 catch { }
                 AppLogger.LogDebug($"ApplyLanguageSetting requested: {cultureCode}");
                 CultureInfo culture = CultureInfo.GetCultureInfo(cultureCode);
+                // TODO(Phase6-Step7 決定4＝K): 意図的に Global を直接使う。このメソッドは Post-Host だけでなく、
+                // Pre-Host の -driverinstall 分岐（CheckOptions。DI サービスのフィールドはまだ null）と、
+                // App の外（LanguagePackControl → ApplyLanguageSettingPublic）からも呼ばれる共用ヘルパーのため、
+                // DI 経由と Global 経由の二重経路を作らない。SetCulture はスレッドのカルチャを設定するだけの静的ユーティリティ。
+                // Global の解体（Phase7）で、言語設定の適用処理ごと整理する。
                 DS4Windows.Global.UseLang = cultureCode;
                 DS4Windows.Global.SetCulture(cultureCode);
 
@@ -134,39 +168,71 @@ namespace DS4WinWPF
         /// </summary>
         public void ApplyLanguageSettingPublic(string cultureCode)
         {
+            if (string.IsNullOrEmpty(cultureCode))
+            {
+                // 「No (English UI)」（カルチャ名が空）の選択。ApplyLanguageSetting は空文字を無視して何も変えないため、
+                // 起動時に UseLang が空のときと同じ処理（SetUICulture。空文字はインバリアントカルチャ＝既定の英語 UI）を
+                // 実行時にも行う。これまでは、再起動するまで UI が切り替わらなかった。
+                // Global.UseLang は呼び出し元（LanguagePackViewModel.ChangeLanguagePack）が設定済み。
+                SetUICulture(string.Empty);
+                return;
+            }
+
             ApplyLanguageSetting(cultureCode);
         }
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
+            // ★ 最優先で AUMID とレジストリを初期化（ポータブル通知対策）
+            DS4Windows.AppNotificationRegistration.Initialize();
+
             runShutdown = true;
             skipSave = true;
+
+            // Phase7-Step4 W4: ブートストラップのサービスを、コンテナの構築より前に作る
+            _bootstrapPathService = new DS4Windows.PathService();
+            _bootstrapEnvironmentService = new DS4Windows.EnvironmentService();
+
+            // Locate config location and perform startup log rotation as early as possible
+            try
+            {
+                _bootstrapPathService.FindConfigLocation();
+
+                // Perform deterministic startup rotation as early as possible
+                // （Phase7-Step4 W4: appdatapath は null の可能性がある（初回起動）ため、AppDataPath（null のとき実行フォルダ）ではなく状態そのものを渡す）
+                LogRotator.PerformStartupRotation(DS4Windows.PathService.AppDataPathState, DS4Windows.Global.LogMaxArchiveFiles);
+
+                // Immediately apply bootstrap minimum log level so early logging honors user-configured min level
+                try
+                {
+                    DS4WinWPF.LoggerHolder.ApplyBootstrapMinLogLevel(DS4Windows.Global.LogMinLevel);
+                }
+                catch { }
+            }
+            catch { }
 
             try
             {
                 // Detailed diagnostics at Debug level
-                AppLogger.LogDebug($"Startup culture: CurrentCulture={System.Globalization.CultureInfo.CurrentCulture}, CurrentUICulture={System.Globalization.CultureInfo.CurrentUICulture}");
-                AppLogger.LogDebug($"DefaultThreadCurrentCulture={System.Globalization.CultureInfo.DefaultThreadCurrentCulture}, DefaultThreadCurrentUICulture={System.Globalization.CultureInfo.DefaultThreadCurrentUICulture}");
-                AppLogger.LogDebug($"Process exe: {Process.GetCurrentProcess().MainModule?.FileName}");
-                AppLogger.LogDebug($"AppDomain BaseDirectory: {AppContext.BaseDirectory}");
-                AppLogger.LogDebug($"Current working directory: {Environment.CurrentDirectory}");
+                AppLogger.LogInfo($"Startup culture: CurrentCulture={System.Globalization.CultureInfo.CurrentCulture}, CurrentUICulture={System.Globalization.CultureInfo.CurrentUICulture}");
+                AppLogger.LogInfo($"DefaultThreadCurrentCulture={System.Globalization.CultureInfo.DefaultThreadCurrentCulture}, DefaultThreadCurrentUICulture={System.Globalization.CultureInfo.DefaultThreadCurrentUICulture}");
 
                 // Log command-line args for Updater-related diagnostic
                 try
                 {
                     var argsJoined = string.Join(' ', e.Args ?? Array.Empty<string>());
-                    AppLogger.LogDebug($"Startup args: {argsJoined}");
+                    AppLogger.LogInfo($"Startup args: {argsJoined}");
                 }
                 catch { }
 
                 string langDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Lang");
-                AppLogger.LogDebug($"Lang folder exists: {System.IO.Directory.Exists(langDir)} at {langDir}");
+                AppLogger.LogInfo($"Lang folder exists: {System.IO.Directory.Exists(langDir)} at {langDir}");
                 if (System.IO.Directory.Exists(langDir))
                 {
                     try
                     {
                         var dirs = System.IO.Directory.GetDirectories(langDir);
-                        AppLogger.LogDebug($"Lang subdirs: {string.Join(',', System.Array.ConvertAll(dirs, d => System.IO.Path.GetFileName(d)))}");
+                        AppLogger.LogInfo($"Lang subdirs: {string.Join(',', System.Array.ConvertAll(dirs, d => System.IO.Path.GetFileName(d)))}");
                     }
                     catch (Exception ex) { AppLogger.LogError($"LangDirList exception: {ex}"); }
                 }
@@ -258,24 +324,52 @@ namespace DS4WinWPF
             // Allow sleep time durations less than 16 ms
             DS4Windows.Util.timeBeginPeriod(1);
 
+            // Load keyboard repeat settings from user registry so synthetic repeat matches OS behaviour
+            try
+            {
+                DS4Windows.KeyboardSettings.LoadFromRegistry();
+            }
+            catch { }
+
             // Retrieve info about installed ViGEmBus device if found
-            DS4Windows.Global.RefreshViGEmBusInfo();
+            // Phase7-Step4 W1／W4: 調べ物と状態は EnvironmentService（状態は static）が持つ。ブートストラップのインスタンスを使う。
+            _bootstrapEnvironmentService.RefreshViGEmBusInfo();
 
             // Create the Event handle
             threadComEvent = new EventWaitHandle(false, EventResetMode.ManualReset, SingleAppComEventName);
             CreateTempWorkerThread();
 
+            // Phase6-Step7: ここまでが Pre-Host 領域（明示的なホスト構築より前に実行される起動処理）。
+            // この領域と CheckOptions（-driverinstall 分岐を含む）の Global 参照（起動時ログローテーション・
+            // 設定の場所の決定・ViGEmBus 情報など）は、ブートストラップ処理として意図的に静的のまま温存する
+            // （Phase6-Step7-Plan.md §1.2・§2.5）。Phase7-Step4 W2: -driverinstall 分岐は、設定の読込の前に、
+            // CheckOptions の中で CreateHost(config, parser) を明示的に呼ぶ（暗黙のホスト構築はなくなった）。
+            // DI サービスは、下の CreateControlService の直後に InitializePostHostServices で解決する。
+            // フェーズ0-3: AppHost正式ルート
+            try
+            {
+                var host = AppHost.CreateHost(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), parser,
+                    _bootstrapPathService, _bootstrapEnvironmentService);
+                AppLogger.LogInfo("AppHost.CreateHost() called successfully (Phase 0-3 verification)");
+                AppLogger.LogInfo($"[DI] Host creation path: {AppHost.CreationNote}");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"AppHost verification call failed (expected if no full config): {ex.Message}");
+            }
+
             CreateControlService(parser);
+            InitializePostHostServices();
             RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
-            DS4Windows.Global.FindConfigLocation();
-            bool firstRun = DS4Windows.Global.firstRun;
+            // FindConfigLocation was already called earlier to enable rotation as early as possible
+            bool firstRun = _appSettingsService.FirstRun;
             string selectedLanguage = null;
 
             // On first run, show language selection dialog first
             if (firstRun)
             {
-                DS4Forms.LanguageSelectDialog langDialog = new DS4Forms.LanguageSelectDialog();
+                DS4Forms.LanguageSelectDialog langDialog = new DS4Forms.LanguageSelectDialog(_appSettingsService);
                 langDialog.ShowDialog();
                 if (!langDialog.ChoiceMade)
                 {
@@ -295,7 +389,7 @@ namespace DS4WinWPF
             if (firstRun)
             {
                 DS4Forms.SaveWhere savewh =
-                    new DS4Forms.SaveWhere(DS4Windows.Global.multisavespots);
+                    new DS4Forms.SaveWhere(_pathService.HasMultipleSaveLocations, _pathService, _environmentService);
                 savewh.ShowDialog();
                 if (!savewh.ChoiceMade)
                 {
@@ -308,28 +402,45 @@ namespace DS4WinWPF
             // Exit if base configuration could not be generated
             if (firstRun && !CreateConfDirSkeleton())
             {
-                MessageBox.Show($"Cannot create config folder structure in {DS4Windows.Global.appdatapath}. Exiting",
+                MessageBox.Show($"Cannot create config folder structure in {_pathService.AppDataPath}. Exiting",
                     "DS4Windows", MessageBoxButton.OK, MessageBoxImage.Error);
                 Current.Shutdown(1);
                 return;
             }
 
+            // マクロの保存・読込ダイアログの初期フォルダ（RecordBox が <保存場所>\Macros を指定する）。
+            // CreateConfDirSkeleton は初回起動時しか呼ばれないため、既存の環境にも作られるよう毎回確認する。
+            // 作成できなくても（書き込み権限がない場合など）起動は続ける。
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(_pathService.AppDataPath, "Macros"));
+            }
+            catch (Exception)
+            {
+            }
+
             // Load Profiles.xml BEFORE creating LoggerHolder so log settings are available
-            bool readAppConfig = DS4Windows.Global.Load();
+            bool readAppConfig = _appSettingsService.Load();
 
             // Re-apply selected language after Load() and save to Profiles.xml
             if (firstRun && !string.IsNullOrEmpty(selectedLanguage))
             {
                 ApplyLanguageSetting(selectedLanguage);
-                DS4Windows.Global.Save();
+                _appSettingsService.Save();
             }
 
-            logHolder = new LoggerHolder(rootHub);
+            logHolder = new LoggerHolder(_controlService);
+            // Phase6-Step10-1-5（決定D7＝A）: 設定画面がログ設定の変更を反映する窓口（ILogSettingsApplier）へ、生成した LoggerHolder を接続する
+            _logSettingsApplierProxy.Attach(logHolder);
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
-            string version = DS4Windows.Global.exeversion;
+            string version = _environmentService.ApplicationVersion;
+            // Log process and path information at INFO level now that logger is configured
+            try { AppLogger.LogInfo($"Process exe: {Process.GetCurrentProcess().MainModule?.FileName}"); } catch { }
+            try { AppLogger.LogInfo($"AppDomain BaseDirectory: {AppContext.BaseDirectory}"); } catch { }
+            try { AppLogger.LogInfo($"Current working directory: {Environment.CurrentDirectory}"); } catch { }
             AppLogger.LogInfo($"DS4Windows version {version}");
-            AppLogger.LogInfo($"DS4Windows exe file: {DS4Windows.Global.exeFileName}");
+            AppLogger.LogInfo($"DS4Windows exe file: {Path.GetFileName(_pathService.ExecutablePath)}");
             AppLogger.LogInfo($"DS4Windows Assembly Architecture: {(Environment.Is64BitProcess ? "x64" : "x86")}");
             AppLogger.LogInfo($"OS Version: {Environment.OSVersion}");
             AppLogger.LogInfo($"OS Product Name: {DS4Windows.Util.GetOSProductName()}");
@@ -337,9 +448,43 @@ namespace DS4WinWPF
             AppLogger.LogInfo($"System Architecture: {(Environment.Is64BitOperatingSystem ? "x64" : "x86")}");
             AppLogger.LogInfo("Logger created");
 
+            // Startup summary: read from build_timestamp.txt in the executable folder
+            try
+            {
+                string fp = Path.Combine(AppContext.BaseDirectory, "build_timestamp.txt");
+                fp = Path.GetFullPath(fp);
+                if (File.Exists(fp))
+                {
+                    string summary = File.ReadAllText(fp).Trim();
+                    string single = summary.Replace(Environment.NewLine, " ").Replace('\n', ' ');
+                    // English message: try to extract an ISO-like timestamp from the summary and display it in English
+                    try
+                    {
+                        var m = Regex.Match(single, @"(?<date>\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})");
+                        if (m.Success)
+                        {
+                            AppLogger.LogInfo($"This binary was built at {m.Groups["date"].Value}");
+                        }
+                        else
+                        {
+                            AppLogger.LogInfo($"This binary was built: {single}");
+                        }
+                    }
+                    catch { }
+                }
+                else
+                {
+                    try { AppLogger.LogInfo("Build summary file not found in the executable folder"); } catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.LogTrace($"Startup summary read failed: {ex}");
+            }
+
             if (!firstRun && !readAppConfig)
             {
-                AppLogger.LogInfo($@"Profiles.xml not read at location ${DS4Windows.Global.appdatapath}\Profiles.xml. Using default app settings");
+                AppLogger.LogInfo($@"Profiles.xml not read at location ${_pathService.AppDataPath}\Profiles.xml. Using default app settings");
             }
 
             // Ask user which devices the mapper should attempt to open when detected.
@@ -347,11 +492,11 @@ namespace DS4WinWPF
             // Steam Input
             if (firstRun)
             {
-                ApplyLanguageSetting(DS4Windows.Global.UseLang);
+                ApplyLanguageSetting(_appSettingsService.UseLang);
                 DS4Forms.FirstLaunchUtilWindow firstLaunchUtilWin =
-                    new DS4Forms.FirstLaunchUtilWindow(DS4Windows.Global.DeviceOptions);
+                    new DS4Forms.FirstLaunchUtilWindow(_appSettingsService.DeviceOptions);
                 firstLaunchUtilWin.ShowDialog();
-                DS4Windows.Global.Save();
+                _appSettingsService.Save();
             }
 
             if (firstRun)
@@ -359,38 +504,48 @@ namespace DS4WinWPF
                 AppLogger.LogInfo("No config found. Creating default config");
                 AttemptSave();
 
-                DS4Windows.Global.SaveAsProfile(0, "Default");
+                _profileRepository.SaveAsProfile(0, "Default");
+                string[] profilePath = _profileRepository.ProfilePath;
+                string[] olderProfilePath = _profileRepository.OlderProfilePath;
                 for (int i = 0; i < DS4Windows.ControlService.MAX_DS4_CONTROLLER_COUNT; i++)
                 {
-                    DS4Windows.Global.ProfilePath[i] = DS4Windows.Global.OlderProfilePath[i] = "Default";
+                    profilePath[i] = olderProfilePath[i] = "Default";
                 }
 
                 AppLogger.LogInfo("Default config created");
             }
 
             // Reset first connection flags at startup
-            DS4Windows.Global.ResetConnectionFlags();
+            _deviceStateService.ResetConnectionFlags();
 
             skipSave = false;
 
-            if (!DS4Windows.Global.LoadActions())
+            // Phase6-Step7（決定2＝L2）: SpecialActionRepository.LoadActions は Step7-1 で Global.LoadActions と同じ動作
+            // （Actions.xml がなければ既定アクションを作って true）に是正済み。
+            if (!_specialActionRepository.LoadActions())
             {
-                DS4Windows.Global.CreateStdActions();
+                _specialActionRepository.CreateStandardActions();
             }
 
             // Have app use selected culture
-            SetUICulture(DS4Windows.Global.UseLang);
-            ApplyLanguageSetting(DS4Windows.Global.UseLang);
-            AppLogger.LogInfo($"Effective UI culture after initialization: CurrentUICulture={Thread.CurrentThread.CurrentUICulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, UseLang={DS4Windows.Global.UseLang}");
+            SetUICulture(_appSettingsService.UseLang);
+            ApplyLanguageSetting(_appSettingsService.UseLang);
+            AppLogger.LogInfo($"Effective UI culture after initialization: CurrentUICulture={Thread.CurrentThread.CurrentUICulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, UseLang={_appSettingsService.UseLang}");
 
-            DS4Windows.AppThemeChoice themeChoice = DS4Windows.Global.UseCurrentTheme;
-            ChangeTheme(DS4Windows.Global.UseCurrentTheme, false);
+            DS4Windows.AppThemeChoice themeChoice = _appearanceSettingsService.UseCurrentTheme;
+            ChangeTheme(_appearanceSettingsService.UseCurrentTheme, false);
+            // Diagnostic: log culture state after applying theme to detect theme-induced localization regressions
+            AppLogger.LogDebug($"Post-ChangeTheme: LocalizeDictionary={LocalizeDictionary.Instance.Culture}, SetCurrentThreadCulture={LocalizeDictionary.Instance.SetCurrentThreadCulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, CurrentUICulture={Thread.CurrentThread.CurrentUICulture}");
 
-            DS4Windows.Global.LoadLinkedProfiles();
-            DS4Forms.MainWindow window = new DS4Forms.MainWindow(parser);
+            _profileRepository.LoadLinkedProfiles();
+            // Phase7-Step5 W5（Q4＝A）: メイン画面の生成の窓口を、生成の直前に解決する（窓口が受け取る多数のサービスの生成が
+            // 設定の読込より前にならないよう、InitializePostHostServices では解決しない。旧: MainWindow のコンストラクター内で解決していた）
+            DS4Forms.MainWindow window = ResolvePostHostService<IMainWindowFactory>().Create(parser);
             MainWindow = window;
             window.IsInitialShow = true;
             window.Show();
+            // Diagnostic: verify culture remains applied after window shown
+            AppLogger.LogDebug($"After Show(): LocalizeDictionary={LocalizeDictionary.Instance.Culture}, SetCurrentThreadCulture={LocalizeDictionary.Instance.SetCurrentThreadCulture}, DefaultThreadCurrentUICulture={CultureInfo.DefaultThreadCurrentUICulture}, CurrentUICulture={Thread.CurrentThread.CurrentUICulture}");
             window.IsInitialShow = false;
 
             // Set up hooks for IPC command calls
@@ -399,16 +554,48 @@ namespace DS4WinWPF
 
             window.CheckMinStatus();
 
-            bool runningAsAdmin = DS4Windows.Global.IsAdministrator();
-            rootHub.LogDebug($"Running as {(runningAsAdmin ? "Admin" : "User")}");
+            bool runningAsAdmin = _environmentService.IsAdministrator();
+            _controlService.LogDebug($"Running as {(runningAsAdmin ? "Admin" : "User")}");
 
-            if (DS4Windows.Global.hidHideInstalled)
+            if (_environmentService.HidHideInstalled)
             {
-                rootHub.CheckHidHidePresence();
+                _controlService.CheckHidHidePresence();
             }
 
-            rootHub.LoadPermanentSlotsConfig();
+            // Phase7-Step5 W3（Q9＝A）: 契約（IOutputSlotService）経由に切り替えた。旧 ControlService.LoadPermanentSlotsConfig と同じ処理
+            // （OutputSlotPersist.ReadConfig を、同じスロット管理と保存先で呼ぶ）
+            _outputSlotService.LoadOutputSlots();
             window.LateChecks(parser);
+        }
+
+        /// <summary>
+        /// Phase6-Step7（決定1＝A）: Post-Host で使う DI サービスを一度だけ解決してフィールドに保持する。
+        /// 明示的なホスト構築と CreateControlService の直後に呼ぶ。解決できない場合は、CreateControlService と同じく
+        /// 例外で起動を止める（ホスト構築の失敗は、従来から起動失敗である）。
+        /// </summary>
+        private void InitializePostHostServices()
+        {
+            _appSettingsService = ResolvePostHostService<IAppSettingsService>();
+            _pathService = ResolvePostHostService<IPathService>();
+            _environmentService = ResolvePostHostService<IEnvironmentService>();
+            _profileRepository = ResolvePostHostService<IProfileRepository>();
+            _specialActionRepository = ResolvePostHostService<ISpecialActionRepository>();
+            _appearanceSettingsService = ResolvePostHostService<IAppearanceSettingsService>();
+            _deviceStateService = ResolvePostHostService<IDeviceStateService>();
+            _outputSlotService = ResolvePostHostService<IOutputSlotService>();
+            // Phase7-Step5 W3（Q7＝A）: 静的なロガー（AppLogger.LogToTray）が使う通知サービスを、DI のシングルトンに設定する
+            AppLogger.NotificationService = ResolvePostHostService<INotificationService>();
+            _logSettingsApplierProxy = ResolvePostHostService<DS4Windows.Services.LogSettingsApplierProxy>();
+            _controllerRegistry = ResolvePostHostService<DS4Windows.Actions.IControllerRegistry>();
+
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[DI] App.InitializePostHostServices: Post-Host services resolved");
+        }
+
+        private static T ResolvePostHostService<T>() where T : class
+        {
+            return AppHost.GetService<T>()
+                ?? throw new InvalidOperationException($"{typeof(T).Name} could not be resolved from AppHost.");
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -424,7 +611,7 @@ namespace DS4WinWPF
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        rootHub?.PrepareAbort();
+                        _controlService?.PrepareAbort();
                         CleanShutdown();
                     });
                 }
@@ -437,7 +624,7 @@ namespace DS4WinWPF
                     AppLogger.LogError($"Thread Crashed with message {exp.Message}");
                     AppLogger.LogError(exp.ToString());
 
-                    rootHub?.PrepareAbort();
+                    _controlService?.PrepareAbort();
                     CleanShutdown();
                 }
             }
@@ -458,10 +645,11 @@ namespace DS4WinWPF
             bool result = true;
             try
             {
-                Directory.CreateDirectory(DS4Windows.Global.appdatapath);
-                Directory.CreateDirectory(DS4Windows.Global.appdatapath + @"\Profiles\");
-                Directory.CreateDirectory(DS4Windows.Global.appdatapath + @"\Logs\");
-                //Directory.CreateDirectory(DS4Windows.Global.appdatapath + @"\Macros\");
+                string appDataPath = _pathService.AppDataPath;
+                Directory.CreateDirectory(appDataPath);
+                Directory.CreateDirectory(appDataPath + @"\Profiles\");
+                Directory.CreateDirectory(appDataPath + @"\Logs\");
+                // Macros フォルダは、毎回の起動で Application_Startup が作成する（初回起動時に限らないため）
             }
             catch (UnauthorizedAccessException)
             {
@@ -474,22 +662,26 @@ namespace DS4WinWPF
 
         private void AttemptSave()
         {
-            if (!DS4Windows.Global.Save()) //if can't write to file
+            if (!_appSettingsService.Save()) //if can't write to file
             {
                 if (MessageBox.Show("Cannot write at current location\nCopy Settings to appdata?", "DS4Windows",
                     MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
                     try
                     {
-                        Directory.CreateDirectory(DS4Windows.Global.appDataPpath);
-                        File.Copy(DS4Windows.Global.exedirpath + "\\Profiles.xml",
-                            DS4Windows.Global.appDataPpath + "\\Profiles.xml");
-                        File.Copy(DS4Windows.Global.exedirpath + "\\Auto Profiles.xml",
-                            DS4Windows.Global.appDataPpath + "\\Auto Profiles.xml");
-                        Directory.CreateDirectory(DS4Windows.Global.appDataPpath + "\\Profiles");
-                        foreach (string s in Directory.GetFiles(DS4Windows.Global.exedirpath + "\\Profiles"))
+                        string roamingAppDataPath = _pathService.RoamingAppDataPath;
+                        // Global.exedirpath と同じ値（ジャンクション解決済みの実行ファイルの親フォルダ）。
+                        // IPathService.ExecutableDirectory（AppContext.BaseDirectory）とは値が異なりうるため使わない。
+                        string exeDirPath = Path.GetDirectoryName(_pathService.ExecutablePath);
+                        Directory.CreateDirectory(roamingAppDataPath);
+                        File.Copy(exeDirPath + "\\Profiles.xml",
+                            roamingAppDataPath + "\\Profiles.xml");
+                        File.Copy(exeDirPath + "\\Auto Profiles.xml",
+                            roamingAppDataPath + "\\Auto Profiles.xml");
+                        Directory.CreateDirectory(roamingAppDataPath + "\\Profiles");
+                        foreach (string s in Directory.GetFiles(exeDirPath + "\\Profiles"))
                         {
-                            File.Copy(s, DS4Windows.Global.appDataPpath + "\\Profiles\\" + Path.GetFileName(s));
+                            File.Copy(s, roamingAppDataPath + "\\Profiles\\" + Path.GetFileName(s));
                         }
                     }
                     catch { }
@@ -502,7 +694,11 @@ namespace DS4WinWPF
                         "DS4Windows");
                 }
 
-                DS4Windows.Global.appdatapath = null;
+                // TODO(Phase6-Step7 決定3＝P1): 意図的に Global へ直接書き込む。IPathService.AppDataPath のセッターは
+                // Global.appdatapath を変えない（PathService 内部の上書き用フィールドに保存するだけの孤立実装。呼出元0件）ため、
+                // 置き換え先にならない。セッターは Phase6-Step12 で削除候補とし、保存先の所有を PathService へ移す Phase7 で本行も解消する。
+                // Phase7-Step4 W4: 保存先の所有を PathService へ移した。状態そのものを null に戻す（旧 Global.appdatapath = null と同じ）。
+                DS4Windows.PathService.AppDataPathState = null;
                 skipSave = true;
                 Current.Shutdown();
                 return;
@@ -521,11 +717,19 @@ namespace DS4WinWPF
             {
                 // Retrieve info about installed ViGEmBus device if found.
                 // Might not be needed here
-                DS4Windows.Global.RefreshViGEmBusInfo();
+                _bootstrapEnvironmentService.RefreshViGEmBusInfo();
 
                 // Load DS4Windows config if it exists
-                DS4Windows.Global.FindConfigLocation();
-                bool readAppConfig = DS4Windows.Global.Load();
+                _bootstrapPathService.FindConfigLocation();
+
+                // Phase7-Step4 W2: 旧 Global.Load() は、中の AppHost.GetService が、起動引数なしでホストを暗黙に作っていた
+                // （K7-1 の残存経路）。ここで、起動引数つきで明示的にホストを作り、設定は IAppSettingsService で読む。
+                var driverInstallHost = AppHost.CreateHost(
+                    new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), parser,
+                    _bootstrapPathService, _bootstrapEnvironmentService);
+                var driverInstallSettings = (DS4Windows.DI.IAppSettingsService)driverInstallHost.Services
+                    .GetService(typeof(DS4Windows.DI.IAppSettingsService));
+                bool readAppConfig = driverInstallSettings.Load();
                 if (readAppConfig)
                 {
                     // Have app use selected culture
@@ -536,7 +740,8 @@ namespace DS4WinWPF
                 }
 
                 CreateBaseThread();
-                DS4Forms.WelcomeDialog dialog = new DS4Forms.WelcomeDialog(true);
+                DS4Forms.WelcomeDialog dialog = new DS4Forms.WelcomeDialog(
+                    _bootstrapEnvironmentService);
                 dialog.ShowDialog();
                 runShutdown = false;
                 exitApp = true;
@@ -544,7 +749,11 @@ namespace DS4WinWPF
             }
             else if (parser.ReenableDevice)
             {
-                DS4Windows.DS4Devices.reEnableDevice(parser.DeviceInstanceId);
+                // Phase7-Step4 W4（Q4＝A）: 第 1 層の静的な DS4Devices.reEnableDevice の直接呼び出しをやめ、IDs4DeviceRegistry の契約を通す。
+                // この分岐はホストを構築しない昇格した補助プロセスのため、状態を持たないアダプタを直接作る。
+                // 差: デバイスのインスタンス ID が空のときは、アダプタが何もせず戻る（旧: 例外で終了していた。不正な起動引数の場合のみ）。
+                DS4Windows.Services.IDs4DeviceRegistry reEnableRegistry = new DS4Windows.Services.Ds4DeviceRegistryAdapter();
+                reEnableRegistry.ReEnableDevice(parser.DeviceInstanceId);
                 runShutdown = false;
                 exitApp = true;
                 Current.Shutdown();
@@ -636,9 +845,14 @@ namespace DS4WinWPF
         {
             controlThread = new Thread(() =>
             {
-                rootHub = new DS4Windows.ControlService(parser);
+                // Phase 3 Followup Step F-2: registry comes from AppHost (registered in
+                // ServiceRegistration). AppHost.CreateHost() already ran before this method
+                // is called, so GetService should not be null; the null-coalesce is a
+                // startup-order safety net only, and 'new Ds4DeviceRegistryAdapter()' here
+                // is the same adapter class already registered, not a second implementation.
+                // Phase7-Step5 W4: 解決の窓口（ResolvePostHostService）を通す。解決できなければ InvalidOperationException（従来と同じ）
+                _controlService = ResolvePostHostService<DS4Windows.ControlService>();
 
-                DS4Windows.Program.rootHub = rootHub;
                 requestClient = new HttpClient();
                 requestClient.DefaultRequestHeaders.Add("User-Agent", "DS4Windows");
                 collectTimer = new Timer(GarbageTask, null, 30000, 30000);
@@ -655,7 +869,6 @@ namespace DS4WinWPF
         {
             controlThread = new Thread(() =>
             {
-                DS4Windows.Program.rootHub = rootHub;
                 requestClient = new HttpClient();
                 requestClient.DefaultRequestHeaders.Add("User-Agent", "DS4Windows");
                 collectTimer = new Timer(GarbageTask, null, 30000, 30000);
@@ -897,21 +1110,24 @@ namespace DS4WinWPF
         {
             if (runShutdown)
             {
-                if (rootHub != null)
+                if (_controlService != null)
                 {
                     Task.Run(() =>
                     {
-                        if (rootHub.running)
+                        if (_controlService.running)
                         {
-                            rootHub.Stop(immediateUnplug: true);
-                            rootHub.ShutDown();
+                            _controlService.Stop(immediateUnplug: true);
+                            _controlService.ShutDown();
                         }
                     }).Wait();
                 }
 
                 if (!skipSave)
                 {
-                    DS4Windows.Global.Save();
+                    // skipSave が false になるのは Application_Startup の Post-Host（InitializePostHostServices の後）だけなので、
+                    // ここでは _appSettingsService は必ず解決済み。CleanShutdown はホスト構築前の早期終了・例外でも呼ばれるため、
+                    // 念のため null 条件演算子で保護する（その場合は skipSave が true のままで、ここへは来ない）。
+                    _appSettingsService?.Save();
                 }
 
                 // Reset timer
@@ -927,6 +1143,30 @@ namespace DS4WinWPF
                 }
 
                 if (ipcClassNameMMF != null) ipcClassNameMMF.Dispose();
+
+                // Dispose controllers registered in IControllerRegistry (if present)
+                // Phase7-Step5 W4: ServiceProviderHolder.Provider の直接呼び出しをやめ、InitializePostHostServices で解決した
+                // レジストリを使う（ホスト構築前の早期終了では null のため、何もしない）。
+                try
+                {
+                    if (_controllerRegistry != null)
+                    {
+                        for (int d = 0; d < ControllerLimits.MaxControllerCount; d++)
+                        {
+                            try { _controllerRegistry.ClearControllersForDevice(d); } catch { }
+                        }
+                    }
+                }
+                catch { }
+
+                // Phase7-Step4 W2: ホストを破棄する。ドライバー破棄の順序（防壁 5）を守るため、コントローラーの停止
+                // （rootHub.Stop／ShutDown）と、レジストリの破棄の後に行う。Dispose の後は、GetService が暗黙にホストを
+                // 作り直さない。例外は握る（AppHost.Dispose も握る）。ログのフラッシュより前に行い、破棄中のログも出力する。
+                try
+                {
+                    AppHost.Dispose();
+                }
+                catch { }
 
                 LogManager.Flush();
                 LogManager.Shutdown();

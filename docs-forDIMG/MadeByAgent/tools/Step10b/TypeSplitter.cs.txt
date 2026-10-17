@@ -1,0 +1,223 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+// Phase6-Step10b 用: 複数のトップレベル型を持つ .cs を、1 ファイル 1 型へ分割する（宣言は一字一句そのまま移す）。
+public static class TypeSplitter
+{
+    public class Output
+    {
+        public string Path;        // 出力先の絶対パス
+        public string TypeName;
+        public string Text;        // 出力ファイルの全文
+        public string MemberText;  // 型の宣言テキスト（検証用）
+        public bool IsKeptOriginal;
+    }
+
+    public class Plan
+    {
+        public string Source;
+        public List<Output> Outputs = new List<Output>();
+        public List<string> Issues = new List<string>();
+        public bool DeleteSource;      // 元ファイルを削除する（全型を別名のファイルへ移す場合）
+        public bool Bom;
+        public string KeptType;
+    }
+
+    static string NameOf(MemberDeclarationSyntax m)
+    {
+        BaseTypeDeclarationSyntax t = m as BaseTypeDeclarationSyntax;
+        if (t != null) return t.Identifier.ValueText;
+        DelegateDeclarationSyntax d = m as DelegateDeclarationSyntax;
+        if (d != null) return d.Identifier.ValueText;
+        return null;
+    }
+
+    public static string KindOf(MemberDeclarationSyntax m)
+    {
+        if (m is EnumDeclarationSyntax) return "enum";
+        if (m is InterfaceDeclarationSyntax) return "interface";
+        if (m is StructDeclarationSyntax) return "struct";
+        if (m is RecordDeclarationSyntax) return "record";
+        if (m is ClassDeclarationSyntax) return "class";
+        if (m is DelegateDeclarationSyntax) return "delegate";
+        return "?";
+    }
+
+    static string ReadText(string path, out bool bom)
+    {
+        byte[] bytes = File.ReadAllBytes(path);
+        bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+        // 二重の BOM などはテキスト側に残す（そのまま複製する）
+        return new UTF8Encoding(false).GetString(bytes, bom ? 3 : 0, bytes.Length - (bom ? 3 : 0));
+    }
+
+    public static void WriteText(string path, string text, bool bom)
+    {
+        File.WriteAllBytes(path, new UTF8Encoding(bom).GetPreamble().Concat(new UTF8Encoding(false).GetBytes(text)).ToArray());
+    }
+
+    static bool DirectivesBalanced(string s)
+    {
+        int ifs = 0, endifs = 0, regions = 0, endregions = 0;
+        foreach (string line in s.Split('\n'))
+        {
+            string t = line.TrimStart();
+            if (t.StartsWith("#if")) ifs++;
+            else if (t.StartsWith("#endif")) endifs++;
+            else if (t.StartsWith("#region")) regions++;
+            else if (t.StartsWith("#endregion")) endregions++;
+        }
+        return ifs == endifs && regions == endregions;
+    }
+
+    // keepNameOverride: 元ファイルに残す型名（null なら、ファイル名と一致する型、無ければ最大の型を新ファイルへ）
+    public static Plan MakePlan(string path)
+    {
+        Plan plan = new Plan();
+        plan.Source = path;
+        bool bom;
+        string text = ReadText(path, out bom);
+        plan.Bom = bom;
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(text, new CSharpParseOptions(LanguageVersion.Latest));
+        var diags = tree.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+        if (diags.Count > 0)
+            plan.Issues.Add("構文エラー " + diags.Count + " 件（先頭: " + diags[0].ToString() + "）");
+        CompilationUnitSyntax root = tree.GetCompilationUnitRoot();
+
+        List<MemberDeclarationSyntax> members;
+        string header, footer = "", nsUsings = "";
+        string dir = System.IO.Path.GetDirectoryName(path);
+        string stem = System.IO.Path.GetFileNameWithoutExtension(path);
+        if (stem.EndsWith(".xaml")) stem = stem.Substring(0, stem.Length - 5);
+
+        var nsDecls = root.Members.OfType<BaseNamespaceDeclarationSyntax>().ToList();
+        var topTypes = root.Members.Where(x => !(x is BaseNamespaceDeclarationSyntax)).ToList();
+        if (nsDecls.Count > 1 || (nsDecls.Count == 1 && topTypes.Count > 0))
+        {
+            plan.Issues.Add("名前空間が複数、または名前空間の外に型がある（個別対応が必要）");
+            return plan;
+        }
+        if (nsDecls.Count == 1)
+        {
+            BaseNamespaceDeclarationSyntax ns = nsDecls[0];
+            members = ns.Members.ToList();
+            FileScopedNamespaceDeclarationSyntax fs = ns as FileScopedNamespaceDeclarationSyntax;
+            NamespaceDeclarationSyntax bl = ns as NamespaceDeclarationSyntax;
+            if (bl != null)
+            {
+                header = text.Substring(0, bl.OpenBraceToken.FullSpan.End);
+                footer = text.Substring(bl.CloseBraceToken.FullSpan.Start);
+            }
+            else
+            {
+                header = text.Substring(0, fs.SemicolonToken.FullSpan.End);
+                footer = "";
+            }
+            StringBuilder sbu = new StringBuilder();
+            foreach (UsingDirectiveSyntax u in ns.Usings) sbu.Append(text.Substring(u.FullSpan.Start, u.FullSpan.Length));
+            nsUsings = sbu.ToString();
+            if (ns.Externs.Count > 0) plan.Issues.Add("extern alias がある");
+        }
+        else
+        {
+            members = topTypes;
+            int end = 0;
+            if (root.Usings.Count > 0) end = root.Usings.Last().FullSpan.End;
+            header = text.Substring(0, end);
+        }
+
+        var typeMembers = members.Where(m => NameOf(m) != null).ToList();
+        if (typeMembers.Count != members.Count)
+            plan.Issues.Add("型以外のメンバーがある");
+        if (typeMembers.Count < 2) { plan.Issues.Add("複数型ではない（" + typeMembers.Count + " 型）"); return plan; }
+
+        // 名前の重複（同一ファイル内の同名型）
+        var dup = typeMembers.GroupBy(m => NameOf(m)).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        if (dup.Count > 0) plan.Issues.Add("同名の型が複数: " + string.Join(", ", dup));
+
+        // 各メンバーのディレクティブの整合
+        foreach (MemberDeclarationSyntax m in typeMembers)
+        {
+            string mt = text.Substring(m.FullSpan.Start, m.FullSpan.Length);
+            if (!DirectivesBalanced(mt)) plan.Issues.Add("ディレクティブ（#if／#region）が型 " + NameOf(m) + " の内外で対応していない");
+        }
+        if (header.IndexOf("#if", StringComparison.Ordinal) >= 0 || footer.IndexOf("#endif", StringComparison.Ordinal) >= 0)
+            plan.Issues.Add("ヘッダーまたはフッターにディレクティブがある");
+
+        // 元ファイルに残す型
+        MemberDeclarationSyntax keep = typeMembers.FirstOrDefault(m => string.Equals(NameOf(m), stem, StringComparison.Ordinal));
+        bool stemMatched = keep != null;
+        if (keep == null) keep = typeMembers.OrderByDescending(m => m.FullSpan.Length).First();
+        plan.KeptType = NameOf(keep);
+        plan.DeleteSource = !stemMatched;
+
+        foreach (MemberDeclarationSyntax m in typeMembers)
+        {
+            string name = NameOf(m);
+            string memberText = text.Substring(m.FullSpan.Start, m.FullSpan.Length);
+            string body = header + nsUsings + memberText + footer;
+            string outPath;
+            bool isKept = object.ReferenceEquals(m, keep);
+            if (isKept && stemMatched) outPath = path;
+            else outPath = System.IO.Path.Combine(dir, name + ".cs");
+            // 末尾に改行が無い場合の補正はしない（元のまま）
+            plan.Outputs.Add(new Output { Path = outPath, TypeName = name, Text = body, MemberText = memberText, IsKeptOriginal = isKept });
+        }
+
+        // 出力先の衝突（元ファイル以外の既存ファイル。大文字・小文字の差も含む）
+        foreach (Output o in plan.Outputs)
+        {
+            if (string.Equals(o.Path, path, StringComparison.OrdinalIgnoreCase)) continue;
+            if (File.Exists(o.Path)) plan.Issues.Add("出力先が既存: " + o.Path);
+        }
+        var outNames = plan.Outputs.GroupBy(o => o.Path.ToLowerInvariant()).Where(g => g.Count() > 1).ToList();
+        if (outNames.Count > 0) plan.Issues.Add("出力先の重複");
+        return plan;
+    }
+
+    // 書き込み。戻り値: 検証エラー（空なら合格）
+    public static List<string> Apply(Plan plan)
+    {
+        List<string> errors = new List<string>();
+        // 元ファイルを削除する場合（全型を別名へ移す）、または大文字・小文字のみ異なる出力がある場合は、先に削除する
+        bool deletedFirst = false;
+        if (plan.DeleteSource || plan.Outputs.Any(o => !string.Equals(o.Path, plan.Source, StringComparison.Ordinal) && string.Equals(o.Path, plan.Source, StringComparison.OrdinalIgnoreCase)))
+        {
+            File.Delete(plan.Source);
+            deletedFirst = true;
+        }
+        foreach (Output o in plan.Outputs)
+            WriteText(o.Path, o.Text, plan.Bom);
+
+        // 検証: 再読み込みして、1 ファイル 1 型・宣言の一致・構文エラー 0 を確認する
+        foreach (Output o in plan.Outputs)
+        {
+            bool b;
+            string t = ReadText(o.Path, out b);
+            if (b != plan.Bom) errors.Add(o.Path + ": BOM が一致しない");
+            if (t != o.Text) errors.Add(o.Path + ": 書き込み内容が計画と一致しない");
+            SyntaxTree tree = CSharpSyntaxTree.ParseText(t, new CSharpParseOptions(LanguageVersion.Latest));
+            if (tree.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
+                errors.Add(o.Path + ": 構文エラー");
+            CompilationUnitSyntax root = tree.GetCompilationUnitRoot();
+            IEnumerable<MemberDeclarationSyntax> ms;
+            var ns = root.Members.OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault();
+            ms = ns != null ? ns.Members : root.Members;
+            var typeMs = ms.Where(m => NameOf(m) != null).ToList();
+            if (typeMs.Count != 1) errors.Add(o.Path + ": トップレベル型が " + typeMs.Count + " 個");
+            else
+            {
+                if (NameOf(typeMs[0]) != o.TypeName) errors.Add(o.Path + ": 型名が一致しない");
+                string mt = t.Substring(typeMs[0].FullSpan.Start, typeMs[0].FullSpan.Length);
+                if (mt != o.MemberText) errors.Add(o.Path + ": 宣言テキストが一致しない（" + o.TypeName + "）");
+            }
+        }
+        return errors;
+    }
+}

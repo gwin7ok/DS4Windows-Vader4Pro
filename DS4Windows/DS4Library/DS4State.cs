@@ -283,8 +283,8 @@ namespace DS4Windows
         {
             double sinAngle = Math.Sin(rotationRad), cosAngle = Math.Cos(rotationRad);
             double tempLX = LX - 128.0, tempLY = LY - 128.0;
-            LX = (Byte)(Global.Clamp(-128.0, (tempLX * cosAngle - tempLY * sinAngle), 127.0) + 128.0);
-            LY = (Byte)(Global.Clamp(-128.0, (tempLX * sinAngle + tempLY * cosAngle), 127.0) + 128.0);
+            LX = (Byte)(NumericUtil.Clamp(-128.0, (tempLX * cosAngle - tempLY * sinAngle), 127.0) + 128.0);
+            LY = (Byte)(NumericUtil.Clamp(-128.0, (tempLX * sinAngle + tempLY * cosAngle), 127.0) + 128.0);
         }
 
         /// <summary>
@@ -295,8 +295,8 @@ namespace DS4Windows
         {
             double sinAngle = Math.Sin(rotationRad), cosAngle = Math.Cos(rotationRad);
             double tempRX = RX - 128.0, tempRY = RY - 128.0;
-            RX = (Byte)(Global.Clamp(-128.0, (tempRX * cosAngle - tempRY * sinAngle), 127.0) + 128.0);
-            RY = (Byte)(Global.Clamp(-128.0, (tempRX * sinAngle + tempRY * cosAngle), 127.0) + 128.0);
+            RX = (Byte)(NumericUtil.Clamp(-128.0, (tempRX * cosAngle - tempRY * sinAngle), 127.0) + 128.0);
+            RY = (Byte)(NumericUtil.Clamp(-128.0, (tempRX * sinAngle + tempRY * cosAngle), 127.0) + 128.0);
         }
     }
 }

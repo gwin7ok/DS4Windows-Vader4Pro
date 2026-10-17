@@ -33,13 +33,4 @@ namespace DS4WinWPF.DS4Control.DTOXml
             return result;
         }
     }
-
-    /// <summary>
-    /// StringWriter derived class used to ensure XML encoding is declared
-    /// as utf-8 rather than utf-16
-    /// </summary>
-    public sealed class Utf8StringWriter : StringWriter
-    {
-        public override Encoding Encoding => Encoding.UTF8;
-    }
 }

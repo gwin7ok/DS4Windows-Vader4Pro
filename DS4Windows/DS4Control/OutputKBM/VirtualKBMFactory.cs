@@ -31,7 +31,7 @@ namespace DS4Windows.DS4Control
             if (identifier == DEFAULT_IDENTIFIER)
             {
                 // Run through event handler discovery routine
-                if (Global.fakerInputInstalled)
+                if (EnvironmentService.FakerInputInstalledState)
                 {
                     handler = new FakerInputHandler();
                 }

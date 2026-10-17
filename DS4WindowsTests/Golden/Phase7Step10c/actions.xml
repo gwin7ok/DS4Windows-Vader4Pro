@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--C-->
+<Actions>
+  <Action Name="Golden_Macro">
+    <Trigger>Cross</Trigger>
+    <Type>Macro</Type>
+    <Details>65/66/67</Details>
+    <Extras>Hold</Extras>
+  </Action>
+  <Action Name="Golden_Program">
+    <Trigger>Circle</Trigger>
+    <Type>Program</Type>
+    <Details>C:/golden/a.exe</Details>
+    <Arguements>-arg</Arguements>
+    <Delay>3</Delay>
+  </Action>
+  <Action Name="Golden_Profile">
+    <Trigger>Square</Trigger>
+    <Type>Profile</Type>
+    <Details>Golden_ProfileName</Details>
+    <UnloadTrigger>Triangle</UnloadTrigger>
+  </Action>
+  <Action Name="Golden_Key">
+    <Trigger>L1</Trigger>
+    <Type>Key</Type>
+    <Details>65</Details>
+    <UnloadTrigger>R1</UnloadTrigger>
+    <SwitchMode>Toggle</SwitchMode>
+  </Action>
+  <Action Name="Golden_Disconnect">
+    <Trigger>L2</Trigger>
+    <Type>DisconnectBT</Type>
+    <Details>5</Details>
+  </Action>
+  <Action Name="Golden_Battery">
+    <Trigger>R2</Trigger>
+    <Type>BatteryCheck</Type>
+    <Details>50</Details>
+  </Action>
+  <Action Name="Golden_Multi">
+    <Trigger>Cross/Circle</Trigger>
+    <Type>MultiAction</Type>
+    <Details>Golden_Macro/Golden_Program</Details>
+  </Action>
+  <Action Name="Golden_Edit">
+    <Trigger>Square</Trigger>
+    <Type>Program</Type>
+    <Details>C:/golden/c.exe</Details>
+    <Arguements>
+    </Arguements>
+    <Delay>1</Delay>
+  </Action>
+</Actions>

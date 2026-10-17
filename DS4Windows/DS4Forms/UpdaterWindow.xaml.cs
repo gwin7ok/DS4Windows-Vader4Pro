@@ -37,8 +37,15 @@ namespace DS4WinWPF.DS4Forms
 
         private UpdaterWindowViewModel updaterWinVM;
 
-        public UpdaterWindow(string newversion)
+        // Phase6-Step10-1-3: Global.IsAdministrator／Global.LastVersionChecked の置換先。MainWindow が保持済みのサービスを渡す（Pure DI）。
+        private readonly DS4Windows.DI.IEnvironmentService _environmentService;
+
+        public UpdaterWindow(string newversion, DS4Windows.DI.IEnvironmentService environmentService,
+            DS4Windows.DI.IAppSettingsService appSettingsService)
         {
+            _environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
+            if (appSettingsService == null) throw new ArgumentNullException(nameof(appSettingsService));
+
             InitializeComponent();
 
             // Keep window title localized via Properties.Resources (preserve existing Japanese title)
@@ -48,7 +55,7 @@ namespace DS4WinWPF.DS4Forms
             var engCulture = CultureInfo.GetCultureInfo("en");
             string downloadStr = DS4WinWPF.Translations.Strings.ResourceManager.GetString("DownloadVersion", engCulture) ?? "A new version *number* has been released.";
             captionTextBlock.Text = downloadStr.Replace("*number*", newversion);
-            updaterWinVM = new UpdaterWindowViewModel(newversion);
+            updaterWinVM = new UpdaterWindowViewModel(newversion, appSettingsService);
 
             DataContext = updaterWinVM;
 
@@ -91,7 +98,7 @@ namespace DS4WinWPF.DS4Forms
                     }
 
                     string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
-                    bool runningAsAdmin = DS4Windows.Global.IsAdministrator();
+                    bool runningAsAdmin = _environmentService.IsAdministrator();
                     string launchMode = runningAsAdmin ? "admin" : "user";
                     var psi = new System.Diagnostics.ProcessStartInfo(ds4UpdaterExe)
                     {
@@ -234,7 +241,7 @@ namespace DS4WinWPF.DS4Forms
                                         AppLogger.LogToTray(DS4WinWPF.Translations.Strings.InstallSuccess_Notification);
                                     }
                                     string ds4WindowsExe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
-                                    bool runningAsAdmin2 = DS4Windows.Global.IsAdministrator();
+                                    bool runningAsAdmin2 = _environmentService.IsAdministrator();
                                     string launchMode2 = runningAsAdmin2 ? "admin" : "user";
                                     var psi2 = new System.Diagnostics.ProcessStartInfo(System.IO.Path.Combine(ds4UpdaterDir, "DS4Updater.exe"))
                                     {

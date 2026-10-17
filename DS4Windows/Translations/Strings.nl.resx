@@ -820,9 +820,6 @@ Let op: deze optie werkt niet in een admin map zonder gebruikersaccountbeheer</v
   <data name="LinkProfileId" xml:space="preserve">
     <value>Link profiel/ID</value>
   </data>
-  <data name="MainWin.AbsDisplayMonitor" xml:space="preserve">
-    <value>Absolute beeldscherm weergave</value>
-  </data>
   <data name="MainWin.EnableServer" xml:space="preserve">
     <value>Server inschakelen</value>
   </data>
@@ -1353,29 +1350,8 @@ Uitgeschakeld:
   <data name="ViGEm117MinNeeded" xml:space="preserve">
     <value>Werkt enkel met ViGEmBus 1.17.333.0 en nieuwer</value>
   </data>
-  <data name="AbsoluteMouse" xml:space="preserve">
-    <value>Absolute muis</value>
-  </data>
-  <data name="AbsoluteMouseOptions" xml:space="preserve">
-    <value>Absolute muis opties</value>
-  </data>
   <data name="AntiRadius" xml:space="preserve">
     <value>Anti-straal</value>
-  </data>
-  <data name="BindingWin.AbsMouse" xml:space="preserve">
-    <value>Absolute muis</value>
-  </data>
-  <data name="BindingWin.AbsMouseDown" xml:space="preserve">
-    <value>Absolute muis naar beneden</value>
-  </data>
-  <data name="BindingWin.AbsMouseLeft" xml:space="preserve">
-    <value>Absolute muis naar links</value>
-  </data>
-  <data name="BindingWin.AbsMouseRight" xml:space="preserve">
-    <value>Absolute muis naar rechts</value>
-  </data>
-  <data name="BindingWin.AbsMouseUp" xml:space="preserve">
-    <value>Absolute muis naar boven</value>
   </data>
   <data name="SpecialActionEdit.ReleasingUnloadTrigger" xml:space="preserve">
     <value>Ontlaad trigger loslaten</value>

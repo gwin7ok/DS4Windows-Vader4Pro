@@ -26,11 +26,14 @@ namespace DS4WinWPF.DS4Forms
     /// </summary>
     public partial class About : Window
     {
-        public About()
+        // Phase6-Step10-1-3: Global.exeversion の置換先。MainWindow が保持済みのサービスを渡す（Pure DI）。
+        public About(DS4Windows.DI.IEnvironmentService environmentService)
         {
+            if (environmentService == null) throw new System.ArgumentNullException(nameof(environmentService));
+
             InitializeComponent();
 
-            string version = $"{Global.exeversion})";
+            string version = $"{environmentService.ApplicationVersion})";
             headerLb.Content += version;
         }
 

@@ -7,15 +7,18 @@ namespace DS4WinWPF.DS4Control;
 public class Debouncer(TimeSpan duration)
 {
     private readonly Dictionary<string, DebouncerInstance> _debouncers = new();
+    // Phase6-Step12: SetDuration で更新される現在の持続時間。コンストラクタ引数 duration は生成時の値のまま変わらず、
+    // 0 で生成したあとに SetDuration で 0 より大きくしても、ProcessInput の先頭の判定が古い値（0）を見て、デバウンスが働かなかった。
+    private TimeSpan _duration = duration;
 
     public void AddDebouncer(string name)
     {
-        _debouncers[name] = new DebouncerInstance(duration);
+        _debouncers[name] = new DebouncerInstance(_duration);
     }
 
     public DS4State ProcessInput(DS4State cState)
     {
-        if (duration.TotalMilliseconds == 0) return cState;
+        if (_duration.TotalMilliseconds == 0) return cState;
 
         DS4State modifiedState = new();
         cState.CopyTo(modifiedState);
@@ -32,6 +35,7 @@ public class Debouncer(TimeSpan duration)
 
     public void SetDuration(TimeSpan newDuration)
     {
+        _duration = newDuration;
         foreach (var debouncer in _debouncers.Values)
         {
             debouncer.Duration = newDuration;

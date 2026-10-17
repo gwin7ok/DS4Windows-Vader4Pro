@@ -28,6 +28,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 
 namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
@@ -88,8 +89,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
         }
         public event EventHandler ProgramNameChanged;
 
-        public LaunchProgramViewModel()
+        public LaunchProgramViewModel(ISpecialActionRepository specialActionRepository)
         {
+            this.specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
             FilepathChanged += LaunchProgramViewModel_FilepathChanged;
         }
 
@@ -106,9 +108,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             arguments = action.extra;
         }
 
+        // Phase6-Step10-3-2: Global.SaveAction の置換先（必須引数）
+        private readonly ISpecialActionRepository specialActionRepository;
+
         public void SaveAction(SpecialAction action, bool edit = false)
         {
-            Global.SaveAction(action.name, action.controls, 2, $"{filepath}?{delay.ToString("#.##", Global.configFileDecimalCulture)}", edit, delay, arguments);
+            specialActionRepository.SaveAction(action.name, action.controls, 2, $"{filepath}?{delay.ToString("#.##", Global.configFileDecimalCulture)}", edit, delay, arguments);
         }
 
         public override bool IsValid(SpecialAction action)

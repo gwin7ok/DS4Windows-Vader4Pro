@@ -17,11 +17,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
+using DS4Windows;
 
 namespace DS4WinWPF.DS4Control
 {
-    public class FakeTrackball
+    public class FakeTrackball : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         public const int TRACKBALL_INIT_FICTION = 10;
         public const int TRACKBALL_MASS = 45;
         public const double TRACKBALL_RADIUS = 0.0245;

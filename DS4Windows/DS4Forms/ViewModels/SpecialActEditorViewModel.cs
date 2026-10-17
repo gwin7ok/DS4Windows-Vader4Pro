@@ -24,6 +24,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
@@ -46,6 +47,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private List<string> controlTriggerList = new List<string>();
         private List<string> controlUnloadTriggerList = new List<string>();
         private bool editMode;
+        // Phase6-Step10-3-2: Global.GetActions の置換先（必須引数。ActionList は Global.GetActions と同じリスト）
+        private readonly ISpecialActionRepository specialActionRepository;
 
         public int DeviceNum { get => deviceNum; }
         public int ActionTypeIndex { get => actionTypeIndex; set => actionTypeIndex = value; }
@@ -69,8 +72,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private bool existingName;
 
 
-        public SpecialActEditorViewModel(int deviceNum, SpecialAction action)
+        public SpecialActEditorViewModel(int deviceNum, SpecialAction action, ISpecialActionRepository specialActionRepository)
         {
+            this.specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
             this.deviceNum = deviceNum;
             savedaction = action;
             editMode = savedaction != null;
@@ -102,6 +106,19 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 {
                     actionTypeIndex = i;
                     break;
+                }
+            }
+            // If action.typeID is Button but Button is not in typeAssoc (UI combines Key and Button into the "Press Key" tab),
+            // map Button to the same index as Key so the Press Key tab is selected.
+            if (action.typeID == SpecialAction.ActionTypeId.Button && actionTypeIndex == 0)
+            {
+                for (int i = 0; i < typeAssoc.Length; i++)
+                {
+                    if (typeAssoc[i] == SpecialAction.ActionTypeId.Key)
+                    {
+                        actionTypeIndex = i;
+                        break;
+                    }
                 }
             }
         }
@@ -137,7 +154,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 // or if the action name has changed. Use normalized names so
                 // that case/whitespace differences are treated as duplicates.
                 var normNew = DS4Windows.Util.NormalizeActionName(actionName);
-                foreach (SpecialAction sA in Global.GetActions())
+                foreach (SpecialAction sA in specialActionRepository.ActionList)
                 {
                     var normExisting = DS4Windows.Util.NormalizeActionName(sA?.name);
                     if (string.Equals(normExisting, normNew, StringComparison.OrdinalIgnoreCase))

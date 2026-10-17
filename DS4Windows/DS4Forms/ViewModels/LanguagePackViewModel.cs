@@ -50,14 +50,18 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public event EventHandler SelectedIndexChanged;
         public event EventHandler ScanFinished;
 
-        public LanguagePackViewModel()
+        // Phase6-Step10-1-4: Global.UseLang の置換先（必須引数。null は拒否する）
+        private readonly DS4Windows.DI.IAppSettingsService _appSettingsService;
+
+        public LanguagePackViewModel(DS4Windows.DI.IAppSettingsService appSettingsService)
         {
+            _appSettingsService = appSettingsService ?? throw new ArgumentNullException(nameof(appSettingsService));
         }
 
         public void ScanForLangPacks()
         {
             string tempculture = Thread.CurrentThread.CurrentUICulture.Name;
-            AppLogger.LogDebug($"LanguagePackViewModel: ScanForLangPacks starting. Thread.CurrentUICulture='{tempculture}', Global.UseLang='{Global.UseLang}'");
+            AppLogger.LogDebug($"LanguagePackViewModel: ScanForLangPacks starting. Thread.CurrentUICulture='{tempculture}', Global.UseLang='{_appSettingsService.UseLang}'");
             //string tempculture = new CultureInfo(Global.UseLang).Name;
             Task.Run(() =>
             {
@@ -85,9 +89,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 LangPackItem item = langPackList[selectedIndex];
                 string newValue = item.Name;
-                if (newValue != Global.UseLang)
+                if (newValue != _appSettingsService.UseLang)
                 {
-                    Global.UseLang = newValue;
+                    _appSettingsService.UseLang = newValue;
                     //Global.Save();
                     result = true;
                 }
@@ -120,21 +124,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 Global.LANGUAGE_ASSEMBLY_NAME))
                 .Where(path => File.Exists(path))
                 .Count() > 0;
-        }
-    }
-
-    public class LangPackItem
-    {
-        private string name;
-        private string nativeName;
-
-        public string Name { get => name; }
-        public string NativeName { get => nativeName; }
-
-        public LangPackItem(string name, string nativeName)
-        {
-            this.name = name;
-            this.nativeName = nativeName;
         }
     }
 }

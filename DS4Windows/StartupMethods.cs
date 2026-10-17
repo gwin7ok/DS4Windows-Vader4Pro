@@ -28,7 +28,9 @@ namespace DS4WinWPF
     public static class StartupMethods
     {
         public static string lnkpath = Environment.GetFolderPath(Environment.SpecialFolder.Startup) + "\\DS4Windows.lnk";
-        private static string taskBatPath = Path.Combine(DS4Windows.Global.exedirpath, "task.bat");
+        // Phase6-Step10-1-5（決定4＝A）: 静的クラスのまま、プログラムフォルダと実行ファイルの場所は引数で受け取る
+        // （呼び出し側が IPathService.ProgramDirectory／ExecutablePath を渡す。置換前は Global.exedirpath／exelocation／exeFileName を直接参照していた）。
+        private static string GetTaskBatPath(string programDirectory) => Path.Combine(programDirectory, "task.bat");
 
         public static bool HasStartProgEntry()
         {
@@ -44,7 +46,9 @@ namespace DS4WinWPF
             return tasker != null;
         }
 
-        public static void WriteStartProgEntry()
+        /// <param name="exeLocation">実行ファイルのフルパス（IPathService.ExecutablePath）</param>
+        /// <param name="programDirectory">プログラムフォルダ（IPathService.ProgramDirectory）</param>
+        public static void WriteStartProgEntry(string exeLocation, string programDirectory)
         {
             Type t = Type.GetTypeFromCLSID(new Guid("72C24DD5-D70A-438B-8A42-98424B88AFB8")); // Windows Script Host Shell Object
             dynamic shell = Activator.CreateInstance(t);
@@ -53,12 +57,12 @@ namespace DS4WinWPF
                 var lnk = shell.CreateShortcut(lnkpath);
                 try
                 {
-                    string app = DS4Windows.Global.exelocation;
-                    lnk.TargetPath = DS4Windows.Global.exelocation;
+                    string app = exeLocation;
+                    lnk.TargetPath = exeLocation;
                     lnk.Arguments = "-m";
                     // Need to add the DS4Windows directory as cwd or
                     // language assemblies cannot be discovered
-                    lnk.WorkingDirectory = DS4Windows.Global.exedirpath;
+                    lnk.WorkingDirectory = programDirectory;
 
                     //lnk.TargetPath = Assembly.GetExecutingAssembly().Location;
                     //lnk.Arguments = "-m";
@@ -84,8 +88,10 @@ namespace DS4WinWPF
             }
         }
 
-        public static void DeleteOldTaskEntry()
+        /// <param name="programDirectory">プログラムフォルダ（IPathService.ProgramDirectory）</param>
+        public static void DeleteOldTaskEntry(string programDirectory)
         {
+            string taskBatPath = GetTaskBatPath(programDirectory);
             TaskService ts = new TaskService();
             Task tasker = ts.FindTask("RunDS4Windows");
             if (tasker != null)
@@ -116,18 +122,20 @@ namespace DS4WinWPF
             return result;
         }
 
-        public static void WriteTaskEntry()
+        /// <param name="programDirectory">プログラムフォルダ（IPathService.ProgramDirectory）</param>
+        /// <param name="exeFileName">実行ファイル名（Path.GetFileName(IPathService.ExecutablePath)）</param>
+        public static void WriteTaskEntry(string programDirectory, string exeFileName)
         {
             DeleteTaskEntry();
 
             // Create new version of task.bat file using current exe
             // filename. Allow dynamic file
-            RefreshTaskBat();
+            RefreshTaskBat(programDirectory, exeFileName);
 
             TaskService ts = new TaskService();
             TaskDefinition td = ts.NewTask();
             td.Triggers.Add(new LogonTrigger());
-            string dir = DS4Windows.Global.exedirpath;
+            string dir = programDirectory;
             td.Actions.Add(new ExecAction($@"{dir}\task.bat",
                 "",
                 dir));
@@ -148,10 +156,11 @@ namespace DS4WinWPF
             }
         }
 
-        public static bool CheckStartupExeLocation()
+        /// <param name="exeLocation">実行ファイルのフルパス（IPathService.ExecutablePath）</param>
+        public static bool CheckStartupExeLocation(string exeLocation)
         {
             string lnkprogpath = ResolveShortcut(lnkpath);
-            return lnkprogpath != DS4Windows.Global.exelocation;
+            return lnkprogpath != exeLocation;
         }
 
         public static void LaunchOldTask()
@@ -189,9 +198,9 @@ namespace DS4WinWPF
             return result;
         }
 
-        private static void RefreshTaskBat()
+        private static void RefreshTaskBat(string programDirectory, string exeFileName)
         {
-            string dir = DS4Windows.Global.exedirpath;
+            string dir = programDirectory;
             string path = $@"{dir}\task.bat";
             FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.Write);
             using (StreamWriter w = new StreamWriter(fileStream))
@@ -199,7 +208,7 @@ namespace DS4WinWPF
                 string temp = string.Empty;
                 w.WriteLine("@echo off"); // Turn off echo
                 w.WriteLine("SET mypath=\"%~dp0\"");
-                temp = $"cmd.exe /c start \"RunDS4Windows\" %mypath%\\{DS4Windows.Global.exeFileName} -m";
+                temp = $"cmd.exe /c start \"RunDS4Windows\" %mypath%\\{exeFileName} -m";
                 w.WriteLine(temp);
                 w.WriteLine("exit");
             }

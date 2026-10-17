@@ -4,16 +4,16 @@
         {
             "label": "Release win-x64",
             "type": "shell",
-            "command": "dotnet",
+            "command": "pwsh",
             "args": [
-                "publish",
-                "./DS4Windows/DS4WinWPF.csproj",
-                "-c", "Release",
-                "/p:platform=x64",
-                "/p:AppendTargetFrameworkToOutputPath=false",
-                "-o", "./DS4Windows/bin/x64/Release"
+                "-NoProfile",
+                "-File",
+                "./scripts/publish-win-x64.ps1"
             ],
-            "group": "build"
+            "group": "build",
+            "presentation": {
+                "showReuseMessage": false
+            }
         },
         {
             "label": "post-build-x64",
@@ -27,21 +27,46 @@
                 "${workspaceFolder}/DS4Windows"
             ],
             "group": "build",
-            "dependsOn": "Release win-x64"
+            "dependsOn": "Release win-x64",
+            "presentation": {
+                "showReuseMessage": false
+            }
         },
         {
             "label": "Publish: (Release win-x64)",
             "dependsOrder": "sequence",
             "dependsOn": [
+                "Remove bin",
                 "Release win-x64",
                 "post-build-x64"
             ],
             "group": {
-                "kind": "build",
-                "isDefault": true
+                "kind": "build"
             }
-        }
-        ,
+        },
+        {
+            "label": "Remove bin",
+            "type": "shell",
+            "command": "& \".\\scripts\\Remove-bin.bat\"",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Update Changelog",
+            "type": "shell",
+            "command": "pwsh",
+            "args": [
+                "-NoProfile",
+                "-File",
+                "./scripts/update-summary.ps1"
+            ],
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
         {
             "label": "release-tag-and-push-short",
             "type": "shell",
@@ -54,10 +79,10 @@
             ],
             "presentation": {
                 "reveal": "always",
-                "panel": "shared"
+                "panel": "shared",
+                "showReuseMessage": false
             }
-        }
-        ,
+        },
         {
             "label": "release: publish-and-create-release",
             "type": "shell",
@@ -71,7 +96,144 @@
             ],
             "presentation": {
                 "reveal": "always",
-                "panel": "shared"
+                "panel": "shared",
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Build Debug",
+            "dependsOn": "Remove bin",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "./DS4Windows/DS4WinWPF.csproj",
+                "-c",
+                "Debug",
+                "/p:platform=x64",
+                "-o",
+                "./DS4Windows/bin/x64/Debug"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Build Test (Actions)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "./DS4WindowsTests/DS4Windows.Actions.Tests.csproj",
+                "-c",
+                "Debug",
+                "/p:platform=x64",
+                "--no-dependencies"
+            ],
+            "group": "build",
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Build Test (Standalone)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "./StandaloneTests/StandaloneTests.csproj",
+                "-c",
+                "Debug",
+                "/p:platform=x64",
+                "--no-dependencies"
+            ],
+            "group": "build",
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Build Test",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build Test (Actions)",
+                "Build Test (Standalone)"
+            ],
+            "group": {
+                "kind": "build"
+            }
+        },
+        {
+            "label": "Execute Test (Actions)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "./DS4WindowsTests/DS4Windows.Actions.Tests.csproj",
+                "-c",
+                "Debug",
+                "/p:platform=x64",
+                "--no-build",
+                "--blame-hang",
+                "--blame-hang-timeout",
+                "15s",
+                "-v",
+                "normal"
+            ],
+            "group": "test",
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Execute Test (Standalone)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "./StandaloneTests/StandaloneTests.csproj",
+                "-c",
+                "Debug",
+                "/p:platform=x64",
+                "--no-build",
+                "--blame-hang",
+                "--blame-hang-timeout",
+                "15s",
+                "-v",
+                "normal"
+            ],
+            "group": "test",
+            "presentation": {
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Execute Test",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Execute Test (Actions)",
+                "Execute Test (Standalone)"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Debug ALL",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Build Debug",
+                "Build Test",
+                "Execute Test"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
             }
         }
     ]

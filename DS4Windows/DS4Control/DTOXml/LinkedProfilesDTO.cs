@@ -104,19 +104,4 @@ namespace DS4WinWPF.DS4Control.DTOXml
             }
         }
     }
-
-    public class LinkedProfileItem
-    {
-        [XmlIgnore]
-        public string Serial
-        {
-            get; set;
-        }
-
-        [XmlIgnore]
-        public string Profile
-        {
-            get; set;
-        }
-    }
 }

@@ -1,0 +1,5 @@
+DS4Windows/DI/AppHost.cs
+DS4Windows/DI/IDeviceStateService.cs
+DS4Windows/DI/INotificationService.cs
+DS4Windows/DI/IOutputSlotService.cs
+DS4Windows/DI/IProfileSettingsService.cs

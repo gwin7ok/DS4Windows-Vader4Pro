@@ -951,12 +951,6 @@
   <data name="StickOuterBindTooltip" xml:space="preserve">
     <value>当摇杆行程超过阈值时，执行一个动作。当映射的按键是静步或疾跑时很有用。反转可以放动作在到达阈值前一直执行。</value>
   </data>
-  <data name="AbsoluteMouse" xml:space="preserve">
-    <value>绝对鼠标</value>
-  </data>
-  <data name="AbsoluteMouseOptions" xml:space="preserve">
-    <value>绝对鼠标选项</value>
-  </data>
   <data name="Active" xml:space="preserve">
     <value>激活</value>
   </data>
@@ -977,21 +971,6 @@
   </data>
   <data name="AxisConfig" xml:space="preserve">
     <value>轴向相关配置</value>
-  </data>
-  <data name="BindingWin.AbsMouse" xml:space="preserve">
-    <value>绝对鼠标</value>
-  </data>
-  <data name="BindingWin.AbsMouseDown" xml:space="preserve">
-    <value>绝对鼠标 下</value>
-  </data>
-  <data name="BindingWin.AbsMouseLeft" xml:space="preserve">
-    <value>绝对鼠标 左</value>
-  </data>
-  <data name="BindingWin.AbsMouseRight" xml:space="preserve">
-    <value>绝对鼠标 右</value>
-  </data>
-  <data name="BindingWin.AbsMouseUp" xml:space="preserve">
-    <value>绝对鼠标 上</value>
   </data>
   <data name="BindingWin.ChangeLight" xml:space="preserve">
     <value>改变灯光</value>
@@ -1112,9 +1091,6 @@
   </data>
   <data name="LinkProfileId" xml:space="preserve">
     <value>链接配置/ID</value>
-  </data>
-  <data name="MainWin.AbsDisplayMonitor" xml:space="preserve">
-    <value>绝对显示器设置</value>
   </data>
   <data name="MainWin.EnableServer" xml:space="preserve">
     <value>启用服务器</value>

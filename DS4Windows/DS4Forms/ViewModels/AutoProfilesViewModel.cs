@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 using System;
 using System.Collections.Generic;
@@ -45,9 +46,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private int selectedIndex = -1;
         private ProgramItem selectedItem;
         private HashSet<string> existingapps;
+        private readonly IAppSettingsService _appSettings;
+        private readonly IAutoProfileService _autoProfileService;
+        private readonly ControlService _controlService;
 
         public ObservableCollection<ProgramItem> ProgramColl { get => programColl; }
-        
+
         public AutoProfileHolder AutoProfileHolder { get => autoProfileHolder; }
 
         public int SelectedIndex { get => selectedIndex; set => selectedIndex = value; }
@@ -72,13 +76,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool RevertDefaultProfileOnUnknown
         {
-            get => Global.AutoProfileRevertDefaultProfile;
-            set => Global.AutoProfileRevertDefaultProfile = value;
+            get => _appSettings.AutoProfileRevertDefaultProfile;
+            set => _appSettings.AutoProfileRevertDefaultProfile = value;
         }
+
+        // Phase7-Step10b W4: 旧 ControlService.USING_MAX_CONTROLLERS（静的シム）を IEnvironmentService.UsingMaxControllers に置き換えた。
+        private readonly IEnvironmentService _environmentService;
 
         public bool UsingExpandedControllers
         {
-            get => ControlService.USING_MAX_CONTROLLERS;
+            get => _environmentService.UsingMaxControllers;
         }
 
         private List<EnumChoiceSelection<AutoProfileDisplayProfileSwitchChoices>> displayProfileSwitchList =
@@ -94,12 +101,22 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public AutoProfileDisplayProfileSwitchChoices ProfileSwitchChoice
         {
-            get => Global.autoProfileSwitchNotifyChoice;
-            set => Global.autoProfileSwitchNotifyChoice = value;
+            get => _autoProfileService.AutoProfileSwitchNotifyChoice;
+            set => _autoProfileService.AutoProfileSwitchNotifyChoice = value;
         }
 
-        public AutoProfilesViewModel(AutoProfileHolder autoProfileHolder, ProfileList profileList)
+        // Phase6-Step10-2-3: 依存はすべて必須引数（Pure DI。決定1＝S9-A と同じ方針）。
+        // 置換前は任意引数（= null）と、AppHost/Program.rootHub/Global のフォールバックだった。
+        public AutoProfilesViewModel(AutoProfileHolder autoProfileHolder, ProfileList profileList,
+            IAppSettingsService appSettings,
+            IAutoProfileService autoProfileService,
+            ControlService controlService,
+            IEnvironmentService environmentService)
         {
+            _appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+            _autoProfileService = autoProfileService ?? throw new ArgumentNullException(nameof(autoProfileService));
+            _controlService = controlService ?? throw new ArgumentNullException(nameof(controlService));
+            _environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
             programColl = new ObservableCollection<ProgramItem>();
             existingapps = new HashSet<string>();
             this.autoProfileHolder = autoProfileHolder;
@@ -111,9 +128,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void PopulateCurrentEntries()
         {
-            foreach(AutoProfileEntity entry in autoProfileHolder.AutoProfileColl)
+            foreach (AutoProfileEntity entry in autoProfileHolder.AutoProfileColl)
             {
-                ProgramItem item = new ProgramItem(entry.Path, entry);
+                ProgramItem item = new ProgramItem(entry.Path, UsingExpandedControllers, entry);
 
                 programColl.Add(item);
                 existingapps.Add(entry.Path);
@@ -183,7 +200,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             lnkpaths.AddRange(Directory.GetFiles(path, "*.lnk", SearchOption.AllDirectories));
             lnkpaths.AddRange(Directory.GetFiles(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu) + "\\Programs", "*.lnk", SearchOption.AllDirectories));
             List<string> exepaths = new List<string>();
-            foreach(string link in lnkpaths)
+            foreach (string link in lnkpaths)
             {
                 string target = GetTargetPath(link);
                 exepaths.Add(target);
@@ -217,7 +234,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 skip = skip || (checkexisting && existingapps.Contains(target));
                 if (!skip)
                 {
-                    ProgramItem item = new ProgramItem(target);
+                    ProgramItem item = new ProgramItem(target, UsingExpandedControllers);
                     /*if (autoProfileHolder.AutoProfileDict.TryGetValue(target, out AutoProfileEntity autoEntity))
                     {
                         item.MatchedAutoProfile = autoEntity;
@@ -419,7 +436,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 autoProfileHolder.AutoProfileColl.Move(oldIdx, oldIdx - 1);
             }
             else if (moveDirection == 1 && oldIdx >= 0 && oldIdx < programColl.Count - 1 && oldIdx < autoProfileHolder.AutoProfileColl.Count - 1)
-            {    
+            {
                 programColl.Move(oldIdx, oldIdx + 1);
                 autoProfileHolder.AutoProfileColl.Move(oldIdx, oldIdx + 1);
             }
@@ -428,280 +445,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             return itemMoved;
         }
-        
+
         public void AddExeToHIDHideWhenSaving(ProgramItem autoProf, bool addExe)
         {
             if (autoProf.Path.Substring((autoProf.Path.Length) - 4, 4) == ".exe") //Filter out autoprofiles that do not lead to EXEs.
             {
-                App.rootHub.CheckHidHidePresence(autoProf.Path, autoProf.Filename, addExe);
+                _controlService?.CheckHidHidePresence(autoProf.Path, autoProf.Filename, addExe);
             }
-        }
-    }
-
-    public class ProgramItem
-    {
-        private string path;
-        private string path_lowercase;
-        private string filename;
-        private string title;
-        private string title_lowercase;
-        private AutoProfileEntity matchedAutoProfile;
-        private ImageSource exeicon;
-        private bool turnoff;
-
-        public string Path { get => path;
-            set
-            {
-                if (path == value) return;
-                path = value;
-                if (matchedAutoProfile != null)
-                {
-                    matchedAutoProfile.Path = value;
-                }
-            }
-        }
-
-        public string Title { get => title;
-            set
-            {
-                if (title == value) return;
-                title = value;
-                if (matchedAutoProfile != null)
-                {
-                    matchedAutoProfile.Title = value;
-                }
-
-                TitleChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-
-        public event EventHandler TitleChanged;
-        public AutoProfileEntity MatchedAutoProfile
-        {
-            get => matchedAutoProfile;
-            set
-            {
-                matchedAutoProfile = value;
-                if (matchedAutoProfile != null)
-                {
-                    title = matchedAutoProfile.Title ?? string.Empty;
-                    title_lowercase = title.ToLower();
-                }
-
-                MatchedAutoProfileChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler MatchedAutoProfileChanged;
-        //public delegate void AutoProfileHandler(ProgramItem sender, bool added);
-        //public event AutoProfileHandler AutoProfileAction;
-        public string Filename { get => filename;  }
-        public ImageSource Exeicon { get => exeicon; }
-
-        public bool Turnoff
-        {
-            get
-            {
-                bool result = turnoff;
-                if (matchedAutoProfile != null)
-                {
-                    result = matchedAutoProfile.Turnoff;
-                }
-
-                return result;
-            }
-            set
-            {
-                turnoff = value;
-                if (matchedAutoProfile != null)
-                {
-                    matchedAutoProfile.Turnoff = value;
-                }
-
-                TurnoffChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler TurnoffChanged;
-
-        public bool Exists
-        {
-            get => matchedAutoProfile != null;
-        }
-        public event EventHandler ExistsChanged;
-
-        private int selectedIndexCon1 = 0;
-        private int selectedIndexCon2 = 0;
-        private int selectedIndexCon3 = 0;
-        private int selectedIndexCon4 = 0;
-        private int selectedIndexCon5 = 0;
-        private int selectedIndexCon6 = 0;
-        private int selectedIndexCon7 = 0;
-        private int selectedIndexCon8 = 0;
-
-        public int SelectedIndexCon1
-        {
-            get => selectedIndexCon1;
-            set
-            {
-                if (selectedIndexCon1 == value) return;
-                selectedIndexCon1 = value;
-            }
-        }
-
-        public int SelectedIndexCon2
-        {
-            get => selectedIndexCon2;
-            set
-            {
-                if (selectedIndexCon2 == value) return;
-                selectedIndexCon2 = value;
-            }
-        }
-        public int SelectedIndexCon3
-        {
-            get => selectedIndexCon3;
-            set
-            {
-                if (selectedIndexCon3 == value) return;
-                selectedIndexCon3 = value;
-            }
-        }
-        public int SelectedIndexCon4
-        {
-            get => selectedIndexCon4;
-            set
-            {
-                if (selectedIndexCon4 == value) return;
-                selectedIndexCon4 = value;
-            }
-        }
-
-        public int SelectedIndexCon5
-        {
-            get => selectedIndexCon5;
-            set
-            {
-                if (selectedIndexCon5 == value) return;
-                selectedIndexCon5 = value;
-            }
-        }
-
-        public int SelectedIndexCon6
-        {
-            get => selectedIndexCon6;
-            set
-            {
-                if (selectedIndexCon6 == value) return;
-                selectedIndexCon6 = value;
-            }
-        }
-
-        public int SelectedIndexCon7
-        {
-            get => selectedIndexCon7;
-            set
-            {
-                if (selectedIndexCon7 == value) return;
-                selectedIndexCon7 = value;
-            }
-        }
-
-        public int SelectedIndexCon8
-        {
-            get => selectedIndexCon8;
-            set
-            {
-                if (selectedIndexCon8 == value) return;
-                selectedIndexCon8 = value;
-            }
-        }
-
-        public Visibility ExpandedControllersVisible
-        {
-            get
-            {
-                Visibility temp = Visibility.Visible;
-                if (!ControlService.USING_MAX_CONTROLLERS)
-                {
-                    temp = Visibility.Collapsed;
-                }
-
-                return temp;
-            }
-        }
-
-        public ProgramItem(string path, AutoProfileEntity autoProfileEntity = null)
-        {
-            this.path = path;
-            this.path_lowercase = path.ToLower();
-            filename = System.IO.Path.GetFileNameWithoutExtension(path);
-            this.matchedAutoProfile = autoProfileEntity;
-            if (autoProfileEntity != null)
-            {
-                title = autoProfileEntity.Title;
-                title_lowercase = title.ToLower();
-                turnoff = autoProfileEntity.Turnoff;
-            }
-
-            if (File.Exists(path))
-            {
-                using (Icon ico = Icon.ExtractAssociatedIcon(path))
-                {
-                    exeicon = Imaging.CreateBitmapSourceFromHIcon(ico.Handle, Int32Rect.Empty,
-                        BitmapSizeOptions.FromEmptyOptions());
-                    exeicon.Freeze();
-                }
-            }
-
-            MatchedAutoProfileChanged += ProgramItem_MatchedAutoProfileChanged;
-        }
-
-        private void ProgramItem_MatchedAutoProfileChanged(object sender, EventArgs e)
-        {
-            if (matchedAutoProfile == null)
-            {
-                selectedIndexCon1 = 0;
-                selectedIndexCon2 = 0;
-                selectedIndexCon3 = 0;
-                selectedIndexCon4 = 0;
-                selectedIndexCon5 = 0;
-                selectedIndexCon6 = 0;
-                selectedIndexCon7 = 0;
-                selectedIndexCon8 = 0;
-            }
-
-            ExistsChanged?.Invoke(this, EventArgs.Empty);
-        }
-    }
-
-    [SuppressUnmanagedCodeSecurity]
-    class NativeMethods2
-    {
-        [DllImport("msi.dll", CharSet = CharSet.Auto)]
-        public static extern uint MsiGetShortcutTarget(string targetFile, StringBuilder productCode, StringBuilder featureID, StringBuilder componentCode);
-
-        [DllImport("msi.dll", CharSet = CharSet.Auto)]
-        public static extern InstallState MsiGetComponentPath(string productCode, string componentCode, StringBuilder componentPath, ref int componentPathBufferSize);
-
-        public const int MaxFeatureLength = 38;
-        public const int MaxGuidLength = 38;
-        public const int MaxPathLength = 1024;
-
-        public enum InstallState
-        {
-            NotUsed = -7,
-            BadConfig = -6,
-            Incomplete = -5,
-            SourceAbsent = -4,
-            MoreData = -3,
-            InvalidArg = -2,
-            Unknown = -1,
-            Broken = 0,
-            Advertised = 1,
-            Removed = 1,
-            Absent = 2,
-            Local = 3,
-            Source = 4,
-            Default = 5
         }
     }
 }

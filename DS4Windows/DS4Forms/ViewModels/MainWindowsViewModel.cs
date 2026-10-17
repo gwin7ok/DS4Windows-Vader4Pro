@@ -16,20 +16,18 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-using DS4Windows;
-using DS4WinWPF.ApiDTO;
-using HttpProgress;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Net.Http.Json;
-using System.Threading.Tasks;
+using DS4Windows;
+using DS4Windows.DI;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
     public class MainWindowsViewModel
     {
+        private readonly IEnvironmentService _environmentService;
+        private readonly IPathService _pathService;
+
         private bool fullTabsEnabled = true;
 
         public bool FullTabsEnabled
@@ -43,88 +41,26 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
         public event EventHandler FullTabsEnabledChanged;
 
-        // Use only the x64 updater asset (DS4Updater.exe). x86 support not provided.
-        public string updaterExe = "DS4Updater.exe";
-
-        private string DownloadUpstreamUpdaterVersion()
+        // Phase6-Step9-2: 依存はコンストラクタで必須引数として受け取る（Pure DI。決定1＝S9-A）。
+        // 旧 RunUpdaterCheck／DownloadUpstreamVersionInfo／LauchDS4Updater／IsNET8Available と updaterExe は、
+        // 呼出元 0 件の上流の更新経路の残骸（2025-12-12 の b55d160b で呼び出しが消え、現行の更新処理は
+        // UpdaterWindow が担う）のため、決定6＝D1 により削除した。
+        public MainWindowsViewModel(IEnvironmentService environmentService, IPathService pathService)
         {
-            // Use this repository's releases to determine the upstream version
-            Uri url = new Uri("https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
+            _environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
+            _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
 
-            Task<System.Net.Http.HttpResponseMessage> requestTask = App.requestClient.GetAsync(url.ToString());
-            requestTask.Wait();
-            if (requestTask.Result.IsSuccessStatusCode)
-            {
-                var gitHubReleaseTask = requestTask.Result.Content.ReadFromJsonAsync<GithubRelease>();
-                gitHubReleaseTask.Wait();
-                if (!gitHubReleaseTask.IsFaulted && gitHubReleaseTask.Result != null && !string.IsNullOrEmpty(gitHubReleaseTask.Result.TagName))
-                {
-                    return gitHubReleaseTask.Result.TagName.StartsWith("v") ? gitHubReleaseTask.Result.TagName.Substring(1) : gitHubReleaseTask.Result.TagName;
-                }
-            }
-
-            return string.Empty;
-        }
-
-        public bool RunUpdaterCheck(bool launch, out string upstreamVersion)
-        {
-            string destPath = Path.Combine(Global.exedirpath, "DS4Updater.exe");
-            bool updaterExists = File.Exists(destPath);
-            upstreamVersion = DownloadUpstreamUpdaterVersion();
-            // If the updater executable does not exist, do not attempt to download it here.
-            // Assume users will place DS4Updater.exe (e.g. from schmaldeo) into the program folder.
-            // If updater exists, use it as-is and proceed to launch it to perform the main program update.
-            if (!updaterExists)
-            {
-                launch = false;
-            }
-            else
-            {
-                launch = true;
-            }
-
-            return launch;
-        }
-
-        public void DownloadUpstreamVersionInfo()
-        {
-            // Sorry other devs, gonna have to find your own server
-            Uri url = new Uri("https://api.github.com/repos/gwin7ok/DS4Windows-Vader4Pro/releases/latest");
-            string filename = Global.appdatapath + "\\version.txt";
-            bool success = false;
-            using (StreamWriter streamWriter = new(filename, false))
-            {
-                Task<System.Net.Http.HttpResponseMessage> requestTask = App.requestClient.GetAsync(url.ToString());
-                try
-                {
-                    requestTask.Wait();
-                    if (requestTask.Result.IsSuccessStatusCode)
-                    {
-                        var gitHubReleaseTask = requestTask.Result.Content.ReadFromJsonAsync<GithubRelease>();
-                        gitHubReleaseTask.Wait();
-                        if (!gitHubReleaseTask.IsFaulted)
-                        {
-                            streamWriter.Write(gitHubReleaseTask.Result.TagName.Substring(1));
-                            success = true;
-                        }
-                    }
-                }
-                catch (AggregateException) { }
-            }
-
-            if (!success && File.Exists(filename))
-            {
-                File.Delete(filename);
-            }
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[DI] MainWindowsViewModel: created (IEnvironmentService, IPathService injected)");
         }
 
         public void CheckDrivers()
         {
-            bool deriverinstalled = Global.IsViGEmBusInstalled();
-            if (!deriverinstalled || !Global.IsRunningSupportedViGEmBus())
+            bool deriverinstalled = _environmentService.IsViGEmBusInstalled();
+            if (!deriverinstalled || !_environmentService.IsRunningSupportedViGEmBus())
             {
                 ProcessStartInfo startInfo = new ProcessStartInfo();
-                startInfo.FileName = $"{Global.exelocation}";
+                startInfo.FileName = $"{_pathService.ExecutablePath}";
                 startInfo.Arguments = "-driverinstall";
                 startInfo.Verb = "runas";
                 startInfo.UseShellExecute = true;
@@ -136,40 +72,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 }
                 catch { }
             }
-        }
-
-        public bool LauchDS4Updater()
-        {
-            bool launch = false;
-            using (Process p = new Process())
-            {
-                p.StartInfo.FileName = Path.Combine(Global.exedirpath, "DS4Updater.exe");
-                bool isAdmin = Global.IsAdministrator();
-                List<string> argList = new List<string>();
-                argList.Add("-autolaunch");
-                if (!isAdmin)
-                {
-                    argList.Add("-user");
-                }
-
-                // Specify current exe to have DS4Updater launch
-                argList.Add("--launchExe");
-                argList.Add(Global.exeFileName);
-
-                p.StartInfo.Arguments = string.Join(" ", argList);
-                if (Global.AdminNeeded())
-                    p.StartInfo.Verb = "runas";
-
-                try { launch = p.Start(); }
-                catch (InvalidOperationException) { }
-            }
-
-            return launch;
-        }
-
-        public bool IsNET8Available()
-        {
-            return DS4Windows.Util.IsNet8DesktopRuntimeAvailable();
         }
     }
 }

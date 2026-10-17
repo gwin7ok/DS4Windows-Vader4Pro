@@ -49,7 +49,7 @@ namespace DS4WinWPF.DS4Control.DTOXml
                     TurnOff = entity.Turnoff,
                 };
 
-                if (ControlService.USING_MAX_CONTROLLERS)
+                if (source.UsingMaxControllers)
                 {
                     temp.Controller4 = entity.ProfileNames[3];
                     temp.Controller5 = entity.ProfileNames[4];
@@ -85,105 +85,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
                 autoprof.Turnoff = serializier.TurnOff;
                 destination.AutoProfileColl.Add(autoprof);
             }
-        }
-    }
-
-    public class AutoProfileEntrySerializer
-    {
-        [XmlAttribute("path")]
-        public string Path
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlAttribute("title")]
-        public string Title
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Controller1")]
-        public string Controller1
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Controller2")]
-        public string Controller2
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Controller3")]
-        public string Controller3
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Controller4")]
-        public string Controller4
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Controller5")]
-        public string Controller5
-        {
-            get; set;
-        } = string.Empty;
-        public bool ShouldSerializeController5()
-        {
-            return Global.MAX_DS4_CONTROLLER_COUNT >= 5;
-        }
-
-        [XmlElement("Controller6")]
-        public string Controller6
-        {
-            get; set;
-        } = string.Empty;
-        public bool ShouldSerializeController6()
-        {
-            return Global.MAX_DS4_CONTROLLER_COUNT >= 6;
-        }
-
-        [XmlElement("Controller7")]
-        public string Controller7
-        {
-            get; set;
-        } = string.Empty;
-        public bool ShouldSerializeController7()
-        {
-            return Global.MAX_DS4_CONTROLLER_COUNT >= 7;
-        }
-
-        [XmlElement("Controller8")]
-        public string Controller8
-        {
-            get; set;
-        } = string.Empty;
-        public bool ShouldSerializeController8()
-        {
-            return Global.MAX_DS4_CONTROLLER_COUNT >= 8;
-        }
-
-        [XmlElement("TurnOff")]
-        public string TurnOffString
-        {
-            get => TurnOff.ToString();
-            set
-            {
-                TurnOff = XmlDataUtilities.StrToBool(value);
-            }
-        }
-
-        [XmlIgnore]
-        public bool TurnOff
-        {
-            get; set;
-        }
-
-        public AutoProfileEntrySerializer()
-        {
         }
     }
 }

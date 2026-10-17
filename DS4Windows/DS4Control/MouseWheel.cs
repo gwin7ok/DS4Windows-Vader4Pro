@@ -17,14 +17,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
+using DS4Windows.DI;
+using DS4Windows.Services;
 
 namespace DS4Windows
 {
     class MouseWheel
     {
         private readonly int deviceNumber;
-        public MouseWheel(int deviceNum)
+        // Phase6-Step4-1: Global 直参照を廃し、コンストラクタ注入（Pure DI、フォールバックなし）で受け取る
+        private readonly IProfileSettingsService _profileSettings;
+        private readonly IVirtualKBM _virtualKBM;
+
+        public MouseWheel(int deviceNum, IProfileSettingsService profileSettings, IVirtualKBM virtualKBM)
         {
+            _profileSettings = profileSettings ?? throw new ArgumentNullException(nameof(profileSettings));
+            _virtualKBM = virtualKBM ?? throw new ArgumentNullException(nameof(virtualKBM));
             deviceNumber = deviceNum;
         }
 
@@ -52,7 +60,7 @@ namespace DS4Windows
                currentMidX = (T0.HwX + T1.HwX) / 2d, currentMidY = (T0.HwY + T1.HwY) / 2d;
 
             // Express coefficient as a ratio
-            double coefficient = Global.ScrollSensitivity[deviceNumber] / 100.0;
+            double coefficient = _profileSettings.ScrollSensitivity[deviceNumber] / 100.0;
 
             // Adjust for touch distance: "standard" distance is 960 pixels, i.e. half the width.  Scroll farther if fingers are farther apart, and vice versa, in linear proportion.
             double touchXDistance = T1.HwX - T0.HwX, touchYDistance = T1.HwY - T0.HwY, touchDistance = Math.Sqrt(touchXDistance * touchXDistance + touchYDistance * touchYDistance);
@@ -79,13 +87,13 @@ namespace DS4Windows
 
             if (yAction != 0 || xAction != 0)
             {
-                yAction = yAction < 0 ? yAction * -1 * Global.outputKBMMapping.WHEEL_TICK_DOWN :
-                    yAction * Global.outputKBMMapping.WHEEL_TICK_UP;
+                yAction = yAction < 0 ? yAction * -1 * _profileSettings.OutputKBMMapping.WHEEL_TICK_DOWN :
+                    yAction * _profileSettings.OutputKBMMapping.WHEEL_TICK_UP;
 
-                xAction = xAction < 0 ? xAction * -1 * Global.outputKBMMapping.WHEEL_TICK_DOWN :
-                    xAction * Global.outputKBMMapping.WHEEL_TICK_UP;
+                xAction = xAction < 0 ? xAction * -1 * _profileSettings.OutputKBMMapping.WHEEL_TICK_DOWN :
+                    xAction * _profileSettings.OutputKBMMapping.WHEEL_TICK_UP;
 
-                Global.outputKBMHandler.PerformMouseWheelEvent(yAction, xAction);
+                _virtualKBM.PerformMouseWheelEvent(yAction, xAction);
             }
         }
     }

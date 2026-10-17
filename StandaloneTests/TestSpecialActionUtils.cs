@@ -26,12 +26,13 @@ namespace StandaloneTests
         }
 
         [TestMethod]
-        public void ScpUtilAndUtil_NormalizeConsistent()
+        public void Util_NormalizeActionName_FixedExpectations()
         {
-            string input = "  Action\t\n";
-            string a = Util.NormalizeActionName(input);
-            string b = DS4Windows.ScpUtil.NormalizeActionName(input);
-            Assert.AreEqual(a, b);
+            // Phase6-Step12 Wave 1: 重複実装だった Global.NormalizeActionName を削除したため、Util 側の期待値を固定する。
+            Assert.AreEqual("Action", Util.NormalizeActionName("  Action\t\n"));
+            Assert.AreEqual(string.Empty, Util.NormalizeActionName(null));
+            Assert.AreEqual("My Action Name", Util.NormalizeActionName("  My Action Name  "));
+            Assert.AreEqual(string.Empty, Util.NormalizeActionName("   "));
         }
     }
 }

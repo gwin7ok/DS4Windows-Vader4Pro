@@ -71,15 +71,17 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public List<EnumChoiceSelection<PresetOption.OutputContChoice>> OutputChoices { get => outputChoices; }
 
-        public PresetOptionViewModel()
+        public PresetOptionViewModel(DS4Windows.DI.IProfilePresetLoader presetLoader, DS4Windows.ControlService controlService)
         {
+            if (presetLoader == null) throw new ArgumentNullException(nameof(presetLoader));
+            if (controlService == null) throw new ArgumentNullException(nameof(controlService));
             presetList = new List<PresetOption>();
-            presetList.Add(new GamepadPreset());
-            presetList.Add(new GamepadGyroCamera());
-            presetList.Add(new MixedPreset());
-            presetList.Add(new MixedGyroMousePreset());
-            presetList.Add(new KBMPreset());
-            presetList.Add(new KBMGyroMouse());
+            presetList.Add(new GamepadPreset(presetLoader, controlService));
+            presetList.Add(new GamepadGyroCamera(presetLoader, controlService));
+            presetList.Add(new MixedPreset(presetLoader, controlService));
+            presetList.Add(new MixedGyroMousePreset(presetLoader, controlService));
+            presetList.Add(new KBMPreset(presetLoader, controlService));
+            presetList.Add(new KBMGyroMouse(presetLoader, controlService));
 
             PresetIndexChanged += PresetOptionViewModel_PresetIndexChanged;
         }

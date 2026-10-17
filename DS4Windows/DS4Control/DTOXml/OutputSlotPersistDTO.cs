@@ -82,19 +82,4 @@ namespace DS4WinWPF.DS4Control.DTOXml
             }
         }
     }
-
-    public class OutputSlotSerializer
-    {
-        [XmlAttribute("idx")]
-        public int Index
-        {
-            get; set;
-        } = 0;
-
-        [XmlElement("DeviceType")]
-        public OutContType DeviceType
-        {
-            get; set;
-        }
-    }
 }

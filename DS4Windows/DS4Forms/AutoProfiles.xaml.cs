@@ -43,7 +43,13 @@ namespace DS4WinWPF.DS4Forms
     /// </summary>
     public partial class AutoProfiles : UserControl
     {
-        protected String m_Profile = DS4Windows.Global.appdatapath + "\\Auto Profiles.xml";
+        // Phase6-Step10-2-3: 本コントロールは MainWindow.xaml から生成されるため、引数なしのコンストラクタが必要。
+        // 依存は Initialize で受け取る（MainWindow のコンストラクタが、AutoProfileHolder を読む前に 1 回だけ呼ぶ）。
+        private DS4Windows.DI.IPathService pathService;
+        private DS4Windows.DI.IAppSettingsService appSettingsService;
+        private DS4Windows.DI.IAutoProfileService autoProfileService;
+        private DS4Windows.DI.IViewModelFactory viewModelFactory;
+        protected String m_Profile;
         public const string steamCommx86Loc = @"C:\Program Files (x86)\Steam\steamapps\common";
         public const string steamCommLoc = @"C:\Program Files\Steam\steamapps\common";
         private string steamgamesdir;
@@ -52,8 +58,11 @@ namespace DS4WinWPF.DS4Forms
         private ProfileList profileList;
         private bool autoDebug;
 
-        public AutoProfileHolder AutoProfileHolder { get => autoProfileHolder;
-            set => autoProfileHolder = value; }
+        public AutoProfileHolder AutoProfileHolder
+        {
+            get => autoProfileHolder;
+            set => autoProfileHolder = value;
+        }
         public AutoProfilesViewModel AutoProfVM { get => autoProfVM; }
         public bool AutoDebug { get => autoDebug; }
         public event EventHandler AutoDebugChanged;
@@ -61,15 +70,34 @@ namespace DS4WinWPF.DS4Forms
         public AutoProfiles()
         {
             InitializeComponent();
+        }
 
-            if (!File.Exists(DS4Windows.Global.appdatapath + @"\Auto Profiles.xml"))
-                DS4Windows.Global.CreateAutoProfiles(m_Profile);
+        /// <summary>
+        /// 依存を受け取り、画面の初期化（保存先ファイルの作成、Steam フォルダの判定、AutoProfileHolder の取得、
+        /// 行数の調整）を行う。置換前はコンストラクタで行っていた処理で、順序は同じ。
+        /// MainWindow のコンストラクタから、AutoProfileHolder を読む前に 1 回だけ呼ぶ。
+        /// </summary>
+        public void Initialize(DS4Windows.DI.IPathService pathService,
+            DS4Windows.DI.IAppSettingsService appSettingsService,
+            DS4Windows.DI.IAutoProfileService autoProfileService,
+            DS4Windows.DI.IViewModelFactory viewModelFactory)
+        {
+            if (this.pathService != null) throw new InvalidOperationException("AutoProfiles is already initialized.");
+            this.pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            this.appSettingsService = appSettingsService ?? throw new ArgumentNullException(nameof(appSettingsService));
+            this.autoProfileService = autoProfileService ?? throw new ArgumentNullException(nameof(autoProfileService));
+            this.viewModelFactory = viewModelFactory ?? throw new ArgumentNullException(nameof(viewModelFactory));
+
+            m_Profile = pathService.AppDataPath + "\\Auto Profiles.xml";
+
+            if (!File.Exists(pathService.AppDataPath + @"\Auto Profiles.xml"))
+                autoProfileService.CreateAutoProfilesFile(m_Profile);
 
             //LoadP();
 
-            if (DS4Windows.Global.UseCustomSteamFolder &&
-                Directory.Exists(DS4Windows.Global.CustomSteamFolder))
-                steamgamesdir = DS4Windows.Global.CustomSteamFolder;
+            if (appSettingsService.UseCustomSteamFolder &&
+                Directory.Exists(appSettingsService.CustomSteamFolder))
+                steamgamesdir = appSettingsService.CustomSteamFolder;
             else if (Directory.Exists(steamCommx86Loc))
                 steamgamesdir = steamCommx86Loc;
             else if (Directory.Exists(steamCommLoc))
@@ -77,12 +105,15 @@ namespace DS4WinWPF.DS4Forms
             else
                 addProgramsBtn.ContextMenu.Items.Remove(steamMenuItem);
 
-            autoProfileHolder = new AutoProfileHolder();
+            // Phase5-Step13-4: IAutoProfileServiceが監視に使用している唯一のHolderを共有する。
+            // 独自に new AutoProfileHolder() すると、本画面での編集・保存がバックグラウンド監視
+            // (AutoProfileService.CheckProfiles)に反映されない二重インスタンス問題が発生するため。
+            autoProfileHolder = autoProfileService.Holder;
 
             int currentRowCount = autoProfilesGrid.RowDefinitions.Count;
             if (currentRowCount > DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT)
             {
-                for (int i = currentRowCount-1; i >= DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i--)
+                for (int i = currentRowCount - 1; i >= DS4Windows.ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i--)
                 {
                     autoProfilesGrid.RowDefinitions.RemoveAt(i);
                 }
@@ -91,10 +122,10 @@ namespace DS4WinWPF.DS4Forms
 
         public void SetupDataContext(ProfileList profileList)
         {
-            autoProfVM = new AutoProfilesViewModel(autoProfileHolder, profileList);
+            autoProfVM = viewModelFactory.CreateAutoProfilesViewModel(autoProfileHolder, profileList);
             programListLV.DataContext = autoProfVM;
             programListLV.ItemsSource = autoProfVM.ProgramColl;
-            
+
             revertDefaultProfileOnUnknownCk.DataContext = autoProfVM;
 
             autoProfVM.SearchFinished += AutoProfVM_SearchFinished;
@@ -332,7 +363,7 @@ namespace DS4WinWPF.DS4Forms
                 editControlsPanel.DataContext = null;
                 autoProfVM.AddExeToHIDHideWhenSaving(autoProfVM.SelectedItem, false);
                 autoProfVM.RemoveAutoProfileEntry(autoProfVM.SelectedItem);
-                autoProfVM.AutoProfileHolder.Save(DS4Windows.Global.appdatapath + @"\Auto Profiles.xml");
+                autoProfVM.AutoProfileHolder.Save(m_Profile);
                 autoProfVM.SelectedItem = null;
             }
         }
@@ -351,7 +382,7 @@ namespace DS4WinWPF.DS4Forms
                 }
 
                 autoProfVM.AddExeToHIDHideWhenSaving(autoProfVM.SelectedItem, autoProfVM.SelectedItem.Turnoff);
-                autoProfVM.AutoProfileHolder.Save(DS4Windows.Global.appdatapath + @"\Auto Profiles.xml");
+                autoProfVM.AutoProfileHolder.Save(m_Profile);
             }
         }
 
@@ -382,8 +413,8 @@ namespace DS4WinWPF.DS4Forms
         {
             if (autoProfVM.SelectedItem != null && sender != null)
             {
-                if(autoProfVM.MoveItemUpDown(autoProfVM.SelectedItem, ((sender as MenuItem).Name == "MoveUp") ? -1 : 1))
-                    autoProfVM.AutoProfileHolder.Save(DS4Windows.Global.appdatapath + @"\Auto Profiles.xml");
+                if (autoProfVM.MoveItemUpDown(autoProfVM.SelectedItem, ((sender as MenuItem).Name == "MoveUp") ? -1 : 1))
+                    autoProfVM.AutoProfileHolder.Save(m_Profile);
             }
         }
     }

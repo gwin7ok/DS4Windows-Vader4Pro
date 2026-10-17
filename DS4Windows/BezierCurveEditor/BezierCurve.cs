@@ -182,7 +182,7 @@ namespace DS4Windows
                 // Pre-populate lookup result table for GetBezierEasing function (performance optimization)
                 for (byte idx = 0; idx <= (byte)axisMaxDouble; idx++)
                 {
-                    arrayBezierLUT[idx + (byte)axisCenterPosDouble] = (byte)(Global.Clamp(0, Math.Round(CalcBezier(getTForX(idx / axisMaxDouble), mY1, mY2) * axisMaxDouble), axisMaxDouble) + axisCenterPosDouble);
+                    arrayBezierLUT[idx + (byte)axisCenterPosDouble] = (byte)(NumericUtil.Clamp(0, Math.Round(CalcBezier(getTForX(idx / axisMaxDouble), mY1, mY2) * axisMaxDouble), axisMaxDouble) + axisCenterPosDouble);
 
                     // Invert curve from a right side of the center position (128) to the left tilted stick axis (or from up tilt to down tilt)
                     if (gamepadAxisType == AxisType.LSRS)

@@ -28,12 +28,6 @@ using System.Windows.Input;
 
 namespace DS4WinWPF.DS4Forms
 {
-    public class LanguageInfo
-    {
-        public string CultureCode { get; set; }
-        public string DisplayName { get; set; }
-        public string NativeName { get; set; }
-    }
 
     /// <summary>
     /// Interaction logic for LanguageSelectDialog.xaml
@@ -43,8 +37,12 @@ namespace DS4WinWPF.DS4Forms
         public bool ChoiceMade { get; set; }
         public string SelectedCulture { get; private set; }
 
-        public LanguageSelectDialog()
+        // Phase6-Step10-1-2: Global.UseLang／Global.SetCulture の置換先。呼び出し側（App）が保持済みのサービスを渡す（Pure DI）。
+        private readonly DS4Windows.DI.IAppSettingsService _appSettingsService;
+
+        public LanguageSelectDialog(DS4Windows.DI.IAppSettingsService appSettingsService)
         {
+            _appSettingsService = appSettingsService ?? throw new ArgumentNullException(nameof(appSettingsService));
             InitializeComponent();
             LoadAvailableLanguages();
         }
@@ -136,9 +134,9 @@ namespace DS4WinWPF.DS4Forms
 
                 // Apply the selected culture immediately
                 AppLogger.LogDebug($"LanguageSelectDialog: user selected culture '{SelectedCulture}'");
-                DS4Windows.Global.UseLang = SelectedCulture;
-                DS4Windows.Global.SetCulture(SelectedCulture);
-                AppLogger.LogDebug($"LanguageSelectDialog: Global.UseLang set to '{DS4Windows.Global.UseLang}'");
+                _appSettingsService.UseLang = SelectedCulture;
+                _appSettingsService.SetCulture(SelectedCulture);
+                AppLogger.LogDebug($"LanguageSelectDialog: Global.UseLang set to '{_appSettingsService.UseLang}'");
 
                 Close();
             }

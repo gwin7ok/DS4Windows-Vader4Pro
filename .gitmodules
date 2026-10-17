@@ -1,3 +1,6 @@
 [submodule "externals/SharpOSC"]
 	path = externals/SharpOSC
 	url = https://github.com/ValdemarOrn/SharpOSC
+[submodule "externals/DS4Updater"]
+    path = externals/DS4Updater
+    url = https://github.com/gwin7ok/DS4Updater

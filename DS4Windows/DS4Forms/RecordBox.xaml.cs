@@ -54,11 +54,24 @@ namespace DS4WinWPF.DS4Forms
         private ColorPickerWindow colorDialog;
         private NonFormTimer ds4 = new NonFormTimer();
 
-        public RecordBox(int deviceNum, DS4Windows.DS4ControlSettings controlSettings, bool shift, bool showscan = true, bool repeatable = true)
-        {
-            InitializeComponent();
+        // Phase6-Step10-2-4b: Program.rootHub／AppHost への後退を廃止し、必要なサービスを必須引数で受け取る。
+        private readonly DS4Windows.ControlService controlService;
+        private readonly DS4Windows.DI.IPathService pathService;
 
-            recordBoxVM = new RecordBoxViewModel(deviceNum, controlSettings, shift, repeatable);
+        /// <param name="targetDevice">
+        /// Phase6-Step7b: ライトバーのプレビューと記録中のタッチパッド Passthru で使う実機のスロット番号。-1 は実機なし。
+        /// 渡し忘れをコンパイルで検出するため必須引数とする（Phase6-Step7b-Plan.md 決定2）
+        /// </param>
+        public RecordBox(int deviceNum, DS4Windows.DS4ControlSettings controlSettings, bool shift, int targetDevice,
+            bool showscan, bool repeatable,
+            DS4Windows.ControlService controlService, DS4Windows.DI.IPathService pathService,
+            DS4Windows.DI.IViewModelFactory viewModelFactory)
+        {
+            this.controlService = controlService ?? throw new ArgumentNullException(nameof(controlService));
+            this.pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            if (viewModelFactory == null) throw new ArgumentNullException(nameof(viewModelFactory));
+            InitializeComponent();
+            recordBoxVM = viewModelFactory.CreateRecordBoxViewModel(deviceNum, controlSettings, shift, repeatable, targetDevice);
             mouseButtonsPanel.Visibility = Visibility.Hidden;
             extraConPanel.Visibility = Visibility.Hidden;
             macroModeCombo.IsEnabled = repeatable;
@@ -177,7 +190,7 @@ namespace DS4WinWPF.DS4Forms
             bool recording = recordBoxVM.Recording = !recordBoxVM.Recording;
             if (recording)
             {
-                DS4Windows.Program.rootHub.recordingMacro = true;
+                controlService.recordingMacro = true;
                 recordBtn.Content = "Stop";
                 if (recordBoxVM.MacroStepIndex == -1)
                 {
@@ -189,11 +202,12 @@ namespace DS4WinWPF.DS4Forms
                     recordBoxVM.AppendIndex = recordBoxVM.MacroStepIndex;
                 }
 
+                // 記録中は、4th/5th Mouse Button と Add Rumble/Change Lightbar Color の 4 つを同じ条件で表示する。
+                // 2026-09-26（ユーザー決定）: 以前は Add Rumble/Change Lightbar Color だけ Record Delays にチェックがある
+                // ときに限って表示していたが、その制限を撤廃した。Record Delays がオフの場合、開始と終了のステップの間に
+                // Wait が入らないため、必要に応じて記録後に Insert Wait やダブルクリックで待ち時間を調整する
                 mouseButtonsPanel.Visibility = Visibility.Visible;
-                if (recordBoxVM.RecordDelays)
-                {
-                    extraConPanel.Visibility = Visibility.Visible;
-                }
+                extraConPanel.Visibility = Visibility.Visible;
 
                 ds4.Start();
                 Enable_Controls(false);
@@ -202,7 +216,7 @@ namespace DS4WinWPF.DS4Forms
             }
             else
             {
-                DS4Windows.Program.rootHub.recordingMacro = false;
+                controlService.recordingMacro = false;
                 recordBoxVM.AppendIndex = -1;
                 ds4.Stop();
                 recordBtn.Content = "Record";
@@ -323,7 +337,7 @@ namespace DS4WinWPF.DS4Forms
             dialog.DefaultExt = ".txt";
             dialog.Filter = "Text Documents (*.txt)|*.txt";
             dialog.Title = "Select Export File";
-            dialog.InitialDirectory = $"{DS4Windows.Global.appdatapath}\\Macros";
+            dialog.InitialDirectory = $"{pathService.AppDataPath}\\Macros";
             if (dialog.ShowDialog() == true)
             {
                 //recordBoxVM.MacroSteps.Clear();
@@ -500,7 +514,7 @@ namespace DS4WinWPF.DS4Forms
             dialog.DefaultExt = ".txt";
             dialog.Filter = "Text Documents (*.txt)|*.txt";
             dialog.Title = "Select Preset File";
-            dialog.InitialDirectory = $"{DS4Windows.Global.appdatapath}\\Macros";
+            dialog.InitialDirectory = $"{pathService.AppDataPath}\\Macros";
             if (dialog.ShowDialog() == true)
             {
                 recordBoxVM.MacroSteps.Clear();
@@ -630,10 +644,5 @@ namespace DS4WinWPF.DS4Forms
                 recordBoxVM.InsertMacroStep(recordBoxVM.MacroStepIndex, step);
             }
         }
-    }
-
-    public class RecordBoxResourcePaths
-    {
-        public string LeftTouch { get => $"{DS4Windows.Global.RESOURCES_PREFIX}/left touch.png"; }
     }
 }

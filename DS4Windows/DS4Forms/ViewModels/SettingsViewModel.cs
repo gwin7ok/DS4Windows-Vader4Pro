@@ -1,4 +1,4 @@
-﻿/*
+/*
 DS4Windows
 Copyright (C) 2023  Travis Nickles
 
@@ -30,22 +30,30 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Runtime.InteropServices;
 using DS4Windows;
+using DS4Windows.DI;
 using static DS4Windows.Util;
-using Microsoft.Win32;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
-    public class SettingsViewModel
+    public class SettingsViewModel : IDisposable
     {
+        private readonly IAppSettingsService _appSettings;
+        private readonly IAppearanceSettingsService _appearanceSettings;
+        private readonly IEnvironmentService _environmentService;
+        private readonly IPathService _pathService;
+
         // Re-Enable Ex Mode
         public bool HideDS4Controller
         {
-            get => DS4Windows.Global.UseExclusiveMode;
-            set => DS4Windows.Global.UseExclusiveMode = value;
+            get => _appSettings.UseExclusiveMode;
+            set => _appSettings.UseExclusiveMode = value;
         }
 
-        public bool SwipeTouchSwitchProfile { get => DS4Windows.Global.SwipeProfiles;
-            set => DS4Windows.Global.SwipeProfiles = value; }
+        public bool SwipeTouchSwitchProfile
+        {
+            get => _appSettings.SwipeProfiles;
+            set => _appSettings.SwipeProfiles = value;
+        }
 
         private bool runAtStartup;
         public bool RunAtStartup
@@ -93,7 +101,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public ImageSource QuestionMarkSource { get => questionMarkSource; }
 
         private Visibility showRunStartPanel = Visibility.Collapsed;
-        public Visibility ShowRunStartPanel {
+        public Visibility ShowRunStartPanel
+        {
             get => showRunStartPanel;
             set
             {
@@ -105,53 +114,34 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public event EventHandler ShowRunStartPanelChanged;
 
-        private Visibility _isProfileChangedCheckVisible;
-
-        public Visibility IsProfileChangedCheckVisible
-        {
-            get => _isProfileChangedCheckVisible;
-            private set
-            {
-                _isProfileChangedCheckVisible = value;
-                IsProfileChangedCheckVisibleChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-
-        public event EventHandler IsProfileChangedCheckVisibleChanged;
-
         public bool ProfileChangedNotification
         {
-            get => Global.ProfileChangedNotification;
-            set => Global.ProfileChangedNotification = value;
+            get => _appSettings.ProfileChangedNotification;
+            set => _appSettings.ProfileChangedNotification = value;
         }
 
         public int ShowNotificationsIndex
         {
-            get => DS4Windows.Global.Notifications;
-            set
-            {
-                Global.Notifications = value;
-                // display only when all notifications are on
-                IsProfileChangedCheckVisible = value == 2 ? Visibility.Visible : Visibility.Collapsed;
-            }
+            get => _appSettings.Notifications;
+            set => _appSettings.Notifications = value;
         }
 
-        public bool DisconnectBTStop { get => DS4Windows.Global.DCBTatStop; set => DS4Windows.Global.DCBTatStop = value; }
-        public bool FlashHighLatency { get => DS4Windows.Global.FlashWhenLate; set => DS4Windows.Global.FlashWhenLate = value; }
-        public int FlashHighLatencyAt { get => DS4Windows.Global.FlashWhenLateAt; set => DS4Windows.Global.FlashWhenLateAt = value; }
-        public bool StartMinimize { get => DS4Windows.Global.StartMinimized; set => DS4Windows.Global.StartMinimized = value; }
-        public bool MinimizeToTaskbar { get => DS4Windows.Global.MinToTaskbar; set => DS4Windows.Global.MinToTaskbar = value; }
-        public bool CloseMinimizes { get => DS4Windows.Global.CloseMini; set => DS4Windows.Global.CloseMini = value; }
-        public bool QuickCharge { get => DS4Windows.Global.QuickCharge; set => DS4Windows.Global.QuickCharge = value; }
+        public bool DisconnectBTStop { get => _appSettings.DCBTatStop; set => _appSettings.DCBTatStop = value; }
+        public bool FlashHighLatency { get => _appSettings.FlashWhenLate; set => _appSettings.FlashWhenLate = value; }
+        public int FlashHighLatencyAt { get => _appSettings.FlashWhenLateAt; set => _appSettings.FlashWhenLateAt = value; }
+        public bool StartMinimize { get => _appSettings.StartMinimized; set => _appSettings.StartMinimized = value; }
+        public bool MinimizeToTaskbar { get => _appSettings.MinimizeToTaskbar; set => _appSettings.MinimizeToTaskbar = value; }
+        public bool CloseMinimizes { get => _appSettings.CloseMinimizes; set => _appSettings.CloseMinimizes = value; }
+        public bool QuickCharge { get => _appSettings.QuickCharge; set => _appSettings.QuickCharge = value; }
 
         public int IconChoiceIndex
         {
-            get => (int)DS4Windows.Global.UseIconChoice;
+            get => (int)_appearanceSettings.UseIconChoice;
             set
             {
-                int temp = (int)DS4Windows.Global.UseIconChoice;
+                int temp = (int)_appearanceSettings.UseIconChoice;
                 if (temp == value) return;
-                DS4Windows.Global.UseIconChoice = (DS4Windows.TrayIconChoice)value;
+                _appearanceSettings.UseIconChoice = (DS4Windows.TrayIconChoice)value;
                 IconChoiceIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -159,12 +149,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public int AppChoiceIndex
         {
-            get => (int)DS4Windows.Global.UseCurrentTheme;
+            get => (int)_appearanceSettings.UseCurrentTheme;
             set
             {
-                int temp = (int)DS4Windows.Global.UseCurrentTheme;
+                int temp = (int)_appearanceSettings.UseCurrentTheme;
                 if (temp == value) return;
-                DS4Windows.Global.UseCurrentTheme = (DS4Windows.AppThemeChoice)value;
+                _appearanceSettings.UseCurrentTheme = (DS4Windows.AppThemeChoice)value;
                 AppChoiceIndexChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -172,16 +162,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         // CheckForUpdates: controls whether update checking is enabled.
         // We represent "disabled" with -1. A value of 0 means "check every startup".
-            public bool CheckForUpdates
+        public bool CheckForUpdates
+        {
+            get => _appSettings.CheckUpdateStartupEnabled;
+            set
             {
-                get => DS4Windows.Global.CheckUpdateStartupEnabled;
-                set
-                {
-                        DS4Windows.Global.CheckUpdateStartupEnabled = value;
-                        CheckForNoUpdatesWhen();
-                        DS4Windows.Global.Save();
-                }
+                _appSettings.CheckUpdateStartupEnabled = value;
+                CheckForNoUpdatesWhen();
+                _appSettings?.Save();
             }
+        }
         public event EventHandler CheckForUpdatesChanged;
 
         public int CheckEvery
@@ -191,7 +181,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 // Use the explicit persisted numeric value. The legacy `CheckWhen`
                 // stores hours and was used before separate fields existed.
                 // Now the numeric control maps to `CheckEveryValue` directly.
-                return DS4Windows.Global.CheckEveryValue;
+                return _appSettings.CheckEveryValue;
             }
             set
             {
@@ -199,17 +189,17 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 // underlying `CheckWhen` from the numeric control. This prevents
                 // the numeric binding from re-enabling checks when the checkbox
                 // is unchecked.
-                    if (!DS4Windows.Global.CheckUpdateStartupEnabled)
-                    {
-                        return;
-                    }
+                if (!_appSettings.CheckUpdateStartupEnabled)
+                {
+                    return;
+                }
 
-                    if (DS4Windows.Global.CheckEveryValue != value)
-                    {
-                        DS4Windows.Global.CheckEveryValue = value;
-                        CheckForNoUpdatesWhen();
-                        DS4Windows.Global.Save();
-                    }
+                if (_appSettings.CheckEveryValue != value)
+                {
+                    _appSettings.CheckEveryValue = value;
+                    CheckForNoUpdatesWhen();
+                    _appSettings?.Save();
+                }
             }
         }
         public event EventHandler CheckEveryChanged;
@@ -225,73 +215,76 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (checkEveryUnitIdx == value) return;
                 // Persist selection immediately to the backing store so saves include it.
-                DS4Windows.Global.CheckEveryUnit = value;
+                _appSettings.CheckEveryUnit = value;
                 checkEveryUnitIdx = value;
                 CheckEveryUnitChanged?.Invoke(this, EventArgs.Empty);
-                DS4Windows.Global.Save();
+                _appSettings?.Save();
             }
         }
         public event EventHandler CheckEveryUnitChanged;
 
         public bool UseOSCServer
         {
-            get => DS4Windows.Global.isUsingOSCServer();
+            get => _appSettings.UseOscServer;
             set
             {
-                if (DS4Windows.Global.isUsingOSCServer() == value) return;
-                DS4Windows.Global.setUsingOSCServer(value);
+                if (_appSettings.UseOscServer == value) return;
+                _appSettings.UseOscServer = value;
                 UseOSCServerChanged?.Invoke(this, EventArgs.Empty);
             }
         }
         public event EventHandler UseOSCServerChanged;
-        public int OscPort { get => DS4Windows.Global.getOSCServerPortNum(); set => DS4Windows.Global.setOSCServerPort(value); }
-        
-        public bool InterpretingOscMonitoring { get => DS4Windows.Global.isInterpretingOscMonitoring(); set => DS4Windows.Global.setInterpretingOscMonitoring(value); }
+        public int OscPort { get => _appSettings.OscServerPort; set => _appSettings.OscServerPort = value; }
+
+        public bool InterpretingOscMonitoring { get => _appSettings.InterpretingOscMonitoring; set => _appSettings.InterpretingOscMonitoring = value; }
 
         public bool UseOSCSender
         {
-            get => DS4Windows.Global.isUsingOSCSender();
+            get => _appSettings.UseOscSender;
             set
             {
-                if (DS4Windows.Global.isUsingOSCSender() == value) return;
-                DS4Windows.Global.setUsingOSCSender(value);
+                if (_appSettings.UseOscSender == value) return;
+                _appSettings.UseOscSender = value;
                 UseOSCSenderChanged?.Invoke(this, EventArgs.Empty);
             }
         }
         public event EventHandler UseOSCSenderChanged;
-        public int OscSendPort { get => DS4Windows.Global.getOSCSenderPortNum(); set => DS4Windows.Global.setOSCSenderPort(value); }
+        public int OscSendPort { get => _appSettings.OscSenderPort; set => _appSettings.OscSenderPort = value; }
 
         public string OscSenderAddress
         {
-            get => DS4Windows.Global.getOSCSenderAddress();
-            set => DS4Windows.Global.setOSCSenderAddress(value);
+            get => _appSettings.OscSenderAddress;
+            set => _appSettings.OscSenderAddress = value;
         }
 
 
         public bool UseUDPServer
         {
-            get => DS4Windows.Global.isUsingUDPServer();
+            get => _appSettings.UseUdpServer;
             set
             {
-                if (DS4Windows.Global.isUsingUDPServer() == value) return;
-                DS4Windows.Global.setUsingUDPServer(value);
+                if (_appSettings.UseUdpServer == value) return;
+                _appSettings.UseUdpServer = value;
                 UseUDPServerChanged?.Invoke(this, EventArgs.Empty);
             }
         }
         public event EventHandler UseUDPServerChanged;
 
-        public string UdpIpAddress { get => DS4Windows.Global.getUDPServerListenAddress();
-            set => DS4Windows.Global.setUDPServerListenAddress(value); }
-        public int UdpPort { get => DS4Windows.Global.getUDPServerPortNum(); set => DS4Windows.Global.setUDPServerPort(value); }
+        public string UdpIpAddress
+        {
+            get => _appSettings.UdpServerListenAddress;
+            set => _appSettings.UdpServerListenAddress = value;
+        }
+        public int UdpPort { get => _appSettings.UdpServerPort; set => _appSettings.UdpServerPort = value; }
 
         public bool UseUdpSmoothing
         {
-            get => DS4Windows.Global.UseUDPSeverSmoothing;
+            get => _appSettings.UseUdpServerSmoothing;
             set
             {
-                bool temp = DS4Windows.Global.UseUDPSeverSmoothing;
+                bool temp = _appSettings.UseUdpServerSmoothing;
                 if (temp == value) return;
-                DS4Windows.Global.UseUDPSeverSmoothing = value;
+                _appSettings.UseUdpServerSmoothing = value;
                 UseUdpSmoothingChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -299,18 +292,18 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public Visibility UdpServerOneEuroPanelVisibility
         {
-            get => DS4Windows.Global.isUsingUDPServer() && DS4Windows.Global.UseUDPSeverSmoothing ? Visibility.Visible : Visibility.Collapsed;
+            get => _appSettings.UseUdpServer && _appSettings.UseUdpServerSmoothing ? Visibility.Visible : Visibility.Collapsed;
         }
         public event EventHandler UdpServerOneEuroPanelVisibilityChanged;
 
         public double UdpSmoothMinCutoff
         {
-            get => DS4Windows.Global.UDPServerSmoothingMincutoff;
+            get => _appSettings.UDPServerSmoothingMincutoff;
             set
             {
-                double temp = DS4Windows.Global.UDPServerSmoothingMincutoff;
+                double temp = _appSettings.UDPServerSmoothingMincutoff;
                 if (temp == value) return;
-                DS4Windows.Global.UDPServerSmoothingMincutoff = value;
+                _appSettings.UDPServerSmoothingMincutoff = value;
                 UdpSmoothMinCutoffChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -318,12 +311,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public double UdpSmoothBeta
         {
-            get => DS4Windows.Global.UDPServerSmoothingBeta;
+            get => _appSettings.UDPServerSmoothingBeta;
             set
             {
-                double temp = DS4Windows.Global.UDPServerSmoothingBeta;
+                double temp = _appSettings.UDPServerSmoothingBeta;
                 if (temp == value) return;
-                DS4Windows.Global.UDPServerSmoothingBeta = value;
+                _appSettings.UDPServerSmoothingBeta = value;
                 UdpSmoothBetaChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -331,10 +324,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool UseCustomSteamFolder
         {
-            get => DS4Windows.Global.UseCustomSteamFolder;
+            get => _appSettings.UseCustomSteamFolder;
             set
             {
-                DS4Windows.Global.UseCustomSteamFolder = value;
+                _appSettings.UseCustomSteamFolder = value;
                 UseCustomSteamFolderChanged?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -342,14 +335,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string CustomSteamFolder
         {
-            get => DS4Windows.Global.CustomSteamFolder;
+            get => _appSettings.CustomSteamFolder;
             set
             {
-                string temp = DS4Windows.Global.CustomSteamFolder;
+                string temp = _appSettings.CustomSteamFolder;
                 if (temp == value) return;
                 if (Directory.Exists(value) || value == string.Empty)
                 {
-                    DS4Windows.Global.CustomSteamFolder = value;
+                    _appSettings.CustomSteamFolder = value;
                 }
             }
         }
@@ -368,14 +361,16 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string FakeExeName
         {
-            get => DS4Windows.Global.FakeExeName;
+            get => _appSettings.FakeExeName;
             set
             {
-                string temp = DS4Windows.Global.FakeExeName;
+                string temp = _appSettings.FakeExeName;
                 if (temp == value) return;
-                DS4Windows.Global.FakeExeName = value;
-                FakeExeNameChanged?.Invoke(this, EventArgs.Empty);
+                _appSettings.FakeExeName = value;
+                // Phase6-Step9-3d（K9-2）: 古いファイルの削除（Compare）を、新しいファイルの作成（Changed）より先に行う。
+                // 作成が例外になっても、古いファイルが残らないようにする（以前は作成が先で、例外で削除が実行されなかった）。
                 FakeExeNameChangeCompare?.Invoke(this, temp, value);
+                FakeExeNameChanged?.Invoke(this, EventArgs.Empty);
             }
         }
         public event EventHandler FakeExeNameChanged;
@@ -388,7 +383,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             get
             {
-                bool result = DS4Windows.Global.hidHideInstalled &&
+                bool result = _environmentService.HidHideInstalled &&
                     !string.IsNullOrEmpty(DS4Windows.Util.GetHidHideClientPath());
 
                 return result;
@@ -396,23 +391,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
         public event EventHandler HidHideClientFoundChanged;
 
-        private List<MonitorChoiceListing> absMonitorChoices = new List<MonitorChoiceListing>();
-        public List<MonitorChoiceListing> AbsMonitorChoices => absMonitorChoices;
-        public event EventHandler AbsMonitorChoicesChanged;
-
-        //private string absMonitorSettingEDID = string.Empty;
-        public string AbsMonitorSettingEDID
-        {
-            get => Global.AbsoluteDisplayEDID;
-            set => Global.AbsoluteDisplayEDID = value;
-        }
-
         public int ProcessPriorityIndex
         {
-            get => Global.ProcessPriority;
+            get => _appSettings.ProcessPriority;
             set
             {
-                Global.ProcessPriority = value;
+                _appSettings.ProcessPriority = value;
                 ProcessPriorityIndexChanged?.Invoke(this, EventArgs.Empty);
             }
 
@@ -420,13 +404,26 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public event EventHandler ProcessPriorityIndexChanged;
 
-        public SettingsViewModel()
+        // Phase6-Step9-3: 依存はコンストラクタで必須引数として受け取る（Pure DI。決定1＝S9-A）。
+        // Phase6-Step10-1-5（決定D7＝A）: App.logHolder（静的フィールド）の直接参照の置換先。必須引数（null は拒否する）。
+        private readonly ILogSettingsApplier _logSettingsApplier;
+
+        public SettingsViewModel(IAppSettingsService appSettings, IAppearanceSettingsService appearanceSettings,
+            IEnvironmentService environmentService, IPathService pathService, ILogSettingsApplier logSettingsApplier)
         {
+            _logSettingsApplier = logSettingsApplier ?? throw new ArgumentNullException(nameof(logSettingsApplier));
+            _appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+            _appearanceSettings = appearanceSettings ?? throw new ArgumentNullException(nameof(appearanceSettings));
+            _environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
+            _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[DI] SettingsViewModel: created");
+
             // Initialize unit index and numeric value from persistent settings
-            checkEveryUnitIdx = DS4Windows.Global.CheckEveryUnit;
+            checkEveryUnitIdx = _appSettings.CheckEveryUnit;
             // Ensure unit idx is valid
             if (checkEveryUnitIdx != 0 && checkEveryUnitIdx != 1) checkEveryUnitIdx = 1;
-            IsProfileChangedCheckVisible = Global.Notifications == 2 ? Visibility.Visible : Visibility.Collapsed;
             // No longer derive from CheckWhen; numeric value is held separately
 
             CheckStartupOptions();
@@ -459,7 +456,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
 
             runAtStartup = runStartProg || runStartTask;
-            canWriteTask = DS4Windows.Global.IsAdministrator();
+            canWriteTask = _environmentService.IsAdministrator();
 
             if (!runAtStartup)
             {
@@ -476,13 +473,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
             if (runAtStartup && runStartProg)
             {
-                bool locChange = StartupMethods.CheckStartupExeLocation();
+                bool locChange = StartupMethods.CheckStartupExeLocation(_pathService.ExecutablePath);
                 if (locChange)
                 {
                     if (StartupMethods.CanWriteStartEntry())
                     {
                         StartupMethods.DeleteStartProgEntry();
-                        StartupMethods.WriteStartProgEntry();
+                        StartupMethods.WriteStartProgEntry(_pathService.ExecutablePath, _pathService.ProgramDirectory);
                     }
                     else
                     {
@@ -495,8 +492,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             {
                 if (canWriteTask)
                 {
-                    StartupMethods.DeleteOldTaskEntry();
-                    StartupMethods.WriteTaskEntry();
+                    StartupMethods.DeleteOldTaskEntry(_pathService.ProgramDirectory);
+                    StartupMethods.WriteTaskEntry(_pathService.ProgramDirectory,
+                        System.IO.Path.GetFileName(_pathService.ExecutablePath));
                 }
             }
 
@@ -505,8 +503,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 showRunStartPanel = Visibility.Visible;
             }
 
-            RefreshMonitorChoices();
-
             RunAtStartupChanged += SettingsViewModel_RunAtStartupChanged;
             RunStartProgChanged += SettingsViewModel_RunStartProgChanged;
             RunStartTaskChanged += SettingsViewModel_RunStartTaskChanged;
@@ -514,14 +510,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             FakeExeNameChangeCompare += SettingsViewModel_FakeExeNameChangeCompare;
             UseUdpSmoothingChanged += SettingsViewModel_UseUdpSmoothingChanged;
             UseUDPServerChanged += SettingsViewModel_UseUDPServerChanged;
-            SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
-
-            //CheckForUpdatesChanged += SettingsViewModel_CheckForUpdatesChanged;
         }
 
-        private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e)
+        public void Dispose()
         {
-            RefreshMonitorChoices();
         }
 
         private void SettingsViewModel_UseUDPServerChanged(object sender, EventArgs e)
@@ -537,26 +529,37 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private void SettingsViewModel_FakeExeNameChangeCompare(SettingsViewModel sender,
             string oldvalue, string newvalue)
         {
-            string old_exefile = Path.Combine(DS4Windows.Global.exedirpath, $"{oldvalue}.exe");
-            string old_conf_file = Path.Combine(DS4Windows.Global.exedirpath, $"{oldvalue}.runtimeconfig.json");
-            string old_deps_file = Path.Combine(DS4Windows.Global.exedirpath, $"{oldvalue}.deps.json");
+            DeleteFakeExeFiles(_pathService.ProgramDirectory, oldvalue);
+        }
 
-            if (!string.IsNullOrEmpty(oldvalue))
+        /// <summary>
+        /// 偽装 exe 名の古いファイル（<c>名前.exe</c>／<c>.runtimeconfig.json</c>／<c>.deps.json</c>）を削除する。
+        /// 名前が空の場合は何もしない。
+        /// </summary>
+        public static void DeleteFakeExeFiles(string programDirectory, string fakeName)
+        {
+            if (string.IsNullOrEmpty(fakeName))
             {
-                if (File.Exists(old_exefile))
-                {
-                    File.Delete(old_exefile);
-                }
+                return;
+            }
 
-                if (File.Exists(old_conf_file))
-                {
-                    File.Delete(old_conf_file);
-                }
+            string old_exefile = Path.Combine(programDirectory, $"{fakeName}.exe");
+            string old_conf_file = Path.Combine(programDirectory, $"{fakeName}.runtimeconfig.json");
+            string old_deps_file = Path.Combine(programDirectory, $"{fakeName}.deps.json");
 
-                if (File.Exists(old_deps_file))
-                {
-                    File.Delete(old_deps_file);
-                }
+            if (File.Exists(old_exefile))
+            {
+                File.Delete(old_exefile);
+            }
+
+            if (File.Exists(old_conf_file))
+            {
+                File.Delete(old_conf_file);
+            }
+
+            if (File.Exists(old_deps_file))
+            {
+                File.Delete(old_deps_file);
             }
         }
 
@@ -573,7 +576,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             if (runStartTask)
             {
-                StartupMethods.WriteTaskEntry();
+                StartupMethods.WriteTaskEntry(_pathService.ProgramDirectory,
+                        System.IO.Path.GetFileName(_pathService.ExecutablePath));
             }
             else
             {
@@ -585,7 +589,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             if (runStartProg)
             {
-                StartupMethods.WriteStartProgEntry();
+                StartupMethods.WriteStartProgEntry(_pathService.ExecutablePath, _pathService.ProgramDirectory);
             }
             else
             {
@@ -607,15 +611,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             }
         }
 
-        private void SettingsViewModel_CheckForUpdatesChanged(object sender, EventArgs e)
-        {
-            if (!CheckForUpdates)
-            {
-                CheckEveryChanged?.Invoke(this, EventArgs.Empty);
-                CheckEveryUnitChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-
         private void CheckStartupOptions()
         {
             bool lnkExists = File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.Startup) + "\\DS4Windows.lnk");
@@ -633,10 +628,10 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             // If disabled, ensure UI shows sensible units. 0 means "every startup",
             // so only treat -1 as the explicit disabled sentinel.
-            if (!DS4Windows.Global.CheckUpdateStartupEnabled)
+            if (!_appSettings.CheckUpdateStartupEnabled)
             {
                 // keep unit in sync with persisted value when disabled
-                checkEveryUnitIdx = DS4Windows.Global.CheckEveryUnit;
+                checkEveryUnitIdx = _appSettings.CheckEveryUnit;
             }
 
             CheckForUpdatesChanged?.Invoke(this, EventArgs.Empty);
@@ -646,18 +641,37 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public void CreateFakeExe(string filename)
         {
-            string exefile = Path.Combine(DS4Windows.Global.exedirpath, $"{filename}.exe");
-            string current_conf_file_path = $"{DS4Windows.Global.exelocation}.runtimeconfig.json";
-            string current_deps_file_path = $"{DS4Windows.Global.exelocation}.deps.json";
+            CreateFakeExeFiles(_pathService.ProgramDirectory, _pathService.ExecutablePath, filename);
+        }
 
-            string fake_conf_file = Path.Combine(DS4Windows.Global.exedirpath, $"{filename}.runtimeconfig.json");
-            string fake_deps_file = Path.Combine(DS4Windows.Global.exedirpath, $"{filename}.deps.json");
+        /// <summary>
+        /// 偽装名の exe と、その設定ファイル（<c>.runtimeconfig.json</c>／<c>.deps.json</c>）を作る。
+        /// Phase6-Step9-3d（K9-2）: 設定ファイルの元は、<c>実行ファイル名.exe.runtimeconfig.json</c>（実在しない）ではなく、
+        /// 拡張子を除いた <c>実行ファイル名.runtimeconfig.json</c>／<c>.deps.json</c>。元が無い場合は、コピーを省略する。
+        /// </summary>
+        public static void CreateFakeExeFiles(string programDirectory, string exeLocation, string fakeName)
+        {
+            string exeBase = Path.Combine(Path.GetDirectoryName(exeLocation),
+                Path.GetFileNameWithoutExtension(exeLocation));
+            string current_conf_file_path = $"{exeBase}.runtimeconfig.json";
+            string current_deps_file_path = $"{exeBase}.deps.json";
 
-            File.Copy(DS4Windows.Global.exelocation, exefile); // Copy exe
+            string exefile = Path.Combine(programDirectory, $"{fakeName}.exe");
+            string fake_conf_file = Path.Combine(programDirectory, $"{fakeName}.runtimeconfig.json");
+            string fake_deps_file = Path.Combine(programDirectory, $"{fakeName}.deps.json");
+
+            File.Copy(exeLocation, exefile, true); // Copy exe
 
             // Copy needed app config and deps files
-            File.Copy(current_conf_file_path, fake_conf_file);
-            File.Copy(current_deps_file_path, fake_deps_file);
+            if (File.Exists(current_conf_file_path))
+            {
+                File.Copy(current_conf_file_path, fake_conf_file, true);
+            }
+
+            if (File.Exists(current_deps_file_path))
+            {
+                File.Copy(current_deps_file_path, fake_deps_file, true);
+            }
         }
 
         public void DriverCheckRefresh()
@@ -665,44 +679,18 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             HidHideClientFoundChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        private void RefreshMonitorChoices()
-        {
-            absMonitorChoices.Clear();
-            absMonitorChoices.Add(new MonitorChoiceListing()
-            {
-                DisplayName = "All Monitors",
-                EDID = string.Empty,
-                Index = 0,
-            });
-
-            int idx = 1;
-            foreach(DISPLAY_DEVICE tempDis in Global.GrabCurrentMonitors())
-            {
-                absMonitorChoices.Add(new MonitorChoiceListing()
-                {
-                    DisplayName = tempDis.DeviceString,
-                    EDID = tempDis.DeviceID,
-                    Index = idx,
-                });
-
-                idx++;
-            }
-
-            AbsMonitorChoicesChanged?.Invoke(this, EventArgs.Empty);
-        }
-
         public int LogMaxArchiveFiles
         {
-            get => DS4Windows.Global.LogMaxArchiveFiles;
+            get => _appSettings.LogMaxArchiveFiles;
             set
             {
-                if (DS4Windows.Global.LogMaxArchiveFiles != value)
+                if (_appSettings.LogMaxArchiveFiles != value)
                 {
-                    DS4Windows.Global.LogMaxArchiveFiles = value;
-                    DS4WinWPF.App.logHolder?.UpdateLogSettings();
-                    DS4WinWPF.App.logHolder?.UpdateNLogConfig(value);
-                    DS4Windows.Global.Save();
-                    DS4WinWPF.App.logHolder?.RestoreArchiveSetting(); // Restore after all updates
+                    _appSettings.LogMaxArchiveFiles = value;
+                    _logSettingsApplier.UpdateLogSettings();
+                    _logSettingsApplier.UpdateNLogConfig(value);
+                    _appSettings?.Save();
+                    _logSettingsApplier.RestoreArchiveSetting(); // Restore after all updates
                     LogMaxArchiveFilesChanged?.Invoke(this, EventArgs.Empty);
                 }
             }
@@ -710,50 +698,21 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public string LogMinLevel
         {
-            get => DS4Windows.Global.LogMinLevel;
+            get => _appSettings.LogMinLevel;
             set
             {
-                if (DS4Windows.Global.LogMinLevel != value)
+                if (_appSettings.LogMinLevel != value)
                 {
-                    DS4Windows.Global.LogMinLevel = value;
-                    DS4WinWPF.App.logHolder?.UpdateLogSettings();
-                    DS4Windows.Global.Save();
-                    DS4WinWPF.App.logHolder?.RestoreArchiveSetting(); // Restore after all updates
+                    _appSettings.LogMinLevel = value;
+                    _logSettingsApplier.UpdateLogSettings();
+                    _appSettings?.Save();
+                    _logSettingsApplier.RestoreArchiveSetting(); // Restore after all updates
                     LogMinLevelChanged?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
-        
+
         public event EventHandler LogMaxArchiveFilesChanged;
         public event EventHandler LogMinLevelChanged;
-    }
-
-    public struct MonitorChoiceListing
-    {
-        private int idx;
-        public int Index
-        {
-            get => idx;
-            set => idx = value;
-        }
-
-        private string edid;
-        public string EDID
-        {
-            get => edid;
-            set => edid = value;
-        }
-
-        private string displayName;
-        public string DisplayName
-        {
-            get => displayName;
-            set => displayName = value;
-        }
-
-        public string DisplayItemString
-        {
-            get => $"{idx}: {displayName}";
-        }
     }
 }

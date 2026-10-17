@@ -40,12 +40,26 @@ namespace DS4WinWPF.DS4Forms
     public partial class LanguagePackControl : UserControl
     {
         private LanguagePackViewModel langPackVM;
+        private DS4Windows.DI.IAppSettingsService _appSettingsService;
 
+        // Phase6-Step10-1-4: 本コントロールは MainWindow.xaml から生成されるため、引数なしのコンストラクタが必要。
+        // 依存は Initialize で受け取る（MainWindow のコンストラクタが、生成直後に呼ぶ）。
         public LanguagePackControl()
         {
             InitializeComponent();
+        }
 
-            langPackVM = new LanguagePackViewModel();
+        /// <summary>
+        /// 依存を受け取り、言語パックの一覧の取得を開始する（置換前はコンストラクタで行っていた処理）。
+        /// MainWindow のコンストラクタから 1 回だけ呼ぶ。
+        /// </summary>
+        public void Initialize(DS4Windows.DI.IAppSettingsService appSettingsService)
+        {
+            if (appSettingsService == null) throw new ArgumentNullException(nameof(appSettingsService));
+            if (_appSettingsService != null) throw new InvalidOperationException("LanguagePackControl is already initialized.");
+
+            _appSettingsService = appSettingsService;
+            langPackVM = new LanguagePackViewModel(appSettingsService);
             this.DataContext = null;
             langPackVM.ScanFinished += LangPackVM_ScanFinished;
             langPackVM.SelectedIndexChanged += CheckForCultureChange;
@@ -74,7 +88,7 @@ namespace DS4WinWPF.DS4Forms
                     app.ApplyLanguageSettingPublic(cultureCode);
                     
                     // Save to config
-                    DS4Windows.Global.Save();
+                    _appSettingsService.Save();
                     
                     MessageBox.Show(Translations.Strings.ResourceManager.GetString("LangPackControl.LanguageApplied") ?? "Language applied successfully",
                         "DS4Windows", MessageBoxButton.OK, MessageBoxImage.Information);

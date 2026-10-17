@@ -31,145 +31,12 @@ using DS4WinWPF.DS4Control;
 
 namespace DS4Windows
 {
-    public struct DS4Color : IEquatable<DS4Color>
-    {
-        public byte red;
-        public byte green;
-        public byte blue;
-
-        public DS4Color(Color c)
-        {
-            red = c.R;
-            green = c.G;
-            blue = c.B;
-        }
-
-        public DS4Color(byte r, byte g, byte b)
-        {
-            red = r;
-            green = g;
-            blue = b;
-        }
-
-        public bool Equals(DS4Color other)
-        {
-            return this.red == other.red && this.green == other.green && this.blue == other.blue;
-        }
-
-        public Color ToColor => Color.FromArgb(red, green, blue);
-        public Color ToColorA
-        {
-            get
-            {
-                byte alphacolor = Math.Max(red, Math.Max(green, blue));
-                Color reg = Color.FromArgb(red, green, blue);
-                Color full = HuetoRGB(reg.GetHue(), reg.GetBrightness(), ref reg);
-                return Color.FromArgb((alphacolor > 205 ? 255 : (alphacolor + 50)), full);
-            }
-        }
-
-        private Color HuetoRGB(float hue, float light, ref Color rgb)
-        {
-            float L = (float)Math.Max(.5, light);
-            float C = (1 - Math.Abs(2 * L - 1));
-            float X = (C * (1 - Math.Abs((hue / 60) % 2 - 1)));
-            float m = L - C / 2;
-            float R = 0, G = 0, B = 0;
-            if (light == 1) return Color.White;
-            else if (rgb.R == rgb.G && rgb.G == rgb.B) return Color.White;
-            else if (0 <= hue && hue < 60) { R = C; G = X; }
-            else if (60 <= hue && hue < 120) { R = X; G = C; }
-            else if (120 <= hue && hue < 180) { G = C; B = X; }
-            else if (180 <= hue && hue < 240) { G = X; B = C; }
-            else if (240 <= hue && hue < 300) { R = X; B = C; }
-            else if (300 <= hue && hue < 360) { R = C; B = X; }
-            return Color.FromArgb((int)((R + m) * 255), (int)((G + m) * 255), (int)((B + m) * 255));
-        }
-
-        public static bool TryParse(string value, ref DS4Color ds4color)
-        {
-            try
-            {
-                string[] ss = value.Split(',');
-                return byte.TryParse(ss[0], out ds4color.red) && byte.TryParse(ss[1], out ds4color.green) && byte.TryParse(ss[2], out ds4color.blue);
-            }
-            catch { return false; }
-        }
-
-        public override string ToString() => $"#{red:X}{green:X}{blue:X}";
-    }
-
-    public enum ConnectionType : byte { BT, SONYWA, USB }; // Prioritize Bluetooth when both BT and USB are connected.
-
-    /**
-     * The haptics engine uses a stack of these states representing the light bar and rumble motor settings.
-     * It (will) handle composing them and the details of output report management.
-     */
-    public struct DS4ForceFeedbackState : IEquatable<DS4ForceFeedbackState>
-    {
-        public byte RumbleMotorStrengthLeftHeavySlow, RumbleMotorStrengthRightLightFast;
-        public bool RumbleMotorsExplicitlyOff;
-
-        public bool Equals(DS4ForceFeedbackState other)
-        {
-            return RumbleMotorStrengthLeftHeavySlow == other.RumbleMotorStrengthLeftHeavySlow &&
-                RumbleMotorStrengthRightLightFast == other.RumbleMotorStrengthRightLightFast &&
-                RumbleMotorsExplicitlyOff == other.RumbleMotorsExplicitlyOff;
-        }
-
-        public bool IsRumbleSet()
-        {
-            const byte zero = 0;
-            return RumbleMotorsExplicitlyOff || RumbleMotorStrengthLeftHeavySlow != zero || RumbleMotorStrengthRightLightFast != zero;
-        }
-    }
-
-    public struct DS4LightbarState : IEquatable<DS4LightbarState>
-    {
-        public DS4Color LightBarColor;
-        public bool LightBarExplicitlyOff;
-        public byte LightBarFlashDurationOn, LightBarFlashDurationOff;
-
-        public bool Equals(DS4LightbarState other)
-        {
-            return LightBarColor.Equals(other.LightBarColor) &&
-                LightBarExplicitlyOff == other.LightBarExplicitlyOff &&
-                LightBarFlashDurationOn == other.LightBarFlashDurationOn &&
-                LightBarFlashDurationOff == other.LightBarFlashDurationOff;
-        }
-
-        public bool IsLightBarSet()
-        {
-            return LightBarExplicitlyOff || LightBarColor.red != 0 || LightBarColor.green != 0 || LightBarColor.blue != 0;
-        }
-    }
-
-    public struct DS4HapticState : IEquatable<DS4HapticState>
-    {
-        public DS4LightbarState lightbarState;
-        public DS4ForceFeedbackState rumbleState;
-        public bool dirty;
-
-        public bool Equals(DS4HapticState other)
-        {
-            return lightbarState.Equals(other.lightbarState) &&
-                rumbleState.Equals(other.rumbleState);
-        }
-
-        public bool IsLightBarSet()
-        {
-            return lightbarState.IsLightBarSet();
-        }
-
-        public bool IsRumbleSet()
-        {
-            const byte zero = 0;
-            return rumbleState.RumbleMotorsExplicitlyOff || rumbleState.RumbleMotorStrengthLeftHeavySlow != zero || rumbleState.RumbleMotorStrengthRightLightFast != zero;
-        }
-    }
 
     public class DS4Device
     {
+        // Indicates PostInit completed and output buffers (etc.) are initialized
+        protected volatile bool postInitDone = false;
+
         public class GyroMouseSens
         {
             public double mouseOffset = 0.2;
@@ -354,7 +221,7 @@ namespace DS4Windows
 
         public object removeLocker = new object();
 
-        public string MacAddress =>  Mac;
+        public string MacAddress => Mac;
         public event EventHandler MacAddressChanged;
         public string getMacAddress()
         {
@@ -395,7 +262,7 @@ namespace DS4Windows
         protected VidPidFeatureSet featureSet;
         public VidPidFeatureSet FeatureSet
         {
-            get { return featureSet;  }
+            get { return featureSet; }
             set { featureSet = value; }
         }
         public VidPidFeatureSet ModifyFeatureSetFlag(VidPidFeatureSet featureBitFlag, bool flagSet)
@@ -734,6 +601,9 @@ namespace DS4Windows
             //}
 
             sendOutputReport(true, true, false); // initialize the output report (don't force disconnect the gamepad on initialization even if writeData fails because some fake DS4 gamepads don't support writeData over BT)
+
+            // Mark PostInit complete so StartUpdate won't race with uninitialized buffers
+            postInitDone = true;
         }
 
         // TODO: Possibly remove method
@@ -747,7 +617,7 @@ namespace DS4Windows
             };
 
             byte finalReport = 0x00;
-            foreach(var element in reportIds)
+            foreach (var element in reportIds)
             {
                 int len = element.Length;
                 byte[] outputBuffer = new byte[element.Length];
@@ -844,6 +714,15 @@ namespace DS4Windows
         public virtual void StartUpdate()
         {
             this.inputReportErrorCount = 0;
+
+            // Ensure PostInit finished; wait briefly if needed to avoid race where StartUpdate
+            // runs before output buffers are initialized in PostInit.
+            int waited = 0;
+            while (!postInitDone && waited < 500)
+            {
+                Thread.Sleep(25);
+                waited += 25;
+            }
 
             if (ds4Input == null)
             {
@@ -957,9 +836,9 @@ namespace DS4Windows
 
         private readonly Stopwatch rumbleAutostopTimer = new Stopwatch(); // Autostop timer to stop rumble motors if those are stuck in a rumble state
 
-        #pragma warning disable CS0414 // outputPendCount is assigned in some flows but read paths may be conditional
+#pragma warning disable CS0414 // outputPendCount is assigned in some flows but read paths may be conditional
         private byte outputPendCount = 0;
-        #pragma warning restore CS0414
+#pragma warning restore CS0414
         private const int OUTPUT_MIN_COUNT_BT = 3;
         private byte[] outputBTCrc32Head = new byte[] { 0xA2 };
         protected readonly Stopwatch standbySw = new Stopwatch();
@@ -1005,6 +884,7 @@ namespace DS4Windows
         }
 
         public double Latency = 0.0;
+        public long lastInputReportTimestamp = 0; // 実機レポート受信開始タイムスタンプ public string error;public double Latency = 0.0;
         public string error;
         public bool firstReport = true;
         public bool oldCharging = false;
@@ -1080,6 +960,8 @@ namespace DS4Windows
 
                     readWaitEv.Set();
 
+                    long rawReceivedTime = 0;
+
                     // Sony DS4 and compatible gamepads send data packets with 0x11 type code in BT mode.
                     // Will no longer support any third party fake DS4 that does not behave according to official DS4 specs
                     //if (conType == ConnectionType.BT)
@@ -1088,9 +970,11 @@ namespace DS4Windows
                         //HidDevice.ReadStatus res = hDevice.ReadFile(btInputReport);
                         //HidDevice.ReadStatus res = hDevice.ReadAsyncWithFileStream(btInputReport, READ_STREAM_TIMEOUT);
                         HidDevice.ReadStatus res = hDevice.ReadFile(btInputReport);
-                        timeoutEvent = false;
                         if (res == HidDevice.ReadStatus.Success)
                         {
+                            rawReceivedTime = Stopwatch.GetTimestamp();
+                            timeoutEvent = false;
+
                             //Array.Copy(btInputReport, 2, inputReport, 0, inputReport.Length);
                             fixed (byte* byteP = &btInputReport[2], imp = inputReport)
                             {
@@ -1193,12 +1077,17 @@ namespace DS4Windows
                             timeoutExecuted = true;
                             return;
                         }
+                        else
+                        {
+                            rawReceivedTime = Stopwatch.GetTimestamp();
+                        }
                     }
 
                     readWaitEv.Wait();
                     readWaitEv.Reset();
 
-                    curtime = Stopwatch.GetTimestamp();
+                    curtime = rawReceivedTime;
+                    lastInputReportTimestamp = curtime; // 受信開始時刻を保持
                     testelapsed = curtime - oldtime;
                     lastTimeElapsedDouble = testelapsed * (1.0 / Stopwatch.Frequency) * 1000.0;
                     lastTimeElapsed = (long)lastTimeElapsedDouble;
@@ -1550,10 +1439,8 @@ namespace DS4Windows
             debouncer.AddDebouncer(nameof(DS4State.DpadDown));
             debouncer.AddDebouncer(nameof(DS4State.DpadLeft));
             debouncer.AddDebouncer(nameof(DS4State.DpadRight));
-            Global.DebouncingMsChanged += (_, _) =>
-            {
-                debouncer.SetDuration(TimeSpan.FromMilliseconds(Global.DebouncingMs[deviceSlotNumber]));
-            };
+            // Phase6-Step12: デバウンス時間の更新は、プロファイルの適用時に ControlService.CheckProfileOptions が行う
+            // （旧: Global.DebouncingMsChanged の購読。発火元が無く、購読が解除されないリークもあったため削除）
             return debouncer;
         }
 
@@ -1631,6 +1518,14 @@ namespace DS4Windows
 
             bool quitOutputThread = false;
             bool usingBT = conType == ConnectionType.BT;
+
+            // Defensive: output buffers should be initialized in PostInit.
+            // If they are not yet initialized (race or early call), log and skip to avoid NRE.
+            if (outputReport == null || outReportBuffer == null)
+            {
+                AppLogger.LogToGui($"sendOutputReport: output buffers not initialized (outputReport={(outputReport == null)}, outReportBuffer={(outReportBuffer == null)})", false);
+                return;
+            }
 
             // Some gamepads don't support lightbar and rumble, so no need to write out anything (writeOut always fails, so DS4Windows would accidentally force quit the gamepad connection).
             // If noOutputData featureSet flag is set then don't try to write out anything to the gamepad device.
@@ -1711,7 +1606,7 @@ namespace DS4Windows
 
                     if (!usingBT)
                     {
-                        lock(outReportBuffer)
+                        lock (outReportBuffer)
                         {
                             Monitor.Pulse(outReportBuffer);
                         }
@@ -1751,6 +1646,13 @@ namespace DS4Windows
             {
                 while (!exitOutputThread)
                 {
+                    // Defensive: if buffers are not initialized, wait briefly and retry
+                    if (outReportBuffer == null || outputReport == null)
+                    {
+                        Thread.Sleep(50);
+                        continue;
+                    }
+
                     lock (outReportBuffer)
                     {
                         outReportBuffer.CopyTo(outputReport, 0);
@@ -1845,7 +1747,7 @@ namespace DS4Windows
             byte[] disconnectReport = new byte[SONYWA_FEATURE_REPORT_LENGTH];
             disconnectReport[0] = 0xe2;
             disconnectReport[1] = 0x02;
-            Array.Clear(disconnectReport, 2, SONYWA_FEATURE_REPORT_LENGTH-2);
+            Array.Clear(disconnectReport, 2, SONYWA_FEATURE_REPORT_LENGTH - 2);
 
             if (remove)
                 StopOutputUpdate();

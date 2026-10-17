@@ -39,7 +39,6 @@ namespace DS4WinWPF.DS4Forms
     /// </summary>
     public partial class OutputSlotManagerControl : UserControl
     {
-        private DS4Windows.ControlService controlService;
         private CurrentOutDeviceViewModel currentOutDevVM;
         //private PermanentOutDevViewModel permanentDevVM;
 
@@ -48,12 +47,11 @@ namespace DS4WinWPF.DS4Forms
             InitializeComponent();
         }
 
-        public void SetupDataContext(DS4Windows.ControlService controlService,
+        // Phase6-Step10-5: ControlService の代わりに、抜き差しの正式な入口（IOutputSlotService）を受け取る
+        public void SetupDataContext(DS4Windows.DI.IOutputSlotService outputSlotService,
             DS4Windows.OutputSlotManager outputMan)
         {
-            this.controlService = controlService;
-
-            currentOutDevVM = new CurrentOutDeviceViewModel(controlService, outputMan);
+            currentOutDevVM = new CurrentOutDeviceViewModel(outputSlotService, outputMan);
             currentOutDevVM.SelectedIndexChanged += CurrentOutDevVM_SelectedIndexChanged;
             currentOutDevLV.DataContext = currentOutDevVM;
             sideStackPanel.DataContext = currentOutDevVM;

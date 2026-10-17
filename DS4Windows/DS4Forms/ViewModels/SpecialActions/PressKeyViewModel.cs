@@ -24,12 +24,32 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
+using System.ComponentModel;
 
 namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
 {
-    public class PressKeyViewModel : NotifyDataErrorBase
+    public class PressKeyViewModel : NotifyDataErrorBase, INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        private string switchMode = string.Empty;
+        public string SwitchMode
+        {
+            get => switchMode;
+            set
+            {
+                switchMode = value;
+                // Update UI strings and toggle-related controls when SwitchMode changes
+                UpdateDescribeText();
+                UpdateToggleControls();
+                OnPropertyChanged(nameof(SwitchMode));
+            }
+        }
+        private int editorDeviceNum = -1;
+        private DS4ControlSettings.ActionType lastActionType = DS4ControlSettings.ActionType.Key;
+        private int lastActionBtn = -1;
         private string describeText;
         private DS4KeyType keyType;
         private int value;
@@ -72,8 +92,48 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
 
         public void LoadAction(SpecialAction action)
         {
+            // device number may be set by the editor so we can pick the proper
+            // emulated controller type for label strings (X360 vs DS4)
             keyType = action.keyType;
-            int.TryParse(action.details, out value);
+            // Read explicit SwitchMode if provided by SpecialAction; fallback to keyType flag
+            if (action.KeyButtonSwitchMode.HasValue)
+            {
+                SwitchMode = action.KeyButtonSwitchMode.Value == SpecialAction.KeyButtonSwitchModeEnum.Toggle ? "Toggle" : "Press";
+            }
+            else
+            {
+                SwitchMode = keyType.HasFlag(DS4KeyType.Toggle) ? "Toggle" : "Press";
+            }
+            // If action is Button, details contains button id
+                if (action.typeID == SpecialAction.ActionTypeId.Button)
+            {
+                lastActionType = DS4ControlSettings.ActionType.Button;
+                int.TryParse(action.details, out lastActionBtn);
+                    try
+                    {
+                        // Prefer using editor's device-specific output type when available
+                        string btnName;
+                        if (editorDeviceNum >= 0 && editorDeviceNum < profileSettingsService.OutContType.Length)
+                        {
+                            btnName = X360ControlTables.getX360ControlString((X360Controls)lastActionBtn, profileSettingsService.OutContType[editorDeviceNum]);
+                        }
+                        else
+                        {
+                            btnName = X360ControlTables.getX360ControlString((X360Controls)lastActionBtn);
+                        }
+
+                        // Display mode suffix: (Toggle) or (Press)
+                        describeText = btnName + (action.keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : " (Press)");
+                    }
+                    catch { describeText = string.Empty; }
+                value = 0;
+            }
+            else
+            {
+                int.TryParse(action.details, out value);
+                lastActionType = DS4ControlSettings.ActionType.Key;
+                lastActionBtn = -1;
+            }
 
             if (action.pressRelease)
             {
@@ -86,11 +146,34 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
 
         public void UpdateDescribeText()
         {
-            describeText = KeyInterop.KeyFromVirtualKey(value).ToString() +
-                (keyType.HasFlag(DS4KeyType.ScanCode) ? " (SC)" : "") +
-                (keyType.HasFlag(DS4KeyType.Toggle) ? " (Toggle)" : "");
+            // If last binding was a Button, prefer showing the button name.
+            if (lastActionType == DS4ControlSettings.ActionType.Button && lastActionBtn >= 0)
+            {
+                try
+                {
+                    if (editorDeviceNum >= 0 && editorDeviceNum < profileSettingsService.OutContType.Length)
+                    {
+                        describeText = X360ControlTables.getX360ControlString((X360Controls)lastActionBtn, profileSettingsService.OutContType[editorDeviceNum]);
+                    }
+                    else
+                    {
+                        describeText = X360ControlTables.getX360ControlString((X360Controls)lastActionBtn);
+                    }
+                }
+                catch
+                {
+                    describeText = Properties.Resources.Unassigned;
+                }
+            }
+            else
+            {
+                    describeText = KeyInterop.KeyFromVirtualKey(value).ToString() +
+                        (keyType.HasFlag(DS4KeyType.ScanCode) ? " (SC)" : "") +
+                        (string.Equals(switchMode, "Toggle", StringComparison.OrdinalIgnoreCase) ? " (Toggle)" : " (Press)");
+            }
 
             DescribeTextChanged?.Invoke(this, EventArgs.Empty);
+            OnPropertyChanged(nameof(DescribeText));
         }
 
         public void UpdateToggleControls()
@@ -99,36 +182,109 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             ShowToggleControlsChanged?.Invoke(this, EventArgs.Empty);
         }
 
+        public void SetDeviceNum(int deviceNum)
+        {
+            editorDeviceNum = deviceNum;
+        }
+
         public DS4ControlSettings PrepareSettings()
         {
             DS4ControlSettings settings = new DS4ControlSettings(DS4Controls.None);
             settings.action.actionKey = value;
-            settings.keyType = keyType;
+            // Ensure the keyType passed to the binding window reflects the editor's SwitchMode
+            var keyTypeToPass = keyType;
+            if (string.Equals(switchMode, "Toggle", StringComparison.OrdinalIgnoreCase))
+            {
+                keyTypeToPass |= DS4KeyType.Toggle;
+            }
+            else
+            {
+                keyTypeToPass &= ~DS4KeyType.Toggle;
+            }
+            settings.keyType = keyTypeToPass;
             settings.actionType = DS4ControlSettings.ActionType.Key;
             return settings;
         }
 
-        public void ReadSettings(DS4ControlSettings settings)
+        public void ReadSettings(DS4ControlSettings settings, int deviceNum = -1)
         {
+            // If the binding produced a Button action, show the button name
+            if (settings.actionType == DS4ControlSettings.ActionType.Button)
+            {
+                lastActionType = DS4ControlSettings.ActionType.Button;
+                lastActionBtn = (int)settings.action.actionBtn;
+                // Try to use device-specific output type when available
+                string btnName;
+                try
+                {
+                    if (deviceNum >= 0)
+                    {
+                        btnName = X360ControlTables.getX360ControlString((X360Controls)settings.action.actionBtn, outputSlotService.OutDevTypeTemp[deviceNum]);
+                    }
+                    else
+                    {
+                        btnName = X360ControlTables.getX360ControlString((X360Controls)settings.action.actionBtn);
+                    }
+                }
+                catch
+                {
+                    btnName = X360ControlTables.getX360ControlString((X360Controls)settings.action.actionBtn);
+                }
+
+                describeText = btnName;
+                // clear numeric key value since this is a button mapping
+                value = 0;
+                keyType = 0;
+                // Phase6-Step10-3c: 画面が購読している PropertyChanged（DescribeText）も発行して、戻った直後の表示を更新する
+                // （従来は DescribeTextChanged だけを発行していたため、保存して開き直すまで古い表示のままだった）
+                UpdateDescribeText();
+                UpdateToggleControls();
+                return;
+            }
+
+            // Default: treat as a key action
             value = (int)settings.action.actionKey;
             keyType = settings.keyType;
+            // Update SwitchMode editor value to reflect the binding window's toggle flag
+            SwitchMode = keyType.HasFlag(DS4KeyType.Toggle) ? "Toggle" : "Press";
+            lastActionType = DS4ControlSettings.ActionType.Key;
+            lastActionBtn = -1;
+            // Update the describe text so the UI immediately reflects the key binding
+            UpdateDescribeText();
+            UpdateToggleControls();
+        }
+
+        // Phase6-Step10-3-2: Global.SaveAction の置換先（必須引数）
+        private readonly ISpecialActionRepository specialActionRepository;
+        private readonly IProfileSettingsService profileSettingsService;
+        private readonly IOutputSlotService outputSlotService;
+
+        public PressKeyViewModel(ISpecialActionRepository specialActionRepository,
+            IProfileSettingsService profileSettingsService, IOutputSlotService outputSlotService)
+        {
+            this.specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
+            // ボタン名の表示に使う出力コントローラー種別の取得元（profileSettingsService.OutContType／outputSlotService.OutDevTypeTemp の置換先）
+            this.profileSettingsService = profileSettingsService ?? throw new ArgumentNullException(nameof(profileSettingsService));
+            this.outputSlotService = outputSlotService ?? throw new ArgumentNullException(nameof(outputSlotService));
         }
 
         public void SaveAction(SpecialAction action, bool edit = false)
         {
-            string uaction = null;
-            if (keyType.HasFlag(DS4KeyType.Toggle))
-            {
-                uaction = "Press";
-                if (pressReleaseIndex == 1)
-                {
-                    uaction = "Release";
-                }
-            }
+            // Determine SwitchMode to save: use explicit editor selection when available,
+            // otherwise fallback to existing keyType flag behavior.
+            string modeToSave = !string.IsNullOrEmpty(switchMode) ? switchMode : (keyType.HasFlag(DS4KeyType.Toggle) ? "Toggle" : "Press");
 
-            Global.SaveAction(action.name, action.controls, 4,
+            // If last binding was a Button, save as Button type
+            // （Phase6-Step10-3c: SwitchMode（Press／Toggle）も保存する。従来は渡しておらず、Toggle を選んでも Press になっていた）
+            if (lastActionType == DS4ControlSettings.ActionType.Button && lastActionBtn >= 0)
+            {
+                specialActionRepository.SaveAction(action.name, action.controls, 10, lastActionBtn.ToString(), edit,
+                    extras: $"{modeToSave}\n{action.ucontrols}");
+                return;
+            }
+            specialActionRepository.SaveAction(action.name, action.controls, 4,
                 $"{value}{(keyType.HasFlag(DS4KeyType.ScanCode) ? " Scan Code" : "")}", edit,
-                extras: !string.IsNullOrEmpty(uaction) ? $"{uaction}\n{action.ucontrols}" : "");
+                extras: $"{modeToSave}\n{action.ucontrols}");
         }
 
         public override bool IsValid(SpecialAction action)
@@ -139,13 +295,26 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             List<string> valueErrors = new List<string>();
             List<string> toggleErrors = new List<string>();
 
-            if (value == 0)
+            if (lastActionType == DS4ControlSettings.ActionType.Key)
             {
-                valueErrors.Add("No key defined");
-                errors["Value"] = valueErrors;
-                RaiseErrorsChanged("Value");
+                if (value == 0)
+                {
+                    valueErrors.Add("No key defined");
+                    errors["Value"] = valueErrors;
+                    RaiseErrorsChanged("Value");
+                }
             }
-            if (keyType.HasFlag(DS4KeyType.Toggle) && string.IsNullOrEmpty(action.ucontrols))
+            else if (lastActionType == DS4ControlSettings.ActionType.Button)
+            {
+                if (lastActionBtn < 0)
+                {
+                    valueErrors.Add("No button defined");
+                    errors["Value"] = valueErrors;
+                    RaiseErrorsChanged("Value");
+                }
+            }
+            // If explicit SwitchMode says Toggle then require unload triggers
+            if (string.Equals(switchMode, "Toggle", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(action.ucontrols))
             {
                 toggleErrors.Add("No unload triggers specified");
                 errors["UnloadError"] = toggleErrors;

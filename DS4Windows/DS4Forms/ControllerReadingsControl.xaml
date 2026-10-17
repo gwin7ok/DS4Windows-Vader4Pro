@@ -2,41 +2,52 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:lex="http://wpflocalizeextension.codeplex.com"
              lex:LocalizeDictionary.DesignCulture=""
              lex:ResxLocalizationProvider.DefaultAssembly="DS4Windows"
              lex:ResxLocalizationProvider.DefaultDictionary="Strings"
              xmlns:local="clr-namespace:DS4WinWPF.DS4Forms"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="460">
+             d:DesignHeight="450" d:DesignWidth="480">
     <DockPanel LastChildFill="False">
-        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
-            <StackPanel Orientation="Horizontal" Width="200">
-                <Label x:Name="inputContNum" Content="#" FontWeight="Bold"/>
-                <Label x:Name="inputDelayLb" Content="{lex:Loc ReadingsControl.InputDelayNA}"  Margin="8,0,0,0">
-                    <Label.Background>
-                        <SolidColorBrush x:Name="inpuDelayBackBrush" Color="Transparent" />
-                    </Label.Background>
-                    <Label.Foreground>
-                        <SolidColorBrush x:Name="inpuDelayForeBrush" Color="Black"/>
-                    </Label.Foreground>
-                </Label>
+        <DockPanel DockPanel.Dock="Top" LastChildFill="False" Margin="4,0,4,0">
+            <!-- 左側: コントローラー番号 / 入力遅延 / バッテリー -->
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                <StackPanel Orientation="Horizontal">
+                    <Label x:Name="inputContNum" Content="#" FontWeight="Bold"/>
+                    <Label x:Name="inputDelayLb" Content="{lex:Loc ReadingsControl.InputDelayNA}" Margin="8,0,0,0">
+                        <Label.Background>
+                            <SolidColorBrush x:Name="inpuDelayBackBrush" Color="Transparent" />
+                        </Label.Background>
+                        <Label.Foreground>
+                            <SolidColorBrush x:Name="inpuDelayForeBrush" Color="Black"/>
+                        </Label.Foreground>
+                    </Label>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                    <Label x:Name="batteryLvlLb" Content="{lex:Loc ReadingsControl.BatteryZero}" Margin="8,0,0,0" />
+                </StackPanel>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
-                <Label x:Name="batteryLvlLb" Content="{lex:Loc ReadingsControl.BatteryZero}" Margin="8,0,0,0" />
+            <!-- 右側: 仮想コントローラー出力遅延 (内部変換時間) -->
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Margin="0,0,6,0">
+                <Label x:Name="outputDelayLb" Content="出力遅延: -- ms" FontWeight="SemiBold" Foreground="{DynamicResource ForegroundColor}" VerticalAlignment="Center"/>
             </StackPanel>
-        </StackPanel>
-        <Grid DockPanel.Dock="Top" Width="450" Margin="0,8,0,0">
+        </DockPanel>
+
+        <!-- 3スティック表示エリア: 固定幅を外し利用可能な幅全体にゆったり拡張 -->
+        <Grid DockPanel.Dock="Top" Margin="4,8,4,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
+
+            <!-- 左スティック -->
+            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                 <Label Content="{lex:Loc LeftStick}" HorizontalAlignment="Center" Padding="0"/>
                 <Label Content="" HorizontalAlignment="Center" Padding="0"/>
-                <Canvas x:Name="lsCanvas" Width="130" Height="130" ClipToBounds="True">
+                <Canvas x:Name="lsCanvas" Width="130" Height="130" ClipToBounds="True" HorizontalAlignment="Center">
                     <Rectangle Width="130" Height="130" Stroke="{DynamicResource ForegroundColor}">
                     </Rectangle>
                     <Ellipse x:Name="lsDeadEllipse" Width="{Binding Path=Width, ElementName=lsCanvas}"
@@ -50,31 +61,25 @@
                     <Rectangle x:Name="lsValRec" Width="6" Height="6" Canvas.Left="62" Canvas.Top="62" Fill="{DynamicResource ForegroundColor}">
                     </Rectangle>
                 </Canvas>
-                <StackPanel Orientation="Horizontal">
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="LX (I): " />
-                        <Label x:Name="lxInValLb" Content="" Width="30" Padding="2,5"  />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="LX (O): " />
-                        <Label x:Name="lxOutValLb" Content="" Width="30" Padding="2,5" />
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                    <Label Content="LX (I):" Padding="2,2"/>
+                    <Label x:Name="lxInValLb" Content="" Width="32" Padding="2,2" HorizontalContentAlignment="Right"/>
+                    <Label Content="LX (O):" Padding="6,2,2,2"/>
+                    <Label x:Name="lxOutValLb" Content="" Width="32" Padding="2,2" HorizontalContentAlignment="Right"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="LY (I): "/>
-                        <Label x:Name="lyInValLb" Content="" Width="30" Padding="2,5" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="LY (O): " />
-                        <Label x:Name="lyOutValLb" Content="" Width="30" />
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <Label Content="LY (I):" Padding="2,2"/>
+                    <Label x:Name="lyInValLb" Content="" Width="32" Padding="2,2" HorizontalContentAlignment="Right"/>
+                    <Label Content="LY (O):" Padding="6,2,2,2"/>
+                    <Label x:Name="lyOutValLb" Content="" Width="32" Padding="2,2" HorizontalContentAlignment="Right"/>
                 </StackPanel>
             </StackPanel>
-            <StackPanel Grid.Column="1">
+
+            <!-- 右スティック -->
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                 <Label Content="{lex:Loc RightStick}" HorizontalAlignment="Center" Padding="0"/>
                 <Label Content="" HorizontalAlignment="Center" Padding="0"/>
-                <Canvas x:Name="rsCanvas" Width="130" Height="130" ClipToBounds="True">
+                <Canvas x:Name="rsCanvas" Width="130" Height="130" ClipToBounds="True" HorizontalAlignment="Center">
                     <Rectangle Width="{Binding Path=Width, ElementName=rsCanvas}"
                                Height="{Binding Path=Height, ElementName=rsCanvas}" Stroke="{DynamicResource ForegroundColor}">
                     </Rectangle>
@@ -89,30 +94,24 @@
                     <Rectangle x:Name="rsValRec" Width="6" Height="6" Canvas.Left="62" Canvas.Top="62" Fill="{DynamicResource ForegroundColor}">
                     </Rectangle>
                 </Canvas>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="RX (I): "/>
-                        <Label x:Name="rxInValLb" Content="" Width="30" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="RX (O): "/>
-                        <Label x:Name="rxOutValLb" Content="" Width="30" />
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                    <Label Content="RX (I):" Padding="2,2"/>
+                    <Label x:Name="rxInValLb" Content="" Width="32" Padding="2,2" HorizontalContentAlignment="Right"/>
+                    <Label Content="RX (O):" Padding="6,2,2,2"/>
+                    <Label x:Name="rxOutValLb" Content="" Width="32" Padding="2,2" HorizontalContentAlignment="Right"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="RY (I): "/>
-                        <Label x:Name="ryInValLb" Content="" Width="30" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="RY (O): "/>
-                        <Label x:Name="ryOutValLb" Content="" Width="30" />
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <Label Content="RY (I):" Padding="2,2"/>
+                    <Label x:Name="ryInValLb" Content="" Width="32" Padding="2,2" HorizontalContentAlignment="Right"/>
+                    <Label Content="RY (O):" Padding="6,2,2,2"/>
+                    <Label x:Name="ryOutValLb" Content="" Width="32" Padding="2,2" HorizontalContentAlignment="Right"/>
                 </StackPanel>
             </StackPanel>
-            <StackPanel Grid.Column="2">
+
+            <!-- SixAxis -->
+            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                 <TextBlock Text="{lex:Loc ReadingsControl.SixAxisXText}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"/>
-                <Canvas x:Name="sixaxisCanvas" Width="130" Height="130" ClipToBounds="True">
+                <Canvas x:Name="sixaxisCanvas" Width="130" Height="130" ClipToBounds="True" HorizontalAlignment="Center">
                     <Rectangle Width="{Binding Path=Width, ElementName=sixaxisCanvas}"
                                Height="{Binding Path=Height, ElementName=sixaxisCanvas}" Stroke="{DynamicResource ForegroundColor}">
                     </Rectangle>
@@ -125,29 +124,23 @@
                     </Rectangle>
                     <Ellipse x:Name="gyroCalEllipse" Fill="#FF1FCF1F" Height="32" Canvas.Left="90" Canvas.Top="10" Width="32"/>
                 </Canvas>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="X (I): "/>
-                        <Label x:Name="sixAxisXInValLb" Content="" Width="40" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="X (O): "/>
-                        <Label x:Name="sixAxisXOutValLb" Content="" Width="40" />
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                    <Label Content="X (I):" Padding="2,2"/>
+                    <Label x:Name="sixAxisXInValLb" Content="" Width="36" Padding="2,2" HorizontalContentAlignment="Right"/>
+                    <Label Content="X (O):" Padding="6,2,2,2"/>
+                    <Label x:Name="sixAxisXOutValLb" Content="" Width="36" Padding="2,2" HorizontalContentAlignment="Right"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="Z (I): "/>
-                        <Label x:Name="sixAxisZInValLb" Content="" Width="40" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="Z (O): "/>
-                        <Label x:Name="sixAxisZOutValLb" Content="" Width="40" />
-                    </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <Label Content="Z (I):" Padding="2,2"/>
+                    <Label x:Name="sixAxisZInValLb" Content="" Width="36" Padding="2,2" HorizontalContentAlignment="Right"/>
+                    <Label Content="Z (O):" Padding="6,2,2,2"/>
+                    <Label x:Name="sixAxisZOutValLb" Content="" Width="36" Padding="2,2" HorizontalContentAlignment="Right"/>
                 </StackPanel>
             </StackPanel>
         </Grid>
-        <Grid DockPanel.Dock="Top" Margin="8,40,8,8">
+
+        <!-- トリガーおよびジャイロ/加速度エリア -->
+        <Grid DockPanel.Dock="Top" Margin="8,30,8,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1.3*"/>
                 <ColumnDefinition Width="1.7*"/>

@@ -24,17 +24,6 @@ using System.Threading.Tasks;
 
 namespace DS4Windows.InputDevices
 {
-    public enum InputDeviceType : uint
-    {
-        DS4,
-        SwitchPro,
-        JoyConL,
-        JoyConR,
-        JoyConGrip,
-        DualSense,
-        DS3,
-        Vader4Pro
-    }
 
     public abstract class InputDeviceFactory
     {
@@ -61,9 +50,6 @@ namespace DS4Windows.InputDevices
                     break;
                 case InputDeviceType.DS3:
                     temp = new DS3Device(hidDevice, disName, featureSet);
-                    break;
-                case InputDeviceType.Vader4Pro:
-                    temp = new Vader4ProDevice(hidDevice, disName, featureSet, macAddress);
                     break;
             }
 

@@ -9,7 +9,7 @@
         "EnableEditorConfigSupport": true
     },
     "RoslynExtensionsOptions": {
-        "EnableAnalyzersSupport": false,
+        "EnableAnalyzersSupport": true,
         "EnableImportCompletion": true,
         "EnableAsyncCompletion": false,
         "EnableDecompilationSupport": false
@@ -20,8 +20,7 @@
     "FileOptions": {
         "SystemExcludeSearchPatterns": [
             "**/node_modules/**/*",
-            "**/bin/**/*",
-            "**/obj/**/*"
+            "**/bin/**/*"
         ]
     }
 }

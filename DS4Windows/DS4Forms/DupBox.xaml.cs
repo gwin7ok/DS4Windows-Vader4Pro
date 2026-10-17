@@ -45,9 +45,19 @@ namespace DS4WinWPF.DS4Forms
         public delegate void SaveHandler(DupBox sender, string profilename);
         public event SaveHandler Save;
 
+        // Phase6-Step10-2-3: 本コントロールは MainWindow.xaml から生成されるため、引数なしのコンストラクタが必要。
+        // 依存は Initialize で受け取る（MainWindow のコンストラクタが 1 回だけ呼ぶ）。
+        private DS4Windows.DI.IPathService pathService;
+
         public DupBox()
         {
             InitializeComponent();
+        }
+
+        public void Initialize(DS4Windows.DI.IPathService pathService)
+        {
+            if (this.pathService != null) throw new InvalidOperationException("DupBox is already initialized.");
+            this.pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
         }
 
         private void SaveBtn_Click(object sender, RoutedEventArgs e)
@@ -56,8 +66,8 @@ namespace DS4WinWPF.DS4Forms
             if (!string.IsNullOrWhiteSpace(profile) &&
                 profile.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) == -1)
             {
-                System.IO.File.Copy(DS4Windows.Global.appdatapath + "\\Profiles\\" + oldfilename + ".xml",
-                DS4Windows.Global.appdatapath + "\\Profiles\\" + profile + ".xml", true);
+                System.IO.File.Copy(pathService.AppDataPath + "\\Profiles\\" + oldfilename + ".xml",
+                pathService.AppDataPath + "\\Profiles\\" + profile + ".xml", true);
                 Save?.Invoke(this, profile);
             }
             else

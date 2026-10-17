@@ -22,6 +22,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 
 namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
@@ -82,8 +83,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
         }
         public event EventHandler DoubleTapMacroTextChanged;
 
-        public MultiActButtonViewModel()
+        public MultiActButtonViewModel(ISpecialActionRepository specialActionRepository)
         {
+            this.specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
             loadAccessArray = new List<int>[3] { tapMacro, holdMacro, doubleTapMacro };
         }
 
@@ -143,12 +145,15 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             return settings;
         }
 
+        // Phase6-Step10-3-2: Global.SaveAction の置換先（必須引数）
+        private readonly ISpecialActionRepository specialActionRepository;
+
         public void SaveAction(SpecialAction action, bool edit = false)
         {
             string details = string.Join("/", tapMacro) + "," +
                 string.Join("/", holdMacro) + "," +
                 string.Join("/", doubleTapMacro);
-            Global.SaveAction(action.name, action.controls, 7, details, edit);
+            specialActionRepository.SaveAction(action.name, action.controls, 7, details, edit);
         }
 
         public override bool IsValid(SpecialAction action)

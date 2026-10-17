@@ -24,6 +24,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using DS4Windows;
+using DS4Windows.DI;
 
 namespace DS4WinWPF.DS4Forms.ViewModels
 {
@@ -32,7 +33,9 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private string tooltipText = "DS4Windows";
         private string iconSource;
         public const string ballonTitle = "DS4Windows";
-        public static string trayTitle = $"DS4Windows v{Global.exeversion}";
+        // Phase6-Step9-2: static の初期化子（Global.exeversion）から、コンストラクタで解決するインスタンスの値へ変更
+        // （利用者は PopulateToolText のみ。静的初期化から Global を呼ばない）。
+        private readonly string trayTitle;
         private ContextMenu contextMenu;
         private MenuItem changeServiceItem;
         private MenuItem openItem;
@@ -84,19 +87,38 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private List<ControllerHolder> controllerList = new List<ControllerHolder>();
         private ProfileList profileListHolder;
         private ControlService controlService;
+        private readonly IAppearanceSettingsService appearanceSettings;
+        private readonly IProfileRepository profileRepository;
+        private readonly IPathService pathService;
+        // Phase6-Step10-1-5（決定D10＝A）: UI スレッドの Dispatcher（コンストラクタの必須引数）
+        private readonly System.Windows.Threading.Dispatcher uiDispatcher;
 
         public delegate void ProfileSelectedHandler(TrayIconViewModel sender,
             ControllerHolder item, string profile);
         public event ProfileSelectedHandler ProfileSelected;
 
         //public TrayIconViewModel(Tester tester)
-        public TrayIconViewModel(ControlService service, ProfileList profileListHolder)
+        public TrayIconViewModel(ControlService service, ProfileList profileListHolder,
+            IAppearanceSettingsService appearanceSettings, IProfileRepository profileRepository,
+            IEnvironmentService environmentService, IPathService pathService,
+            System.Windows.Threading.Dispatcher dispatcher)
         {
+            // Phase6-Step10-1-5（決定D10＝A）: UI スレッドの Dispatcher は引数で受け取る（App.Current／Application.Current の直接参照を廃止）
+            this.uiDispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+            // Phase6-Step9-2: 依存はすべて必須引数（Pure DI。決定1＝S9-A）
+            this.appearanceSettings = appearanceSettings ?? throw new ArgumentNullException(nameof(appearanceSettings));
+            this.profileRepository = profileRepository ?? throw new ArgumentNullException(nameof(profileRepository));
+            this.pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            if (environmentService == null) throw new ArgumentNullException(nameof(environmentService));
+
             this.profileListHolder = profileListHolder;
             this.controlService = service;
+            trayTitle = $"DS4Windows v{environmentService.ApplicationVersion}";
             contextMenu = new ContextMenu();
-            iconSource = Global.iconChoiceResources[Global.UseIconChoice];
-            Global.BatteryChanged += UpdateTrayBattery;
+            iconSource = appearanceSettings.GetIconResourcePath(appearanceSettings.UseIconChoice);
+            appearanceSettings.BatteryChanged += UpdateTrayBattery;
+            if (AppLogger.IsTraceEnabled)
+                AppLogger.LogTrace("[DI] TrayIconViewModel: subscribed BatteryChanged via IAppearanceSettingsService");
             changeServiceItem = new MenuItem() { Header = "Start" };
             changeServiceItem.Click += ChangeControlServiceItem_Click;
             changeServiceItem.IsEnabled = false;
@@ -136,7 +158,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private void Service_RunningChanged(object sender, EventArgs e)
         {
             string temp = controlService.running ? "Stop" : "Start";
-            App.Current.Dispatcher.BeginInvoke((Action)(() =>
+            uiDispatcher.BeginInvoke((Action)(() =>
             {
                 changeServiceItem.Header = temp;
                 changeServiceItem.IsEnabled = true;
@@ -196,7 +218,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                     item.Tag = idx;
                     //item.ContextMenu = new ContextMenu();
                     ItemCollection subitems = item.Items;
-                    string currentProfile = Global.ProfilePath[idx];
+                    string currentProfile = profileRepository.ProfilePath[idx];
                     foreach (ProfileEntity entry in profileListHolder.ProfileListCol)
                     {
                         // Need to escape profile name to disable Access Keys for control
@@ -252,7 +274,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void OpenProgramFolderItem_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            ProcessStartInfo startInfo = new ProcessStartInfo(Global.exedirpath);
+            ProcessStartInfo startInfo = new ProcessStartInfo(pathService.ProgramDirectory);
             startInfo.UseShellExecute = true;
             using (Process temp = Process.Start(startInfo))
             {
@@ -318,7 +340,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void StartPopulateText(object sender, EventArgs e)
         {
-            Application.Current.Dispatcher.BeginInvoke(() =>
+            uiDispatcher.BeginInvoke(() =>
             {
                 PopulateToolText();
             });
@@ -408,7 +430,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         private void UpdateForBattery(object sender, EventArgs e)
         {
             // Force invoke from GUI thread
-            Application.Current.Dispatcher.BeginInvoke(() =>
+            uiDispatcher.BeginInvoke(() =>
             {
                 PopulateToolText();
             });
@@ -416,7 +438,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         private void ClearToolText(object sender, EventArgs e)
         {
-            Application.Current.Dispatcher.BeginInvoke(() =>
+            uiDispatcher.BeginInvoke(() =>
             {
                 TooltipText = "DS4Windows";
             });
@@ -444,38 +466,24 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             IconSource = percentage switch
             {
-                < 10 => $"{Global.RESOURCES_PREFIX}/0.ico",
-                >= 10 and < 20 => $"{Global.RESOURCES_PREFIX}/10.ico",
-                >= 20 and < 30 => $"{Global.RESOURCES_PREFIX}/20.ico",
-                >= 30 and < 40 => $"{Global.RESOURCES_PREFIX}/30.ico",
-                >= 40 and < 50 => $"{Global.RESOURCES_PREFIX}/40.ico",
-                >= 50 and < 60 => $"{Global.RESOURCES_PREFIX}/50.ico",
-                >= 60 and < 70 => $"{Global.RESOURCES_PREFIX}/60.ico",
-                >= 70 and < 80 => $"{Global.RESOURCES_PREFIX}/70.ico",
-                >= 80 and < 90 => $"{Global.RESOURCES_PREFIX}/80.ico",
-                >= 90 and < 100 => $"{Global.RESOURCES_PREFIX}/90.ico",
-                100 => $"{Global.RESOURCES_PREFIX}/100.ico",
-                _ => $"{Global.RESOURCES_PREFIX}/DS4W.ico"
+                < 10 => $"{ResourcePaths.ResourcesPrefix}/0.ico",
+                >= 10 and < 20 => $"{ResourcePaths.ResourcesPrefix}/10.ico",
+                >= 20 and < 30 => $"{ResourcePaths.ResourcesPrefix}/20.ico",
+                >= 30 and < 40 => $"{ResourcePaths.ResourcesPrefix}/30.ico",
+                >= 40 and < 50 => $"{ResourcePaths.ResourcesPrefix}/40.ico",
+                >= 50 and < 60 => $"{ResourcePaths.ResourcesPrefix}/50.ico",
+                >= 60 and < 70 => $"{ResourcePaths.ResourcesPrefix}/60.ico",
+                >= 70 and < 80 => $"{ResourcePaths.ResourcesPrefix}/70.ico",
+                >= 80 and < 90 => $"{ResourcePaths.ResourcesPrefix}/80.ico",
+                >= 90 and < 100 => $"{ResourcePaths.ResourcesPrefix}/90.ico",
+                100 => $"{ResourcePaths.ResourcesPrefix}/100.ico",
+                _ => $"{ResourcePaths.ResourcesPrefix}/DS4W.ico"
             };
         }
 
         private void ExitMenuItem_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             RequestShutdown?.Invoke(this, EventArgs.Empty);
-        }
-    }
-
-    public class ControllerHolder
-    {
-        private DS4Device device;
-        private int index;
-        public DS4Device Device { get => device; }
-        public int Index { get => index; }
-
-        public ControllerHolder(DS4Device device, int index)
-        {
-            this.device = device;
-            this.index = index;
         }
     }
 }

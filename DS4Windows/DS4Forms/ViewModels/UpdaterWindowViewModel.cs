@@ -38,8 +38,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
         public event EventHandler MarkdownChanged;
 
-        public UpdaterWindowViewModel(string version)
+        // Phase6-Step10-1-3: Global.LastVersionChecked の置換先（必須引数。null は拒否する）
+        private readonly DS4Windows.DI.IAppSettingsService _appSettingsService;
+
+        public UpdaterWindowViewModel(string version, DS4Windows.DI.IAppSettingsService appSettingsService)
         {
+            _appSettingsService = appSettingsService ?? throw new ArgumentNullException(nameof(appSettingsService));
             Version = version;
         }
 
@@ -53,13 +57,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             if (!string.IsNullOrEmpty(Version))
             {
-                Global.LastVersionChecked = Version;
+                _appSettingsService.LastVersionChecked = Version;
             }
         }
 
         public void BlankSkippedVersion()
         {
-            Global.LastVersionChecked = string.Empty;
+            _appSettingsService.LastVersionChecked = string.Empty;
         }
     }
 }

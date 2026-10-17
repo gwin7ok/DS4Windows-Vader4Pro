@@ -29,10 +29,11 @@ using Nefarius.ViGEm.Client;
 
 namespace DS4Windows
 {
-    public class OutputSlotManager
+    public class OutputSlotManager : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         public const int DELAY_TIME = 500; // measured in ms
-        private OutSlotDevice[] outputSlots;/* = new OutSlotDevice[Global.MAX_DS4_CONTROLLER_COUNT]
+        private OutSlotDevice[] outputSlots;/* = new OutSlotDevice[ControllerLimits.MaxControllerCount]
         {
             new OutSlotDevice(0), new OutSlotDevice(1),
             new OutSlotDevice(2), new OutSlotDevice(3)
@@ -81,8 +82,12 @@ namespace DS4Windows
         // First ViGEmBus version that has usable XInput slot grabbing
         private static Version xinputSlotMinVersion = new Version("1.17.333.0");
 
-        public OutputSlotManager()
+        // Phase6-Step10-4-3a: ViGEmBus のバージョンは RefreshViGEmBusInfo で実行時に更新されるため、都度読み取る関数で受け取る
+        private readonly System.Func<System.Version> vigemBusVersionProvider;
+
+        public OutputSlotManager(System.Func<System.Version> vigemBusVersionProvider)
         {
+            this.vigemBusVersionProvider = vigemBusVersionProvider ?? throw new System.ArgumentNullException(nameof(vigemBusVersionProvider));
             outputSlots = new OutSlotDevice[ControlService.CURRENT_DS4_CONTROLLER_LIMIT];
             for (int i = 0; i < ControlService.CURRENT_DS4_CONTROLLER_LIMIT; i++)
             {
@@ -116,7 +121,7 @@ namespace DS4Windows
             switch (contType)
             {
                 case OutContType.X360:
-                    if (xinputSlotMinVersion.CompareTo(Global.vigemBusVersionInfo) <= 0)
+                    if (xinputSlotMinVersion.CompareTo(vigemBusVersionProvider()) <= 0)
                     {
                         outputDevice = new Xbox360OutDevice(client,
                             Xbox360OutDevice.X360Features.XInputSlotNum);
@@ -128,7 +133,7 @@ namespace DS4Windows
 
                     break;
                 case OutContType.DS4:
-                    outputDevice = DS4OutDeviceFactory.CreateDS4Device(client, Global.vigemBusVersionInfo);
+                    outputDevice = DS4OutDeviceFactory.CreateDS4Device(client, vigemBusVersionProvider());
                     break;
                 case OutContType.None:
                 default:

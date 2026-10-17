@@ -22,8 +22,9 @@ using System.Windows.Input;
 
 namespace DS4Windows
 {
-    public class MacroParser
+    public class MacroParser : IInstanceIdentifiable
     {
+        public int InstanceId => this.GetHashCode();
         private bool loaded;
         private List<MacroStep> macroSteps;
         private int[] inputMacro;
@@ -194,91 +195,6 @@ namespace DS4Windows
         public void Reset()
         {
             loaded = false;
-        }
-    }
-
-    public class MacroStep
-    {
-        public const int WAIT_OFFSET = 300;
-
-        public enum StepType : uint
-        {
-            ActDown,
-            ActUp,
-            Wait,
-        }
-
-        public enum StepOutput : uint
-        {
-            None,
-            Key,
-            Button,
-            Rumble,
-            Lightbar,
-        }
-
-        private string name;
-        private int value;
-        private StepType actType;
-        private StepOutput outputType;
-
-        public string Name
-        {
-            get => name;
-            set
-            {
-                name = value;
-                NameChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler NameChanged;
-        public int Value
-        {
-            get => value;
-            set
-            {
-                this.value = value;
-                ValueChanged?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        public event EventHandler ValueChanged;
-        public StepType ActType { get => actType; }
-        public StepOutput OutputType { get => outputType; }
-
-        public MacroStep(int value, string name, StepType act, StepOutput output)
-        {
-            this.value = value;
-            this.name = name;
-            actType = act;
-            outputType = output;
-
-            ValueChanged += MacroStep_ValueChanged;
-        }
-
-        private void MacroStep_ValueChanged(object sender, EventArgs e)
-        {
-            if (actType == StepType.Wait)
-            {
-                Name = $"Wait {value - 300}ms";
-            }
-            else if (outputType == StepOutput.Rumble)
-            {
-                int result = value;
-                result -= 1000000;
-                int curHeavy = result / 1000;
-                int curLight = result - (curHeavy * 1000);
-                Name = $"Rumble {curHeavy},{curLight}";
-            }
-            else if (outputType == StepOutput.Lightbar)
-            {
-                int temp = value - 1000000000;
-                int r = temp / 1000000;
-                temp -= (r * 1000000);
-                int g = temp / 1000;
-                temp -= (g * 1000);
-                int b = temp;
-                Name = $"Lightbar Color: {r},{g},{b}";
-            }
         }
     }
 }

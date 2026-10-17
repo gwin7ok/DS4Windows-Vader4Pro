@@ -23,6 +23,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 
 namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
@@ -105,12 +106,20 @@ namespace DS4WinWPF.DS4Forms.ViewModels.SpecialActions
             fullColor = Color.FromArgb(255, byte.Parse(details[6]), byte.Parse(details[7]), byte.Parse(details[8]));
         }
 
+        // Phase6-Step10-3-2: Global.SaveAction の置換先（必須引数）
+        private readonly ISpecialActionRepository specialActionRepository;
+
+        public CheckBatteryViewModel(ISpecialActionRepository specialActionRepository)
+        {
+            this.specialActionRepository = specialActionRepository ?? throw new ArgumentNullException(nameof(specialActionRepository));
+        }
+
         public void SaveAction(SpecialAction action, bool edit = false)
         {
             string details = $"{delay.ToString("#.##", Global.configFileDecimalCulture)}|{notification}|{lightbar}|{emptyColor.R}|{emptyColor.G}|{emptyColor.B}|" +
                 $"{fullColor.R}|{fullColor.G}|{fullColor.B}";
 
-            Global.SaveAction(action.name, action.controls, 6, details, edit, delay);
+            specialActionRepository.SaveAction(action.name, action.controls, 6, details, edit, delay);
         }
 
         public override bool IsValid(SpecialAction action)

@@ -29,10 +29,17 @@ namespace DS4WinWPF.DS4Forms
     public partial class SaveWhere : Window
     {
         private bool multisaves;
+        // Phase6-Step10-1-2: Global 直接参照の置換先。呼び出し側（App）が保持済みのサービスを渡す（Pure DI）。
+        private readonly DS4Windows.DI.IPathService _pathService;
+        private readonly DS4Windows.DI.IEnvironmentService _environmentService;
         public bool ChoiceMade { get; set; }
 
-        public SaveWhere(bool multisavespots)
+        public SaveWhere(bool multisavespots, DS4Windows.DI.IPathService pathService,
+            DS4Windows.DI.IEnvironmentService environmentService)
         {
+            _pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+            _environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
+
             InitializeComponent();
             multisaves = multisavespots;
             if (!multisavespots)
@@ -40,7 +47,7 @@ namespace DS4WinWPF.DS4Forms
                 multipleSavesDockP.Visibility = Visibility.Collapsed;
             }
 
-            if (DS4Windows.Global.AdminNeeded())
+            if (_environmentService.AdminNeeded())
             {
                 progFolderPanel.IsEnabled = false;
             }
@@ -48,21 +55,22 @@ namespace DS4WinWPF.DS4Forms
 
         private void ProgFolderBtn_Click(object sender, RoutedEventArgs e)
         {
-            DS4Windows.Global.SaveWhere(DS4Windows.Global.exedirpath);
+            // SetSaveLocation は Global.SaveWhere と同じ動作（IPathService.AppDataPath の setter は使わない）
+            _pathService.SetSaveLocation(_pathService.ProgramDirectory);
             if (multisaves && dontDeleteCk.IsChecked == false)
             {
                 try
                 {
-                    if (Directory.Exists(DS4Windows.Global.appDataPpath))
+                    if (Directory.Exists(_pathService.RoamingAppDataPath))
                     {
-                        Directory.Delete(DS4Windows.Global.appDataPpath, true);
+                        Directory.Delete(_pathService.RoamingAppDataPath, true);
                     }
                 }
                 catch { }
             }
             else if (!multisaves)
             {
-                DS4Windows.Global.SaveDefault(DS4Windows.Global.exedirpath + "\\Profiles.xml");
+                _pathService.CreateEmptyProfilesFile(_pathService.ProgramDirectory + "\\Profiles.xml");
             }
 
             ChoiceMade = true;
@@ -73,23 +81,19 @@ namespace DS4WinWPF.DS4Forms
         {
             if (multisaves && dontDeleteCk.IsChecked == false)
             {
-                try
-                {
-                    Directory.Delete(DS4Windows.Global.exedirpath + "\\Profiles", true);
-                    File.Delete(DS4Windows.Global.exedirpath + "\\Profiles.xml");
-                    File.Delete(DS4Windows.Global.exedirpath + "\\Auto Profiles.xml");
-                }
-                catch (UnauthorizedAccessException)
+                // 置換前は Profiles／Profiles.xml／Auto Profiles.xml の 3 つだけを削除していた（Actions.xml 等が残った）。
+                // 設定フォルダのアプリ管理ファイルをすべて削除する（ProgramFolderSettingsCleaner）。
+                if (!ProgramFolderSettingsCleaner.DeleteSettings(_pathService.ProgramDirectory))
                 {
                     MessageBox.Show("Cannot Delete old settings, please manaully delete", "DS4Windows");
                 }
             }
             else if (!multisaves)
             {
-                DS4Windows.Global.SaveDefault(Path.Combine(DS4Windows.Global.appDataPpath, "Profiles.xml"));
+                _pathService.CreateEmptyProfilesFile(Path.Combine(_pathService.RoamingAppDataPath, "Profiles.xml"));
             }
 
-            DS4Windows.Global.SaveWhere(DS4Windows.Global.appDataPpath);
+            _pathService.SetSaveLocation(_pathService.RoamingAppDataPath);
             ChoiceMade = true;
             Close();
         }

@@ -1,0 +1,10 @@
+DS4Windows/Actions/Action.cs
+DS4Windows/Actions/ActionManager.cs
+DS4Windows/DS4Control/Log.cs
+DS4Windows/DS4Control/UdpServer.cs
+DS4Windows/DS4Library/DS4Device.cs
+DS4Windows/DS4Library/DS4Devices.cs
+DS4Windows/DS4Library/DS4Sixaxis.cs
+DS4Windows/DS4Library/DS4Touchpad.cs
+DS4Windows/DS4Library/InputDevices/InputDeviceFactory.cs
+DS4Windows/DS4Library/InputDevices/TriggerEffects.cs

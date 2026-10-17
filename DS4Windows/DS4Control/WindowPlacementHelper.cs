@@ -132,7 +132,7 @@ namespace DS4WinWPF.DS4Control
 
         private static IntPtr mainWindowHandle = IntPtr.Zero;
 
-        internal static void ApplyPlacement(MainWindow mainWindow, bool startMinimized)
+        internal static void ApplyPlacement(MainWindow mainWindow, DS4Windows.DI.IAppSettingsService appSettingsService, bool startMinimized)
         {
             if(mainWindowHandle == IntPtr.Zero)
             {
@@ -145,18 +145,18 @@ namespace DS4WinWPF.DS4Control
             // この時点ではまだウィンドウが表示されていないため、保存された位置から
             // 対象モニタのDPIを取得する必要がある
             
-            AppLogger.LogDebug($"ApplyPlacement: Saved Logical Position ({Global.FormLocationX}, {Global.FormLocationY}), Size ({Global.FormWidth}x{Global.FormHeight})");
+            AppLogger.LogDebug($"ApplyPlacement: Saved Logical Position ({appSettingsService.FormLocationX}, {appSettingsService.FormLocationY}), Size ({appSettingsService.FormWidth}x{appSettingsService.FormHeight})");
 
             // 保存された矩形（論理ピクセル）を用意して、各スクリーンとの包含／重なりを出力
             try
             {
-                var savedRect = new System.Windows.Rect(Global.FormLocationX, Global.FormLocationY, Global.FormWidth, Global.FormHeight);
+                var savedRect = new System.Windows.Rect(appSettingsService.FormLocationX, appSettingsService.FormLocationY, appSettingsService.FormWidth, appSettingsService.FormHeight);
                 AppLogger.LogTrace($"ApplyPlacement: Saved Logical Rect = {savedRect}");
                 AppLogger.LogTrace("ApplyPlacement: Enumerating screens:");
                 int si = 0;
                 foreach (var s in WpfScreenHelper.Screen.AllScreens)
                 {
-                    var contains = s.Bounds.Contains(new System.Windows.Point(Global.FormLocationX, Global.FormLocationY));
+                    var contains = s.Bounds.Contains(new System.Windows.Point(appSettingsService.FormLocationX, appSettingsService.FormLocationY));
                     var inter = System.Windows.Rect.Intersect(savedRect, s.Bounds);
                     AppLogger.LogTrace($"ApplyPlacement: Screen[{si}] Bounds={s.Bounds} ScaleFactor={s.ScaleFactor:F3} WorkingArea={s.WorkingArea}");
                     AppLogger.LogTrace($"ApplyPlacement: Screen[{si}] Contains SavedPoint={contains} SavedRectIntersects={!inter.IsEmpty}");
@@ -176,7 +176,7 @@ namespace DS4WinWPF.DS4Control
             try
             {
                 var targetScreen = WpfScreenHelper.Screen.AllScreens
-                    .FirstOrDefault(s => s.Bounds.Contains(new System.Windows.Point(Global.FormLocationX, Global.FormLocationY)));
+                    .FirstOrDefault(s => s.Bounds.Contains(new System.Windows.Point(appSettingsService.FormLocationX, appSettingsService.FormLocationY)));
                 
                 if (targetScreen != null)
                 {
@@ -232,12 +232,12 @@ namespace DS4WinWPF.DS4Control
             catch { }
 
             // 左上はターゲットスケールで計算
-            int physicalX = (int)Math.Round(Global.FormLocationX * targetScale);
-            int physicalY = (int)Math.Round(Global.FormLocationY * targetScale);
+            int physicalX = (int)Math.Round(appSettingsService.FormLocationX * targetScale);
+            int physicalY = (int)Math.Round(appSettingsService.FormLocationY * targetScale);
 
             // 幅/高さ差分は現在のウィンドウ DPI スケールで計算（SetWindowPlacement 後にスケーリングされる想定）
-            int physicalWidth = (int)Math.Round(Global.FormWidth * windowDpiScale);
-            int physicalHeight = (int)Math.Round(Global.FormHeight * windowDpiScale);
+            int physicalWidth = (int)Math.Round(appSettingsService.FormWidth * windowDpiScale);
+            int physicalHeight = (int)Math.Round(appSettingsService.FormHeight * windowDpiScale);
 
             AppLogger.LogTrace($"ApplyPlacement: Computed physical LeftTop=({physicalX},{physicalY}) Width/HeightDiff=({physicalWidth}x{physicalHeight}) -- targetScale={targetScale:F3}, windowScale={windowDpiScale:F3}");
 

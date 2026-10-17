@@ -10,12 +10,16 @@ public partial class StickCalibrationWindow : Window
     private Stick _stick;
     private int _device;
     private ProfileSettingsViewModel _profileSettingsVM;
+    private readonly ControlService _controlService;
 
-    public StickCalibrationWindow(Stick stick, int device, ProfileSettingsViewModel profileSettingsVm)
+    public StickCalibrationWindow(Stick stick, int device, ProfileSettingsViewModel profileSettingsVm,
+        ControlService controlService)
     {
         _stick = stick;
         _device = device;
         _profileSettingsVM = profileSettingsVm;
+        // Phase6-Step10-2-4b: AppHost/Program.rootHub への後退を廃止（必須引数）
+        _controlService = controlService ?? throw new ArgumentNullException(nameof(controlService));
         InitializeComponent();
     }
 
@@ -26,7 +30,7 @@ public partial class StickCalibrationWindow : Window
 
     private void SaveButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var state = App.rootHub.getDS4State(_device);
+        var state = _controlService.getDS4State(_device);
 
         const int neutralState = 128;
         if (_stick == Stick.Left)
@@ -55,10 +59,4 @@ public partial class StickCalibrationWindow : Window
 
         Close();
     }
-}
-
-public enum Stick
-{
-    Left,
-    Right
 }

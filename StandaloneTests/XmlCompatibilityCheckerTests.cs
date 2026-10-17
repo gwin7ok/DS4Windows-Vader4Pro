@@ -114,7 +114,7 @@ public class XmlCompatibilityCheckerTests
                         {
                             var bs = new BackingStore();
                             bs.m_Profile = file;
-                            bool loaded = bs.Load();
+                            bool loaded = new DS4Windows.Services.AppSettingsXmlSerializer(bs, new DS4Windows.PathService(), new DS4Windows.EnvironmentService()).Load();
                             backingLoad = loaded ? "OK" : "FAILED";
                             notes += "BackingStore.Load:" + backingLoad + ";";
                         }

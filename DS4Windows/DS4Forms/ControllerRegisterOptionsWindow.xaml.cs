@@ -43,11 +43,13 @@ namespace DS4WinWPF.DS4Forms
     {
         private ControllerRegDeviceOptsViewModel deviceOptsVM;
 
-        public ControllerRegisterOptionsWindow(ControlServiceDeviceOptions deviceOptions, ControlService service)
+        // Phase6-Step10-2-2: 呼び出し側（MainWindow）が保持済みのサービスを渡す（Pure DI）
+        public ControllerRegisterOptionsWindow(ControlServiceDeviceOptions deviceOptions, ControlService service,
+            DS4Windows.DI.IAppSettingsService appSettingsService, DS4Windows.DI.IProfileXmlStore profileXmlStore)
         {
             InitializeComponent();
 
-            deviceOptsVM = new ControllerRegDeviceOptsViewModel(deviceOptions, service);
+            deviceOptsVM = new ControllerRegDeviceOptsViewModel(deviceOptions, service, appSettingsService, profileXmlStore);
 
             devOptionsDockPanel.DataContext = deviceOptsVM;
             deviceOptsVM.ControllerSelectedIndexChanged += ChangeActiveDeviceTab;

@@ -28,6 +28,14 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 {
     public class RenameProfileViewModel
     {
+        // Phase6-Step10-2-3: Global.appdatapath の置換先（必須引数。null は拒否する）
+        private readonly DS4Windows.DI.IPathService pathService;
+
+        public RenameProfileViewModel(DS4Windows.DI.IPathService pathService)
+        {
+            this.pathService = pathService ?? throw new ArgumentNullException(nameof(pathService));
+        }
+
         private string profileName;
         public string ProfileName
         {
@@ -42,7 +50,7 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool ProfileFileExists()
         {
-            string filePath = Path.Combine(Global.appdatapath,
+            string filePath = Path.Combine(pathService.AppDataPath,
                 "Profiles", $"{profileName}.xml");
             return File.Exists(filePath);
         }

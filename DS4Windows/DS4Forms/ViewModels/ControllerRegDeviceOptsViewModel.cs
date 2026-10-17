@@ -22,6 +22,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DS4Windows;
+using DS4Windows.DI;
 using DS4WinWPF.DS4Forms.ViewModels.Util;
 using LEDBarMode = DS4Windows.DualSenseControllerOptions.LEDBarMode;
 using MuteLEDMode = DS4Windows.DualSenseControllerOptions.MuteLEDMode;
@@ -43,14 +44,12 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         public bool EnableJoyCon { get => serviceDeviceOpts.JoyConDeviceOpts.Enabled; }
 
         public bool EnableDS3 { get => serviceDeviceOpts.DS3DeviceOpts.Enabled; }
-        public bool EnableVader4Pro { get => serviceDeviceOpts.Vader4ProDeviceOpts.Enabled; }
 
         public DS4DeviceOptions DS4DeviceOpts { get => serviceDeviceOpts.DS4DeviceOpts; }
         public DS3DeviceOptions DS3DeviceOpts { get => serviceDeviceOpts.DS3DeviceOpts; }
         public DualSenseDeviceOptions DSDeviceOpts { get => serviceDeviceOpts.DualSenseOpts; }
         public SwitchProDeviceOptions SwitchProDeviceOpts { get => serviceDeviceOpts.SwitchProDeviceOpts; }
         public JoyConDeviceOptions JoyConDeviceOpts { get => serviceDeviceOpts.JoyConDeviceOpts; }
-        public Vader4ProDeviceOptions Vader4ProDeviceOpts { get => serviceDeviceOpts.Vader4ProDeviceOpts; }
 
         public bool UseMoonlightChanged
         {
@@ -60,21 +59,21 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public bool UseMoonlight
         {
-            get => Global.UseMoonlight;
+            get => appSettings.UseMoonlight;
             set
             {
-                UseMoonlightChanged = value != Global.UseMoonlight;
-                Global.UseMoonlight = value;
+                UseMoonlightChanged = value != appSettings.UseMoonlight;
+                appSettings.UseMoonlight = value;
             }
         }
 
         public bool UseAdvancedMoonlight
         {
-            get => Global.UseAdvancedMoonlight;
+            get => appSettings.UseAdvancedMoonlight;
             set
             {
-                UseMoonlightChanged = value != Global.UseAdvancedMoonlight;
-                Global.UseAdvancedMoonlight = value;
+                UseMoonlightChanged = value != appSettings.UseAdvancedMoonlight;
+                appSettings.UseAdvancedMoonlight = value;
             }
         }
 
@@ -120,10 +119,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
             get => controllerOptionsStores[controllerSelectedIndex] as JoyConControllerOptions;
         }
 
-        public Vader4ProControllerOptions CurrentVader4ProOptions {
-            get => controllerOptionsStores[controllerSelectedIndex] as Vader4ProControllerOptions;
-        }
-
         private int currentTabSelectedIndex = 0;
         public int CurrentTabSelectedIndex
         {
@@ -137,9 +132,15 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         }
         public event EventHandler CurrentTabSelectedIndexChanged;
 
+        // Phase6-Step10-2-2: Global.UseMoonlight／UseAdvancedMoonlight／SaveControllerConfigs の置換先（必須引数。null は拒否する）
+        private readonly IAppSettingsService appSettings;
+        private readonly IProfileXmlStore profileXmlStore;
+
         public ControllerRegDeviceOptsViewModel(ControlServiceDeviceOptions serviceDeviceOpts,
-            ControlService service)
+            ControlService service, IAppSettingsService appSettings, IProfileXmlStore profileXmlStore)
         {
+            this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+            this.profileXmlStore = profileXmlStore ?? throw new ArgumentNullException(nameof(profileXmlStore));
             this.serviceDeviceOpts = serviceDeviceOpts;
 
             int idx = 0;
@@ -182,9 +183,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 case DS4Windows.InputDevices.InputDeviceType.JoyConR:
                     result = 4;
                     break;
-                case DS4Windows.InputDevices.InputDeviceType.Vader4Pro:
-                    result = 5;
-                    break;
                 default:
                     // Default to empty control
                     result = 0;
@@ -217,9 +215,6 @@ namespace DS4WinWPF.DS4Forms.ViewModels
                 case DS4Windows.InputDevices.InputDeviceType.JoyConR:
                     dataContextObject = new JoyConControllerOptionsWrapper(CurrentJoyConOptions, serviceDeviceOpts.JoyConDeviceOpts);
                     break;
-                case DS4Windows.InputDevices.InputDeviceType.Vader4Pro:
-                    dataContextObject = new Vader4ProControllerOptionsWrapper(CurrentVader4ProOptions, serviceDeviceOpts.Vader4ProDeviceOpts);
-                    break;
                 default:
                     break;
             }
@@ -229,148 +224,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
         {
             foreach (DeviceListItem item in currentInputDevices)
             {
-                Global.SaveControllerConfigs(item.Device);
+                profileXmlStore.SaveControllerConfigsForDevice(item.Device);
             }
-        }
-    }
-
-    public class DeviceListItem
-    {
-        private DS4Device device;
-        public DS4Device Device { get => device; }
-
-        public string IdText
-        {
-            get => $"{device.DisplayName} ({device.MacAddress})";
-        }
-
-        public DeviceListItem(DS4Device device)
-        {
-            this.device = device;
-        }
-    }
-
-
-    public class DS4ControllerOptionsWrapper
-    {
-        private DS4ControllerOptions options;
-        public DS4ControllerOptions Options { get => options; }
-
-        private DS4DeviceOptions parentOptions;
-        public bool Visible
-        {
-            get => parentOptions.Enabled;
-        }
-        public event EventHandler VisibleChanged;
-
-        public DS4ControllerOptionsWrapper(DS4ControllerOptions options, DS4DeviceOptions parentOpts)
-        {
-            this.options = options;
-            this.parentOptions = parentOpts;
-            parentOptions.EnabledChanged += (sender, e) => { VisibleChanged?.Invoke(this, EventArgs.Empty); };
-        }
-    }
-
-    public class DualSenseControllerOptionsWrapper
-    {
-        private DualSenseControllerOptions options;
-        public DualSenseControllerOptions Options { get => options; }
-
-        private DualSenseDeviceOptions parentOptions;
-        public bool Visible { get => parentOptions.Enabled; }
-        public event EventHandler VisibleChanged;
-
-        private List<EnumChoiceSelection<LEDBarMode>> dsLEDModeOptions = new List<EnumChoiceSelection<LEDBarMode>>()
-        {
-            new EnumChoiceSelection<LEDBarMode>("Off", LEDBarMode.Off),
-            new EnumChoiceSelection<LEDBarMode>("Only for multiple controllers", LEDBarMode.MultipleControllers),
-            new EnumChoiceSelection<LEDBarMode>("Battery Percentage", LEDBarMode.BatteryPercentage),
-            new EnumChoiceSelection<LEDBarMode>("On", LEDBarMode.On),
-        };
-        public List<EnumChoiceSelection<LEDBarMode>> DsLEDModes { get => dsLEDModeOptions; }
-
-        private List<EnumChoiceSelection<MuteLEDMode>> dsMuteLEDModes = new List<EnumChoiceSelection<MuteLEDMode>>()
-        {
-            new EnumChoiceSelection<MuteLEDMode>("Off", MuteLEDMode.Off),
-            new EnumChoiceSelection<MuteLEDMode>("On", MuteLEDMode.On),
-            new EnumChoiceSelection<MuteLEDMode>("Pulse", MuteLEDMode.Pulse),
-        };
-        public List<EnumChoiceSelection<MuteLEDMode>> DsMuteLEDModes { get => dsMuteLEDModes; }
-
-        public DualSenseControllerOptionsWrapper(DualSenseControllerOptions options,
-            DualSenseDeviceOptions parentOpts)
-        {
-            this.options = options;
-            this.parentOptions = parentOpts;
-            parentOptions.EnabledChanged += (sender, e) => { VisibleChanged?.Invoke(this, EventArgs.Empty); };
-        }
-    }
-
-    public class SwitchProControllerOptionsWrapper
-    {
-        private SwitchProControllerOptions options;
-        public SwitchProControllerOptions Options { get => options; }
-
-        private SwitchProDeviceOptions parentOptions;
-        public bool Visible { get => parentOptions.Enabled; }
-        public event EventHandler VisibleChanged;
-
-        public SwitchProControllerOptionsWrapper(SwitchProControllerOptions options,
-            SwitchProDeviceOptions parentOpts)
-        {
-            this.options = options;
-            this.parentOptions = parentOpts;
-            parentOptions.EnabledChanged += (sender, e) => { VisibleChanged?.Invoke(this, EventArgs.Empty); };
-        }
-    }
-
-    public class Vader4ProControllerOptionsWrapper {
-        private Vader4ProControllerOptions options;
-        public Vader4ProControllerOptions Options { get => options; }
-
-        private Vader4ProDeviceOptions parentOptions;
-        public bool Visible { get => parentOptions.Enabled; }
-        public event EventHandler VisibleChanged;
-
-        public Vader4ProControllerOptionsWrapper(Vader4ProControllerOptions options,
-            Vader4ProDeviceOptions parentOpts) {
-            this.options = options;
-            this.parentOptions = parentOpts;
-            parentOptions.EnabledChanged += (sender, e) => { VisibleChanged?.Invoke(this, EventArgs.Empty); };
-        }
-    }
-
-    public class JoyConControllerOptionsWrapper
-    {
-        private JoyConControllerOptions options;
-        public JoyConControllerOptions Options { get => options; }
-
-        private JoyConDeviceOptions parentOptions;
-        public JoyConDeviceOptions ParentOptions { get => parentOptions; }
-
-        public bool Visible { get => parentOptions.Enabled; }
-        public event EventHandler VisibleChanged;
-
-        private List<EnumChoiceSelection<LinkMode>> linkModes = new List<EnumChoiceSelection<LinkMode>>()
-        {
-            new EnumChoiceSelection<LinkMode>("Split", LinkMode.Split),
-            new EnumChoiceSelection<LinkMode>("Joined", LinkMode.Joined),
-        };
-        public List<EnumChoiceSelection<LinkMode>> LinkModes { get => linkModes; }
-
-        private List<EnumChoiceSelection<JoinedGyroProvider>> joinGyroOptions = new List<EnumChoiceSelection<JoinedGyroProvider>>()
-        {
-            new EnumChoiceSelection<JoinedGyroProvider>("Left", JoinedGyroProvider.JoyConL),
-            new EnumChoiceSelection<JoinedGyroProvider>("Right", JoinedGyroProvider.JoyConR),
-        };
-        public List<EnumChoiceSelection<JoinedGyroProvider>> JoinGyroOptions { get => joinGyroOptions; }
-
-        public JoyConControllerOptionsWrapper(JoyConControllerOptions options,
-            JoyConDeviceOptions parentOpts)
-        {
-            this.options = options;
-            this.parentOptions = parentOpts;
-            parentOptions.EnabledChanged += (sender, e) => { VisibleChanged?.Invoke(this, EventArgs.Empty); };
         }
     }
 

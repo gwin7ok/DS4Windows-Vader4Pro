@@ -37,6 +37,12 @@ namespace DS4WinWPF.DS4Control
         protected string description;
         protected bool outputControllerChoice;
         protected OutputContChoice outputCont;
+        // Phase5-Step13-7: 全サブクラス共通のControlService注入(Program.rootHubフォールバック)。
+        // これらのPresetクラスはPresetOptionViewModelで new() 経由でパラメータレスに生成されるため、
+        // サブクラス側の変更は不要(既定のフォールバック付きコンストラクタが暗黙的に呼ばれる)。
+        protected readonly DS4Windows.ControlService controlService;
+        // Phase6-Step10-2-5: Global.Load…Profile への直接呼び出しを、プリセット読み込みの契約経由に置き換えた（必須引数）。
+        protected readonly DS4Windows.DI.IProfilePresetLoader presetLoader;
 
         public string Name { get => name; }
         public string Description { get => description; }
@@ -47,126 +53,12 @@ namespace DS4WinWPF.DS4Control
             set => outputCont = value;
         }
 
+        protected PresetOption(DS4Windows.DI.IProfilePresetLoader presetLoader, DS4Windows.ControlService controlService)
+        {
+            this.presetLoader = presetLoader ?? throw new ArgumentNullException(nameof(presetLoader));
+            this.controlService = controlService ?? throw new ArgumentNullException(nameof(controlService));
+        }
+
         public abstract void ApplyPreset(int idx);
-    }
-
-    public class GamepadPreset : PresetOption
-    {
-        public GamepadPreset()
-        {
-            name = Translations.Strings.GamepadPresetName;
-            description = Translations.Strings.GamepadPresetDescription;
-            outputControllerChoice = true;
-            outputCont = OutputContChoice.Xbox360;
-        }
-
-        public override void ApplyPreset(int idx)
-        {
-            if (outputCont == OutputContChoice.Xbox360)
-            {
-                DS4Windows.Global.LoadBlankDevProfile(idx, false, App.rootHub, false);
-            }
-            else if (outputCont == OutputContChoice.DualShock4)
-            {
-                DS4Windows.Global.LoadBlankDS4Profile(idx, false, App.rootHub, false);
-            }
-        }
-    }
-
-    public class GamepadGyroCamera : PresetOption
-    {
-        public GamepadGyroCamera()
-        {
-            name = Translations.Strings.GamepadGyroCameraName;
-            description = Translations.Strings.GamepadGyroCameraDescription;
-            outputControllerChoice = true;
-            outputCont = OutputContChoice.Xbox360;
-        }
-
-        public override void ApplyPreset(int idx)
-        {
-            if (outputCont == OutputContChoice.Xbox360)
-            {
-                DS4Windows.Global.LoadDefaultGamepadGyroProfile(idx, false, App.rootHub, false);
-            }
-            else if (outputCont == OutputContChoice.DualShock4)
-            {
-                DS4Windows.Global.LoadDefaultDS4GamepadGyroProfile(idx, false, App.rootHub, false);
-            }
-        }
-    }
-
-    public class MixedPreset : PresetOption
-    {
-        public MixedPreset()
-        {
-            name = Translations.Strings.MixedPresetName;
-            description = Translations.Strings.MixedPresetDescription;
-            outputControllerChoice = true;
-            outputCont = OutputContChoice.Xbox360;
-        }
-
-        public override void ApplyPreset(int idx)
-        {
-            if (outputCont == OutputContChoice.Xbox360)
-            {
-                DS4Windows.Global.LoadDefaultMixedControlsProfile(idx, false, App.rootHub, false);
-            }
-            else if (outputCont == OutputContChoice.DualShock4)
-            {
-                DS4Windows.Global.LoadDefaultDS4MixedControlsProfile(idx, false, App.rootHub, false);
-            }
-        }
-    }
-
-    public class MixedGyroMousePreset : PresetOption
-    {
-        public MixedGyroMousePreset()
-        {
-            name = Translations.Strings.MixedGyroMousePresetName;
-            description = Translations.Strings.MixedGyroMousePresetDescription;
-            outputControllerChoice = true;
-            outputCont = OutputContChoice.Xbox360;
-        }
-
-        public override void ApplyPreset(int idx)
-        {
-            if (outputCont == OutputContChoice.Xbox360)
-            {
-                DS4Windows.Global.LoadDefaultMixedGyroMouseProfile(idx, false, App.rootHub, false);
-            }
-            else if (outputCont == OutputContChoice.DualShock4)
-            {
-                DS4Windows.Global.LoadDefaultDS4MixedGyroMouseProfile(idx, false, App.rootHub, false);
-            }
-        }
-    }
-
-    public class KBMPreset : PresetOption
-    {
-        public KBMPreset()
-        {
-            name = Translations.Strings.KBMPresetName;
-            description = Translations.Strings.KBMPresetDescription;
-        }
-
-        public override void ApplyPreset(int idx)
-        {
-            DS4Windows.Global.LoadDefaultKBMProfile(idx, false, App.rootHub, false);
-        }
-    }
-
-    public class KBMGyroMouse : PresetOption
-    {
-        public KBMGyroMouse()
-        {
-            name = Translations.Strings.KBMGyroMouseName;
-            description = Translations.Strings.KBMGyroMouseDescription;
-        }
-
-        public override void ApplyPreset(int idx)
-        {
-            DS4Windows.Global.LoadDefaultKBMGyroMouseProfile(idx, false, App.rootHub, false);
-        }
     }
 }

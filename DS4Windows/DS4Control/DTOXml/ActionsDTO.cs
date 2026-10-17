@@ -74,10 +74,24 @@ namespace DS4WinWPF.DS4Control.DTOXml
                         if (!string.IsNullOrEmpty(action.extra))
                         {
                             string[] exts = action.extra.Split('\n');
-                            actionSerializer.UnloadStyle = exts[0];
-                            actionSerializer.UnloadTrigger = exts[1];
+                            // New name: SwitchMode (values: Press/Toggle). Keep compatibility by storing in SwitchMode.
+                            actionSerializer.SwitchMode = exts.Length > 0 ? exts[0] : string.Empty;
+                            actionSerializer.UnloadTrigger = exts.Length > 1 ? exts[1] : string.Empty;
                         }
 
+                        break;
+
+                    case SpecialAction.ActionTypeId.Button:
+                        actionSerializer.Name = action.name;
+                        actionSerializer.Trigger = action.controls;
+                        actionSerializer.TypeString = "Button";
+                        actionSerializer.Details = action.details;
+                        // Phase6-Step10-3c: SwitchMode（Press／Toggle）を保存する（Key と同じ。従来は書き出していなかった）
+                        if (!string.IsNullOrEmpty(action.extra))
+                        {
+                            string[] btnExts = action.extra.Split('\n');
+                            actionSerializer.SwitchMode = btnExts.Length > 0 ? btnExts[0] : string.Empty;
+                        }
                         break;
 
                     case SpecialAction.ActionTypeId.DisconnectBT:
@@ -146,10 +160,19 @@ namespace DS4WinWPF.DS4Control.DTOXml
                     case "Key":
                         {
                             string tempExtras = string.Empty;
-                            if (!string.IsNullOrEmpty(actionSerializer.UnloadStyle) ||
-                                !string.IsNullOrEmpty(actionSerializer.UnloadTrigger))
+                            // Prefer new SwitchMode if present.
+                            // For legacy files where only UnloadStyle exists, treat that as the old toggle-style marker
+                            // (map legacy UnloadStyle -> "Toggle" to preserve previous behavior).
+                            string mode;
+                            if (!string.IsNullOrEmpty(actionSerializer.SwitchMode))
+                                mode = actionSerializer.SwitchMode;
+                            else if (!string.IsNullOrEmpty(actionSerializer.UnloadStyle))
+                                mode = "Toggle"; // legacy UnloadStyle indicates toggle behavior
+                            else
+                                mode = "Press"; // default to Press when neither SwitchMode nor legacy UnloadStyle present
+                            if (!string.IsNullOrEmpty(mode) || !string.IsNullOrEmpty(actionSerializer.UnloadTrigger))
                             {
-                                tempExtras = $"{actionSerializer.UnloadStyle}\n{actionSerializer.UnloadTrigger}";
+                                tempExtras = $"{mode}\n{actionSerializer.UnloadTrigger}";
                             }
 
                             tempAction = new SpecialAction(actionSerializer.Name,
@@ -158,6 +181,13 @@ namespace DS4WinWPF.DS4Control.DTOXml
                         }
 
                         break;
+                        case "Button":
+                            // Phase6-Step10-3c: SwitchMode（Press／Toggle）を読み込む。無い場合は従来どおり Press
+                            tempAction = new SpecialAction(actionSerializer.Name,
+                                actionSerializer.Trigger, actionSerializer.TypeString,
+                                actionSerializer.Details, 0,
+                                string.IsNullOrEmpty(actionSerializer.SwitchMode) ? string.Empty : $"{actionSerializer.SwitchMode}\n");
+                            break;
                     case "DisconnectBT":
                         {
                             double delayTime = actionSerializer.Delay;
@@ -213,108 +243,6 @@ namespace DS4WinWPF.DS4Control.DTOXml
                     destination.actions.Add(tempAction);
                 }
             }
-        }
-    }
-
-    public class SpecialActionSerializer
-    {
-        [XmlAttribute("Name")]
-        public string Name
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Trigger")]
-        public string Trigger
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Type")]
-        public string TypeString
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Details")]
-        public string Details
-        {
-            get; set;
-        } = string.Empty;
-
-        [XmlElement("Extras")]
-        public string Extras
-        {
-            get; set;
-        } = string.Empty;
-        public bool ShouldSerializeExtras()
-        {
-            return TypeString == "Macro" && !string.IsNullOrEmpty(Extras);
-        }
-
-        [XmlElement("Arguements")]
-        public string Arguments
-        {
-            get; set;
-        } = string.Empty;
-        public bool ShouldSerializeArguments()
-        {
-            return TypeString == "Program" && !string.IsNullOrEmpty(Arguments);
-        }
-
-        [XmlIgnore]
-        public double Delay
-        {
-            get; set;
-        }
-        //public bool ShouldSerializeDelay()
-        //{
-        //    return TypeString == "Program";
-        //}
-
-        [XmlElement("Delay")]
-        public string DelayString
-        {
-            get
-            {
-                return Delay.ToString(Global.configFileDecimalCulture);
-            }
-            set
-            {
-                double delayTime = 0.0;
-                if (double.TryParse(value, System.Globalization.NumberStyles.Float, Global.configFileDecimalCulture, out delayTime))
-                {
-                    Delay = delayTime;
-                }
-            }
-        }
-        public bool ShouldSerializeDelayString()
-        {
-            return TypeString == "Program";
-        }
-
-        [XmlElement("UnloadTrigger")]
-        public string UnloadTrigger
-        {
-            get; set;
-        } = string.Empty;
-        public bool ShouldSerializeUnloadTrigger()
-        {
-            HashSet<string> knownUseTypes = new HashSet<string>()
-            {
-                "Key", "Profile",
-            };
-            return knownUseTypes.Contains(TypeString) && !string.IsNullOrEmpty(UnloadTrigger);
-        }
-
-        [XmlElement("UnloadStyle")]
-        public string UnloadStyle
-        {
-            get; set;
-        } = string.Empty;
-        public bool ShouldSerializeUnloadStyle()
-        {
-            return TypeString == "Key" && !string.IsNullOrEmpty(UnloadStyle);
         }
     }
 }

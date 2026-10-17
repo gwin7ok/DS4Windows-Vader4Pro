@@ -33,11 +33,11 @@ namespace DS4WinWPF.DS4Control
     {
         private const string CONFIG_FILENAME = "OutputSlots.xml";
 
-        public static bool ReadConfig(OutputSlotManager slotManager)
+        public static bool ReadConfig(OutputSlotManager slotManager, string configDirectory)
         {
             bool result = false;
 
-            string output_path = Path.Combine(Global.appdatapath, CONFIG_FILENAME);
+            string output_path = Path.Combine(configDirectory, CONFIG_FILENAME);
             if (File.Exists(output_path))
             {
                 XmlSerializer serializer = new XmlSerializer(typeof(OutputSlotPersistDTO));
@@ -57,11 +57,11 @@ namespace DS4WinWPF.DS4Control
             return result;
         }
 
-        public static bool WriteConfig(OutputSlotManager slotManager)
+        public static bool WriteConfig(OutputSlotManager slotManager, string configDirectory)
         {
             bool result = false;
 
-            string output_path = Path.Combine(Global.appdatapath, CONFIG_FILENAME);
+            string output_path = Path.Combine(configDirectory, CONFIG_FILENAME);
             string testStr = string.Empty;
             XmlSerializer serializer = new XmlSerializer(typeof(OutputSlotPersistDTO));
             using (Utf8StringWriter strWriter = new Utf8StringWriter())
@@ -99,6 +99,7 @@ namespace DS4WinWPF.DS4Control
                 {
                     sw.Write(testStr);
                 }
+                result = true;
             }
             catch (UnauthorizedAccessException)
             {

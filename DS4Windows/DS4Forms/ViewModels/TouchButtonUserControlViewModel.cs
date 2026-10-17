@@ -29,6 +29,8 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 {
     public class TouchButtonUserControlViewModel
     {
+        // Phase6-Step10-2-5: Global.TouchpadButtonMode の置換先（必須引数）
+        private readonly DS4Windows.DI.IProfileSettingsService profileSettingsService;
         private int deviceIndex;
         public int DeviceIndex
         {
@@ -46,12 +48,13 @@ namespace DS4WinWPF.DS4Forms.ViewModels
 
         public TouchButtonActivationMode CurrentMode
         {
-            get => Global.TouchpadButtonMode[deviceIndex];
-            set => Global.TouchpadButtonMode[deviceIndex] = value;
+            get => profileSettingsService.TouchpadButtonMode[deviceIndex];
+            set => profileSettingsService.TouchpadButtonMode[deviceIndex] = value;
         }
 
-        public TouchButtonUserControlViewModel(int deviceIndex)
+        public TouchButtonUserControlViewModel(int deviceIndex, DS4Windows.DI.IProfileSettingsService profileSettingsService)
         {
+            this.profileSettingsService = profileSettingsService ?? throw new ArgumentNullException(nameof(profileSettingsService));
             this.deviceIndex = deviceIndex;
         }
     }
