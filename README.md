@@ -1,11 +1,20 @@
 # DS4Windows
 
-> **This project has moved.** It continues at **https://github.com/gwin7ok/DS4Windows** (formerly `gwin7ok/DS4Windows-Vader4Pro`).
-> Version 4.0.2 and later check for updates there, and the update from 4.0.1 or earlier is delivered by the 4.0.2 release.
-> The old repository is kept only so that older versions can still find 4.0.2.
+> **This project has moved** to **https://github.com/gwin7ok/DS4Windows** (formerly `gwin7ok/DS4Windows-Vader4Pro`).
+> Please open new issues and pull requests there, and download new releases from there.
+> - Version 4.0.1 or earlier: update to 4.0.2 from the in-app updater. It will move you to the new repository.
+> - Version 4.0.2 or later: the app checks the new repository for updates.
+> - Back up your profile folder (`Profiles` and `Actions.xml`) before updating.
+>
+> This repository is kept only so that older versions can find 4.0.2, and will be archived.
 >
 > **このプロジェクトは移転しました。** 今後は **https://github.com/gwin7ok/DS4Windows**（旧 `gwin7ok/DS4Windows-Vader4Pro`）で開発・配布します。
-> 4.0.2 以降は、更新の確認先がこちらになります。4.0.1 以前からは、4.0.2 への更新で移行されます。旧リポジトリは、古いバージョンが 4.0.2 を見つけるために残してあります。
+> 新しい Issue と PR は移転先へ、新しいリリースも移転先から入手してください。
+> - 4.0.1 以前: アプリの更新機能で 4.0.2 に更新すると、移転先に移行されます。
+> - 4.0.2 以降: 移転先で更新を確認します。
+> - 更新前に、プロファイルのフォルダ（`Profiles` と `Actions.xml`）をバックアップしてください。
+>
+> このリポジトリは、古いバージョンが 4.0.2 を見つけるためだけに残してあり、アーカイブします。
 
 Like those other DS4 tools, but sexier.
 
